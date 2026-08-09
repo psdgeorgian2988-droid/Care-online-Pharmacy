@@ -3,6 +3,11 @@ import "./App.css";
 import Medicines from "./Medicines"
 function App() {
   const [hash, setHash] = useState(window.location.hash);
+  const [currentMonthly, setCurrentMonthly] = useState("");
+const [medihomeMonthly, setMedihomeMonthly] = useState("");
+
+const monthlySaving = Math.max(0, Number(currentMonthly || 0) - Number(medihomeMonthly || 0));
+const annualSaving = monthlySaving * 12;
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -76,6 +81,67 @@ function App() {
           <p>Reliable healthcare support from home.</p>
         </section>
 
+<section className="savings-calculator">
+  <div className="savings-content">
+    <p className="savings-label">💰 MEDIHOME SAVINGS</p>
+
+    <h2>Compare Your Medicine Savings</h2>
+
+    <p className="savings-description">
+      Enter your current monthly medicine expense and compare it with
+      your estimated MediHome expense.
+    </p>
+
+    <div className="savings-inputs">
+      <div className="savings-input-box">
+        <label>Current Monthly Expense</label>
+        <div className="rupee-input">
+          <span>₹</span>
+          <input
+            type="number"
+            min="0"
+            placeholder="4000"
+            value={currentMonthly}
+            onChange={(e) => setCurrentMonthly(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="savings-input-box">
+        <label>MediHome Monthly Expense</label>
+        <div className="rupee-input">
+          <span>₹</span>
+          <input
+            type="number"
+            min="0"
+            placeholder="3200"
+            value={medihomeMonthly}
+            onChange={(e) => setMedihomeMonthly(e.target.value)}
+          />
+        </div>
+      </div>
+    </div>
+
+    <div className="savings-result">
+      <h3>Your Estimated Savings</h3>
+
+      <div className="saving-amount">
+        ₹{monthlySaving.toLocaleString("en-IN")}
+        <span>/month</span>
+      </div>
+
+      <p>
+        Estimated annual saving:{" "}
+        <strong>₹{annualSaving.toLocaleString("en-IN")}</strong>
+      </p>
+    </div>
+
+    <p className="savings-note">
+      *Savings are estimates and depend on the medicines, quantities and
+      prices compared.
+    </p>
+  </div>
+</section>
         <section id="medicines" className="services">
           <h2>Everything you need for your health</h2>
 

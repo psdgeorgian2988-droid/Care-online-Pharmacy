@@ -426,3 +426,335 @@ footer p {
   border-radius: 6px;
   cursor: pointer;
 }
+
+/* ================================
+   MediHome Savings Calculator
+   ================================ */
+
+.savings-calculator {
+  padding: 60px 20px;
+  background: linear-gradient(135deg, #eef9f7, #f7fbff);
+}
+
+.savings-content {
+  max-width: 850px;
+  margin: 0 auto;
+  padding: 40px;
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.10);
+  text-align: center;
+}
+
+.savings-label {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #159a8c;
+}
+
+.savings-content h2 {
+  margin: 0 0 12px;
+  font-size: 32px;
+  color: #173f5f;
+}
+
+.savings-description {
+  max-width: 650px;
+  margin: 0 auto 30px;
+  color: #667085;
+  line-height: 1.6;
+}
+
+.savings-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.savings-input-box {
+  text-align: left;
+}
+
+.savings-input-box label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #344054;
+}
+
+.rupee-input {
+  display: flex;
+  align-items: center;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.rupee-input span {
+  padding-left: 15px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #159a8c;
+}
+
+.rupee-input input {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  outline: none;
+  font-size: 17px;
+}
+
+.savings-result {
+  padding: 25px;
+  border-radius: 18px;
+  background: #e9f8f5;
+}
+
+.savings-result h3 {
+  margin: 0 0 8px;
+  color: #173f5f;
+}
+
+.saving-amount {
+  font-size: 38px;
+  font-weight: 800;
+  color: #159a8c;
+}
+
+.saving-amount span {
+  font-size: 16px;
+  font-weight: 500;
+  color: #667085;
+}
+
+.savings-result p {
+  margin: 10px 0 0;
+  color: #475467;
+}
+
+.savings-note {
+  margin: 20px 0 0;
+  font-size: 12px;
+  color: #98a2b3;
+}
+
+/* Mobile */
+@media (max-width: 650px) {
+  .savings-content {
+    padding: 25px 18px;
+  }
+
+  .savings-content h2 {
+    font-size: 26px;
+  }
+
+  .savings-inputs {
+    grid-template-columns: 1fr;
+  }
+
+  .saving-amount {
+    font-size: 32px;
+  }
+}
+
+/* =================================
+   MediHome Medicine Cards
+   ================================= */
+
+#medicines .cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  max-width: 1100px;
+  margin: 30px auto;
+  padding: 0 20px;
+}
+
+#medicines .medicine-card {
+  background: #ffffff;
+  border: 1px solid #e4e7ec;
+  border-radius: 18px;
+  padding: 28px 22px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#medicines .medicine-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+}
+
+#medicines .medicine-card h3 {
+  margin: 0 0 10px;
+  color: #173f5f;
+  font-size: 20px;
+}
+
+#medicines .medicine-card p {
+  margin: 8px 0;
+  color: #667085;
+}
+
+#medicines .medicine-card p:nth-of-type(2) {
+  font-size: 24px;
+  font-weight: 800;
+  color: #159a8c;
+  margin: 16px 0;
+}
+
+#medicines .medicine-card button {
+  padding: 11px 22px;
+  border: none;
+  border-radius: 10px;
+  background: #159a8c;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+#medicines .medicine-card button:hover {
+  transform: translateY(-2px);
+  opacity: 0.9;
+}
+
+/* Mobile */
+@media (max-width: 800px) {
+  #medicines .cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 550px) {
+  #medicines .cards {
+    grid-template-columns: 1fr;
+    padding: 0 15px;
+  }
+}
+/* Medicine card grid layout */
+#medicines > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  max-width: 1100px;
+  margin: 30px auto;
+  padding: 0 20px;
+}
+
+#medicines .medicine-card {
+  width: auto;
+  box-sizing: border-box;
+}
+
+@media (max-width: 800px) {
+  #medicines > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 550px) {
+  #medicines > div {
+    grid-template-columns: 1fr;
+  }
+}
+/* MediHome medicine grid */
+
+.medicine-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  max-width: 1100px;
+  margin: 30px auto;
+  padding: 0 20px;
+}
+
+.medicine-card {
+  background: #ffffff;
+  border: 1px solid #e4e7ec;
+  border-radius: 18px;
+  padding: 28px 22px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 800px) {
+  .medicine-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 550px) {
+  .medicine-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* Premium medicine card styling */
+
+.medicine-card {
+  min-height: 210px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.medicine-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
+}
+
+.medicine-card h3 {
+  font-size: 20px;
+  margin-bottom: 10px;
+  color: #173f5f;
+}
+
+.medicine-card p:first-of-type {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 20px;
+  background: #eef9f7;
+  color: #159a8c;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.medicine-card p:nth-of-type(2) {
+  font-size: 26px;
+  font-weight: 800;
+  color: #159a8c;
+  margin: 14px 0;
+}
+
+.medicine-card button {
+  min-width: 130px;
+  padding: 11px 18px;
+  border-radius: 10px;
+  border: none;
+  background: #159a8c;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.medicine-card button:hover {
+  opacity: 0.9;
+}
+.prescription-badge {
+  display: inline-block;
+  margin: 8px 0;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: #fff4e5;
+  color: #9a5b00;
+  font-size: 13px;
+  font-weight: 700;
+}

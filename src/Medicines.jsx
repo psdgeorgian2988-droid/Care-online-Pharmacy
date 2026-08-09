@@ -109,7 +109,7 @@ function Medicines() {
 
 </div>
 </div>
-<div className="medicine-grid">
+
        {showCart && (
   <div className="cart-panel">
     <h2>🛒 Your Cart</h2>
@@ -161,10 +161,19 @@ function Medicines() {
     </button>
   </div>
 )}
+<div className="medicine-grid">
 {filteredMedicines.map((medicine) => (
   <div className="medicine-card" key={medicine.id}>
     <h3>{medicine.name}</h3>
+
     <p>Category: {medicine.category}</p>
+
+    {medicine.prescription && (
+      <span className="prescription-badge">
+        📋 Prescription Required
+      </span>
+    )}
+
     <p>₹{medicine.price}</p>
 
     <button onClick={() => addToCart(medicine)}>
@@ -172,6 +181,8 @@ function Medicines() {
     </button>
   </div>
 ))}
+  
+
 </div>
 </section>
 );
