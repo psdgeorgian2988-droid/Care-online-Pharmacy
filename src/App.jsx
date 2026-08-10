@@ -1,3 +1,4 @@
+import MyOrders from "./MyOrders"
 import { useState, useEffect } from "react";
 import "./App.css";
 import Medicines from "./Medicines"
@@ -24,6 +25,9 @@ const annualSaving = monthlySaving * 12;
   if (hash === "#medicines") {
     return <Medicines />;
   }
+  if (hash === "#myorders") {
+  return <MyOrders />;
+}
   return (
     <div className="app">
 
@@ -38,6 +42,7 @@ const annualSaving = monthlySaving * 12;
           <a href="#medicines">Medicines</a>
           <a href="#labs">Lab Tests</a>
           <a href="#education">Health Education</a>
+          <a href="#orders">My Orders</a>
         </nav>
 
         <button className="login-btn">Login</button>

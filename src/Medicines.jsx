@@ -49,8 +49,9 @@ function Medicines() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [cart, setCart] = useState([]);
-  const [showCart, setShowCart] = useState(false);
-  const [showCheckout, setShowCheckout] = useState(false);
+const [showCart, setShowCart] = useState(false);
+const [showCheckout, setShowCheckout] = useState(false);
+const [prescriptionFile, setPrescriptionFile] = useState(null);
 
   const categories = [
     "All",
@@ -149,12 +150,50 @@ function Medicines() {
     />
 
     <textarea
-      placeholder="Delivery Address"
+    placeholder="Delivery Address"
+/>
+
+
+{cart.some((medicine) => medicine.prescription) && (
+
+  <div>
+    <label>Prescription</label>
+
+    <input
+      type="file"
+      accept="image/*"
+      capture="environment"
+      onChange={(e) => setPrescriptionFile(e.target.files[0])}
     />
 
-    <button onClick={() => alert("Order placed successfully!")}>
-      Place Order
-    </button>
+    {prescriptionFile && (
+      <p>Selected: {prescriptionFile.name}</p>
+    )}
+  </div>
+)}
+
+
+    <button onClick={() => {
+ const existingOrders = JSON.parse(localStorage.getItem("medihomeOrders") || "[]");
+const newOrder = {
+  id: Date.now(),
+  items: cart,
+  total: cart.reduce((sum, medicine) => sum + medicine.price, 0),
+  status: "Order Placed",
+  date: new Date().toLocaleString()
+};
+
+localStorage.setItem(
+  "medihomeOrders",
+  JSON.stringify([...existingOrders, newOrder])
+);
+
+alert("Order placed successfully!");
+setCart([]);
+setShowCheckout(false);
+}}>
+  Place Order
+</button>
 
     <button onClick={() => setShowCheckout(false)}>
       Back to Cart
