@@ -52,8 +52,10 @@ function Medicines() {
 const [showCart, setShowCart] = useState(false);
 const [showCheckout, setShowCheckout] = useState(false);
 const [prescriptionFile, setPrescriptionFile] = useState(null);
-
-  const categories = [
+const [fullName, setFullName] = useState("");
+const [mobileNumber, setMobileNumber] = useState("");
+const [deliveryAddress, setDeliveryAddress] = useState("");
+ const categories = [
     "All",
     "Diabetes",
     "Hypertension",
@@ -103,10 +105,11 @@ const [prescriptionFile, setPrescriptionFile] = useState(null);
               </option>
             ))}
           </select>
+          </div>
 
 <div className="cart-box" onClick={() => setShowCart(true)}>
   🛒 Cart: {cart.length}
-</div>
+
 
 </div>
 </div>
@@ -140,18 +143,20 @@ const [prescriptionFile, setPrescriptionFile] = useState(null);
     <h2>Checkout</h2>
 
     <input
-      type="text"
-      placeholder="Full Name"
-    />
+  type="text"
+  placeholder="Full Name"
+  value={fullName}
+  onChange={(e) => setFullName(e.target.value)}
+/>
 
     <input
-      type="text"
-      placeholder="Mobile Number"
-    />
-
-    <textarea
-    placeholder="Delivery Address"
+  type="text"
+  placeholder="Mobile Number"
+  value={mobileNumber}
+  onChange={(e) => setMobileNumber(e.target.value)}
 />
+
+   
 
 
 {cart.some((medicine) => medicine.prescription) && (
@@ -169,35 +174,74 @@ const [prescriptionFile, setPrescriptionFile] = useState(null);
     {prescriptionFile && (
       <p>Selected: {prescriptionFile.name}</p>
     )}
+    <div>
+  <label>Delivery Address</label>
+
+  <textarea
+    placeholder="Delivery Address"
+    value={deliveryAddress}
+    onChange={(e) => setDeliveryAddress(e.target.value)}
+    rows={3}
+  />
+</div>
   </div>
 )}
+<button onClick={() => {
 
+  if (!fullName.trim()) {
+    alert("Please enter your Full Name.");
+    return;
+  }
 
-    <button onClick={() => {
- const existingOrders = JSON.parse(localStorage.getItem("medihomeOrders") || "[]");
-const newOrder = {
-  id: Date.now(),
-  items: cart,
-  total: cart.reduce((sum, medicine) => sum + medicine.price, 0),
-  status: "Order Placed",
-  date: new Date().toLocaleString()
-};
+  if (!mobileNumber.trim()) {
+    alert("Please enter your Mobile Number.");
+    return;
+  }
 
-localStorage.setItem(
-  "medihomeOrders",
-  JSON.stringify([...existingOrders, newOrder])
-);
+  if (!deliveryAddress.trim()) {
+    alert("Please enter your Delivery Address.");
+    return;
+  }
 
-alert("Order placed successfully!");
-setCart([]);
-setShowCheckout(false);
-}}>
+  const requiresPrescription = cart.some(
+    (medicine) => medicine.prescriptionRequired
+  );
+
+  if (requiresPrescription && !prescriptionFile) {
+    alert("Please upload your prescription.");
+    return;
+  }
+
+  
+    const existingOrders = JSON.parse(
+      localStorage.getItem("mediHomeOrders") || "[]"
+    );
+
+    const newOrder = {
+      id: Date.now(),
+      items: cart,
+      total: cart.reduce(
+        (sum, medicine) => sum + medicine.price,
+        0
+      ),
+      status: "Order Placed",
+      date: new Date().toLocaleString(),
+      prescription: prescriptionFile ? prescriptionFile.name : null,
+    };
+
+    localStorage.setItem(
+      "mediHomeOrders",
+      JSON.stringify([...existingOrders, newOrder])
+    );
+
+    alert("Order placed successfully!");
+
+    setCart([]);
+    setShowCheckout(false);
+  }}
+>
   Place Order
 </button>
-
-    <button onClick={() => setShowCheckout(false)}>
-      Back to Cart
-    </button>
   </div>
 )}
 <div className="medicine-grid">

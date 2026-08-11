@@ -42,7 +42,7 @@ const annualSaving = monthlySaving * 12;
           <a href="#medicines">Medicines</a>
           <a href="#labs">Lab Tests</a>
           <a href="#education">Health Education</a>
-          <a href="#orders">My Orders</a>
+          <a href="#myorders">My Orders</a>
         </nav>
 
         <button className="login-btn">Login</button>
