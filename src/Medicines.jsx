@@ -55,6 +55,7 @@ const [prescriptionFile, setPrescriptionFile] = useState(null);
 const [fullName, setFullName] = useState("");
 const [mobileNumber, setMobileNumber] = useState("");
 const [deliveryAddress, setDeliveryAddress] = useState("");
+const [pinCode, setPinCode] = useState("");
  const categories = [
     "All",
     "Diabetes",
@@ -178,11 +179,23 @@ const [deliveryAddress, setDeliveryAddress] = useState("");
   <label>Delivery Address</label>
 
   <textarea
+  
     placeholder="Delivery Address"
     value={deliveryAddress}
     onChange={(e) => setDeliveryAddress(e.target.value)}
     rows={3}
   />
+  <label>PIN Code</label>
+<input
+  type="text"
+  inputMode="numeric"
+  placeholder="Enter 6-digit PIN Code"
+  value={pinCode}
+  maxLength={6}
+  onChange={(e) =>
+    setPinCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+  }
+/>
 </div>
   </div>
 )}
@@ -216,7 +229,10 @@ const [deliveryAddress, setDeliveryAddress] = useState("");
     const existingOrders = JSON.parse(
       localStorage.getItem("mediHomeOrders") || "[]"
     );
-
+if (!deliveryAddress.trim() || pinCode.length !== 6) {
+  alert("Please enter your Delivery Address and 6-digit PIN Code.");
+  return;
+}
     const newOrder = {
       id: Date.now(),
       items: cart,
@@ -225,8 +241,10 @@ const [deliveryAddress, setDeliveryAddress] = useState("");
         0
       ),
       status: "Order Placed",
-      date: new Date().toLocaleString(),
-      prescription: prescriptionFile ? prescriptionFile.name : null,
+date: new Date().toLocaleString(),
+prescription: prescriptionFile ? prescriptionFile.name : "",
+deliveryAddress: deliveryAddress,
+pinCode: pinCode,
     };
 
     localStorage.setItem(

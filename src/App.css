@@ -937,12 +937,21 @@ grid-template-columns: 280px 180px 120px;
 /* ================================
    MediHome - Order History
    ================================ */
-
+.orders-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  width: 100%;
+  padding: 10px 20px;
+  box-sizing: border-box;
+}
 .order-card {
-  width: 90%;
-  max-width: 700px;
-  margin: 20px auto;
+  width: 100%;
+max-width: none;
   padding: 22px;
+  display: inline-block !important;
+  vertical-align: top;
+  box-sizing: border-box;
   background: #ffffff;
   border: 1px solid #e1e5ea;
   border-radius: 14px;
@@ -998,7 +1007,7 @@ grid-template-columns: 280px 180px 120px;
    ================================ */
 
 .order-details-panel {
-  width: 90%;
+  width: 75%;
   max-width: 700px;
   margin: 20px auto 30px;
   padding: 25px;
@@ -1115,4 +1124,34 @@ grid-template-columns: 280px 180px 120px;
 
 .order-action-buttons .order-back-btn {
   margin-left: auto;
+}
+.my-orders-page {
+  width: 90%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.my-orders-page h1 {
+  text-align: left;
+  margin-bottom: 25px;
+}
+
+/* Compact Order History cards */
+.orders-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  width: 100%;
+  padding: 10px 20px;
+  box-sizing: border-box;
+}
+
+.orders-grid .order-card {
+  width: calc(33.333% - 14px) !important;
+  max-width: none !important;
+  padding: 18px;
+  margin: 0;
+  display: block !important;
+  box-sizing: border-box;
 }

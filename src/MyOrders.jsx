@@ -29,24 +29,23 @@ const updateOrderStatus = (newStatus) => {
   setSelectedOrder(updatedOrder);
 
   localStorage.setItem(
-    "medihomeOrders",
+    "mediHomeOrders",
     JSON.stringify(updatedOrders)
   );
 };
   useEffect(() => {
     const savedOrders = JSON.parse(
-      localStorage.getItem("medihomeOrders") || "[]"
+      localStorage.getItem("mediHomeOrders") || "[]"
     );
 
     setOrders(savedOrders);
   }, []);
 
   return (
-    <div className="page">
+    <div className="my-orders-pag">
       <h1>My Orders</h1>
 {selectedOrder && (
-  <div className="order-details-panel">
-    <h2>Order Details</h2>
+<div className="order-details-page">    <h2>Order Details</h2>
 
     <p>
       <strong>Order ID:</strong> #{selectedOrder.id}
@@ -82,7 +81,17 @@ const updateOrderStatus = (newStatus) => {
         </li>
       ))}
     </ul>
+<div className="order-details-address">
+  <p>
+    <strong>Delivery Address:</strong>{" "}
+    {selectedOrder.deliveryAddress || "Not provided"}
+  </p>
 
+  <p>
+    <strong>PIN Code:</strong>{" "}
+    {selectedOrder.pinCode || "Not provided"}
+  </p>
+</div>
     <p className="order-details-total">
       <strong>Total:</strong> ₹{selectedOrder.total}
     </p>
@@ -117,7 +126,8 @@ const updateOrderStatus = (newStatus) => {
       {orders.length === 0 ? (
         <p>No orders found.</p>
       ) : (
-        orders.map((order) => (
+        <div className="orders-grid">
+      {orders.map((order) => (
   <div key={order.id} className="order-card">
     <div className="order-card-header">
       <h3>Order #{order.id}</h3>
@@ -144,10 +154,11 @@ onClick={() => setSelectedOrder(order)}>
 </button>
     
   </div>
-))
+))}
+      
+      </div>
       )}
-    </div>
+  </div>
   );
 }
-
 export default MyOrders;
