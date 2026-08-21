@@ -360,11 +360,11 @@ footer p {
   }
 }
 .medicine-card {
-  padding: 20px;
-  margin-bottom: 20px;
-  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 12px;
+  border-radius: 10px;
   background: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   text-align: center;
 }
 
@@ -655,40 +655,15 @@ footer p {
   box-sizing: border-box;
 }
 
-@media (max-width: 800px) {
-  #medicines > div {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
 
-@media (max-width: 550px) {
-  #medicines > div {
-    grid-template-columns: 1fr;
-  }
-}
 /* MediHome medicine grid */
 
-.medicine-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
-  max-width: 1100px;
-  margin: 30px auto;
-  padding: 0 20px;
-}
-
-.medicine-card {
-  background: #ffffff;
-  border: 1px solid #e4e7ec;
-  border-radius: 18px;
-  padding: 28px 22px;
-  text-align: center;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-}
 
 @media (max-width: 800px) {
   .medicine-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, 220px);
+    gap: 16px;
+    max-width: 700px;
   }
 }
 
@@ -1154,4 +1129,293 @@ max-width: none;
   margin: 0;
   display: block !important;
   box-sizing: border-box;
+}
+.medicine-category-boxes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin: 25px 0;
+}
+
+.medicine-category-box {
+  padding: 16px 12px;
+  border: 1px solid #d7e8e8;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #167c80;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.medicine-category-box:hover {
+  transform: translateY(-2px);
+}
+
+.medicine-category-boxes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 25px 0;
+  width: 100%;
+}
+
+.medicine-category-box {
+  width: 100%;
+  min-height: 58px;
+  padding: 16px 12px;
+  border: 1px solid #d7e8e8;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #167c80;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.medicine-category-box:hover {
+  transform: translateY(-2px);
+}
+
+.medicine-category-box.active {
+  background: #18a6ad;
+  color: white;
+  border-color: #18a6ad;
+}
+
+@media (max-width: 700px) {
+  .medicine-category-boxes {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .medicine-category-boxes {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.medicine-controls select {
+  display: none;
+}
+/* MediHome Medicine Cards */
+
+/* MediHome Medicine Cards */
+
+.medicine-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  width: 90%;
+  max-width: 1000px;
+  margin: 24px auto;
+}
+
+.medicine-card {
+  background: #ffffff;
+  border: 1px solid #d9e5e5;
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  min-height: 220px;
+}
+
+.medicine-card h3 {
+  margin: 0 0 8px;
+  font-size: 16px !important;
+}
+
+.medicine-card p {
+  margin: 5px 0;
+  font-size: 12px !important;
+}
+
+.medicine-card p strong {
+  font-size: 14px !important;
+  font-weight: 600;
+}
+
+.medicine-card .prescription-badge {
+  display: inline-block;
+  margin: 7px 0;
+  padding: 4px 7px;
+  border-radius: 5px;
+  font-size: 11px !important;
+}
+
+.medicine-card button {
+  margin-top: 6px;
+  padding: 7px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@media (max-width: 800px) {
+  .medicine-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 550px) {
+  .medicine-grid {
+    grid-template-columns: 1fr;
+    width: 90%;
+  }
+}
+/* MediHome medicine cards - final grid */
+.medicine-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  width: 100% !important;
+  max-width: 900px !important;
+  margin: 24px auto !important;
+}
+/* FINAL MEDICINE GRID OVERRIDE */
+#medicines .medicine-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 220px) !important;
+  gap: 16px !important;
+  width: 100% !important;
+  max-width: 720px !important;
+  margin: 24px auto !important;
+  justify-content: center !important;
+}
+/* =====================================================
+   MEDIHOME - FIXED LEFT SIDEBAR
+   ===================================================== */
+
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 250px;
+  height: 100vh;
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  padding: 24px 14px;
+  box-sizing: border-box;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #263b63;
+  padding: 8px 12px 28px;
+}
+
+.sidebar-logo .logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: #263b63;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sidebar-nav a,
+.sidebar-bottom a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border-radius: 9px;
+  text-decoration: none;
+  color: #344054;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.sidebar-nav a:hover,
+.sidebar-bottom a:hover {
+  background: #eef7fa;
+  color: #147c91;
+  transform: translateX(3px);
+}
+
+.sidebar-nav a[href="#home"] {
+  background: #e8f5f8;
+  color: #147c91;
+  font-weight: 600;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+  padding-top: 15px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* Move the complete main content to the right */
+.app > main {
+  margin-left: 250px;
+  min-height: 100vh;
+}
+
+/* Hide the old header spacing if any old header styles remain */
+.app > header {
+  display: none;
+}
+
+/* Mobile / small screens */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 210px;
+  }
+
+  .app > main {
+    margin-left: 210px;
+  }
+
+  .sidebar-logo {
+    font-size: 20px;
+  }
+
+  .sidebar-nav a,
+  .sidebar-bottom a {
+    font-size: 14px;
+    padding: 11px 10px;
+  }
+}
+.hero-top-line {
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #263b63;
+  margin: 20px auto 30px;
+}
+
+@media (max-width: 900px) {
+  .hero-top-line {
+    font-size: 19px;
+    white-space: normal;
+  }
 }
