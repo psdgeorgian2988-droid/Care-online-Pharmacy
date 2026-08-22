@@ -1,0 +1,292 @@
+import { useMemo, useState } from "react";
+
+const STORAGE_KEY = "mediHomeReports";
+const MAX_FILE_BYTES = 1.5 * 1024 * 1024;
+
+function loadReports() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function Reports() {
+  const today = new Date().toISOString().split("T")[0];
+  const [reports, setReports] = useState(() => loadReports());
+  const [form, setForm] = useState({
+    name: "",
+    date: today,
+    notes: "",
+    fileName: "",
+    fileType: "",
+    fileData: "",
+  });
+  const [errors, setErrors] = useState({});
+  const [status, setStatus] = useState("");
+
+  const sorted = useMemo(
+    () =>
+      [...reports].sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))),
+    [reports]
+  );
+
+  const persist = (next) => {
+    setReports(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  };
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+    setStatus("");
+  };
+
+  const handleFile = (event) => {
+    const file = event.target.files?.[0];
+    setErrors((prev) => ({ ...prev, file: "" }));
+    setStatus("");
+
+    if (!file) {
+      setForm((prev) => ({
+        ...prev,
+        fileName: "",
+        fileType: "",
+        fileData: "",
+      }));
+      return;
+    }
+
+    const isAllowed =
+      file.type.startsWith("image/") ||
+      file.type === "application/pdf" ||
+      /\.(pdf|png|jpe?g|webp)$/i.test(file.name);
+
+    if (!isAllowed) {
+      setErrors((prev) => ({ ...prev, file: "Upload a PDF or image file." }));
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_FILE_BYTES) {
+      setForm((prev) => ({
+        ...prev,
+        name: prev.name || file.name.replace(/\.[^.]+$/, ""),
+        fileName: file.name,
+        fileType: file.type || "application/octet-stream",
+        fileData: "",
+      }));
+      setStatus("File is over 1.5 MB, so only the filename will be saved.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setForm((prev) => ({
+        ...prev,
+        name: prev.name || file.name.replace(/\.[^.]+$/, ""),
+        fileName: file.name,
+        fileType: file.type || "application/octet-stream",
+        fileData: typeof reader.result === "string" ? reader.result : "",
+      }));
+    };
+    reader.onerror = () => {
+      setErrors((prev) => ({
+        ...prev,
+        file: "Could not read this file. Filename will still be saved if you submit.",
+      }));
+      setForm((prev) => ({
+        ...prev,
+        fileName: file.name,
+        fileType: file.type || "",
+        fileData: "",
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const validate = () => {
+    const next = {};
+    if (!form.name.trim()) next.name = "Report name is required.";
+    if (!form.date) next.date = "Please select a date.";
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (!validate()) return;
+
+    const record = {
+      id: "MH-RPT-" + Date.now(),
+      name: form.name.trim(),
+      date: form.date,
+      notes: form.notes.trim(),
+      fileName: form.fileName,
+      fileType: form.fileType,
+      fileData: form.fileData,
+      savedAt: new Date().toLocaleString(),
+    };
+
+    persist([record, ...reports]);
+    setForm({
+      name: "",
+      date: today,
+      notes: "",
+      fileName: "",
+      fileType: "",
+      fileData: "",
+    });
+    setErrors({});
+    setStatus("Report saved on this device.");
+    event.target.reset?.();
+  };
+
+  const removeReport = (id) => {
+    persist(reports.filter((item) => item.id !== id));
+  };
+
+  return (
+    <>
+      <style>{styles}</style>
+      <div className="service-page reports-page">
+        <section className="service-hero">
+          <div>
+            <span className="service-kicker">MediHome Reports</span>
+            <h1>Save health reports</h1>
+            <p>Keep lab PDFs or images on this device. Nothing is uploaded to a server.</p>
+          </div>
+        </section>
+
+        <form className="service-form" onSubmit={handleSubmit}>
+          <div className="field">
+            <label htmlFor="rpt-name">
+              Report name <span>*</span>
+            </label>
+            <input
+              id="rpt-name"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              placeholder="e.g. CBC — Aug 2026"
+            />
+            {errors.name && <small>{errors.name}</small>}
+          </div>
+
+          <div className="field">
+            <label htmlFor="rpt-date">
+              Report date <span>*</span>
+            </label>
+            <input
+              id="rpt-date"
+              name="date"
+              type="date"
+              value={form.date}
+              onChange={handleChange}
+            />
+            {errors.date && <small>{errors.date}</small>}
+          </div>
+
+          <div className="field full">
+            <label htmlFor="rpt-file">File (PDF or image)</label>
+            <input
+              id="rpt-file"
+              name="file"
+              type="file"
+              accept="application/pdf,image/*"
+              onChange={handleFile}
+            />
+            {form.fileName && (
+              <p className="file-meta">
+                {form.fileName}
+                {form.fileData ? " · stored on this device" : " · metadata only"}
+              </p>
+            )}
+            {errors.file && <small>{errors.file}</small>}
+          </div>
+
+          <div className="field full">
+            <label htmlFor="rpt-notes">Notes (optional)</label>
+            <textarea
+              id="rpt-notes"
+              name="notes"
+              rows="2"
+              value={form.notes}
+              onChange={handleChange}
+              placeholder="Doctor name, findings, follow-up"
+            />
+          </div>
+
+          {status && <p className="form-status">{status}</p>}
+
+          <button type="submit" className="service-submit">
+            Save report
+          </button>
+        </form>
+
+        <section className="report-list" aria-label="Saved reports">
+          <h2>Saved reports</h2>
+          {sorted.length === 0 ? (
+            <p className="empty">No reports saved yet.</p>
+          ) : (
+            <ul>
+              {sorted.map((item) => (
+                <li key={item.id}>
+                  <div>
+                    <strong>{item.name}</strong>
+                    <span>{item.date}</span>
+                    {item.fileName && <em>{item.fileName}</em>}
+                    {item.notes && <p>{item.notes}</p>}
+                    {item.fileData && (
+                      <a href={item.fileData} target="_blank" rel="noreferrer">
+                        Open saved file
+                      </a>
+                    )}
+                  </div>
+                  <button type="button" onClick={() => removeReport(item.id)}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+    </>
+  );
+}
+
+const styles = `
+.service-page{padding:16px 20px 24px 14px;box-sizing:border-box;color:#143246}
+.service-hero{max-width:760px;margin:0 auto 12px;padding:14px 16px;border-radius:12px;background:linear-gradient(135deg,#eaf7ff,#f4fbf8)}
+.service-kicker{display:block;margin-bottom:4px;font-size:11px;font-weight:800;letter-spacing:.6px;color:#1a6b7a}
+.service-hero h1{margin:0 0 4px;font-size:22px}
+.service-hero p{margin:0;color:#5d7180;font-size:13px;line-height:1.4}
+.service-form{max-width:760px;margin:0 auto;padding:14px;background:#fff;border:1px solid #e4ecef;border-radius:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.service-form .field{display:flex;flex-direction:column;min-width:0}
+.service-form .field.full{grid-column:1/-1}
+.service-form label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
+.service-form label span{color:#d84b4b}
+.service-form input,.service-form select,.service-form textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;min-height:38px;background:#fff}
+.service-form textarea{min-height:56px;resize:vertical}
+.service-form input:focus,.service-form select:focus,.service-form textarea:focus{border-color:#1a6b7a}
+.service-form small{margin-top:4px;color:#d84b4b;font-size:12px}
+.file-meta{margin:6px 0 0;color:#5d7180;font-size:12px}
+.form-status{grid-column:1/-1;margin:0;padding:8px 10px;border-radius:8px;background:#e5f8ee;color:#1c9b61;font-size:13px;font-weight:600}
+.service-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:40px;cursor:pointer;font-family:inherit}
+.report-list{max-width:760px;margin:16px auto 0}
+.report-list h2{margin:0 0 8px;font-size:16px}
+.report-list .empty{margin:0;color:#7a8b96;font-size:14px}
+.report-list ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.report-list li{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:12px;background:#fff;border:1px solid #e4ecef;border-radius:10px}
+.report-list strong{display:block;font-size:14px}
+.report-list span,.report-list em{display:block;color:#5d7180;font-size:12px;font-style:normal;margin-top:2px}
+.report-list p{margin:6px 0 0;color:#34546b;font-size:13px}
+.report-list a{display:inline-block;margin-top:6px;color:#1a6b7a;font-size:13px;font-weight:700}
+.report-list button{border:1px solid #d8e3e9;background:#fff;color:#b64b4b;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;flex-shrink:0}
+@media (max-width:800px){.service-page{padding:14px}.service-form{grid-template-columns:1fr}}
+`;
+
+export default Reports;

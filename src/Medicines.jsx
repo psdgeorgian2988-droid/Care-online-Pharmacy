@@ -1,4 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+function readHomeMedicineSearch() {
+  const hash = window.location.hash || "";
+  let value = hash.startsWith("#") ? hash.slice(1) : hash;
+  try {
+    value = decodeURIComponent(value);
+  } catch {
+    value = value.replace(/%3F/gi, "?").replace(/%3D/gi, "=");
+  }
+  const queryIndex = value.indexOf("?");
+  if (queryIndex !== -1) {
+    const fromHash = new URLSearchParams(value.slice(queryIndex + 1)).get("q");
+    if (fromHash && fromHash.trim()) {
+      return fromHash.trim();
+    }
+  }
+
+  try {
+    return (sessionStorage.getItem("mediHomeMedicineSearch") || "").trim();
+  } catch {
+    return "";
+  }
+}
 
 function readSavedProfile() {
   try {
@@ -197,16 +220,10 @@ const medicines = [
 const requiresPrescription = (medicine) =>
   Boolean(medicine.prescription || medicine.prescriptionRequired);
 
-function Medicines() {
-  const [search, setSearch] = useState(() => {
-    try {
-      const saved = sessionStorage.getItem("mediHomeMedicineSearch") || "";
-      sessionStorage.removeItem("mediHomeMedicineSearch");
-      return saved;
-    } catch {
-      return "";
-    }
-  });
+function Medicines({ initialSearch = "" }) {
+  const [search, setSearch] = useState(
+    () => (initialSearch || "").trim() || readHomeMedicineSearch()
+  );
   const [category, setCategory] = useState("All");
   const [recentSearches, setRecentSearches] = useState([]);
   const [cart, setCart] = useState([]);
@@ -221,6 +238,14 @@ function Medicines() {
   );
   const [pinCode, setPinCode] = useState(savedProfile?.pinCode || "");
   const [confirmedOrder, setConfirmedOrder] = useState(null);
+
+  useEffect(() => {
+    const next = (initialSearch || "").trim();
+    if (next) {
+      setSearch(next);
+      setCategory("All");
+    }
+  }, [initialSearch]);
 
   const handleMedicineSearch = () => {
     const value = search.trim();
