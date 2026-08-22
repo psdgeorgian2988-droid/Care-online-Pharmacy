@@ -360,14 +360,14 @@ footer p {
   }
 }
 .medicine-card {
-  padding: 10px;
-  margin-bottom: 12px;
+  background: #ffffff;
+  border: 1px solid #d9e5e5;
   border-radius: 10px;
-  background: white;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  padding: 10px;
+  margin: 0 auto 12px;
   text-align: center;
+  box-sizing: border-box;
 }
-
 .medicine-price {
   font-size: 20px;
   font-weight: 700;
@@ -439,7 +439,7 @@ footer p {
 .savings-content {
   max-width: 850px;
   margin: 0 auto;
-  padding: 40px;
+  padding: 28px 40px;
   background: #ffffff;
   border-radius: 22px;
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.10);
@@ -657,23 +657,72 @@ footer p {
 
 
 /* MediHome medicine grid */
+/* Improve Home page spacing */
 
-
-@media (max-width: 800px) {
-  .medicine-grid {
-    grid-template-columns: repeat(3, 220px);
-    gap: 16px;
-    max-width: 700px;
-  }
+.home-welcome {
+  max-width: 850px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  line-height: 1.3 !important;
+  padding-top: 10px !important;
+  padding-bottom: 8px !important;
 }
 
-@media (max-width: 550px) {
-  .medicine-grid {
-    grid-template-columns: 1fr;
-  }
+.home-info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
 }
-/* Premium medicine card styling */
+.home-info-card {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 0px;
+  padding: 8px 28px 18px;
+  text-align: center;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
 
+/* Keep both headings at exactly the same level */
+.home-info-card h2 {
+  width: 100%;
+  text-align: center;
+  margin: 15px 0 25px;
+}
+
+/* Left-align all paragraph and bullet content */
+.home-info-card p {
+  width: 100%;
+  text-align: left;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.home-info-card ul {
+  width: 100%;
+  text-align: left;
+  margin: 0;
+  padding-left: 25px;
+}
+
+.home-info-card li {
+  text-align: left;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.home-info-card {
+  min-height: 280px;
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+}
 .medicine-card {
   min-height: 210px;
   display: flex;
@@ -738,26 +787,53 @@ footer p {
 
 /* Medicine search controls */
 #medicines .medicine-controls {
-  display: grid;
+  display: flex;
   justify-content: center;
   align-items: center;
- gap:14px;
-grid-template-columns: 280px 180px 120px;
-  margin: 20px auto;
-  width: auto;
+  gap: 14px;
+  margin: 8px auto;
+  width: 100%;
   max-width: 900px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+}
+
+#medicines .medicine-controls input {
+  width: 600px;
+  max-width: 100%;
+  height: 50px;
+  padding: 0 18px;
+  border: 1px solid #d6dce5;
+  border-radius: 10px;
+  font-size: 16px;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+#medicines .medicine-controls input:focus {
+  border-color: #168aad;
+  box-shadow: 0 0 0 3px rgba(22, 138, 173, 0.12);
+}
+
+#medicines .medicine-controls select {
+  padding: 14px 16px;
+  border: 1px solid #cfd8e3;
+  border-radius: 10px;
+  font-size: 15px;
+  background: white;
+  min-width: 180px;
 }
  
 
 #medicines .medicine-controls input {
-  width: 280px !important;
-  height: 42px;
-  padding: 0 14px;
+  width: 600px;
+  max-width: 100%;
+  height: 50px;
+  padding: 0 18px;
   border: 1px solid #d6dce5;
   border-radius: 10px;
-  font-size: 15px;
-  outline: none;
+  font-size: 16px;
+  background: #ffffff;
+  box-sizing: border-box;
 }
 
 #medicines .medicine-controls select {
@@ -772,6 +848,9 @@ grid-template-columns: 280px 180px 120px;
 }
 /* Clean Medicine Search Controls */
 #medicines .medicine-controls {
+  #medicines .medicine-controls select {
+  display: none;
+}
   display: flex;
   justify-content: center;
   align-items: center;
@@ -782,9 +861,10 @@ grid-template-columns: 280px 180px 120px;
 }
 
 #medicines .medicine-controls input {
-  width: 380px;
-  height: 46px;
-  padding: 0 16px;
+  width: 600px;
+  max-width: 100%;
+  height: 50px;
+  padding: 0 18px;
   border: 1px solid #d6dce5;
   border-radius: 10px;
   font-size: 16px;
@@ -1205,11 +1285,12 @@ max-width: none;
 
 .medicine-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(3, 280px);
+  gap: 4px !important;
   width: 90%;
   max-width: 1000px;
   margin: 24px auto;
+   justify-content: center;
 }
 
 .medicine-card {
@@ -1268,22 +1349,22 @@ max-width: none;
   }
 }
 /* MediHome medicine cards - final grid */
-.medicine-grid {
+#medicines .medicine-grid {
   display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  gap: 16px !important;
+  grid-template-columns: repeat(3, 220px) !important;
+  gap: 10px !important;
   width: 100% !important;
-  max-width: 900px !important;
-  margin: 24px auto !important;
+  max-width: 700px !important;
+  margin: 16px auto !important;
 }
 /* FINAL MEDICINE GRID OVERRIDE */
 #medicines .medicine-grid {
   display: grid !important;
   grid-template-columns: repeat(3, 220px) !important;
-  gap: 16px !important;
+  gap: 10px !important;
   width: 100% !important;
-  max-width: 720px !important;
-  margin: 24px auto !important;
+  max-width: 700px !important;
+  margin: 16px auto !important;
   justify-content: center !important;
 }
 /* =====================================================
@@ -1374,7 +1455,10 @@ max-width: none;
 /* Move the complete main content to the right */
 .app > main {
   margin-left: 250px;
+  width: calc(100% - 250px);
   min-height: 100vh;
+  padding: 0 !important;
+  box-sizing: border-box;
 }
 
 /* Hide the old header spacing if any old header styles remain */
@@ -1418,4 +1502,1467 @@ max-width: none;
     font-size: 19px;
     white-space: normal;
   }
+}
+.hero-title-single {
+  white-space: nowrap;
+  font-size: 28px;
+  text-align: center;
+  margin: 0 auto 25px;
+}
+.hero-title-single {
+  width: 100%;
+  max-width: 100%;
+  text-align: center;
+  font-size: 28px;
+  line-height: 1.2;
+  margin: 0 auto 25px;
+  padding: 10px 10px;
+  box-sizing: border-box;
+  white-space: normal;
+  overflow: visible;
+}
+.app-layout {
+  padding-top: 48px !important;
+  box-sizing: border-box;
+}
+/* Keep sidebar content below the fixed top ticker */
+.sidebar {
+  padding-top: 48px !important;
+  box-sizing: border-box;
+}
+/* =========================================
+   MEDIHOME FULL-WIDTH TOP TICKER
+========================================= */
+
+.top-ticker {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+
+  width: 100vw !important;
+  height: 48px !important;
+
+  background: #0639b8 !important;
+  color: #ffffff !important;
+
+  display: flex !important;
+  align-items: center !important;
+
+  overflow: hidden !important;
+  white-space: nowrap !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  border: none !important;
+  border-radius: 0 !important;
+
+  z-index: 9999 !important;
+  box-sizing: border-box !important;
+}
+
+.ticker-track {
+  display: flex !important;
+  align-items: center !important;
+
+  width: max-content !important;
+  min-width: max-content !important;
+
+  white-space: nowrap !important;
+
+  animation: tickerMove 20s linear infinite;
+}
+
+.ticker-item {
+  display: inline-flex !important;
+  align-items: center !important;
+
+  flex-shrink: 0 !important;
+
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+
+  white-space: nowrap !important;
+
+  margin: 0 22px !important;
+}
+
+.ticker-item::after {
+  content: "•";
+  color: #ffffff !important;
+
+  margin-left: 44px !important;
+  font-size: 14px !important;
+}
+
+@keyframes tickerMove {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.top-ticker *,
+.top-ticker span {
+  white-space: nowrap !important;
+}
+/* Remove unwanted right-side vertical line */
+.app-layout {
+  border-right: none !important;
+}
+
+main {
+  border-right: none !important;
+}
+
+.main-content {
+  border-right: none !important;
+}
+html,
+body,
+#root {
+  border-right: none !important;
+}
+/* Remove sidebar vertical divider */
+.sidebar {
+  border-right: none !important;
+  box-shadow: none !important;
+}
+/* =========================================
+   MEDIHOME HOME PAGE - FINAL VISIBILITY FIX
+========================================= */
+
+.home-content {
+  width: 100%;
+  max-width: 1150px;
+  margin: 0 auto;
+  padding: 50px 45px 70px;
+  box-sizing: border-box;
+}
+
+.home-welcome {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.home-welcome h1 {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+
+  margin: 0 0 12px !important;
+
+  color: #123a78 !important;
+  font-size: 34px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+}
+
+.home-welcome > p {
+  display: block !important;
+  color: #2563c7 !important;
+  font-size: 19px !important;
+  font-weight: 600 !important;
+  margin: 0 auto 12px !important;
+}
+
+.home-welcome .home-intro {
+  max-width: 750px;
+  margin: 12px auto 0 !important;
+
+  color: #555f70 !important;
+  font-size: 15px !important;
+  font-weight: 400 !important;
+  line-height: 1.7 !important;
+}
+
+.home-info-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 25px;
+  width: 100%;
+  max-width: 1050px;
+  margin: 35px auto 0;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+.home-info-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+.home-info-icon {
+  margin: 0 0 6px;
+  font-size: 42px;
+  line-height: 1;
+}
+
+.home-info-card h2 {
+  margin: 0 0 10px;
+  font-size: 30px;
+  line-height: 1.2;
+  color: #123b8d;
+}
+
+.home-info-card p {
+  margin: 0;
+  max-width: 900px;
+  font-size: 17px;
+  line-height: 1.6;
+  color: #526979;
+}
+
+.home-info-card ul {
+  margin: 0 auto;
+  padding-left: 25px;
+  max-width: 800px;
+}
+
+.home-info-card li {
+  color: #555;
+  font-size: 17px;
+  line-height: 1.7;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 700px) {
+  .home-info-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .home-content {
+    padding: 35px 20px 50px;
+  }
+
+  .home-welcome h1 {
+    font-size: 28px !important;
+  }
+}
+/* Improve Home page spacing and readability */
+
+.home-welcome .home-intro {
+  max-width: 850px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  line-height: 1.6 !important;
+}
+
+.home-info-grid {
+  max-width: 1000px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.home-info-card {
+  min-height: 280px;
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+}
+/* Home page final layout fix */
+
+.home-content {
+  width: 100%;
+  padding: 30px 40px 0;
+  box-sizing: border-box;
+}
+
+.home-welcome {
+  text-align: center;
+  margin: 20px auto 35px !important;
+  max-width: 900px !important;
+}
+
+.home-welcome h1 {
+  margin-bottom: 12px;
+}
+
+.home-intro {
+  margin-top: 12px !important;
+}
+
+/* Vision + Mission stacked */
+/* Professional Vision + Mission section */
+
+.home-info-grid {
+  width: 100%;
+  max-width: 1000px !important;
+  margin: 5px auto 8px !important;
+  padding: 0 20px;
+  box-sizing: border-box;
+
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+/* Vision & Mission cards */
+
+.home-info-card {
+  width: 100% !important;
+  min-height: auto !important;
+  box-sizing: border-box;
+
+  background: #ffffff;
+  border: 1px solid #e5eaf5;
+  border-radius: 18px;
+
+  padding: 32px 45px;
+
+  box-shadow: 0 6px 20px rgba(24, 55, 120, 0.08);
+
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Subtle professional hover effect */
+
+.home-info-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(24, 55, 120, 0.12);
+}
+
+/* Icons */
+
+.home-info-icon {
+  font-size: 42px;
+  margin-bottom: 10px;
+  line-height: 1;
+}
+
+/* Headings */
+
+.home-info-card h2 {
+  margin: 0 0 16px;
+  color: #173b8f;
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Vision paragraph */
+
+.home-info-card p {
+  max-width: 850px;
+  margin: 0;
+  color: #555f70;
+  font-size: 17px;
+  line-height: 1.75;
+  text-align: center;
+}
+
+/* Mission list */
+
+.home-info-card ul {
+  width: 100%;
+  max-width: 850px;
+  margin: 0 auto;
+  padding-left: 25px;
+  box-sizing: border-box;
+}
+
+.home-info-card li {
+  color: #555f70;
+  font-size: 17px;
+  line-height: 1.65;
+  margin-bottom: 9px;
+}
+
+.home-info-card li:last-child {
+  margin-bottom: 0;
+}
+ /* ===== FINAL HORIZONTAL VISION & MISSION DESIGN ===== */
+
+.home-info-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.home-info-card {
+  display: grid !important;
+  grid-template-columns: 65px 1fr;
+  grid-template-rows: auto 1fr;
+  column-gap: 20px;
+
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 18px;
+  padding: 30px 32px;
+  box-sizing: border-box;
+
+  align-items: start;
+}
+
+/* Icon on LEFT */
+.home-info-card .home-info-icon {
+  grid-column: 1 !important;
+  grid-row: 1 / 3 !important;
+
+  width: 55px !important;
+  height: 55px !important;
+
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 38px;
+  margin: 0 !important;
+}
+
+/* Heading on RIGHT */
+.home-info-card h2 {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+
+  margin: 4px 0 18px !important;
+  padding: 0 !important;
+
+  text-align: left !important;
+  font-size: 27px;
+  line-height: 1.2;
+}
+
+/* Content on RIGHT */
+.home-info-content {
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+
+  width: 100%;
+  text-align: left;
+}
+
+/* Vision */
+.home-info-content p {
+  margin: 0;
+  text-align: left;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+/* Mission */
+.mission-list {
+  display: block !important;
+  margin: 0;
+  padding-left: 20px;
+
+  text-align: left;
+}
+
+.mission-list li {
+  margin-bottom: 11px;
+  padding-left: 3px;
+
+  font-size: 15px;
+  line-height: 1.5;
+  text-align: left;
+}
+/* ===== Vision & Mission - Vertical Professional Layout ===== */
+
+.home-info-grid {
+  display: flex;
+  flex-direction: column;
+  .home-info-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 24px;
+
+  width: 92%;
+  max-width: 1200px;
+  margin: 30px auto 45px;
+}
+  gap: 24px;
+
+  width: 92%;
+  max-width: 1200px;
+  margin: 30px auto 45px;
+}
+
+.home-info-card {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 15px 40px 28px;
+  box-sizing: border-box;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Icon */
+.home-info-icon {
+  font-size: 38px;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+/* Heading */
+.home-info-card h2 {
+  margin: 0 0 18px;
+  font-size: 28px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* Content */
+.home-info-content {
+  width: 100%;
+  max-width: 1050px;
+  text-align: left;
+}
+
+/* Vision */
+.home-info-content p {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.6;
+  text-align: left;
+}
+
+/* Mission */
+.mission-list {
+  margin: 0;
+  padding-left: 25px;
+  text-align: left;
+}
+
+.mission-list li {
+  margin-bottom: 10px;
+  font-size: 16px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.mission-list li:last-child {
+  margin-bottom: 0;
+}
+/* FINAL FIX - VISION & MISSION ONE ABOVE THE OTHER */
+
+.home-info-grid {
+  display: block !important;
+  width: 92% !important;
+  max-width: 1200px !important;
+  margin: 30px auto 45px !important;
+}
+
+.home-info-card {
+  width: 100% !important;
+  box-sizing: border-box !important;
+
+  display: block !important;
+
+  padding: 28px 40px !important;
+  margin-bottom: 24px !important;
+
+  border-radius: 20px;
+}
+.home-info-icon {
+  margin-bottom: 10px !important;
+}
+
+.home-info-card h2 {
+  width: 100% !important;
+  text-align: center !important;
+  margin: 0 0 18px !important;
+}
+
+.home-info-content {
+  width: 100% !important;
+  max-width: 1050px !important;
+  text-align: left !important;
+}
+
+.home-info-content p {
+  width: 100% !important;
+  text-align: left !important;
+  margin: 0 !important;
+}
+
+.mission-list {
+  width: 100% !important;
+  display: block !important;
+  margin: 0 !important;
+  padding-left: 25px !important;
+  text-align: left !important;
+}
+
+.mission-list li {
+  text-align: left !important;
+  margin-bottom: 10px !important;
+}
+/* ===== PROFESSIONAL STACKED VISION & MISSION DESIGN ===== */
+
+.home-info-grid {
+  width: 100% !important;
+  max-width: 1000px !important;
+  margin: 35px auto 45px !important;
+  padding: 0 20px !important;
+  box-sizing: border-box !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 28px !important;
+}
+
+/* Professional cards */
+
+.home-info-card {
+  width: 100% !important;
+  min-height: auto !important;
+  box-sizing: border-box !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+
+  background: #ffffff !important;
+  border: 1px solid #e5eaf5 !important;
+  border-radius: 18px !important;
+
+  padding: 32px 45px !important;
+
+  box-shadow: 0 6px 20px rgba(24, 55, 120, 0.08) !important;
+
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-info-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(24, 55, 120, 0.12) !important;
+}
+
+/* Icons */
+
+.home-info-icon {
+  font-size: 42px !important;
+  margin-bottom: 10px !important;
+  line-height: 1 !important;
+}
+
+/* Headings */
+
+.home-info-card h2 {
+  margin: 0 0 16px !important;
+  color: #173b8f !important;
+  font-size: 28px !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+}
+
+/* Vision text */
+
+.home-info-card p {
+  width: 100% !important;
+  max-width: 850px !important;
+  margin: 0 !important;
+
+  color: #555f70 !important;
+  font-size: 17px !important;
+  line-height: 1.75 !important;
+  text-align: center !important;
+}
+
+/* Mission list */
+
+.home-info-card ul {
+  width: 100% !important;
+  max-width: 850px !important;
+  margin: 0 auto !important;
+  padding-left: 25px !important;
+  box-sizing: border-box !important;
+}
+
+.home-info-card li {
+  color: #555f70 !important;
+  font-size: 17px !important;
+  line-height: 1.65 !important;
+  margin-bottom: 9px !important;
+}
+
+.home-info-card li:last-child {
+  margin-bottom: 0 !important;
+}
+/* ===== MISSION CARD FINAL REFINEMENT ===== */
+
+.home-info-card ul {
+  max-width: 780px !important;
+  padding-left: 24px !important;
+  margin: 2px auto 0 !important;
+}
+
+.home-info-card li {
+  font-size: 16px !important;
+  line-height: 1.55 !important;
+  margin-bottom: 7px !important;
+  padding-left: 4px;
+}
+
+.home-info-card li:last-child {
+  margin-bottom: 0 !important;
+}
+/* ===== MEDIHOME PREMIUM VISION & MISSION ===== */
+
+.home-info-grid {
+  width: 100% !important;
+  max-width: 980px !important;
+  margin: 42px auto 55px !important;
+  padding: 0 24px !important;
+  box-sizing: border-box !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 30px !important;
+}
+
+/* Premium card */
+
+.home-info-card {
+  position: relative !important;
+  width: 100% !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+
+  background: linear-gradient(
+    145deg,
+    #ffffff 0%,
+    #f8fbff 100%
+  ) !important;
+
+  border: 1px solid #e3eaf5 !important;
+  border-radius: 22px !important;
+
+  padding: 38px 55px !important;
+
+  box-shadow:
+    0 8px 25px rgba(25, 55, 110, 0.08),
+    0 2px 6px rgba(25, 55, 110, 0.04) !important;
+
+  overflow: hidden !important;
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease !important;
+}
+
+/* Blue accent line */
+
+.home-info-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70px;
+  height: 4px;
+  background: #2454a6;
+  border-radius: 0 0 6px 6px;
+}
+
+/* Hover */
+
+.home-info-card:hover {
+  transform: translateY(-3px) !important;
+
+  box-shadow:
+    0 14px 32px rgba(25, 55, 110, 0.12),
+    0 4px 10px rgba(25, 55, 110, 0.05) !important;
+}
+
+/* Icons */
+
+.home-info-icon {
+  font-size: 40px !important;
+  line-height: 1 !important;
+  margin: 4px 0 12px !important;
+}
+
+/* Headings */
+
+.home-info-card h2 {
+  margin: 0 0 18px !important;
+
+  color: #173b8f !important;
+
+  font-size: 29px !important;
+  font-weight: 700 !important;
+
+  letter-spacing: -0.3px !important;
+  text-align: center !important;
+}
+
+/* Paragraph */
+
+.home-info-card p {
+  width: 100% !important;
+  max-width: 820px !important;
+
+  margin: 0 !important;
+
+  color: #566174 !important;
+
+  font-size: 17px !important;
+  font-weight: 400 !important;
+
+  line-height: 1.8 !important;
+
+  text-align: center !important;
+}
+
+/* Slightly stronger first line feel */
+
+.home-info-card p::first-letter {
+  color: #173b8f;
+}
+
+/* Mobile */
+
+@media (max-width: 700px) {
+
+  .home-info-grid {
+    padding: 0 14px !important;
+    gap: 22px !important;
+    margin: 30px auto 40px !important;
+  }
+
+  .home-info-card {
+    padding: 30px 22px !important;
+    border-radius: 18px !important;
+  }
+
+  .home-info-card h2 {
+    font-size: 25px !important;
+  }
+
+  .home-info-card p {
+    font-size: 16px !important;
+    line-height: 1.7 !important;
+  }
+
+  .home-info-icon {
+    font-size: 36px !important;
+  }
+}
+/* ===== FINAL MEDIHOME CARD POLISH ===== */
+
+.home-info-grid {
+  gap: 22px !important;
+}
+
+.home-info-card {
+  background: #ffffff !important;
+  padding: 34px 50px !important;
+  box-shadow: 0 7px 22px rgba(24, 55, 120, 0.08) !important;
+}
+
+.home-info-card p {
+  color: #4b5563 !important;
+  font-size: 16.5px !important;
+  line-height: 1.75 !important;
+}
+
+.home-info-card h2 {
+  color: #173b8f !important;
+  font-size: 28px !important;
+}
+
+.home-info-card::before {
+  width: 55px !important;
+  height: 3px !important;
+}
+/* ===== REDUCE TOP SPACE IN VISION & MISSION CARDS ===== */
+
+.home-info-card {
+  padding-top: 20px !important;
+  padding-bottom: 28px !important;
+}
+
+.home-info-icon {
+  margin-top: 0 !important;
+  margin-bottom: 8px !important;
+}
+.home-info-card:first-child {
+  padding-top: 8px;
+}
+* Final compact Home screen adjustment */
+.home-welcome {
+  padding-top: 5px !important;
+  padding-bottom: 4px !important;
+}
+
+.home-info-grid {
+  gap: 4px !important;
+}
+
+.home-info-card {
+  padding: 5px 28px 7px !important;
+}
+
+.home-info-card p {
+  line-height: 1.3 !important;
+  margin: 4px 0 !important;
+}
+
+.home-info-card h2 {
+  margin: 3px 0 5px !important;
+}
+.home-welcome {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.home-info-grid {
+  margin-top: 0 !important;
+}
+/* FINAL COMPACT HOME SCREEN */
+.home-welcome {
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+  margin-bottom: 0 !important;
+}
+
+.home-welcome h1 {
+  margin-top: 0 !important;
+  margin-bottom: 2px !important;
+}
+
+.home-intro {
+  margin-top: 2px !important;
+  margin-bottom: 2px !important;
+}
+
+.home-info-grid {
+  margin: 0 auto 2px !important;
+  padding: 0 15px !important;
+  gap: 3px !important;
+}
+
+.home-info-card {
+  min-height: 0 !important;
+  padding: 3px 20px 5px !important;
+}
+
+.home-info-icon {
+  margin-top: 0 !important;
+  margin-bottom: 3px !important;
+}
+
+.home-info-card h2 {
+  margin: 2px 0 3px !important;
+}
+
+.home-info-card p {
+  margin: 2px 0 !important;
+  line-height: 1.2 !important;
+}
+
+footer {
+  padding: 8px 15px !important;
+}
+
+footer .logo {
+  margin-bottom: 4px !important;
+}
+#medicines .medicine-controls input[type="search"] {
+  -webkit-appearance: auto;
+  appearance: auto;
+}
+
+#medicines .medicine-controls input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: auto;
+  appearance: auto;
+  cursor: pointer;
+}
+.medicine-search-box {
+  position: relative;
+  display: inline-block;
+}
+
+.medicine-search-box {
+  position: relative !important;
+}
+
+.medicine-search-clear {
+  position: absolute !important;
+  right: 8px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+
+  width: 30px !important;
+  height: 30px !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  padding: 0 !important;
+  margin: 0 !important;
+
+  border: none !important;
+  background: transparent !important;
+
+  color: #333 !important;
+  font-size: 0 !important;
+
+  cursor: pointer !important;
+  z-index: 99999 !important;
+}
+
+.medicine-search-clear::after {
+  content: "×" !important;
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  color: #333 !important;
+}
+
+.medicine-search-clear:hover::after {
+  color: #000 !important;
+}
+/* Professional Medicine Search Box */
+.medicine-search-box {
+  position: relative !important;
+  display: block !important;
+  width: min(600px, 90%) !important;
+  margin: 24px auto !important;
+}
+
+.medicines .medicine-controls input[type="search"] {
+  width: 100% !important;
+  height: 48px !important;
+  box-sizing: border-box !important;
+  padding: 0 48px 0 18px !important;
+  border: 1px solid #cfd6dc !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  font-size: 16px !important;
+  color: #333 !important;
+  outline: none !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+
+.medicines .medicine-controls input[type="search"]:focus {
+  border-color: #4f8f8a !important;
+  box-shadow: 0 0 0 3px rgba(79, 143, 138, 0.12) !important;
+}
+/* COMPACT MEDICINE CARDS */
+#medicines .medicine-card {
+  padding: 16px !important;
+  min-height: auto !important;
+  height: auto !important;
+}
+
+#medicines .medicine-card h3 {
+  margin: 0 0 10px !important;
+  font-size: 18px !important;
+}
+
+#medicines .medicine-card p {
+  margin: 8px 0 !important;
+  line-height: 1.25 !important;
+}
+
+#medicines .medicine-card .medicine-salt {
+  margin: 6px 0 !important;
+  padding: 8px 10px !important;
+}
+
+#medicines .medicine-card button {
+  margin-top: 8px !important;
+  padding: 9px 14px !important;
+}
+/* EXTRA COMPACT MEDICINE CARD SPACING */
+#medicines .medicine-card p {
+  margin: 5px 0 !important;
+  line-height: 1.15 !important;
+}
+
+#medicines .medicine-card h3 {
+  margin-bottom: 7px !important;
+}
+
+#medicines .medicine-card .medicine-salt {
+  margin: 5px 0 !important;
+  padding: 6px 9px !important;
+}
+
+#medicines .medicine-card button {
+  margin-top: 5px !important;
+  padding: 8px 12px !important;
+}
+/* PROFESSIONAL EQUAL-HEIGHT MEDICINE CARDS */
+#medicines .medicine-grid {
+  align-items: stretch !important;
+}
+
+#medicines .medicine-card {
+  height: 100% !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#medicines .medicine-card button {
+  margin-top: auto !important;
+}
+
+/* FINAL MEDICINE SEARCH BAR */
+#medicines .medicine-controls {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  max-width: 900px !important;
+  margin: 20px auto !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+}
+
+#medicines .medicine-search-box input[type="text"] {
+  width: 100% !important;
+  max-width: 560px !important;
+  height: 50px !important;
+  padding: 0 18px !important;
+  box-sizing: border-box !important;
+  border: 1px solid #d6dce5 !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  font-size: 16px !important;
+  color: #333333 !important;
+  outline: none !important;
+}
+
+#medicines .medicine-controls input[type="search"]:focus {
+  border-color: #2aa7a7 !important;
+  box-shadow: 0 0 0 3px rgba(42, 167, 167, 0.12) !important;
+}
+
+@media (max-width: 600px) {
+  #medicines .medicine-controls input[type="search"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+/* FINAL MEDICINE SEARCH BAR */
+#medicines .medicine-controls {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  max-width: 900px !important;
+  margin: 20px auto !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+}
+
+#medicines .medicine-controls input[type="search"] {
+  width: 600px !important;
+  max-width: 90vw !important;
+  height: 50px !important;
+  padding: 0 18px !important;
+  box-sizing: border-box !important;
+  border: 1px solid #d6dce5 !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  font-size: 16px !important;
+  color: #333333 !important;
+  outline: none !important;
+}
+
+#medicines .medicine-controls input[type="search"]:focus {
+  border-color: #2aa7a7 !important;
+  box-shadow: 0 0 0 3px rgba(42, 167, 167, 0.12) !important;
+}
+
+@media (max-width: 600px) {
+  #medicines .medicine-controls input[type="search"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+/* FINAL SEARCH BOX OVERRIDE */
+.medicine-search-box {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 24px auto 16px !important;
+}
+
+.medicine-search-box input {
+  width: 600px !important;
+  min-width: 600px !important;
+  max-width: 90vw !important;
+  height: 50px !important;
+  padding: 0 18px !important;
+  box-sizing: border-box !important;
+
+  border: 1px solid #d6dce5 !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+
+  font-size: 16px !important;
+  color: #333333 !important;
+  outline: none !important;
+}
+
+.medicine-search-box input:focus {
+  border-color: #2aa7a7 !important;
+  box-shadow: 0 0 0 3px rgba(42, 167, 167, 0.12) !important;
+}
+/* FINAL MEDICINE SEARCH BAR */
+#medicines .medicine-search-box {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 12px auto !important;
+}
+
+#medicines .medicine-search-box input {
+  width: 600px !important;
+  max-width: 600px !important;
+  flex: 0 0 600px !important;
+  height: 50px !important;
+  padding: 0 18px !important;
+  box-sizing: border-box !important;
+  border: 1px solid #d6dce5;
+  border-radius: 10px;
+  font-size: 16px;
+  background: #ffffff;
+}
+@media (max-width: 600px) {
+  #medicines .medicine-search-box input {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 auto !important;
+  }
+}
+/* =========================================================
+   MEDIHOME LAB TESTS - USE FULL AVAILABLE CONTENT WIDTH
+   ========================================================= */
+
+.lab-page-shell {
+  width: 100%;
+  max-width: none !important;
+  margin: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box;
+}
+
+.lab-page.compact-page {
+  width: 100%;
+  max-width: none !important;
+  margin: 0 !important;
+  box-sizing: border-box;
+}
+
+/* Top Laboratory / Radiology tabs */
+.lab-page .service-switch {
+  width: 100%;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Main two-column booking area */
+.lab-page .lab-workspace {
+  width: 100%;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box;
+}
+
+/* Left + right blocks */
+.lab-page .selection-grid,
+.lab-page .form-grid {
+  width: 100%;
+  max-width: none !important;
+  box-sizing: border-box;
+}
+
+/* Lab/Radiology feature area */
+.lab-page .lab-benefits {
+  width: 100%;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box;
+}
+
+/* Keep the two main booking blocks evenly aligned */
+.lab-page .selection-grid,
+.lab-page .form-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Prevent inner cards from creating unnecessary side gaps */
+.lab-page .workspace-card,
+.lab-page .selection-card,
+.lab-page .booking-card {
+  width: 100%;
+  box-sizing: border-box;
+}
+/* ===== MediHome Lab Tests - Full Available Width ===== */
+
+.app > main {
+  margin-left: 250px;
+  width: calc(100% - 250px);
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.lab-page.compact-page {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding-left: 24px !important;
+  padding-right: 24px !important;
+  box-sizing: border-box;
+}
+
+.lab-page.compact-page .lab-content,
+.lab-page.compact-page .lab-main-grid {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+@media (max-width: 768px) {
+  .app > main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .lab-page.compact-page {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+}
+/* ===== MEDIHOME LABS - FULL AVAILABLE WIDTH ===== */
+
+.app > main {
+  margin-left: 250px !important;
+  width: calc(100% - 250px) !important;
+  max-width: none !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.app > main .lab-page.compact-page {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  box-sizing: border-box !important;
+}
+
+.app > main .lab-page.compact-page .lab-hero,
+.app > main .lab-page.compact-page .lab-workspace,
+.app > main .lab-page.compact-page .service-switch {
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.app > main .lab-page.compact-page .lab-workspace {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 12px !important;
+}
+
+@media (max-width: 800px) {
+  .app > main {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .app > main .lab-page.compact-page .lab-workspace {
+    grid-template-columns: 1fr !important;
+  }
+}
+/* Remove side spacing around Lab Tests page */
+body:has(.lab-page) {
+  overflow-x: hidden;
+}
+
+body:has(.lab-page) .main-content,
+body:has(.lab-page) .content,
+body:has(.lab-page) .page-content {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.cart-panel {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 25px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.cart-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e8edf1;
+}
+
+.cart-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cart-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cart-item-actions button {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cart-remove-button {
+  background: #f8eaea;
+  color: #b64b4b;
+}
+
+.cart-box {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  margin: 12px 0;
+  padding: 10px 16px;
+  background: #ffffff;
+  border: 1px solid #d6dce5;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
 }

@@ -1,14 +1,90 @@
-import MyOrders from "./MyOrders"
 import { useState, useEffect } from "react";
 import "./App.css";
-import Medicines from "./Medicines"
+import Medicines from "./Medicines";
+import LabTests from "./LabTests";
+import Profile from "./Profile";
+import MyOrders from "./MyOrders";
+
+const NAV_LINKS = [
+  { href: "#home", label: "Home", icon: "🏠" },
+  { href: "#medicine-search", label: "Search Medicine", icon: "🔍" },
+  { href: "#labs", label: "Lab Tests", icon: "🧪" },
+  { href: "#education", label: "Health Education", icon: "📚" },
+  { href: "#myorders", label: "My Orders", icon: "📦" },
+  { href: "#profile", label: "Profile", icon: "👤" },
+];
+
+const BOTTOM_LINKS = [
+  { href: "#about", label: "About Us", icon: "ℹ️" },
+  { href: "#contact", label: "Contact Us", icon: "📞" },
+];
+
+function PlaceholderPage({ eyebrow, title, body }) {
+  return (
+    <section className="placeholder-page">
+      <span className="placeholder-label">{eyebrow}</span>
+      <h1>{title}</h1>
+      <p>{body}</p>
+      <a className="placeholder-home-link" href="#home">
+        Back to Home
+      </a>
+    </section>
+  );
+}
+
+function HomePage() {
+  return (
+    <div className="home-content">
+      <section className="home-welcome">
+        <h1>Welcome to MediHome</h1>
+        <p className="home-intro">
+          Affordable medicines, diagnostic bookings, and doorstep care for
+          Delhi NCR — in one trusted place.
+        </p>
+        <div className="home-quick-links">
+          <a className="home-quick-link" href="#medicine-search">
+            Order Medicines
+          </a>
+          <a className="home-quick-link secondary" href="#labs">
+            Book Lab Tests
+          </a>
+        </div>
+      </section>
+
+      <section className="home-info-grid">
+        <div className="home-info-card">
+          <div className="home-info-icon">👁️</div>
+          <h2>Our Vision</h2>
+          <div className="home-info-content">
+            <p>
+              To become India&apos;s most trusted digital chronic disease
+              management platform by combining affordable medicines, the latest
+              technology and personalized patient care.
+            </p>
+          </div>
+        </div>
+
+        <div className="home-info-card">
+          <div className="home-info-icon">🎯</div>
+          <h2>Our Mission</h2>
+          <div className="home-info-content">
+            <p>
+              Our mission is to make healthcare more affordable, accessible and
+              convenient by reducing treatment costs, improving medicine
+              compliance, providing reliable doorstep delivery across Delhi NCR,
+              building long-term patient relationships, and enabling access to
+              ambulance services with GPS tracking and medical insurance through
+              trusted partners.
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function App() {
   const [hash, setHash] = useState(window.location.hash);
-  const [currentMonthly, setCurrentMonthly] = useState("");
-const [medihomeMonthly, setMedihomeMonthly] = useState("");
-
-const monthlySaving = Math.max(0, Number(currentMonthly || 0) - Number(medihomeMonthly || 0));
-const annualSaving = monthlySaving * 12;
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -22,203 +98,116 @@ const annualSaving = monthlySaving * 12;
     };
   }, []);
 
-  if (hash === "#medicines") {
-    return <Medicines />;
-  }
-  if (hash === "#myorders") {
-  return <MyOrders />;
-}
+  const route = !hash || hash === "#" ? "#home" : hash;
+
+  const renderPage = () => {
+    switch (route) {
+      case "#medicine-search":
+        return <Medicines />;
+      case "#labs":
+        return <LabTests />;
+      case "#profile":
+        return <Profile />;
+      case "#myorders":
+        return <MyOrders />;
+      case "#education":
+        return (
+          <PlaceholderPage
+            eyebrow="Coming soon"
+            title="Health Education"
+            body="Guides and articles on chronic care will appear here. Meanwhile, you can order medicines or book diagnostics from the sidebar."
+          />
+        );
+      case "#about":
+        return (
+          <PlaceholderPage
+            eyebrow="MediHome"
+            title="About Us"
+            body="MediHome is your complete health partner at your doorstep — medicines, laboratory tests, and radiology bookings for patients across Delhi NCR."
+          />
+        );
+      case "#contact":
+        return (
+          <PlaceholderPage
+            eyebrow="Support"
+            title="Contact Us"
+            body="Need help with an order or booking? Use Profile to keep your details up to date, and check My Orders for medicine and diagnostics status."
+          />
+        );
+      default:
+        return <HomePage />;
+    }
+  };
+
   return (
     <div className="app">
-
-      <header className="header">
-        <div className="logo">
-          <span className="logo-icon">+</span>
-          <span>Medi<span>Home</span></span>
+      <div className="top-ticker">
+        <div className="ticker-track">
+          <span className="ticker-item">
+            YOUR COMPLETE HEALTH PARTNER AT YOUR DOORSTEP
+          </span>
+          <span className="ticker-item">
+            YOUR COMPLETE HEALTH PARTNER AT YOUR DOORSTEP
+          </span>
+          <span className="ticker-item">
+            YOUR COMPLETE HEALTH PARTNER AT YOUR DOORSTEP
+          </span>
+          <span className="ticker-item">
+            YOUR COMPLETE HEALTH PARTNER AT YOUR DOORSTEP
+          </span>
         </div>
+      </div>
 
-        <nav>
-          <a href="#home">Home</a>
-          <a href="#medicines">Medicines</a>
-          <a href="#labs">Lab Tests</a>
-          <a href="#education">Health Education</a>
-          <a href="#myorders">My Orders</a>
+      <aside className="sidebar">
+        <a className="sidebar-logo" href="#home">
+          <span className="logo-icon">+</span>
+          <span>MediHome</span>
+        </a>
+
+        <nav className="sidebar-nav" aria-label="Main">
+          {NAV_LINKS.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className={route === link.href ? "active" : undefined}
+            >
+              <span className="nav-icon" aria-hidden="true">
+                {link.icon}
+              </span>
+              <span className="nav-label">{link.label}</span>
+            </a>
+          ))}
         </nav>
 
-        <button className="login-btn">Login</button>
-      </header>
+        <div className="sidebar-bottom">
+          {BOTTOM_LINKS.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className={route === link.href ? "active" : undefined}
+            >
+              <span className="nav-icon" aria-hidden="true">
+                {link.icon}
+              </span>
+              <span className="nav-label">{link.label}</span>
+            </a>
+          ))}
+        </div>
+      </aside>
 
       <main>
+        {renderPage()}
 
-        <section id="home" className="hero">
-          <p className="subtitle">YOUR HEALTH PARTNER</p>
-
-          <h1>
-            Complete healthcare
-            <br />
-            at your doorstep.
-          </h1>
-
-          <p className="hero-text">
-            Medicines, lab tests, health education and healthcare services —
-            all in one place.
-          </p>
-
-          <div className="search-box">
-            <input
-              type="text"
-              placeholder="Search medicines, lab tests or health services"
-            />
-            <button>Search</button>
+        <footer>
+          <div className="logo">
+            <span className="logo-icon">+</span>
+            <span>
+              Medi<span>Home</span>
+            </span>
           </div>
-
-          <div className="quick-actions">
-            <button onClick={() => document.getElementById("medicines")?.scrollIntoView({ behavior: "smooth" })}>
-  💊 Order Medicines
-</button>
-            <button>📄 Upload Prescription</button>
-            <button>🧪 Book Lab Test</button>
-          </div>
-        </section>
-
-        <section className="trust">
-          <h2>Your health. Our priority.</h2>
-          <p>Reliable healthcare support from home.</p>
-        </section>
-
-<section className="savings-calculator">
-  <div className="savings-content">
-    <p className="savings-label">💰 MEDIHOME SAVINGS</p>
-
-    <h2>Compare Your Medicine Savings</h2>
-
-    <p className="savings-description">
-      Enter your current monthly medicine expense and compare it with
-      your estimated MediHome expense.
-    </p>
-
-    <div className="savings-inputs">
-      <div className="savings-input-box">
-        <label>Current Monthly Expense</label>
-        <div className="rupee-input">
-          <span>₹</span>
-          <input
-            type="number"
-            min="0"
-            placeholder="4000"
-            value={currentMonthly}
-            onChange={(e) => setCurrentMonthly(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="savings-input-box">
-        <label>MediHome Monthly Expense</label>
-        <div className="rupee-input">
-          <span>₹</span>
-          <input
-            type="number"
-            min="0"
-            placeholder="3200"
-            value={medihomeMonthly}
-            onChange={(e) => setMedihomeMonthly(e.target.value)}
-          />
-        </div>
-      </div>
-    </div>
-
-    <div className="savings-result">
-      <h3>Your Estimated Savings</h3>
-
-      <div className="saving-amount">
-        ₹{monthlySaving.toLocaleString("en-IN")}
-        <span>/month</span>
-      </div>
-
-      <p>
-        Estimated annual saving:{" "}
-        <strong>₹{annualSaving.toLocaleString("en-IN")}</strong>
-      </p>
-    </div>
-
-    <p className="savings-note">
-      *Savings are estimates and depend on the medicines, quantities and
-      prices compared.
-    </p>
-  </div>
-</section>
-        <section id="medicines" className="services">
-          <h2>Everything you need for your health</h2>
-
-          <div className="cards">
-
-            <div className="card">
-              <div className="card-icon">💊</div>
-              <h3>Order Medicines</h3>
-              <p>
-                Order your medicines conveniently from home.
-              </p>
-              <button onClick={() => window.location.hash = "medicines"}>Explore →</button>
-            </div>
-
-            <div className="card">
-              <div className="card-icon">🧪</div>
-              <h3>Lab Tests</h3>
-              <p>
-                Book reliable diagnostic tests from home.
-              </p>
-              <button>Book Test →</button>
-            </div>
-
-            <div className="card">
-              <div className="card-icon">📚</div>
-              <h3>Health Education</h3>
-              <p>
-                Learn about diabetes, hypertension and chronic care.
-              </p>
-              <button>Learn More →</button>
-            </div>
-
-          </div>
-        </section>
-
-        <section id="education" className="chronic">
-          <h2>Chronic Care Support</h2>
-          <p>
-            Helping you manage your long-term health with better access,
-            education and support.
-          </p>
-
-          <div className="chronic-cards">
-            <div>🩸 Diabetes Care</div>
-            <div>❤️ Hypertension Care</div>
-            <div>📖 Weekly Health Webinars</div>
-          </div>
-        </section>
-
-        <section className="trust-section">
-          <h2>Why choose MediHome?</h2>
-
-          <div className="trust-grid">
-            <div>✓ Trusted healthcare information</div>
-            <div>✓ Prescription upload</div>
-            <div>✓ Convenient doorstep service</div>
-            <div>✓ Product & manufacturing information</div>
-          </div>
-        </section>
-
+          <p>© 2026 MediHome. All rights reserved.</p>
+        </footer>
       </main>
-
-      <footer>
-        <div className="logo">
-          <span className="logo-icon">+</span>
-          <span>Medi<span>Home</span></span>
-        </div>
-
-        <p>Your health partner at your doorstep.</p>
-        <p>© 2026 MediHome. All rights reserved.</p>
-      </footer>
-
     </div>
   );
 }

@@ -374,7 +374,7 @@ function LabTests() {
     return (
       <>
         <style>{styles}</style>
-        <main className="lab-page compact-page">
+        <div className="lab-page compact-page">
           <section className="lab-confirmation">
             <div className="success-icon">✓</div>
             <h1>Booking Confirmed</h1>
@@ -409,7 +409,7 @@ function LabTests() {
             <div className="confirmation-note"><strong>What's next?</strong><p>This booking ID can later be used for collection status and individual report/result tracking.</p></div>
             <button className="primary-button" onClick={startNewBooking}>Book Another Test</button>
           </section>
-        </main>
+        </div>
       </>
     );
   }
@@ -417,7 +417,7 @@ function LabTests() {
   return (
     <>
       <style>{styles}</style>
-      <main className="lab-page compact-page">
+      <div className="lab-page compact-page">
         <form onSubmit={handleBooking}>
         <section className="lab-hero">
           <div>
@@ -624,13 +624,13 @@ function LabTests() {
             <button type="submit" className="primary-button">{serviceType === "lab" ? "Confirm Lab Test Booking" : "Confirm Radiology Booking"}</button>
           </section>
         </form>
-      </main>
+      </div>
     </>
   );
 }
 
 const styles = `
-  .lab-page{min-height:100vh;padding:14px 3%;background:#f5f9fc;color:#17324d;box-sizing:border-box;font-family:inherit}
+  .lab-page{min-height:auto;padding:20px 2% 28px;background:transparent;color:#17324d;box-sizing:border-box;font-family:inherit}
   .lab-hero{max-width:1180px;margin:0 auto 10px;padding:14px 22px;border-radius:14px;background:linear-gradient(135deg,#eaf7ff,#f4fbf8);display:flex;justify-content:space-between;align-items:center;gap:18px;box-shadow:0 3px 12px rgba(30,100,140,.07)}
   .lab-label{display:inline-block;margin-bottom:3px;font-size:10px;font-weight:800;letter-spacing:1.3px;color:#1686b8}.lab-hero h1{margin:0 0 3px;font-size:25px;line-height:1.15;color:#123b59}.lab-hero p{margin:0;color:#607589;font-size:12px}.lab-hero-icon{width:54px;height:54px;border-radius:50%;background:#fff;display:flex;justify-content:center;align-items:center;font-size:27px;box-shadow:0 3px 10px rgba(0,0,0,.07);flex-shrink:0}
   .service-switch{max-width:1180px;margin:0 auto 10px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -655,9 +655,10 @@ const styles = `
   .lab-confirmation{max-width:760px;margin:20px auto;text-align:center}.success-icon{width:58px;height:58px;margin:0 auto 8px;border-radius:50%;background:#e5f8ee;color:#1c9b61;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800}.lab-confirmation h1{margin:0 0 5px;color:#17496b;font-size:25px}.confirmation-message{margin:0 auto 12px;color:#6f8190;font-size:12px}.booking-card{text-align:left;background:#fff;border-radius:12px;padding:14px;box-shadow:0 3px 12px rgba(0,0,0,.06)}.booking-header{padding-bottom:8px;margin-bottom:2px;border-bottom:1px solid #e5edf1;display:flex;justify-content:space-between;align-items:center;gap:10px}.booking-header h2{margin:0;color:#17496b;font-size:16px}.booking-id{padding:5px 7px;border-radius:6px;background:#eaf7ff;color:#1686b8;font-size:9px;font-weight:800}.booking-row{padding:7px 0;border-bottom:1px solid #edf1f3;display:flex;justify-content:space-between;gap:12px}.booking-row span{color:#718394;font-size:10px}.booking-row strong{color:#29485d;font-size:10px;text-align:right}.tests-confirmation{padding:7px 0;border-bottom:1px solid #edf1f3}.booking-row-label{margin-bottom:4px;color:#718394;font-size:10px}.confirmation-test{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:10px}.confirmation-test strong{color:#16885c}.booking-row.total-row{border-bottom:none;margin-top:2px}.booking-row.total-row strong{color:#16885c;font-size:17px}.confirmation-note{margin:10px 0;padding:9px;border-radius:8px;background:#fffaf0;border:1px solid #f1e4c7;text-align:left}.confirmation-note strong{color:#775d20;font-size:10px}.confirmation-note p{margin:3px 0 0;color:#7c7059;font-size:9px;line-height:1.35}
   @media (min-width:801px) and (max-height:850px){.lab-page{padding-top:9px}.lab-hero{padding:10px 18px}.lab-benefits{margin-bottom:7px}.benefit-card{padding:6px 10px}.workspace-card{padding:10px 12px}.selected-tests-card{margin-top:6px}.lab-workspace{margin-bottom:7px}.booking-summary{padding:7px 10px}}
   @media (max-width:800px){.lab-page{padding:12px 10px}.lab-hero{padding:14px;align-items:flex-start}.lab-hero h1{font-size:22px}.lab-hero-icon{display:none}.lab-benefits,.lab-workspace,.selection-grid,.form-grid,.visit-options,.booking-summary{grid-template-columns:1fr}.workspace-card{padding:12px}.booking-summary{text-align:left}.summary-price{text-align:left}.primary-button{width:100%}.test-list{max-height:none}.saved-profile-grid{grid-template-columns:1fr 1fr}}
-.lab-benefits {
-  display: none !important;
-  /* FINAL FULL-WIDTH LAB LAYOUT */
+.workspace-card{background:#fff;border-radius:14px;padding:16px 18px;box-shadow:0 2px 12px rgba(15,70,100,.07);box-sizing:border-box;border:1px solid #e7eef2}
+.section-heading{display:flex;align-items:flex-start;margin-bottom:12px}
+.section-heading h2{margin:0 0 4px;color:#17496b;font-size:17px}
+.section-heading p{margin:0;color:#7a8b9a;font-size:13px;line-height:1.45}
 .lab-page.compact-page,
 .lab-page.compact-page > form {
   width: 100% !important;
