@@ -33,6 +33,9 @@ function PlaceholderPage({ eyebrow, title, body }) {
 }
 
 const HOME_WHATSAPP = "919654222988";
+const HOME_WHATSAPP_URL = `https://api.whatsapp.com/send?phone=${HOME_WHATSAPP}&text=${encodeURIComponent(
+  "Hi MediHome, I would like to order medicines."
+)}`;
 
 function HomePage() {
   const [query, setQuery] = useState("");
@@ -48,74 +51,68 @@ function HomePage() {
 
   return (
     <div className="home-content home-landing">
-      <section className="home-hero">
-        <p className="home-hero-kicker">MediHome · Delhi NCR</p>
-        <h1>Get lab tests, radiology, and medicines ordered at your doorstep</h1>
-        <p className="home-hero-sub">
-          Book laboratory tests and radiology at home, and order medicines for
-          doorstep delivery across Delhi NCR.
-        </p>
+      <p className="home-hero-kicker">Welcome to MediHome · Delhi NCR</p>
+      <h1>GET LAB TEST, RADIOLOGY AND MEDICINES ORDERED AT YOUR DOORSTEP</h1>
 
-        <form className="home-search-form" onSubmit={goToMedicines}>
-          <input
-            type="search"
-            placeholder="Search medicines by name or salt"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search for medicines"
-          />
-          <button type="submit">Search</button>
-        </form>
+      <div className="home-split">
+        <section className="home-hero">
+          <form className="home-search-form" onSubmit={goToMedicines}>
+            <input
+              type="search"
+              placeholder="Search medicines by name or salt"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search for medicines"
+            />
+            <button type="submit">Search</button>
+          </form>
 
-        <div className="home-service-links">
-          <a href="#medicine-search">Order medicines</a>
-          <a href="#labs">Get lab tests / radiology</a>
-        </div>
+          <div className="home-service-links">
+            <a href="#medicine-search">Order medicines</a>
+            <a href="#labs">Get lab tests / radiology</a>
+            <a
+              href={HOME_WHATSAPP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(event) => {
+                event.preventDefault();
+                window.open(HOME_WHATSAPP_URL, "_blank", "noopener,noreferrer");
+              }}
+            >
+              Order on WhatsApp
+            </a>
+          </div>
+        </section>
 
-        <p className="home-hero-actions">
-          <a
-            href={`https://wa.me/${HOME_WHATSAPP}?text=${encodeURIComponent(
-              "Hi MediHome, I would like to order medicines."
-            )}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Order on WhatsApp
-          </a>
-        </p>
-      </section>
-
-      <section className="home-benefits" aria-label="Services at your doorstep">
-        <div>
-          <strong>Medicines</strong>
-          <p>Order at your doorstep, with cash on delivery.</p>
-        </div>
-        <div>
-          <strong>Lab tests</strong>
-          <p>Home sample collection across Delhi NCR.</p>
-        </div>
-        <div>
-          <strong>Radiology</strong>
-          <p>Book imaging at trusted partner centres.</p>
-        </div>
-      </section>
-
-      <section className="home-about">
-        <article>
-          <h2>Vision</h2>
-          <p>
-            To be a trusted chronic care platform that combines affordable
-            medicines, technology, and personalised patient support.
-          </p>
-        </article>
-        <article>
-          <h2>Mission</h2>
-          <p>
-            Make healthcare easier across Delhi NCR with reliable doorstep
-            delivery, better medicine compliance, and trusted diagnostics.
-          </p>
-        </article>
-      </section>
+        <section className="home-panels" aria-label="Services and about MediHome">
+          <article>
+            <h2>Medicines</h2>
+            <p>Order at your doorstep, with cash on delivery.</p>
+          </article>
+          <article>
+            <h2>Lab tests</h2>
+            <p>Home sample collection across Delhi NCR.</p>
+          </article>
+          <article>
+            <h2>Radiology</h2>
+            <p>Book imaging at trusted partner centres.</p>
+          </article>
+          <article>
+            <h2>Vision</h2>
+            <p>
+              A trusted chronic care platform with affordable medicines,
+              technology, and personalised support.
+            </p>
+          </article>
+          <article>
+            <h2>Mission</h2>
+            <p>
+              Doorstep delivery across Delhi NCR, better medicine compliance,
+              and trusted diagnostics.
+            </p>
+          </article>
+        </section>
+      </div>
     </div>
   );
 }
