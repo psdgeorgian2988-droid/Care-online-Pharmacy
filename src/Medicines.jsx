@@ -82,13 +82,131 @@ const medicines = [
     price: 120,
     prescription: false,
   },
+  {
+    id: 7,
+    name: "Clopidogrel 75 mg",
+    salt: "Clopidogrel",
+    strength: "75 mg",
+    packSize: "10 tablets",
+    category: "Cardiology",
+    mrp: 90,
+    price: 78,
+    prescription: true,
+  },
+  {
+    id: 8,
+    name: "Aspirin 75 mg",
+    salt: "Acetylsalicylic acid",
+    strength: "75 mg",
+    packSize: "14 tablets",
+    category: "Cardiology",
+    mrp: 25,
+    price: 18,
+    prescription: true,
+  },
+  {
+    id: 9,
+    name: "Thyroxine 50 mcg",
+    salt: "Levothyroxine",
+    strength: "50 mcg",
+    packSize: "30 tablets",
+    category: "Thyroid",
+    mrp: 80,
+    price: 68,
+    prescription: true,
+  },
+  {
+    id: 10,
+    name: "Thyroxine 100 mcg",
+    salt: "Levothyroxine",
+    strength: "100 mcg",
+    packSize: "30 tablets",
+    category: "Thyroid",
+    mrp: 95,
+    price: 82,
+    prescription: true,
+  },
+  {
+    id: 11,
+    name: "Sevelamer 400 mg",
+    salt: "Sevelamer",
+    strength: "400 mg",
+    packSize: "10 tablets",
+    category: "Kidney Care",
+    mrp: 220,
+    price: 195,
+    prescription: true,
+  },
+  {
+    id: 12,
+    name: "Sodium Bicarbonate 500 mg",
+    salt: "Sodium bicarbonate",
+    strength: "500 mg",
+    packSize: "10 tablets",
+    category: "Kidney Care",
+    mrp: 40,
+    price: 32,
+    prescription: true,
+  },
+  {
+    id: 13,
+    name: "Montelukast 10 mg",
+    salt: "Montelukast",
+    strength: "10 mg",
+    packSize: "10 tablets",
+    category: "Respiratory",
+    mrp: 110,
+    price: 95,
+    prescription: true,
+  },
+  {
+    id: 14,
+    name: "Budesonide Inhaler",
+    salt: "Budesonide",
+    strength: "200 mcg",
+    packSize: "1 inhaler",
+    category: "Respiratory",
+    mrp: 380,
+    price: 340,
+    prescription: true,
+  },
+  {
+    id: 15,
+    name: "Calcium + Vitamin D3",
+    salt: "Calcium carbonate + Cholecalciferol",
+    strength: "500 mg + 250 IU",
+    packSize: "15 tablets",
+    category: "Bone & Joint",
+    mrp: 90,
+    price: 75,
+    prescription: false,
+  },
+  {
+    id: 16,
+    name: "Aceclofenac 100 mg",
+    salt: "Aceclofenac",
+    strength: "100 mg",
+    packSize: "10 tablets",
+    category: "Bone & Joint",
+    mrp: 55,
+    price: 48,
+    prescription: true,
+  },
 ];
 
 const requiresPrescription = (medicine) =>
   Boolean(medicine.prescription || medicine.prescriptionRequired);
 
 function Medicines() {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("mediHomeMedicineSearch") || "";
+      sessionStorage.removeItem("mediHomeMedicineSearch");
+      return saved;
+    } catch {
+      return "";
+    }
+  });
   const [category, setCategory] = useState("All");
   const [recentSearches, setRecentSearches] = useState([]);
   const [cart, setCart] = useState([]);
@@ -292,9 +410,22 @@ function Medicines() {
   return (
     <section id="medicines" className="medicines-page">
       <div className="medicines-header">
-        <h1>Order Medicines</h1>
-
-        <p>Get your medicines conveniently delivered to your doorstep.</p>
+        <div className="medicines-title-row">
+          <div>
+            <h1>Order Medicines</h1>
+            <p>Get your medicines conveniently delivered to your doorstep.</p>
+          </div>
+          <div
+            className="cart-box"
+            onClick={() => {
+              setShowCart(true);
+              setShowCheckout(false);
+              setConfirmedOrder(null);
+            }}
+          >
+            🛒 Cart: {cartCount}
+          </div>
+        </div>
         <div className="medicine-category-boxes">
           {categories.map((item) => (
             <button
@@ -302,7 +433,13 @@ function Medicines() {
               className={`medicine-category-box ${
                 category === item ? "active" : ""
               }`}
-              onClick={() => setCategory(item)}
+              onClick={() => {
+                setCategory(item);
+                setSearch("");
+                setShowCart(false);
+                setShowCheckout(false);
+                setConfirmedOrder(null);
+              }}
             >
               {item}
             </button>
@@ -341,16 +478,6 @@ function Medicines() {
               Clear
             </button>
           )}
-        </div>
-        <div
-          className="cart-box"
-          onClick={() => {
-            setShowCart(true);
-            setShowCheckout(false);
-            setConfirmedOrder(null);
-          }}
-        >
-          🛒 Cart: {cartCount}
         </div>
       </div>
 
@@ -518,58 +645,46 @@ function Medicines() {
         </div>
       )}
 
-      {category === "All" && search.trim() === "" && !showCart && !showCheckout && !confirmedOrder && (
-        <div className="medicines-empty-hint">
-          <p>Select a category or search by medicine name or salt to browse the catalogue.</p>
-        </div>
-      )}
-
-      {((category && category !== "All") || search.trim() !== "") && (
+      {!showCart && !showCheckout && !confirmedOrder && (
         <div className="medicine-grid">
           {filteredMedicines.length === 0 ? (
             <p className="medicines-empty-hint">No medicines match your search.</p>
           ) : (
           filteredMedicines.map((medicine) => (
             <div className="medicine-card" key={medicine.id}>
-              <h3>{medicine.name}</h3>
-
-              <p>
-                <strong>Salt:</strong> {medicine.salt}
-              </p>
-
-              <p>
-                <strong>Strength:</strong> {medicine.strength}
-              </p>
-
-              <p>
-                <strong>Pack Size:</strong> {medicine.packSize}
-              </p>
-
-              <p>
-                <strong>Category:</strong> {medicine.category}
-              </p>
-
-              {requiresPrescription(medicine) ? (
-                <span className="prescription-badge">
-                  📋 Prescription Required
-                </span>
-              ) : (
-                <span className="prescription-badge">
-                  ✓ No Prescription Required
-                </span>
-              )}
-
-              <p>
-                <span
-                  style={{ textDecoration: "line-through", marginRight: "8px" }}
-                >
-                  MRP ₹{medicine.mrp}
-                </span>
-                <strong>₹{medicine.price}</strong>
-              </p>
-              <button type="button" onClick={() => addToCart(medicine)}>
-                Add to Cart
-              </button>
+              <div className="medicine-card-main">
+                <h3>{medicine.name}</h3>
+                <span className="medicine-salt">Salt: {medicine.salt}</span>
+                <div className="medicine-card-meta">
+                  <span>
+                    <strong>Strength:</strong> {medicine.strength}
+                  </span>
+                  <span>
+                    <strong>Pack:</strong> {medicine.packSize}
+                  </span>
+                  <span>
+                    <strong>Category:</strong> {medicine.category}
+                  </span>
+                </div>
+                {requiresPrescription(medicine) ? (
+                  <span className="prescription-badge">
+                    📋 Prescription Required
+                  </span>
+                ) : (
+                  <span className="prescription-badge otc">
+                    ✓ No Prescription Required
+                  </span>
+                )}
+              </div>
+              <div className="medicine-card-actions">
+                <p className="medicine-price-row">
+                  <span className="medicine-mrp">MRP ₹{medicine.mrp}</span>
+                  <strong>₹{medicine.price}</strong>
+                </p>
+                <button type="button" onClick={() => addToCart(medicine)}>
+                  Add to Cart
+                </button>
+              </div>
             </div>
           ))
           )}

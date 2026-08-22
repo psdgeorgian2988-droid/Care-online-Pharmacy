@@ -32,30 +32,112 @@ function PlaceholderPage({ eyebrow, title, body }) {
   );
 }
 
+const HOME_WHATSAPP = "919876543210";
+const HOME_PHONE = "+911800123456";
+
 function HomePage() {
+  const [query, setQuery] = useState("");
+
+  const goToMedicines = (event) => {
+    event.preventDefault();
+    const value = query.trim();
+    if (value) {
+      sessionStorage.setItem("mediHomeMedicineSearch", value);
+    }
+    window.location.hash = "#medicine-search";
+  };
+
   return (
-    <div className="home-content">
-      <section className="home-welcome">
-        <h1>Welcome to MediHome</h1>
-        <p className="home-intro">
-          Affordable medicines, diagnostic bookings, and doorstep care for
-          Delhi NCR — in one trusted place.
+    <div className="home-content home-landing">
+      <section className="home-hero">
+        <p className="home-hero-kicker">MediHome · Delhi NCR</p>
+        <h1>Get medicines delivered fast to your doorstep</h1>
+        <p className="home-hero-sub">
+          Affordable medicines, diagnostics, and doorstep care — in one trusted
+          place.
         </p>
-        <div className="home-quick-links">
-          <a className="home-quick-link" href="#medicine-search">
-            Order Medicines
+
+        <div className="home-feature-row">
+          <div className="home-feature-box">
+            <div>
+              <strong>Cash on Delivery</strong>
+              <span>On all your orders</span>
+            </div>
+            <span className="home-feature-icon" aria-hidden="true">
+              💵
+            </span>
+          </div>
+          <div className="home-feature-box">
+            <div>
+              <strong>Express Delivery</strong>
+              <span>Free* and fast in your city</span>
+            </div>
+            <span className="home-feature-icon" aria-hidden="true">
+              🚚
+            </span>
+          </div>
+          <div className="home-feature-box">
+            <div>
+              <strong>Easy Returns</strong>
+              <span>No questions asked</span>
+            </div>
+            <span className="home-feature-icon" aria-hidden="true">
+              ↩️
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section className="home-order-card">
+        <form className="home-search-form" onSubmit={goToMedicines}>
+          <span className="home-search-icon" aria-hidden="true">
+            🔍
+          </span>
+          <input
+            type="search"
+            placeholder="Search for Medicines..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search for medicines"
+          />
+          <button type="submit">Search</button>
+        </form>
+
+        <div className="home-contact-row">
+          <a
+            className="home-wa-btn"
+            href={`https://wa.me/${HOME_WHATSAPP}?text=${encodeURIComponent(
+              "Hi MediHome, I would like to order medicines."
+            )}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <span aria-hidden="true">🟢</span>
+            Order with WhatsApp
           </a>
-          <a className="home-quick-link secondary" href="#labs">
-            Book Lab Tests
+          <a className="home-call-btn" href={`tel:${HOME_PHONE}`}>
+            <span aria-hidden="true">📞</span>
+            Call us to Order
+          </a>
+        </div>
+
+        <div className="home-offer-row">
+          <a className="home-offer home-offer-blue" href="#medicine-search">
+            <small>APP ONLY OFFER</small>
+            <strong>Get 25% OFF on orders above ₹1000</strong>
+          </a>
+          <a className="home-offer home-offer-pink" href="#labs">
+            <small>WEBSITE OFFER</small>
+            <strong>Get 26% OFF on lab bookings above ₹799</strong>
           </a>
         </div>
       </section>
 
-      <section className="home-info-grid">
+      <section className="home-info-grid home-info-compact">
         <div className="home-info-card">
           <div className="home-info-icon">👁️</div>
-          <h2>Our Vision</h2>
-          <div className="home-info-content">
+          <div>
+            <h2>Our Vision</h2>
             <p>
               To become India&apos;s most trusted digital chronic disease
               management platform by combining affordable medicines, the latest
@@ -66,15 +148,12 @@ function HomePage() {
 
         <div className="home-info-card">
           <div className="home-info-icon">🎯</div>
-          <h2>Our Mission</h2>
-          <div className="home-info-content">
+          <div>
+            <h2>Our Mission</h2>
             <p>
-              Our mission is to make healthcare more affordable, accessible and
-              convenient by reducing treatment costs, improving medicine
-              compliance, providing reliable doorstep delivery across Delhi NCR,
-              building long-term patient relationships, and enabling access to
-              ambulance services with GPS tracking and medical insurance through
-              trusted partners.
+              Make healthcare affordable and convenient with doorstep delivery
+              across Delhi NCR, better medicine compliance, and trusted partner
+              support for diagnostics and care.
             </p>
           </div>
         </div>
