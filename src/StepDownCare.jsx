@@ -312,7 +312,7 @@ function StepDownCare() {
         <div className="service-page">
           <section className="service-confirm">
             <div className="success-icon">✓</div>
-            <h1>Step-down care booked</h1>
+            <h1>Step-Down Care Booked</h1>
             <p>
               {booking.needAmbulance
                 ? "Step-down care is booked and an ambulance has been requested to the centre."
@@ -320,7 +320,7 @@ function StepDownCare() {
             </p>
             <div className="confirm-card">
               <div className="confirm-head">
-                <h2>Booking details</h2>
+                <h2>Booking Details</h2>
                 <span>{booking.bookingId}</span>
               </div>
               <div className="confirm-row">
@@ -419,7 +419,7 @@ function StepDownCare() {
         <header className="lab-head">
           <div>
             <p className="lab-kicker">Step-down recovery</p>
-            <h1>Find a step-down care centre</h1>
+            <h1>Find A Step-Down Care Centre</h1>
             <p className="lab-lead">
               Post-ICU, post-surgery and rehab centres across Delhi NCR. Choose a
               centre, then book a recovery stay or assisted visit.
@@ -452,7 +452,7 @@ function StepDownCare() {
           <div className="lab-shell sd-find">
             <section className="lab-card">
               <div className="lab-card-head">
-                <h2>Search centres</h2>
+                <h2>Search Centres</h2>
                 <p>Filter by PIN, area or recovery type.</p>
               </div>
               <label className="lab-label" htmlFor="sd-search">
@@ -522,7 +522,7 @@ function StepDownCare() {
           <form className="lab-shell" onSubmit={handleSubmit}>
             <section className="lab-card">
               <div className="lab-card-head">
-                <h2>Book recovery care</h2>
+                <h2>Book Recovery Care</h2>
                 <p>We will confirm the centre slot over a call.</p>
               </div>
               <div className="lab-field">

@@ -507,7 +507,7 @@ function LabTests() {
         <div className="service-page lab-page">
           <section className="service-confirm">
             <div className="success-icon">✓</div>
-            <h1>Booking confirmed</h1>
+            <h1>Booking Confirmed</h1>
             <p>
               {booking.serviceType === "lab"
                 ? "Your laboratory test booking has been successfully submitted to MediHome."
@@ -515,7 +515,7 @@ function LabTests() {
             </p>
             <div className="confirm-card">
               <div className="confirm-head">
-                <h2>Booking details</h2>
+                <h2>Booking Details</h2>
                 <span>{booking.bookingId}</span>
               </div>
               <div className="confirm-row">
@@ -613,7 +613,7 @@ function LabTests() {
         <header className="lab-head">
           <div>
             <p className="lab-kicker">Diagnostics</p>
-            <h1>Book lab tests and imaging</h1>
+            <h1>Book Lab Tests And Imaging</h1>
             <p className="lab-lead">
               Home sample collection and partner centres across Delhi NCR.
             </p>
@@ -649,7 +649,7 @@ function LabTests() {
         <form className="lab-shell" onSubmit={handleBooking}>
           <section className="lab-card">
             <div className="lab-card-head">
-              <h2>{isLab ? "Select tests" : "Select studies"}</h2>
+              <h2>{isLab ? "Select Tests" : "Select Studies"}</h2>
               <p>
                 {isLab
                   ? "Choose a lab, then add blood, urine or pathology tests."
@@ -753,7 +753,7 @@ function LabTests() {
 
           <section className="lab-card lab-book">
             <div className="lab-card-head">
-              <h2>Patient and slot</h2>
+              <h2>Patient And Slot</h2>
               <p>
                 {isLab ? "Home collection or a visit to the lab." : "Centre appointment only."}
               </p>

@@ -84,7 +84,7 @@ export function partnerRole(kind) {
     case "ambulance":
       return "Ambulance driver";
     case "homecare":
-      return "Home-care professional";
+      return "Home Care professional";
     case "stepdown":
       return "Admission coordinator";
     case "lab":
@@ -401,8 +401,14 @@ export function unifyOrder(record, kind) {
       ? tracked.items
       : Array.isArray(tracked.tests) && tracked.tests.length
         ? tracked.tests
-        : tracked.serviceLabel
-          ? [{ name: tracked.serviceLabel }]
+        : tracked.carePlanLabel || tracked.serviceLabel
+          ? [
+              {
+                name: [tracked.serviceLabel, tracked.carePlanLabel]
+                  .filter(Boolean)
+                  .join(" · "),
+              },
+            ]
           : tracked.emergencyType
             ? [
                 {
@@ -423,7 +429,7 @@ export function unifyOrder(record, kind) {
     address: tracked.deliveryAddress || tracked.address || tracked.pickupAddress || "",
     deliveryAddress: tracked.deliveryAddress || tracked.address || tracked.pickupAddress || "",
     items,
-    total: tracked.total,
+    total: tracked.total ?? tracked.charges ?? null,
     pinCode: tracked.pinCode || tracked.pin || "",
     sortKey:
       Number(tracked.sortKey) ||

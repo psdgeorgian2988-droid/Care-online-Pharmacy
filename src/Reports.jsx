@@ -213,7 +213,7 @@ function Reports() {
         <section className="service-hero">
           <div>
             <span className="service-kicker">MediHome Reports</span>
-            <h1>Save health reports</h1>
+            <h1>Save Health Reports</h1>
             <p>Keep lab PDFs or images on this device. Nothing is uploaded to a server.</p>
           </div>
         </section>
@@ -298,7 +298,7 @@ function Reports() {
 
         <section className="report-list" aria-label="Saved reports">
           <div className="report-list-head">
-            <h2>Saved reports</h2>
+            <h2>Saved Reports</h2>
             <div className="field filter-field">
               <label htmlFor="rpt-filter">Filter by test</label>
               <select

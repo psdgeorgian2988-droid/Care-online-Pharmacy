@@ -379,7 +379,7 @@ function CustomerCarePanel({ onClose }) {
           </button>
         </div>
         <p className="care-panel-lead">
-          Help with orders, lab bookings, home care, step-down centres, and
+          Help with orders, lab bookings, Home Care, step-down centres, and
           ambulance requests.
         </p>
         <dl className="care-panel-details">
@@ -521,12 +521,12 @@ function HomePage() {
             <span>Book a scan</span>
           </a>
           <a className="home-service-card" href="#homecare">
-            <h2>Home care</h2>
-            <p>Nurse, caregiver, physiotherapy.</p>
+            <h2>Home Care</h2>
+            <p>Nurse, Caregiver or Physiotherapy at Home.</p>
             <span>Book a visit</span>
           </a>
           <a className="home-service-card" href="#stepdown">
-            <h2>Step-down care</h2>
+            <h2>Step-Down Care</h2>
             <p>Find a recovery centre near you.</p>
             <span>Find a centre</span>
           </a>

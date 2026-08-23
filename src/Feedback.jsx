@@ -82,7 +82,7 @@ function Feedback() {
         <div className="service-page info-page">
           <section className="service-confirm">
             <div className="success-icon">✓</div>
-            <h1>Thank you for your feedback</h1>
+            <h1>Thank You For Your Feedback</h1>
             <p>Your review is saved on this device and listed on the Reviews page.</p>
             <div className="confirm-card">
               <div className="confirm-head">
@@ -127,9 +127,9 @@ function Feedback() {
         <section className="service-hero">
           <div>
             <span className="service-kicker">Customer feedback</span>
-            <h1>Tell us how MediHome did</h1>
+            <h1>Tell Us How MediHome Did</h1>
             <p>
-              Rate medicines, diagnostics, home care, or ambulance. Published
+              Rate medicines, diagnostics, Home Care, or ambulance. Published
               reviews appear on the Reviews page.
             </p>
           </div>

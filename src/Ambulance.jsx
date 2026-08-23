@@ -116,11 +116,11 @@ function Ambulance() {
         <div className="service-page">
           <section className="service-confirm">
             <div className="success-icon">✓</div>
-            <h1>Ambulance requested</h1>
+            <h1>Ambulance Requested</h1>
             <p>Share this request ID if our team calls you to confirm pickup.</p>
             <div className="confirm-card">
               <div className="confirm-head">
-                <h2>Request details</h2>
+                <h2>Request Details</h2>
                 <span>{request.requestId}</span>
               </div>
               <div className="confirm-row">
@@ -201,7 +201,7 @@ function Ambulance() {
         <section className="service-hero">
           <div>
             <span className="service-kicker">MediHome Ambulance</span>
-            <h1>Request an ambulance</h1>
+            <h1>Request An Ambulance</h1>
             <p>Emergency or planned transfer in Delhi NCR. We confirm by phone.</p>
           </div>
         </section>

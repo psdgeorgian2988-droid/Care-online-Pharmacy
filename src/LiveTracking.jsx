@@ -327,7 +327,7 @@ export default function TrackPage({ trackId }) {
       <div className="orders-page-header">
         <div>
           <span className="orders-eyebrow">TRACKING</span>
-          <h1>Track live</h1>
+          <h1>Track Live</h1>
           <p className="orders-subtitle">
             Watch the assigned partner move toward your PIN in real time.
           </p>

@@ -61,7 +61,7 @@ function Contact() {
             <span className="service-kicker">Support</span>
             <h1>Contact MediHome</h1>
             <p>
-              Help with orders, lab bookings, home care, and ambulance
+              Help with orders, lab bookings, Home Care, and ambulance
               requests. Hours: 8:00 AM – 10:00 PM IST, all days.
             </p>
           </div>

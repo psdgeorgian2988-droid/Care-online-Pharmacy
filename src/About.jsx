@@ -6,9 +6,9 @@ function About() {
         <section className="service-hero">
           <div>
             <span className="service-kicker">About MediHome</span>
-            <h1>Trusted chronic care at your doorstep</h1>
+            <h1>Trusted Chronic Care At Your Doorstep</h1>
             <p>
-              Affordable medicines, diagnostics, home care, and ambulance
+              Affordable medicines, diagnostics, Home Care, and ambulance
               support for patients across Delhi NCR.
             </p>
           </div>
@@ -33,11 +33,11 @@ function About() {
           </section>
 
           <section className="info-panel">
-            <h2>What we do</h2>
+            <h2>What We Do</h2>
             <ul>
               <li>Generic and MediHome-brand medicines with cash on delivery.</li>
               <li>Home sample collection and partner-centre radiology slots.</li>
-              <li>Nurse, caregiver, and physiotherapy visits at home.</li>
+              <li>Nurse, Caregiver, and Physiotherapy visits at Home.</li>
               <li>Step-down recovery centres for post-ICU and post-surgery care.</li>
               <li>Emergency and planned ambulance pickup.</li>
               <li>A simple place to keep lab PDFs on this device.</li>

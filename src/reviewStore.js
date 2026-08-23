@@ -4,7 +4,7 @@ export const REVIEW_SERVICES = [
   { value: "medicines", label: "Medicines" },
   { value: "labs", label: "Lab tests" },
   { value: "radiology", label: "Radiology" },
-  { value: "homecare", label: "Home care" },
+  { value: "homecare", label: "Home Care" },
   { value: "stepdown", label: "Step-down care" },
   { value: "ambulance", label: "Ambulance" },
   { value: "other", label: "Other" },

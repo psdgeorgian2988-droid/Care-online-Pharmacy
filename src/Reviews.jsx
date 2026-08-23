@@ -27,7 +27,7 @@ function Reviews() {
         <section className="service-hero">
           <div>
             <span className="service-kicker">Patient reviews</span>
-            <h1>What MediHome customers say</h1>
+            <h1>What MediHome Customers Say</h1>
             <p>
               {stats.count
                 ? `${stats.average} / 5 from ${stats.count} review${

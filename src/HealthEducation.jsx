@@ -68,7 +68,7 @@ function HealthEducation() {
         <section className="service-hero">
           <div>
             <span className="service-kicker">MediHome Health Education</span>
-            <h1>Practical guides for chronic care at home</h1>
+            <h1>Practical Guides For Chronic Care At Home</h1>
             <p>
               Short, plain-language notes for Delhi NCR patients. This is
               education, not a personal prescription — follow your clinician.

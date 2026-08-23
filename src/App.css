@@ -988,24 +988,24 @@ footer p {
    MediHome - Order History
    ================================ */
 .orders-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   width: 100%;
-  padding: 10px 20px;
+  padding: 0;
   box-sizing: border-box;
 }
 .order-card {
   width: 100%;
 max-width: none;
-  padding: 22px;
-  display: inline-block !important;
+  padding: 8px 10px;
+  display: block;
   vertical-align: top;
   box-sizing: border-box;
   background: #ffffff;
-  border: 1px solid #e1e5ea;
-  border-radius: 14px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e4ecef;
+  border-radius: 10px;
+  box-shadow: none;
   text-align: left;
 }
 
@@ -1013,19 +1013,19 @@ max-width: none;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 15px;
-  margin-bottom: 15px;
+  gap: 8px;
+  margin-bottom: 0;
 }
 
 .order-card h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 14px;
 }
 
 .order-card p {
-  margin: 10px 0;
-  font-size: 15px;
-  line-height: 1.5;
+  margin: 4px 0;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .order-status {
@@ -1038,13 +1038,13 @@ max-width: none;
 }
 
 .order-details-btn {
-  margin-top: 12px;
-  padding: 10px 18px;
+  margin-top: 0;
+  padding: 2px 8px;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   background: #1597a8;
   color: white;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -1176,34 +1176,282 @@ max-width: none;
   margin-left: auto;
 }
 .my-orders-page {
-  width: 90%;
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 20px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 16px 20px 24px 14px;
+  color: #143246;
+  box-sizing: border-box;
+}
+
+.orders-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 auto 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #eaf7ff, #f4fbf8);
+}
+
+.orders-eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: #1a6b7a;
 }
 
 .my-orders-page h1 {
+  margin: 0 0 4px;
   text-align: left;
-  margin-bottom: 25px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #143246;
 }
 
-/* Compact Order History cards */
-.orders-grid {
+.orders-subtitle {
+  margin: 0;
+  color: #5d7180;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.orders-home-link {
+  flex-shrink: 0;
+  padding: 4px 9px;
+  border: 1px solid #d7e2e9;
+  border-radius: 6px;
+  background: #fff;
+  color: #1a6b7a;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.my-orders-page .orders-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
+  justify-content: flex-start;
+  align-content: flex-start;
+  gap: 8px;
   width: 100%;
-  padding: 10px 20px;
+  padding: 0;
   box-sizing: border-box;
 }
 
-.orders-grid .order-card {
-  width: calc(33.333% - 14px) !important;
+.order-chip {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.order-chip-id {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 108px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid #d7e2e9;
+  border-radius: 8px;
+  background: #fff;
+  color: #1a6b7a;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.order-chip-id:hover,
+.order-chip:focus-within .order-chip-id {
+  border-color: #1a6b7a;
+  background: #e8f4f6;
+}
+
+.order-chip-tip {
+  display: none;
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 240px;
+  padding: 8px 10px;
+  border: 1px solid #d7e2e9;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(20, 50, 70, 0.14);
+  text-align: left;
+}
+
+.order-chip:hover .order-chip-tip,
+.order-chip:focus-within .order-chip-tip {
+  display: block;
+}
+
+.order-chip-tip p {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 4px 0;
+  border-bottom: 1px solid #edf1f3;
+  font-size: 12px;
+  color: #143246;
+}
+
+.order-chip-tip p strong {
+  color: #5d7180;
+  font-weight: 600;
+}
+
+.order-chip-tip p:last-of-type {
+  border-bottom: none;
+}
+
+.order-chip-tip-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #edf1f3;
+}
+
+.orders-grid .order-card,
+.order-card {
+  width: 100% !important;
   max-width: none !important;
-  padding: 18px;
+  padding: 8px 10px !important;
   margin: 0;
   display: block !important;
   box-sizing: border-box;
+  border: 1px solid #e4ecef;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.my-orders-page .order-card-header {
+  gap: 6px;
+  margin: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #edf1f3;
+}
+
+.my-orders-page .order-card h3 {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.my-orders-page .order-card p,
+.my-orders-page .order-details-page > p,
+.my-orders-page .order-details-address p,
+.my-orders-page .order-details-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0;
+  padding: 4px 0;
+  border-bottom: 1px solid #edf1f3;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.my-orders-page .order-card p strong,
+.my-orders-page .order-details-page > p strong,
+.my-orders-page .order-details-address p strong,
+.my-orders-page .order-details-total strong {
+  color: #5d7180;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.my-orders-page .order-card p:last-of-type,
+.my-orders-page .order-details-address p:last-of-type {
+  border-bottom: none;
+}
+
+.my-orders-page .order-status {
+  padding: 2px 7px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.my-orders-page .order-details-btn,
+.my-orders-page .order-track-btn,
+.my-orders-page a.order-details-btn,
+.my-orders-page .order-back-btn,
+.my-orders-page .orders-home-link,
+.my-orders-page .orders-empty-actions a {
+  margin-top: 0;
+  min-height: 22px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.order-details-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #e4ecef;
+  border-radius: 12px;
+}
+
+.order-details-page h2 {
+  margin: 0 0 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #edf1f3;
+  font-size: 16px;
+}
+
+.order-details-page h3 {
+  margin: 12px 0 0;
+  padding: 8px 0 6px;
+  border-bottom: 1px solid #edf1f3;
+  font-size: 13px;
+}
+
+.my-orders-page .order-card-actions,
+.my-orders-page .order-action-buttons,
+.my-orders-page .orders-empty-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #edf1f3;
+  overflow-x: auto;
+}
+
+.orders-empty {
+  padding: 14px;
+  border: 1px solid #e4ecef;
+  border-radius: 12px;
+  background: #fff;
+  color: #5d7180;
+  font-size: 13px;
+}
+
+.orders-empty-actions a {
+  background: #e8f4f6;
+  color: #1a6b7a;
+  text-decoration: none;
+}
+
+@media (max-width: 800px) {
+  .orders-page-header {
+    flex-direction: column;
+  }
 }
 .medicine-category-boxes {
   display: grid;
@@ -3082,6 +3330,14 @@ body,
   overflow: hidden !important;
 }
 
+.app > main:has(.my-orders-page) > * {
+  overflow: visible !important;
+}
+
+.app > main:has(.my-orders-page) > * {
+  overflow: visible !important;
+}
+
 .medicines-page,
 .home-content,
 .profile-page,
@@ -4055,16 +4311,17 @@ a.order-details-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-top: 12px;
-  padding: 10px 18px;
+  margin-top: 0;
+  padding: 4px 9px;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   background: #143246;
   color: #fff;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   text-decoration: none;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .order-card-actions .order-track-btn {

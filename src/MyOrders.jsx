@@ -46,7 +46,7 @@ function MyOrders() {
           <span className="orders-eyebrow">ACCOUNT</span>
           <h1>My Orders</h1>
           <p className="orders-subtitle">
-            Medicines, diagnostics, home care, and ambulance — all with live PIN
+            Medicines, diagnostics, Home Care, and ambulance — all with live PIN
             tracking.
           </p>
         </div>
@@ -86,9 +86,9 @@ function MyOrders() {
               : selectedOrder.kind === "radiology"
                 ? "Imaging Studies"
                 : selectedOrder.kind === "homecare"
-                  ? "Home care"
+                  ? "Home Care"
                   : selectedOrder.kind === "stepdown"
-                    ? "Step-down care"
+                    ? "Step-Down Care"
                     : selectedOrder.kind === "ambulance"
                       ? "Request"
                       : "Medicines"}
@@ -147,6 +147,15 @@ function MyOrders() {
                 </p>
                 <p>
                   <strong>Time slot:</strong> {selectedOrder.timeSlot || "Not provided"}
+                </p>
+                <p>
+                  <strong>Plan:</strong> {selectedOrder.carePlanLabel || "Not provided"}
+                </p>
+                <p>
+                  <strong>Charges:</strong>{" "}
+                  {selectedOrder.total != null
+                    ? `₹${Number(selectedOrder.total).toLocaleString("en-IN")}`
+                    : "Not provided"}
                 </p>
               </>
             )}
@@ -272,50 +281,48 @@ function MyOrders() {
         ) : (
           <div className="orders-grid">
             {orders.map((order) => (
-              <div key={`${order.kind}-${order.id}`} className="order-card">
-                <div className="order-card-header">
-                  <h3>
-                    {order.kind === "medicine" ? "Order" : "Booking"} #{order.id}
-                  </h3>
-                  <span className={`order-status${order.trackCompleted ? "" : " is-live"}`}>
-                    {order.status}
-                  </span>
-                </div>
-
-                <p>
-                  <strong>Type:</strong> {typeLabel(order)}
-                </p>
-
-                <p>
-                  <strong>Date:</strong> {order.date}
-                </p>
-
-                <p>
-                  <strong>Items:</strong>{" "}
-                  {order.items?.map((item) => item.name).join(", ") || "—"}
-                </p>
-
-                {order.total != null && order.total !== "" ? (
+              <div key={`${order.kind}-${order.id}`} className="order-chip">
+                <button
+                  type="button"
+                  className="order-chip-id"
+                  onClick={() => setSelectedOrder(order)}
+                >
+                  #{order.id}
+                </button>
+                <div className="order-chip-tip">
                   <p>
-                    <strong>Total:</strong> ₹{order.total}
+                    <strong>Type:</strong> {typeLabel(order)}
                   </p>
-                ) : null}
-
-                <p>
-                  <strong>PIN:</strong> {order.pinCode || "Add PIN to track"}
-                </p>
-
-                <div className="order-card-actions">
-                  <button
-                    className="order-details-btn"
-                    type="button"
-                    onClick={() => setSelectedOrder(order)}
-                  >
-                    View Details
-                  </button>
-                  <a className="order-track-btn" href={trackHref(order.id)}>
-                    Track live
-                  </a>
+                  <p>
+                    <strong>Date:</strong> {order.date || "Not provided"}
+                  </p>
+                  <p>
+                    <strong>Items:</strong>{" "}
+                    {order.items?.map((item) => item.name).join(", ") || "—"}
+                  </p>
+                  {order.total != null && order.total !== "" ? (
+                    <p>
+                      <strong>Total:</strong> ₹{order.total}
+                    </p>
+                  ) : null}
+                  <p>
+                    <strong>PIN:</strong> {order.pinCode || "Add PIN to track"}
+                  </p>
+                  <p>
+                    <strong>Status:</strong> {order.status}
+                  </p>
+                  <div className="order-chip-tip-actions">
+                    <button
+                      className="order-details-btn"
+                      type="button"
+                      onClick={() => setSelectedOrder(order)}
+                    >
+                      View Details
+                    </button>
+                    <a className="order-track-btn" href={trackHref(order.id)}>
+                      Track live
+                    </a>
+                  </div>
                 </div>
               </div>
             ))}
