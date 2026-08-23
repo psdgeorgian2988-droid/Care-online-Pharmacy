@@ -1,4 +1,8 @@
 import { useMemo, useState } from "react";
+import PinGpsBlock from "./PinGpsBlock";
+import AssignedAgent from "./AssignedAgent";
+import { resolvePinLocation } from "./pinLocation";
+import { trackHref, withTracking } from "./orderTracking";
 
 const STORAGE_KEY = "mediHomeHomeCareBookings";
 const SERVICE_TYPES = [
@@ -45,6 +49,7 @@ function HomeCare() {
   });
   const [errors, setErrors] = useState({});
   const [booking, setBooking] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -69,7 +74,7 @@ function HomeCare() {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (!validate()) return;
 
@@ -77,25 +82,37 @@ function HomeCare() {
       SERVICE_TYPES.find((item) => item.value === form.serviceType)?.label ||
       form.serviceType;
 
+    setSubmitting(true);
+    const gps = await resolvePinLocation(form.pinCode);
+
     const bookingDetails = {
       bookingId: "MH-HC-" + Math.floor(100000 + Math.random() * 900000),
       ...form,
       patientName: form.patientName.trim(),
       address: form.address.trim(),
+      pinCode: gps.pinCode,
+      pin: gps.pin,
+      lat: gps.lat,
+      lng: gps.lng,
+      locality: gps.locality,
+      mapsUrl: gps.mapsUrl,
       serviceLabel,
       bookedAt: new Date().toLocaleString(),
       bookedAtMs: Date.now(),
     };
 
+    const trackedBooking = withTracking(bookingDetails, "homecare");
+
     try {
       const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
       const list = Array.isArray(existing) ? existing : [];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([bookingDetails, ...list]));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([trackedBooking, ...list]));
     } catch {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([bookingDetails]));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([trackedBooking]));
     }
 
-    setBooking(bookingDetails);
+    setBooking(trackedBooking);
+    setSubmitting(false);
   };
 
   const startNew = () => {
@@ -146,6 +163,7 @@ function HomeCare() {
                 <span>PIN</span>
                 <strong>{booking.pinCode}</strong>
               </div>
+              <PinGpsBlock record={booking} />
               <div className="confirm-row">
                 <span>Date</span>
                 <strong>{booking.date}</strong>
@@ -155,9 +173,30 @@ function HomeCare() {
                 <strong>{booking.timeSlot}</strong>
               </div>
             </div>
-            <button type="button" className="service-submit" onClick={startNew}>
-              Book another visit
-            </button>
+            <AssignedAgent record={booking} />
+            <div className="confirm-actions">
+              <button
+                type="button"
+                className="service-submit"
+                onClick={() => {
+                  window.location.hash = trackHref(booking.bookingId);
+                }}
+              >
+                Track live
+              </button>
+              <button type="button" className="service-submit" onClick={startNew}>
+                Book another visit
+              </button>
+              <button
+                type="button"
+                className="service-submit"
+                onClick={() => {
+                  window.location.hash = "#feedback";
+                }}
+              >
+                Share feedback
+              </button>
+            </div>
           </section>
         </div>
       </>
@@ -237,6 +276,7 @@ function HomeCare() {
               placeholder="6-digit PIN"
             />
             {errors.pinCode && <small>{errors.pinCode}</small>}
+            <small className="pin-gps-hint">Visit GPS is connected from this PIN.</small>
           </div>
 
           <div className="field">
@@ -293,8 +333,8 @@ function HomeCare() {
             {errors.timeSlot && <small>{errors.timeSlot}</small>}
           </div>
 
-          <button type="submit" className="service-submit">
-            Confirm home care booking
+          <button type="submit" className="service-submit" disabled={submitting}>
+            {submitting ? "Connecting PIN to map…" : "Confirm home care booking"}
           </button>
         </form>
       </div>
@@ -317,7 +357,10 @@ const styles = `
 .service-form textarea{min-height:56px;resize:vertical}
 .service-form input:focus,.service-form select:focus,.service-form textarea:focus{border-color:#1a6b7a}
 .service-form small{margin-top:4px;color:#d84b4b;font-size:12px}
+.service-form small.pin-gps-hint{color:#5d7180}
 .service-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:40px;cursor:pointer;font-family:inherit}
+.confirm-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.confirm-actions .service-submit{grid-column:auto;min-width:180px}
 .service-confirm{max-width:640px;margin:12px auto;text-align:center}
 .success-icon{width:52px;height:52px;margin:0 auto 10px;border-radius:50%;background:#e5f8ee;color:#1c9b61;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
 .service-confirm h1{margin:0 0 6px;font-size:22px}

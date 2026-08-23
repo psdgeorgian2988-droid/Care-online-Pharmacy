@@ -1,102 +1,43 @@
 import { useEffect, useState } from "react";
+import { LiveTrackingPanel } from "./LiveTracking";
+import {
+  kindLabel,
+  loadAllOrders,
+  persistOrder,
+  trackHref,
+} from "./orderTracking";
+import PinGpsBlock from "./PinGpsBlock";
 
-const MEDICINE_STATUS_STEPS = [
-  "Order Placed",
-  "Prescription Verified",
-  "Confirmed",
-  "Packed",
-  "Out for Delivery",
-  "Delivered",
-];
-
-const isDiagnosticsOrder = (order) =>
-  order?.orderType === "lab" || order?.orderType === "radiology";
-
-function mapDiagnosticsBooking(booking) {
-  return {
-    ...booking,
-    appointmentDate: booking.date,
-    id: booking.bookingId,
-    orderType: booking.serviceType,
-    date: booking.bookedAt,
-    status: "Booking Confirmed",
-    items: booking.tests || [],
-    total: booking.total,
-    deliveryAddress: booking.address,
-    pinCode: booking.pinCode,
-  };
-}
-
-function loadAllOrders() {
-  let medicineOrders = [];
-  let diagnosticBookings = [];
-
-  try {
-    const savedOrders = JSON.parse(localStorage.getItem("mediHomeOrders") || "[]");
-    medicineOrders = Array.isArray(savedOrders) ? savedOrders : [];
-  } catch {
-    medicineOrders = [];
-  }
-
-  try {
-    const savedBookings = JSON.parse(
-      localStorage.getItem("mediHomeDiagnosticsBookings") || "[]"
-    );
-    diagnosticBookings = Array.isArray(savedBookings) ? savedBookings : [];
-  } catch {
-    diagnosticBookings = [];
-  }
-
-  const mappedMedicine = medicineOrders.map((order) => ({
-    ...order,
-    orderType: "medicine",
-    sortKey: Number(order.id) || 0,
-  }));
-
-  const mappedDiagnostics = diagnosticBookings.map((booking) => ({
-    ...mapDiagnosticsBooking(booking),
-    sortKey: booking.bookedAtMs || 0,
-  }));
-
-  return [...mappedDiagnostics, ...mappedMedicine].sort(
-    (a, b) => (b.sortKey || 0) - (a.sortKey || 0)
-  );
+function typeLabel(order) {
+  return kindLabel(order?.kind || order?.orderType);
 }
 
 function MyOrders() {
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const isDiagnostics = isDiagnosticsOrder(selectedOrder);
-  const statusSteps = MEDICINE_STATUS_STEPS;
-  const currentStep = statusSteps.indexOf(selectedOrder?.status) + 1;
-
-  const updateOrderStatus = (newStatus) => {
-    if (!selectedOrder || isDiagnosticsOrder(selectedOrder)) return;
-
-    const updatedOrders = orders.map((order) =>
-      order.id === selectedOrder.id
-        ? { ...order, status: newStatus }
-        : order
-    );
-
-    setOrders(updatedOrders);
-
-    const updatedOrder = updatedOrders.find(
-      (order) => order.id === selectedOrder.id
-    );
-
-    setSelectedOrder(updatedOrder);
-
-    const medicineOnly = updatedOrders
-      .filter((order) => !isDiagnosticsOrder(order))
-      .map(({ orderType, sortKey, ...order }) => order);
-
-    localStorage.setItem("mediHomeOrders", JSON.stringify(medicineOnly));
-  };
 
   useEffect(() => {
     setOrders(loadAllOrders());
   }, []);
+
+  const handleSelectedChange = (next) => {
+    setSelectedOrder(next);
+    setOrders((current) =>
+      current.map((order) => (String(order.id) === String(next.id) ? next : order))
+    );
+  };
+
+  const markDone = () => {
+    if (!selectedOrder || selectedOrder.trackCompleted) return;
+    const next = persistOrder(selectedOrder, {
+      trackCompleted: true,
+      trackStatus: "done",
+      partnerLat: selectedOrder.destLat,
+      partnerLng: selectedOrder.destLng,
+      status: selectedOrder.kind === "medicine" ? "Delivered" : "Completed",
+    });
+    handleSelectedChange(next);
+  };
 
   return (
     <div className="my-orders-pag my-orders-page">
@@ -105,7 +46,8 @@ function MyOrders() {
           <span className="orders-eyebrow">ACCOUNT</span>
           <h1>My Orders</h1>
           <p className="orders-subtitle">
-            Medicine orders and diagnostic bookings in one place.
+            Medicines, diagnostics, home care, and ambulance — all with live PIN
+            tracking.
           </p>
         </div>
         <a className="orders-home-link" href="#home">
@@ -129,34 +71,27 @@ function MyOrders() {
             <strong>Status:</strong> {selectedOrder.status}
           </p>
           <p>
-            <strong>Type:</strong>{" "}
-            {isDiagnostics
-              ? selectedOrder.orderType === "lab"
-                ? "Laboratory Test"
-                : "Radiology & Imaging"
-              : "Medicine Order"}
+            <strong>Type:</strong> {typeLabel(selectedOrder)}
           </p>
-          {!isDiagnostics && (
-            <div className="order-timeline">
-              {statusSteps.map((step, index) => (
-                <div
-                  key={step}
-                  className={`timeline-step ${
-                    index < currentStep ? "active" : ""
-                  }`}
-                >
-                  <span>{index < currentStep ? "✓" : index + 1}</span>
-                  <p>{step}</p>
-                </div>
-              ))}
-            </div>
-          )}
+
+          <LiveTrackingPanel
+            order={selectedOrder}
+            onOrderChange={handleSelectedChange}
+            compact
+          />
+
           <h3>
-            {isDiagnostics
-              ? selectedOrder.orderType === "lab"
-                ? "Laboratory Tests"
-                : "Imaging Studies"
-              : "Medicines"}
+            {selectedOrder.kind === "lab"
+              ? "Laboratory Tests"
+              : selectedOrder.kind === "radiology"
+                ? "Imaging Studies"
+                : selectedOrder.kind === "homecare"
+                  ? "Home care"
+                  : selectedOrder.kind === "stepdown"
+                    ? "Step-down care"
+                    : selectedOrder.kind === "ambulance"
+                      ? "Request"
+                      : "Medicines"}
           </h3>
 
           <ul>
@@ -169,14 +104,11 @@ function MyOrders() {
             ))}
           </ul>
           <div className="order-details-address">
-            {isDiagnostics && (
+            {(selectedOrder.kind === "lab" || selectedOrder.kind === "radiology") && (
               <>
                 <p>
                   <strong>
-                    {selectedOrder.orderType === "lab"
-                      ? "Lab Partner"
-                      : "Imaging Partner"}
-                    :
+                    {selectedOrder.kind === "lab" ? "Lab Partner" : "Imaging Partner"}:
                   </strong>{" "}
                   {selectedOrder.partner || "Not provided"}
                 </p>
@@ -190,18 +122,13 @@ function MyOrders() {
                 </p>
                 <p>
                   <strong>
-                    {selectedOrder.orderType === "lab"
-                      ? "Collection Type"
-                      : "Appointment Type"}
-                    :
+                    {selectedOrder.kind === "lab" ? "Collection Type" : "Appointment Type"}:
                   </strong>{" "}
-                  {selectedOrder.visitType === "home"
-                    ? "Home Collection"
-                    : "Centre Visit"}
+                  {selectedOrder.visitType === "home" ? "Home Collection" : "Centre Visit"}
                 </p>
                 <p>
                   <strong>Appointment Date:</strong>{" "}
-                  {selectedOrder.appointmentDate || "Not provided"}
+                  {selectedOrder.appointmentDate || selectedOrder.date || "Not provided"}
                 </p>
                 <p>
                   <strong>Time Slot:</strong>{" "}
@@ -209,35 +136,115 @@ function MyOrders() {
                 </p>
               </>
             )}
+            {selectedOrder.kind === "homecare" && (
+              <>
+                <p>
+                  <strong>Patient:</strong>{" "}
+                  {selectedOrder.patientName || "Not provided"}
+                </p>
+                <p>
+                  <strong>Visit date:</strong> {selectedOrder.date || "Not provided"}
+                </p>
+                <p>
+                  <strong>Time slot:</strong> {selectedOrder.timeSlot || "Not provided"}
+                </p>
+              </>
+            )}
+            {selectedOrder.kind === "stepdown" && (
+              <>
+                <p>
+                  <strong>Centre:</strong>{" "}
+                  {selectedOrder.centreName || "Not provided"}
+                </p>
+                <p>
+                  <strong>Patient:</strong>{" "}
+                  {selectedOrder.patientName || "Not provided"}
+                </p>
+                <p>
+                  <strong>Start date:</strong> {selectedOrder.date || "Not provided"}
+                </p>
+                <p>
+                  <strong>Time slot:</strong> {selectedOrder.timeSlot || "Not provided"}
+                </p>
+                <p>
+                  <strong>Days:</strong> {selectedOrder.durationDays || "Not provided"}
+                </p>
+                <p>
+                  <strong>Ambulance to centre:</strong>{" "}
+                  {selectedOrder.needAmbulance ? "Yes (booked automatically)" : "No"}
+                </p>
+                {selectedOrder.ambulanceRequestId ? (
+                  <p>
+                    <strong>Ambulance ID:</strong> {selectedOrder.ambulanceRequestId}
+                  </p>
+                ) : null}
+              </>
+            )}
+            {selectedOrder.kind === "ambulance" && (
+              <>
+                <p>
+                  <strong>Patient:</strong>{" "}
+                  {selectedOrder.patientName || "Not provided"}
+                </p>
+                <p>
+                  <strong>Type:</strong>{" "}
+                  {selectedOrder.emergencyType === "emergency"
+                    ? "Emergency"
+                    : "Non-emergency"}
+                </p>
+                {selectedOrder.destinationName ? (
+                  <p>
+                    <strong>Drop at:</strong> {selectedOrder.destinationName}
+                  </p>
+                ) : null}
+              </>
+            )}
             <p>
-              <strong>{isDiagnostics ? "Address" : "Delivery Address"}:</strong>{" "}
+              <strong>
+                {selectedOrder.kind === "ambulance" ? "Pickup Address" : "Address"}:
+              </strong>{" "}
               {selectedOrder.deliveryAddress || "Not provided"}
             </p>
 
             <p>
               <strong>PIN Code:</strong> {selectedOrder.pinCode || "Not provided"}
             </p>
-            {!isDiagnostics && (
+            <PinGpsBlock record={selectedOrder} compact />
+            {selectedOrder.kind === "medicine" && (
               <p>
                 <strong>Prescription:</strong>{" "}
                 {selectedOrder.prescription || "Not provided"}
               </p>
             )}
           </div>
-          <p className="order-details-total">
-            <strong>Total:</strong> ₹{selectedOrder.total}
-          </p>
-          {!isDiagnostics && currentStep < statusSteps.length && (
-            <button
-              className="order-details-btn"
-              onClick={() => updateOrderStatus(statusSteps[currentStep])}
-            >
-              Next Status: {statusSteps[currentStep]}
-            </button>
+          {selectedOrder.total != null && selectedOrder.total !== "" && (
+            <p className="order-details-total">
+              <strong>Total:</strong> ₹{selectedOrder.total}
+            </p>
           )}
           <div className="order-action-buttons">
+            <a className="order-details-btn" href={trackHref(selectedOrder.id)}>
+              Open full live track
+            </a>
+            {selectedOrder.ambulanceRequestId ? (
+              <a
+                className="order-details-btn"
+                href={trackHref(selectedOrder.ambulanceRequestId)}
+              >
+                Track ambulance
+              </a>
+            ) : null}
+            <a className="order-details-btn" href="#feedback">
+              Share feedback
+            </a>
+            {!selectedOrder.trackCompleted && selectedOrder.destLat != null && (
+              <button className="order-details-btn" type="button" onClick={markDone}>
+                Mark {selectedOrder.kind === "medicine" ? "delivered" : "completed"}
+              </button>
+            )}
             <button
               className="order-back-btn"
+              type="button"
               onClick={() => setSelectedOrder(null)}
             >
               Back to My Orders
@@ -250,30 +257,33 @@ function MyOrders() {
         (orders.length === 0 ? (
           <div className="orders-empty">
             <p>No orders found yet.</p>
-            <p>Place a medicine order or book a lab/radiology test to see it here.</p>
+            <p>
+              Place a medicine order, book diagnostics, home care or step-down
+              care, or request an ambulance to track it here.
+            </p>
             <div className="orders-empty-actions">
               <a href="#medicine-search">Order medicines</a>
               <a href="#labs">Book diagnostics</a>
+              <a href="#homecare">Book home care</a>
+              <a href="#stepdown">Find a step-down centre</a>
+              <a href="#ambulance">Request ambulance</a>
             </div>
           </div>
         ) : (
           <div className="orders-grid">
             {orders.map((order) => (
-              <div key={order.id} className="order-card">
+              <div key={`${order.kind}-${order.id}`} className="order-card">
                 <div className="order-card-header">
                   <h3>
-                    {isDiagnosticsOrder(order) ? "Booking" : "Order"} #{order.id}
+                    {order.kind === "medicine" ? "Order" : "Booking"} #{order.id}
                   </h3>
-                  <span className="order-status">{order.status}</span>
+                  <span className={`order-status${order.trackCompleted ? "" : " is-live"}`}>
+                    {order.status}
+                  </span>
                 </div>
 
                 <p>
-                  <strong>Type:</strong>{" "}
-                  {order.orderType === "lab"
-                    ? "Laboratory Test"
-                    : order.orderType === "radiology"
-                    ? "Radiology & Imaging"
-                    : "Medicine"}
+                  <strong>Type:</strong> {typeLabel(order)}
                 </p>
 
                 <p>
@@ -282,19 +292,31 @@ function MyOrders() {
 
                 <p>
                   <strong>Items:</strong>{" "}
-                  {order.items?.map((item) => item.name).join(", ")}
+                  {order.items?.map((item) => item.name).join(", ") || "—"}
                 </p>
+
+                {order.total != null && order.total !== "" ? (
+                  <p>
+                    <strong>Total:</strong> ₹{order.total}
+                  </p>
+                ) : null}
 
                 <p>
-                  <strong>Total:</strong> ₹{order.total}
+                  <strong>PIN:</strong> {order.pinCode || "Add PIN to track"}
                 </p>
 
-                <button
-                  className="order-details-btn"
-                  onClick={() => setSelectedOrder(order)}
-                >
-                  View Details
-                </button>
+                <div className="order-card-actions">
+                  <button
+                    className="order-details-btn"
+                    type="button"
+                    onClick={() => setSelectedOrder(order)}
+                  >
+                    View Details
+                  </button>
+                  <a className="order-track-btn" href={trackHref(order.id)}>
+                    Track live
+                  </a>
+                </div>
               </div>
             ))}
           </div>
@@ -302,4 +324,5 @@ function MyOrders() {
     </div>
   );
 }
+
 export default MyOrders;

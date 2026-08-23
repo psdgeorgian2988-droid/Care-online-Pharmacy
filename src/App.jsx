@@ -5,14 +5,23 @@ import LabTests from "./LabTests";
 import Profile from "./Profile";
 import MyOrders from "./MyOrders";
 import HomeCare from "./HomeCare";
+import StepDownCare from "./StepDownCare";
 import Ambulance from "./Ambulance";
 import Reports from "./Reports";
+import TrackPage from "./LiveTracking";
+import HealthEducation from "./HealthEducation";
+import About from "./About";
+import Contact from "./Contact";
+import Feedback from "./Feedback";
+import Reviews from "./Reviews";
+import { reviewStats } from "./reviewStore";
 
 const NAV_LINKS = [
   { href: "#home", label: "Home", icon: "🏠" },
   { href: "#medicine-search", label: "Search Medicine", icon: "🔍" },
   { href: "#labs", label: "Lab Tests", icon: "🧪" },
   { href: "#homecare", label: "Home Care", icon: "🩺" },
+  { href: "#stepdown", label: "Step-Down Care", icon: "🏥" },
   { href: "#ambulance", label: "Ambulance", icon: "🚑" },
   { href: "#reports", label: "Reports", icon: "📄" },
   { href: "#education", label: "Health Education", icon: "📚" },
@@ -21,34 +30,36 @@ const NAV_LINKS = [
 ];
 
 const BOTTOM_LINKS = [
+  { href: "#reviews", label: "Reviews", icon: "⭐" },
+  { href: "#feedback", label: "Feedback", icon: "📝" },
   { href: "#about", label: "About Us", icon: "ℹ️" },
   { href: "#contact", label: "Contact Us", icon: "📞" },
 ];
 
-function PlaceholderPage({ eyebrow, title, body }) {
-  return (
-    <section className="placeholder-page">
-      <span className="placeholder-label">{eyebrow}</span>
-      <h1>{title}</h1>
-      <p>{body}</p>
-      <a className="placeholder-home-link" href="#home">
-        Back to Home
-      </a>
-    </section>
-  );
-}
-
 const HOME_WHATSAPP = "919654222988";
-const HOME_WHATSAPP_URL = `https://api.whatsapp.com/send?phone=${HOME_WHATSAPP}&text=${encodeURIComponent(
+const HOME_WHATSAPP_URL = `https://wa.me/${HOME_WHATSAPP}?text=${encodeURIComponent(
   "Hi MediHome, I would like to order medicines."
 )}`;
-const CARE_WHATSAPP_URL = `https://api.whatsapp.com/send?phone=${HOME_WHATSAPP}&text=${encodeURIComponent(
+const CARE_WHATSAPP_URL = `https://wa.me/${HOME_WHATSAPP}?text=${encodeURIComponent(
   "Hi MediHome, I need help from customer care."
 )}`;
 const CARE_PHONE_DISPLAY = "+91 96542 22988";
 const CARE_PHONE_TEL = "+919654222988";
 const CARE_EMAIL = "care@medihome.in";
 const PROFILE_KEY = "mediHomeUser";
+
+function openWhatsAppUrl(url, event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const opened = window.open(url, "_blank");
+  if (opened) {
+    opened.opener = null;
+    return;
+  }
+  window.location.assign(url);
+}
 
 function parseAppHash(rawHash) {
   let value = rawHash || "";
@@ -64,13 +75,17 @@ function parseAppHash(rawHash) {
   const path = (queryIndex === -1 ? value : value.slice(0, queryIndex)).trim();
   const query = queryIndex === -1 ? "" : value.slice(queryIndex + 1);
   let q = "";
+  let id = "";
   try {
-    q = (new URLSearchParams(query).get("q") || "").trim();
+    const params = new URLSearchParams(query);
+    q = (params.get("q") || "").trim();
+    id = (params.get("id") || "").trim();
   } catch {
     q = "";
+    id = "";
   }
   const route = !path || path === "home" ? "#home" : `#${path}`;
-  return { route, q };
+  return { route, q, id };
 }
 
 function goToHash(nextHash) {
@@ -333,8 +348,7 @@ function CustomerCarePanel({ onClose }) {
   }, [onClose]);
 
   const openWhatsApp = (event) => {
-    event.preventDefault();
-    window.open(CARE_WHATSAPP_URL, "_blank", "noopener,noreferrer");
+    openWhatsAppUrl(CARE_WHATSAPP_URL, event);
   };
 
   return (
@@ -365,7 +379,8 @@ function CustomerCarePanel({ onClose }) {
           </button>
         </div>
         <p className="care-panel-lead">
-          Help with orders, lab bookings, home care, and ambulance requests.
+          Help with orders, lab bookings, home care, step-down centres, and
+          ambulance requests.
         </p>
         <dl className="care-panel-details">
           <div>
@@ -394,8 +409,33 @@ function CustomerCarePanel({ onClose }) {
         >
           Chat on WhatsApp
         </a>
+        <div className="care-panel-extra">
+          <a href="#feedback" onClick={onClose}>
+            Share feedback
+          </a>
+          <a href="#reviews" onClick={onClose}>
+            Read reviews
+          </a>
+        </div>
       </div>
     </div>
+  );
+}
+
+function HomeReviewsTeaser() {
+  const stats = reviewStats();
+  return (
+    <section className="home-reviews-teaser" aria-label="Customer reviews">
+      <p>
+        {stats.count
+          ? `Patients rate MediHome ${stats.average} / 5 from ${stats.count} reviews.`
+          : "Be the first to rate MediHome."}
+      </p>
+      <div>
+        <a href="#reviews">Read reviews</a>
+        <a href="#feedback">Share feedback</a>
+      </div>
+    </section>
   );
 }
 
@@ -440,7 +480,7 @@ function HomePage() {
             <form className="home-search-form" onSubmit={goToMedicines}>
               <input
                 type="search"
-                placeholder="Search medicines by name or salt"
+                placeholder="Search by brand, name or salt (e.g. Dolo, Crocin)"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 aria-label="Search medicines"
@@ -454,10 +494,7 @@ function HomePage() {
                 href={HOME_WHATSAPP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={(event) => {
-                  event.preventDefault();
-                  window.open(HOME_WHATSAPP_URL, "_blank", "noopener,noreferrer");
-                }}
+                onClick={(event) => openWhatsAppUrl(HOME_WHATSAPP_URL, event)}
               >
                 Order on WhatsApp
               </a>
@@ -474,7 +511,7 @@ function HomePage() {
             <span>View medicines</span>
           </a>
           <a className="home-service-card" href="#labs">
-            <h2>Lab tests</h2>
+            <h2>Lab Tests</h2>
             <p>Home sample collection.</p>
             <span>Book a test</span>
           </a>
@@ -487,6 +524,11 @@ function HomePage() {
             <h2>Home care</h2>
             <p>Nurse, caregiver, physiotherapy.</p>
             <span>Book a visit</span>
+          </a>
+          <a className="home-service-card" href="#stepdown">
+            <h2>Step-down care</h2>
+            <p>Find a recovery centre near you.</p>
+            <span>Find a centre</span>
           </a>
           <a className="home-service-card" href="#ambulance">
             <h2>Ambulance</h2>
@@ -503,6 +545,7 @@ function HomePage() {
         <p className="home-trust">
           Cash on delivery · Home collection · Delhi NCR
         </p>
+        <HomeReviewsTeaser />
       </div>
     </div>
   );
@@ -526,7 +569,7 @@ function App() {
     };
   }, []);
 
-  const { route, q: medicineQuery } = parseAppHash(hash);
+  const { route, q: medicineQuery, id: trackId } = parseAppHash(hash);
 
   const renderPage = () => {
     switch (route) {
@@ -536,6 +579,8 @@ function App() {
         return <LabTests />;
       case "#homecare":
         return <HomeCare />;
+      case "#stepdown":
+        return <StepDownCare />;
       case "#ambulance":
         return <Ambulance />;
       case "#reports":
@@ -544,30 +589,18 @@ function App() {
         return <Profile />;
       case "#myorders":
         return <MyOrders />;
+      case "#track":
+        return <TrackPage trackId={trackId} />;
       case "#education":
-        return (
-          <PlaceholderPage
-            eyebrow="Coming soon"
-            title="Health Education"
-            body="Guides and articles on chronic care will appear here. Meanwhile, you can order medicines or book diagnostics from the sidebar."
-          />
-        );
+        return <HealthEducation />;
       case "#about":
-        return (
-          <PlaceholderPage
-            eyebrow="MediHome"
-            title="About Us"
-            body="MediHome helps patients across Delhi NCR with affordable medicines, laboratory tests, and radiology bookings at their doorstep. Our vision is to be a trusted chronic care platform. Our mission is reliable delivery, better medicine compliance, and trusted diagnostics."
-          />
-        );
+        return <About />;
       case "#contact":
-        return (
-          <PlaceholderPage
-            eyebrow="Support"
-            title="Contact Us"
-            body="Need help with an order or booking? Use Profile to keep your details up to date, and check My Orders for medicine and diagnostics status."
-          />
-        );
+        return <Contact />;
+      case "#feedback":
+        return <Feedback />;
+      case "#reviews":
+        return <Reviews />;
       default:
         return <HomePage />;
     }
@@ -603,7 +636,11 @@ function App() {
             <a
               key={link.href}
               href={link.href}
-              className={route === link.href ? "active" : undefined}
+              className={
+                route === link.href || (link.href === "#myorders" && route === "#track")
+                  ? "active"
+                  : undefined
+              }
             >
               <span className="nav-icon" aria-hidden="true">
                 {link.icon}
@@ -643,15 +680,12 @@ function App() {
 
       <main>
         {renderPage()}
-
-        <footer>
-          <div className="logo">
-            <LogoMark />
-            <span className="logo-wordmark">MediHome</span>
-          </div>
-          <p>© 2026 MediHome. All rights reserved.</p>
-        </footer>
       </main>
+
+      <footer className="app-footer">
+        <LogoMark />
+        <p>© 2026 MediHome. All rights reserved.</p>
+      </footer>
 
       {careOpen ? (
         <CustomerCarePanel onClose={() => setCareOpen(false)} />

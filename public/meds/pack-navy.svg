@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Medicine pack">
+  <rect width="160" height="160" rx="20" fill="#eef2ff"/>
+  <rect x="28" y="22" width="104" height="116" rx="10" fill="#1e3a5f"/>
+  <rect x="34" y="28" width="92" height="36" rx="6" fill="#2563eb"/>
+  <rect x="44" y="76" width="72" height="46" rx="6" fill="#eff6ff"/>
+  <ellipse cx="62" cy="99" rx="10" ry="7" fill="#93c5fd"/>
+  <ellipse cx="80" cy="99" rx="10" ry="7" fill="#bfdbfe"/>
+  <ellipse cx="98" cy="99" rx="10" ry="7" fill="#93c5fd"/>
+</svg>

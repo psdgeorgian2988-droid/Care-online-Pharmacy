@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="MediHome pack">
+  <rect width="160" height="160" rx="20" fill="#e7f6f3"/>
+  <rect x="28" y="22" width="104" height="116" rx="10" fill="#0f766e"/>
+  <rect x="34" y="28" width="92" height="36" rx="6" fill="#14b8a6"/>
+  <text x="80" y="51" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700">MediHome</text>
+  <rect x="44" y="76" width="72" height="46" rx="6" fill="#f0fdfa"/>
+  <ellipse cx="62" cy="99" rx="10" ry="7" fill="#5eead4"/>
+  <ellipse cx="80" cy="99" rx="10" ry="7" fill="#99f6e4"/>
+  <ellipse cx="98" cy="99" rx="10" ry="7" fill="#5eead4"/>
+</svg>

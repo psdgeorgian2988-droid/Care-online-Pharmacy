@@ -1,43 +1,128 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import PinGpsBlock from "./PinGpsBlock";
+import AssignedAgent from "./AssignedAgent";
+import { resolvePinLocation } from "./pinLocation";
+import { trackHref, withTracking } from "./orderTracking";
 
-const LABS = [
+const PREP_LABEL = {
+  fasting: "Fasting required",
+  urine: "Urine collection",
+  stool: "Stool collection",
+  blood: "Preparation note",
+  imaging: "Scan preparation",
+  none: "",
+};
+
+const PREP_COPY = {
+  fasting:
+    "This test needs fasting.\n\nDo not eat or drink anything except plain water for 8–12 hours before the sample is collected. Book a morning slot (7:00 AM – 11:00 AM) so the overnight fast is complete.\n\nYou may drink water. Avoid tea, coffee, juice, milk, alcohol, chewing gum, and smoking during the fast.\n\nContinue prescribed medicines unless your doctor has asked you to hold them. Tell the technician if you have diabetes or take insulin.",
+  urine:
+    "Collect a midstream clean-catch sample.\n\nUse only the sterile container provided. Wash your hands and clean the genital area with water (front to back).\n\nPass a small amount of urine first and discard it. Then collect the middle of the stream in the container up to the mark. Close the lid tightly.\n\nReturn the sample within 1–2 hours (keep it cool). First-morning urine is preferred for culture and pregnancy tests. Start antibiotics only after the sample unless your doctor says otherwise.",
+  stool:
+    "Collect the sample carefully and keep it clean.\n\nPass stool onto a clean, dry container or collection paper — not from the toilet bowl. Transfer a small amount (about walnut-sized) into the sterile container provided.\n\nDo not mix the sample with urine, water, or toilet disinfectant. Close the lid, wash your hands, and return the sample the same day.\n\nFor occult blood: avoid collecting during menstrual bleeding or active bleeding piles unless your doctor has advised otherwise.",
+  hba1c:
+    "Fasting is not required for HbA1c. You may eat and drink as usual.\n\nBring a list of your current diabetes medicines if you have one.",
+  thyroid:
+    "Fasting is not required for a thyroid profile. You may eat as usual.\n\nTake your thyroid medicine as prescribed unless your doctor says otherwise.\n\nAvoid biotin (common in hair and skin supplements) for 48 hours if you can — it can interfere with the result.",
+  mri:
+    "Remove jewellery, watches, cards, and metal objects before the scan. Tell the centre about implants, a pacemaker, clips, or pregnancy.\n\nIf contrast dye is planned, you may be asked to fast for about 4 hours and share a recent kidney-function report.",
+  ct:
+    "Contrast CT often needs 4–6 hours of fasting (plain water may be allowed). Tell the centre about iodine allergy, kidney disease, diabetes medicines such as metformin, or pregnancy.",
+  usg:
+    "Ultrasound of the abdomen usually needs 6–8 hours of fasting. Water is often allowed as advised.\n\nA moderately full bladder may be required. If asked, drink water 45–60 minutes before the slot and do not empty your bladder.",
+  mammo:
+    "Do not apply deodorant, powder, lotion, or perfume on the chest or underarms on the day of the mammogram. Wear a two-piece outfit so you only need to undress from the waist up.",
+};
+
+const TEST_PREP = {
+  cbc: { prepType: "none", instruction: "" },
+  hba1c: { prepType: "blood", instruction: PREP_COPY.hba1c },
+  lipid: { prepType: "fasting", instruction: PREP_COPY.fasting },
+  lft: { prepType: "fasting", instruction: PREP_COPY.fasting },
+  kft: { prepType: "none", instruction: "" },
+  thyroid: { prepType: "blood", instruction: PREP_COPY.thyroid },
+  vitd: { prepType: "none", instruction: "" },
+  urine: { prepType: "urine", instruction: PREP_COPY.urine },
+  "urine-culture": { prepType: "urine", instruction: PREP_COPY.urine },
+  "urine-pregnancy": { prepType: "urine", instruction: PREP_COPY.urine },
+  fbs: { prepType: "fasting", instruction: PREP_COPY.fasting },
+  insulin: { prepType: "fasting", instruction: PREP_COPY.fasting },
+  "stool-routine": { prepType: "stool", instruction: PREP_COPY.stool },
+  "stool-occult": { prepType: "stool", instruction: PREP_COPY.stool },
+  "mri-brain": { prepType: "imaging", instruction: PREP_COPY.mri },
+  "ct-chest": { prepType: "imaging", instruction: PREP_COPY.ct },
+  "usg-abdomen": { prepType: "imaging", instruction: PREP_COPY.usg },
+  "xray-chest": { prepType: "none", instruction: "" },
+  "doppler-leg": { prepType: "none", instruction: "" },
+  mammography: { prepType: "imaging", instruction: PREP_COPY.mammo },
+};
+
+function withPrep(partners) {
+  return partners.map((partner) => ({
+    ...partner,
+    tests: partner.tests.map((test) => ({
+      ...test,
+      prepType: TEST_PREP[test.id]?.prepType || "none",
+      instruction: TEST_PREP[test.id]?.instruction || "",
+    })),
+  }));
+}
+
+const LABS = withPrep([
   {
-    id: "lab1",
-    name: "MediHome Partner Lab - Gurgaon",
+    id: "metropolis",
+    name: "Metropolis",
     tests: [
       { id: "cbc", name: "Complete Blood Count (CBC)", price: 499 },
       { id: "hba1c", name: "HbA1c - Diabetes Test", price: 599 },
       { id: "lipid", name: "Lipid Profile", price: 699 },
       { id: "lft", name: "Liver Function Test (LFT)", price: 799 },
       { id: "kft", name: "Kidney Function Test (KFT)", price: 799 },
+      { id: "fbs", name: "Fasting Blood Sugar", price: 199 },
+      { id: "stool-occult", name: "Stool Occult Blood", price: 349 },
     ],
   },
   {
-    id: "lab2",
-    name: "MediHome Partner Lab - Noida",
+    id: "max-healthcare",
+    name: "Max Healthcare",
     tests: [
       { id: "cbc", name: "Complete Blood Count (CBC)", price: 449 },
       { id: "hba1c", name: "HbA1c - Diabetes Test", price: 549 },
       { id: "thyroid", name: "Thyroid Profile", price: 699 },
       { id: "vitd", name: "Vitamin D Test", price: 799 },
       { id: "lipid", name: "Lipid Profile", price: 649 },
+      { id: "insulin", name: "Insulin (Fasting)", price: 899 },
+      { id: "urine-pregnancy", name: "Urine Pregnancy Test", price: 249 },
     ],
   },
   {
-    id: "lab3",
-    name: "MediHome Partner Lab - Delhi",
+    id: "lal-pathlabs",
+    name: "Lal PathLabs",
     tests: [
       { id: "cbc", name: "Complete Blood Count (CBC)", price: 399 },
       { id: "hba1c", name: "HbA1c - Diabetes Test", price: 499 },
       { id: "lipid", name: "Lipid Profile", price: 599 },
       { id: "thyroid", name: "Thyroid Profile", price: 649 },
       { id: "urine", name: "Complete Urine Examination", price: 299 },
+      { id: "urine-culture", name: "Urine Culture", price: 549 },
+      { id: "stool-routine", name: "Stool Routine Examination", price: 299 },
     ],
   },
-];
+  {
+    id: "agilus",
+    name: "Agilus Diagnostics",
+    tests: [
+      { id: "cbc", name: "Complete Blood Count (CBC)", price: 429 },
+      { id: "hba1c", name: "HbA1c - Diabetes Test", price: 529 },
+      { id: "lipid", name: "Lipid Profile", price: 629 },
+      { id: "lft", name: "Liver Function Test (LFT)", price: 749 },
+      { id: "vitd", name: "Vitamin D Test", price: 749 },
+      { id: "stool-occult", name: "Stool Occult Blood", price: 329 },
+    ],
+  },
+]);
 
-
-const RADIOLOGY_PARTNERS = [
+const RADIOLOGY_PARTNERS = withPrep([
   {
     id: "rad1",
     name: "MediHome Imaging Centre - Gurgaon",
@@ -71,7 +156,7 @@ const RADIOLOGY_PARTNERS = [
       { id: "mammography", name: "Mammography", price: 1300 },
     ],
   },
-];
+]);
 
 const EMPTY_FORM = {
   patientName: "",
@@ -178,19 +263,13 @@ function LabTests() {
   }));
   const [errors, setErrors] = useState({});
   const [booking, setBooking] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [prepPopup, setPrepPopup] = useState(null);
 
   const selectedLab = useMemo(() => LABS.find((lab) => lab.id === selectedLabId), [selectedLabId]);
   const selectedRadiologyPartner = useMemo(
     () => RADIOLOGY_PARTNERS.find((partner) => partner.id === selectedRadiologyPartnerId),
     [selectedRadiologyPartnerId]
-  );
-  const selectedTest = useMemo(
-    () => selectedLab?.tests.find((test) => test.id === selectedTestId) || null,
-    [selectedLab, selectedTestId]
-  );
-  const selectedImaging = useMemo(
-    () => selectedRadiologyPartner?.tests.find((test) => test.id === selectedImagingId) || null,
-    [selectedRadiologyPartner, selectedImagingId]
   );
   const activeTests = serviceType === "lab" ? selectedTests : selectedImagingTests;
   const activePartner = serviceType === "lab" ? selectedLab : selectedRadiologyPartner;
@@ -198,6 +277,37 @@ function LabTests() {
   const radTotal = selectedImagingTests.reduce((sum, test) => sum + test.price, 0);
   const total = activeTests.reduce((sum, test) => sum + test.price, 0);
   const today = new Date().toISOString().split("T")[0];
+  const prepSummaryTests = serviceType === "lab" ? selectedTests : selectedImagingTests;
+  const fastingSelected = prepSummaryTests.filter((test) => test.prepType === "fasting");
+  const imagingFastingSelected = prepSummaryTests.filter(
+    (test) => test.id === "usg-abdomen" || test.id === "ct-chest"
+  );
+  const prepSummaryGroups = useMemo(() => {
+    const groups = [];
+    const seen = new Set();
+    prepSummaryTests.forEach((test) => {
+      if (!test.prepType || test.prepType === "none" || seen.has(test.prepType)) return;
+      seen.add(test.prepType);
+      const names = prepSummaryTests
+        .filter((item) => item.prepType === test.prepType)
+        .map((item) => item.name);
+      groups.push({
+        type: test.prepType,
+        label: PREP_LABEL[test.prepType] || "Preparation",
+        names,
+      });
+    });
+    return groups;
+  }, [prepSummaryTests]);
+
+  useEffect(() => {
+    if (!prepPopup) return undefined;
+    const onKey = (event) => {
+      if (event.key === "Escape") setPrepPopup(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [prepPopup]);
 
   const handleServiceChange = (type) => {
     setServiceType(type);
@@ -210,21 +320,7 @@ function LabTests() {
     setSelectedImagingTests([]);
     setServiceType("radiology");
     setErrors((prev) => ({ ...prev, radiologyPartner: "", imaging: "" }));
-  };
-
-  const addImagingTest = () => {
-    if (!selectedImaging) {
-      setErrors((prev) => ({ ...prev, imaging: "Please select an imaging study first." }));
-      return;
-    }
-    if (selectedImagingTests.some((test) => test.id === selectedImaging.id)) {
-      setErrors((prev) => ({ ...prev, imaging: "This imaging study is already added." }));
-      return;
-    }
-    setSelectedImagingTests((prev) => [...prev, selectedImaging]);
-    setSelectedImagingId("");
-    setServiceType("radiology");
-    setErrors((prev) => ({ ...prev, imaging: "" }));
+    setPrepPopup(null);
   };
 
   const toggleImagingTest = (test) => {
@@ -241,23 +337,24 @@ function LabTests() {
     setSelectedImagingTests((prev) => [...prev, test]);
     setSelectedImagingId(test.id);
     setErrors((prev) => ({ ...prev, imaging: "", radiologyPartner: "" }));
-  };
-
-  const removeImagingTest = (testId) => {
-    setSelectedImagingTests((prev) => prev.filter((test) => test.id !== testId));
+    if (test.prepType && test.prepType !== "none") {
+      setPrepPopup({ test, kind: "imaging" });
+    }
   };
 
   const clearImagingTests = () => {
     setSelectedImagingTests([]);
     setSelectedImagingId("");
+    setPrepPopup(null);
   };
 
-  const handleLabChange = (e) => {
-    setSelectedLabId(e.target.value);
+  const selectPreferredLab = (labId) => {
+    setSelectedLabId(labId);
     setSelectedTestId("");
     setSelectedTests([]);
     setServiceType("lab");
     setErrors((prev) => ({ ...prev, lab: "", test: "" }));
+    setPrepPopup(null);
   };
 
   const handleChange = (e) => {
@@ -267,25 +364,10 @@ function LabTests() {
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const addTest = () => {
-    if (!selectedTest) {
-      setErrors((prev) => ({ ...prev, test: "Please select a test first." }));
-      return;
-    }
-    if (selectedTests.some((test) => test.id === selectedTest.id)) {
-      setErrors((prev) => ({ ...prev, test: "This test is already added." }));
-      return;
-    }
-    setSelectedTests((prev) => [...prev, selectedTest]);
-    setSelectedTestId("");
-    setServiceType("lab");
-    setErrors((prev) => ({ ...prev, test: "" }));
-  };
-
   const toggleLabTest = (test) => {
     setServiceType("lab");
     if (!selectedLabId) {
-      setErrors((prev) => ({ ...prev, lab: "Please select a lab partner." }));
+      setErrors((prev) => ({ ...prev, lab: "Please select a preferred lab." }));
       return;
     }
     if (selectedTests.some((item) => item.id === test.id)) {
@@ -296,19 +378,35 @@ function LabTests() {
     setSelectedTests((prev) => [...prev, test]);
     setSelectedTestId(test.id);
     setErrors((prev) => ({ ...prev, test: "", lab: "" }));
+    if (test.prepType && test.prepType !== "none") {
+      setPrepPopup({ test, kind: "lab" });
+    }
   };
 
-  const removeTest = (testId) => setSelectedTests((prev) => prev.filter((test) => test.id !== testId));
+  const keepPrepSelection = () => setPrepPopup(null);
+
+  const cancelPrepSelection = () => {
+    if (!prepPopup) return;
+    if (prepPopup.kind === "lab") {
+      setSelectedTests((prev) => prev.filter((item) => item.id !== prepPopup.test.id));
+      setSelectedTestId((prev) => (prev === prepPopup.test.id ? "" : prev));
+    } else {
+      setSelectedImagingTests((prev) => prev.filter((item) => item.id !== prepPopup.test.id));
+      setSelectedImagingId((prev) => (prev === prepPopup.test.id ? "" : prev));
+    }
+    setPrepPopup(null);
+  };
 
   const clearTests = () => {
     setSelectedTests([]);
     setSelectedTestId("");
+    setPrepPopup(null);
   };
 
   const validate = () => {
     const newErrors = {};
     if (serviceType === "lab") {
-      if (!selectedLabId) newErrors.lab = "Please select a lab partner.";
+      if (!selectedLabId) newErrors.lab = "Please select a preferred lab.";
       if (selectedTests.length === 0) newErrors.test = "Please add at least one test.";
     } else {
       if (!selectedRadiologyPartnerId) newErrors.radiologyPartner = "Please select an imaging partner.";
@@ -326,9 +424,12 @@ function LabTests() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleBooking = (e) => {
+  const handleBooking = async (e) => {
     e.preventDefault();
     if (!validate()) return;
+
+    setSubmitting(true);
+    const gps = await resolvePinLocation(form.pinCode);
 
     const bookingDetails = {
       bookingId:
@@ -339,26 +440,40 @@ function LabTests() {
       tests: activeTests,
       total,
       ...form,
+      pinCode: gps.pinCode,
+      pin: gps.pin,
+      lat: gps.lat,
+      lng: gps.lng,
+      locality: gps.locality,
+      mapsUrl: gps.mapsUrl,
+      preferredLab: serviceType === "lab" ? activePartner.name : "",
+      preferredLabId: serviceType === "lab" ? selectedLabId : "",
       visitType: serviceType === "radiology" ? "centre" : form.visitType,
       bookedAt: new Date().toLocaleString(),
       bookedAtMs: Date.now(),
     };
 
-    setBooking(bookingDetails);
+    const trackedBooking = withTracking(
+      bookingDetails,
+      serviceType === "radiology" ? "radiology" : "lab"
+    );
+
+    setBooking(trackedBooking);
 
     try {
       const existing = JSON.parse(localStorage.getItem("mediHomeDiagnosticsBookings") || "[]");
       const list = Array.isArray(existing) ? existing : [];
       localStorage.setItem(
         "mediHomeDiagnosticsBookings",
-        JSON.stringify([bookingDetails, ...list])
+        JSON.stringify([trackedBooking, ...list])
       );
     } catch {
-      localStorage.setItem("mediHomeDiagnosticsBookings", JSON.stringify([bookingDetails]));
+      localStorage.setItem("mediHomeDiagnosticsBookings", JSON.stringify([trackedBooking]));
     }
 
-    localStorage.setItem("mediHomeLabBooking", JSON.stringify(bookingDetails));
-    localStorage.setItem("mediHomeLastBooking", JSON.stringify(bookingDetails));
+    localStorage.setItem("mediHomeLabBooking", JSON.stringify(trackedBooking));
+    localStorage.setItem("mediHomeLastBooking", JSON.stringify(trackedBooking));
+    setSubmitting(false);
   };
 
   const startNewBooking = () => {
@@ -382,32 +497,34 @@ function LabTests() {
         : {}),
     });
     setErrors({});
+    setPrepPopup(null);
   };
 
   if (booking) {
     return (
-      <div className="lab-page compact-page">
+      <>
         <style>{styles}</style>
-          <section className="lab-confirmation">
+        <div className="service-page lab-page">
+          <section className="service-confirm">
             <div className="success-icon">✓</div>
-            <h1>Booking Confirmed</h1>
-            <p className="confirmation-message">
+            <h1>Booking confirmed</h1>
+            <p>
               {booking.serviceType === "lab"
                 ? "Your laboratory test booking has been successfully submitted to MediHome."
                 : "Your radiology appointment booking has been successfully submitted to MediHome."}
             </p>
-            <div className="booking-card">
-              <div className="booking-header">
-                <h2>Booking Details</h2>
-                <span className="booking-id">{booking.bookingId}</span>
+            <div className="confirm-card">
+              <div className="confirm-head">
+                <h2>Booking details</h2>
+                <span>{booking.bookingId}</span>
               </div>
-              <div className="booking-row">
-                <span>{booking.serviceType === "lab" ? "Lab Partner" : "Imaging Partner"}</span>
-                <strong>{booking.partner}</strong>
+              <div className="confirm-row">
+                <span>{booking.serviceType === "lab" ? "Preferred lab" : "Imaging partner"}</span>
+                <strong>{booking.preferredLab || booking.partner}</strong>
               </div>
               <div className="tests-confirmation">
                 <div className="booking-row-label">
-                  {booking.serviceType === "lab" ? "Selected Laboratory Tests" : "Selected Imaging Studies"}
+                  {booking.serviceType === "lab" ? "Selected laboratory tests" : "Selected imaging studies"}
                 </div>
                 {booking.tests.map((test) => (
                   <div className="confirmation-test" key={test.id}>
@@ -416,365 +533,327 @@ function LabTests() {
                   </div>
                 ))}
               </div>
-              <div className="booking-row">
+              <div className="confirm-row">
                 <span>Patient</span>
                 <strong>{booking.patientName}</strong>
               </div>
-              <div className="booking-row">
+              <div className="confirm-row">
                 <span>Mobile</span>
                 <strong>{booking.mobile}</strong>
               </div>
-              <div className="booking-row">
-                <span>{booking.serviceType === "lab" ? "Collection Type" : "Appointment Type"}</span>
-                <strong>{booking.visitType === "home" ? "Home Collection" : "Centre Visit"}</strong>
+              <div className="confirm-row">
+                <span>{booking.serviceType === "lab" ? "Collection type" : "Appointment type"}</span>
+                <strong>{booking.visitType === "home" ? "Home collection" : "Centre visit"}</strong>
               </div>
-              <div className="booking-row">
+              <div className="confirm-row">
                 <span>Date</span>
                 <strong>{booking.date}</strong>
               </div>
-              <div className="booking-row">
-                <span>Time Slot</span>
+              <div className="confirm-row">
+                <span>Time slot</span>
                 <strong>{booking.timeSlot}</strong>
               </div>
-              <div className="booking-row total-row">
+              <div className="confirm-row">
+                <span>Address</span>
+                <strong>{booking.address}</strong>
+              </div>
+              <div className="confirm-row">
+                <span>PIN code</span>
+                <strong>{booking.pinCode}</strong>
+              </div>
+              <PinGpsBlock record={booking} />
+              <div className="confirm-row">
                 <span>Total</span>
                 <strong>₹{booking.total}</strong>
               </div>
             </div>
-            <div className="confirmation-note">
-              <strong>What's next?</strong>
-              <p>This booking ID can later be used for collection status and individual report/result tracking.</p>
+            <AssignedAgent record={booking} />
+            <p className="confirm-note">
+              Save this booking ID. Track the assigned partner live toward your PIN.
+            </p>
+            <div className="confirm-actions">
+              <button
+                type="button"
+                className="service-submit"
+                onClick={() => {
+                  window.location.hash = trackHref(booking.bookingId);
+                }}
+              >
+                Track live
+              </button>
+              <button type="button" className="service-submit" onClick={startNewBooking}>
+                Book another test
+              </button>
+              <button
+                type="button"
+                className="service-submit"
+                onClick={() => {
+                  window.location.hash = "#feedback";
+                }}
+              >
+                Share feedback
+              </button>
             </div>
-            <button type="button" className="primary-button" onClick={startNewBooking}>
-              Book Another Test
-            </button>
           </section>
-      </div>
+        </div>
+      </>
     );
   }
 
+  const isLab = serviceType === "lab";
+  const catalogPartner = isLab ? selectedLab : selectedRadiologyPartner;
+  const catalogTests = isLab ? selectedTests : selectedImagingTests;
+  const catalogErrorPartner = isLab ? errors.lab : errors.radiologyPartner;
+  const catalogErrorTests = isLab ? errors.test : errors.imaging;
+
   return (
-      <div className="lab-page compact-page">
-        <style>{styles}</style>
-        <form className="lab-form" onSubmit={handleBooking}>
-          <section className="lab-top">
-            <div className="lab-hero">
-              <div>
-                <span className="lab-label">MediHome Diagnostics</span>
-                <h1>Tests at your convenience</h1>
+    <>
+      <style>{styles}</style>
+      <div className="lab-page">
+        <header className="lab-head">
+          <div>
+            <p className="lab-kicker">Diagnostics</p>
+            <h1>Book lab tests and imaging</h1>
+            <p className="lab-lead">
+              Home sample collection and partner centres across Delhi NCR.
+            </p>
+          </div>
+          <div className="lab-tabs" role="tablist" aria-label="Service type">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={isLab}
+              className={isLab ? "is-on" : ""}
+              onClick={() => handleServiceChange("lab")}
+            >
+              Laboratory
+              {selectedTests.length > 0 ? (
+                <span>{selectedTests.length}</span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!isLab}
+              className={!isLab ? "is-on" : ""}
+              onClick={() => handleServiceChange("radiology")}
+            >
+              Radiology
+              {selectedImagingTests.length > 0 ? (
+                <span>{selectedImagingTests.length}</span>
+              ) : null}
+            </button>
+          </div>
+        </header>
+
+        <form className="lab-shell" onSubmit={handleBooking}>
+          <section className="lab-card">
+            <div className="lab-card-head">
+              <h2>{isLab ? "Select tests" : "Select studies"}</h2>
+              <p>
+                {isLab
+                  ? "Choose a lab, then add blood, urine or pathology tests."
+                  : "Choose an imaging centre, then add MRI, CT, ultrasound or X-ray."}
+              </p>
+            </div>
+
+            <label className="lab-label" htmlFor={isLab ? "preferredLab" : "radiologyPartner"}>
+              {isLab ? "Preferred lab" : "Imaging centre"} <em>*</em>
+            </label>
+            {isLab ? (
+              <select
+                id="preferredLab"
+                value={selectedLabId}
+                onChange={(e) => selectPreferredLab(e.target.value)}
+              >
+                <option value="">Select a diagnostic lab</option>
+                {LABS.map((lab) => (
+                  <option key={lab.id} value={lab.id}>
+                    {lab.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <select
+                id="radiologyPartner"
+                value={selectedRadiologyPartnerId}
+                onChange={handleRadiologyPartnerChange}
+              >
+                <option value="">Select an imaging centre</option>
+                {RADIOLOGY_PARTNERS.map((partner) => (
+                  <option key={partner.id} value={partner.id}>
+                    {partner.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            {catalogErrorPartner ? <small className="lab-error">{catalogErrorPartner}</small> : null}
+
+            <div className="lab-table" role="list">
+              <div className="lab-table-head">
+                <span>Test</span>
+                <span>Price</span>
               </div>
+              {!catalogPartner ? (
+                <p className="lab-empty">
+                  {isLab
+                    ? "Select a lab to view the test menu."
+                    : "Select a centre to view available studies."}
+                </p>
+              ) : (
+                catalogPartner.tests.map((test) => {
+                  const isOn = catalogTests.some((item) => item.id === test.id);
+                  const prep =
+                    test.prepType && test.prepType !== "none"
+                      ? PREP_LABEL[isLab ? test.prepType : "imaging"]
+                      : "";
+                  return (
+                    <button
+                      key={test.id}
+                      type="button"
+                      role="listitem"
+                      className={isOn ? "lab-row is-on" : "lab-row"}
+                      onClick={() =>
+                        isLab ? toggleLabTest(test) : toggleImagingTest(test)
+                      }
+                    >
+                      <span className="lab-check" aria-hidden="true">
+                        {isOn ? "✓" : ""}
+                      </span>
+                      <span className="lab-row-main">
+                        <strong>{test.name}</strong>
+                        {prep ? <em>{prep}</em> : null}
+                      </span>
+                      <span className="lab-row-price">₹{test.price}</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            {catalogErrorTests ? <small className="lab-error">{catalogErrorTests}</small> : null}
+
+            <div className="lab-card-foot">
+              <p>
+                {catalogTests.length
+                  ? `${catalogTests.length} selected`
+                  : "No tests selected"}
+              </p>
+              <strong>₹{isLab ? labTotal : radTotal}</strong>
+              {catalogTests.length > 0 ? (
+                <button
+                  type="button"
+                  className="lab-clear"
+                  onClick={isLab ? clearTests : clearImagingTests}
+                >
+                  Clear
+                </button>
+              ) : null}
             </div>
           </section>
 
-          <div className="lab-workspace">
-            <div className="lab-select-stack">
-              <section
-                className={`workspace-card select-panel ${serviceType === "lab" ? "active-panel" : ""}`}
-                onClick={() => handleServiceChange("lab")}
-              >
-                <div className="section-heading">
-                  <h2>Laboratory Tests</h2>
-                  <p>Blood, urine & pathology — click to book this service</p>
-                </div>
-                <div className="selection-grid">
-                  <div className="field-group">
-                    <label htmlFor="lab">
-                      Lab partner <span>*</span>
-                    </label>
-                    <select
-                      id="lab"
-                      value={selectedLabId}
-                      onChange={handleLabChange}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <option value="">Select lab</option>
-                      {LABS.map((lab) => (
-                        <option key={lab.id} value={lab.id}>
-                          {lab.name}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.lab && <small className="error">{errors.lab}</small>}
-                  </div>
-                  <div className="field-group">
-                    <label htmlFor="test">
-                      Test <span>*</span>
-                    </label>
-                    <div className="add-test-line">
-                      <select
-                        id="test"
-                        value={selectedTestId}
-                        onChange={(e) => setSelectedTestId(e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        disabled={!selectedLab}
-                      >
-                        <option value="">
-                          {selectedLab ? "Select test" : "Select lab first"}
-                        </option>
-                        {selectedLab?.tests.map((test) => (
-                          <option key={test.id} value={test.id}>
-                            {test.name} — ₹{test.price}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        className="add-test-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addTest();
-                        }}
-                      >
-                        Add
-                      </button>
-                    </div>
-                    {errors.test && <small className="error">{errors.test}</small>}
-                  </div>
-                </div>
-                <div className="selected-tests-card">
-                  <div className="selected-tests-header">
-                    <div>
-                      <span>Selected tests</span>
-                      <strong>
-                        {selectedTests.length} test{selectedTests.length === 1 ? "" : "s"}
-                      </strong>
-                    </div>
-                    {selectedTests.length > 0 && (
-                      <button
-                        type="button"
-                        className="clear-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          clearTests();
-                        }}
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                  {selectedTests.length === 0 ? (
-                    <p className="empty-tests">No tests added yet.</p>
-                  ) : (
-                    <div className="test-list">
-                      {selectedTests.map((test, index) => (
-                        <div className="test-item" key={test.id}>
-                          <div className="test-number">{index + 1}</div>
-                          <div className="test-info">
-                            <strong>{test.name}</strong>
-                            <span>₹{test.price}</span>
-                          </div>
-                          <button
-                            type="button"
-                            className="remove-button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeTest(test.id);
-                            }}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="selected-tests-total">
-                    <span>Total</span>
-                    <strong>₹{labTotal}</strong>
-                  </div>
-                </div>
-              </section>
-
-              <section
-                className={`workspace-card select-panel ${serviceType === "radiology" ? "active-panel" : ""}`}
-                onClick={() => handleServiceChange("radiology")}
-              >
-                <div className="section-heading">
-                  <h2>Radiology & Imaging</h2>
-                  <p>MRI, CT, ultrasound & more — click to book this service</p>
-                </div>
-                <div className="selection-grid">
-                  <div className="field-group">
-                    <label htmlFor="radiologyPartner">
-                      Imaging partner <span>*</span>
-                    </label>
-                    <select
-                      id="radiologyPartner"
-                      value={selectedRadiologyPartnerId}
-                      onChange={handleRadiologyPartnerChange}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <option value="">Select imaging centre</option>
-                      {RADIOLOGY_PARTNERS.map((partner) => (
-                        <option key={partner.id} value={partner.id}>
-                          {partner.name}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.radiologyPartner && (
-                      <small className="error">{errors.radiologyPartner}</small>
-                    )}
-                  </div>
-                  <div className="field-group">
-                    <label htmlFor="imaging">
-                      Imaging study <span>*</span>
-                    </label>
-                    <div className="add-test-line">
-                      <select
-                        id="imaging"
-                        value={selectedImagingId}
-                        onChange={(e) => setSelectedImagingId(e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        disabled={!selectedRadiologyPartner}
-                      >
-                        <option value="">
-                          {selectedRadiologyPartner ? "Select imaging study" : "Select partner first"}
-                        </option>
-                        {selectedRadiologyPartner?.tests.map((test) => (
-                          <option key={test.id} value={test.id}>
-                            {test.name} — ₹{test.price}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        className="add-test-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addImagingTest();
-                        }}
-                      >
-                        Add
-                      </button>
-                    </div>
-                    {errors.imaging && <small className="error">{errors.imaging}</small>}
-                  </div>
-                </div>
-                <div className="selected-tests-card">
-                  <div className="selected-tests-header">
-                    <div>
-                      <span>Selected imaging studies</span>
-                      <strong>
-                        {selectedImagingTests.length} stud
-                        {selectedImagingTests.length === 1 ? "y" : "ies"}
-                      </strong>
-                    </div>
-                    {selectedImagingTests.length > 0 && (
-                      <button
-                        type="button"
-                        className="clear-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          clearImagingTests();
-                        }}
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                  {selectedImagingTests.length === 0 ? (
-                    <p className="empty-tests">No imaging studies added yet.</p>
-                  ) : (
-                    <div className="test-list">
-                      {selectedImagingTests.map((test, index) => (
-                        <div className="test-item" key={test.id}>
-                          <div className="test-number">{index + 1}</div>
-                          <div className="test-info">
-                            <strong>{test.name}</strong>
-                            <span>₹{test.price}</span>
-                          </div>
-                          <button
-                            type="button"
-                            className="remove-button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeImagingTest(test.id);
-                            }}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="selected-tests-total">
-                    <span>Total</span>
-                    <strong>₹{radTotal}</strong>
-                  </div>
-                </div>
-              </section>
+          <section className="lab-card lab-book">
+            <div className="lab-card-head">
+              <h2>Patient and slot</h2>
+              <p>
+                {isLab ? "Home collection or a visit to the lab." : "Centre appointment only."}
+              </p>
+            </div>
+            <div className="lab-fields">
+            <div className="lab-field">
+              <label htmlFor="patientName">
+                Patient name <em>*</em>
+              </label>
+              <input
+                id="patientName"
+                name="patientName"
+                placeholder="Full name"
+                value={form.patientName}
+                onChange={handleChange}
+              />
+              {errors.patientName ? <small className="lab-error">{errors.patientName}</small> : null}
             </div>
 
-            <section className="workspace-card booking-card">
-              <div className="section-heading">
-                <h2>Booking details</h2>
-                <p>Enter patient and appointment details</p>
-              </div>
+            <div className="lab-field">
+              <label htmlFor="mobile">
+                Mobile <em>*</em>
+              </label>
+              <input
+                id="mobile"
+                name="mobile"
+                type="tel"
+                inputMode="numeric"
+                maxLength="10"
+                placeholder="10-digit mobile"
+                value={form.mobile}
+                onChange={handleChange}
+              />
+              {errors.mobile ? <small className="lab-error">{errors.mobile}</small> : null}
+            </div>
 
-              <div className="form-grid">
-                <div className="field-group">
-                  <label htmlFor="patientName">
-                    Patient name <span>*</span>
-                  </label>
-                  <input
-                    id="patientName"
-                    name="patientName"
-                    placeholder="Enter patient name"
-                    value={form.patientName}
-                    onChange={handleChange}
-                  />
-                  {errors.patientName && <small className="error">{errors.patientName}</small>}
-                </div>
-                <div className="field-group">
-                  <label htmlFor="mobile">
-                    Mobile number <span>*</span>
-                  </label>
-                  <input
-                    id="mobile"
-                    name="mobile"
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength="10"
-                    placeholder="10-digit mobile number"
-                    value={form.mobile}
-                    onChange={handleChange}
-                  />
-                  {errors.mobile && <small className="error">{errors.mobile}</small>}
-                </div>
-                <div className="field-group full-width">
-                  <label htmlFor="address">
-                    Address <span>*</span>
-                  </label>
-                  <textarea
-                    id="address"
-                    name="address"
-                    rows="1"
-                    placeholder="Enter complete address"
-                    value={form.address}
-                    onChange={handleChange}
-                  />
-                  {errors.address && <small className="error">{errors.address}</small>}
-                </div>
-                <div className="field-group">
-                  <label htmlFor="pinCode">
-                    PIN code <span>*</span>
-                  </label>
-                  <input
-                    id="pinCode"
-                    name="pinCode"
-                    inputMode="numeric"
-                    maxLength="6"
-                    placeholder="6-digit PIN code"
-                    value={form.pinCode}
-                    onChange={handleChange}
-                  />
-                  {errors.pinCode && <small className="error">{errors.pinCode}</small>}
-                </div>
-              </div>
+            <div className="lab-field lab-span">
+              <label htmlFor="address">
+                Address <em>*</em>
+              </label>
+              <textarea
+                id="address"
+                name="address"
+                rows="2"
+                placeholder="Complete visit address"
+                value={form.address}
+                onChange={handleChange}
+              />
+              {errors.address ? <small className="lab-error">{errors.address}</small> : null}
+            </div>
 
-              <div className="mini-section-title">
-                {serviceType === "lab" ? "Collection" : "Appointment"} preference
-              </div>
-              {serviceType === "lab" ? (
+            <div className="lab-field">
+              <label htmlFor="pinCode">
+                PIN code <em>*</em>
+              </label>
+              <input
+                id="pinCode"
+                name="pinCode"
+                inputMode="numeric"
+                maxLength="6"
+                placeholder="6-digit PIN"
+                value={form.pinCode}
+                onChange={handleChange}
+              />
+              {errors.pinCode ? <small className="lab-error">{errors.pinCode}</small> : null}
+              <small className="lab-hint">Location is taken from this PIN.</small>
+            </div>
+
+            <div className="lab-field">
+              <label htmlFor="date">
+                Date <em>*</em>
+              </label>
+              <input
+                id="date"
+                name="date"
+                type="date"
+                min={today}
+                value={form.date}
+                onChange={handleChange}
+              />
+              {errors.date ? <small className="lab-error">{errors.date}</small> : null}
+            </div>
+
+            <div className="lab-field">
+              <label htmlFor="timeSlot">
+                Time slot <em>*</em>
+              </label>
+              <select id="timeSlot" name="timeSlot" value={form.timeSlot} onChange={handleChange}>
+                <option value="">Select a slot</option>
+                <option value="7:00 AM - 9:00 AM">7:00 AM - 9:00 AM</option>
+                <option value="9:00 AM - 11:00 AM">9:00 AM - 11:00 AM</option>
+                <option value="11:00 AM - 1:00 PM">11:00 AM - 1:00 PM</option>
+                <option value="2:00 PM - 4:00 PM">2:00 PM - 4:00 PM</option>
+                <option value="4:00 PM - 6:00 PM">4:00 PM - 6:00 PM</option>
+              </select>
+              {errors.timeSlot ? <small className="lab-error">{errors.timeSlot}</small> : null}
+            </div>
+
+            <div className="lab-field lab-span">
+              {isLab ? (
                 <div className="visit-options">
                   <label className={`visit-card ${form.visitType === "home" ? "selected" : ""}`}>
                     <input
@@ -784,9 +863,6 @@ function LabTests() {
                       checked={form.visitType === "home"}
                       onChange={handleChange}
                     />
-                    <span className="visit-icon" aria-hidden="true">
-                      🏠
-                    </span>
                     <span>
                       <strong>Home collection</strong>
                       <small>Sample at your address</small>
@@ -800,621 +876,198 @@ function LabTests() {
                       checked={form.visitType === "centre"}
                       onChange={handleChange}
                     />
-                    <span className="visit-icon" aria-hidden="true">
-                      🏥
-                    </span>
                     <span>
                       <strong>Centre visit</strong>
-                      <small>Visit partner lab</small>
+                      <small>Visit the selected lab</small>
                     </span>
                   </label>
                 </div>
               ) : (
-                <div className="radiology-note">
-                  <span aria-hidden="true">🏥</span>
-                  <div>
-                    <strong>Centre appointment</strong>
-                    <small>
-                      MRI, CT, ultrasound and other imaging studies are booked at the selected centre.
-                    </small>
-                  </div>
-                </div>
+                <p className="centre-note">
+                  Imaging is a centre appointment at the selected partner.
+                </p>
               )}
+            </div>
 
-              <div className="mini-section-title">Date & time</div>
-              <div className="form-grid appointment-grid">
-                <div className="field-group">
-                  <label htmlFor="date">
-                    Date <span>*</span>
-                  </label>
-                  <input
-                    id="date"
-                    name="date"
-                    type="date"
-                    min={today}
-                    value={form.date}
-                    onChange={handleChange}
-                  />
-                  {errors.date && <small className="error">{errors.date}</small>}
-                </div>
-                <div className="field-group">
-                  <label htmlFor="timeSlot">
-                    Time slot <span>*</span>
-                  </label>
-                  <select id="timeSlot" name="timeSlot" value={form.timeSlot} onChange={handleChange}>
-                    <option value="">Select time</option>
-                    <option value="7:00 AM - 9:00 AM">7:00 AM - 9:00 AM</option>
-                    <option value="9:00 AM - 11:00 AM">9:00 AM - 11:00 AM</option>
-                    <option value="11:00 AM - 1:00 PM">11:00 AM - 1:00 PM</option>
-                    <option value="2:00 PM - 4:00 PM">2:00 PM - 4:00 PM</option>
-                    <option value="4:00 PM - 6:00 PM">4:00 PM - 6:00 PM</option>
-                  </select>
-                  {errors.timeSlot && <small className="error">{errors.timeSlot}</small>}
-                </div>
+            {prepSummaryGroups.length > 0 ? (
+              <div className={`lab-field lab-span prep-summary ${fastingSelected.length ? "has-fasting" : ""}`}>
+                <p className="prep-summary-kicker">Preparation</p>
+                {fastingSelected.length > 0 ? (
+                  <p className="prep-summary-alert">
+                    Fasting required — 8–12 hours, water only, before{" "}
+                    {fastingSelected.map((test) => test.name).join(", ")}.
+                  </p>
+                ) : null}
+                {imagingFastingSelected.length > 0 ? (
+                  <p className="prep-summary-alert">
+                    Fasting or contrast prep may apply for{" "}
+                    {imagingFastingSelected.map((test) => test.name).join(", ")}.
+                  </p>
+                ) : null}
+                <ul>
+                  {prepSummaryGroups.map((group) => (
+                    <li key={group.type}>
+                      <strong>{group.label}</strong>
+                      <span>{group.names.join(", ")}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
+            ) : null}
+            </div>
 
-              <section className="booking-summary">
-                <div>
-                  <span>{serviceType === "lab" ? "Lab partner" : "Imaging partner"}</span>
-                  <strong>{activePartner ? activePartner.name : "Not selected"}</strong>
-                </div>
-                <div>
-                  <span>{serviceType === "lab" ? "Tests" : "Studies"}</span>
-                  <strong>
-                    {activeTests.length
-                      ? `${activeTests.length} selected`
-                      : `No ${serviceType === "lab" ? "tests" : "studies"} selected`}
-                  </strong>
-                </div>
-                <div className="summary-price">
-                  <span>Total</span>
-                  <strong>₹{total}</strong>
-                </div>
-                <button type="submit" className="primary-button">
-                  {serviceType === "lab" ? "Confirm lab test booking" : "Confirm radiology booking"}
-                </button>
-              </section>
-            </section>
-          </div>
+            <div className="lab-book-foot">
+              <div>
+                <span>{activePartner ? activePartner.name : "No partner selected"}</span>
+                <strong>
+                  {activeTests.length ? `${activeTests.length} selected · ₹${total}` : `₹${total}`}
+                </strong>
+              </div>
+              <button type="submit" className="lab-submit" disabled={submitting}>
+                {submitting ? "Connecting PIN to map…" : "Confirm booking"}
+              </button>
+            </div>
+          </section>
         </form>
+
+        {prepPopup && (
+          <div
+            className="prep-overlay"
+            role="presentation"
+            onClick={keepPrepSelection}
+          >
+            <div
+              className="prep-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="prep-dialog-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <p className="prep-dialog-kicker">
+                {PREP_LABEL[prepPopup.test.prepType] || "Preparation"}
+              </p>
+              <h2 id="prep-dialog-title">{prepPopup.test.name}</h2>
+              <div className="prep-dialog-body">
+                {prepPopup.test.instruction.split("\n\n").map((paragraph) => (
+                  <p key={paragraph.slice(0, 40)}>{paragraph}</p>
+                ))}
+              </div>
+              <div className="prep-dialog-actions">
+                <button type="button" className="ghost-button" onClick={cancelPrepSelection}>
+                  Cancel
+                </button>
+                <button type="button" className="service-submit" onClick={keepPrepSelection}>
+                  Got it
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+    </>
   );
 }
 
 const styles = `
-.lab-page.compact-page {
-  width: 100%;
-  max-width: none;
-  height: 100%;
-  min-height: 0;
-  margin: 0;
-  background: #f5f7f8;
-  color: #143246;
-  box-sizing: border-box;
-  font-family: inherit;
-  font-size: 12px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.lab-page .lab-form {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  min-width: 0;
-  min-height: 0;
-  flex: 1;
-  overflow: hidden;
-}
-.lab-page .lab-top { flex: 0 0 auto; }
-.lab-page .lab-hero {
-  margin: 0;
-  padding: 4px 10px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #e8f4f6, #f4fbf8);
-  border: 1px solid #dce9ec;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.lab-page .lab-label {
-  display: inline-block;
-  margin: 0 8px 0 0;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #2f7a7a;
-}
-.lab-page .lab-hero h1 {
-  display: inline;
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.2;
-  color: #143246;
-}
-.lab-page .lab-workspace {
-  width: 100%;
-  margin: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
-  gap: 6px;
-  align-items: stretch;
-  min-height: 0;
-  flex: 1;
-  overflow: hidden;
-}
-.lab-page .lab-select-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 0;
-  overflow: hidden;
-}
-.lab-page .workspace-card {
-  background: #fff;
-  border-radius: 8px;
-  padding: 6px 8px;
-  box-sizing: border-box;
-  border: 1px solid #e4ecef;
-  min-width: 0;
-  min-height: 0;
-}
-.lab-page .lab-select-stack .workspace-card {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.lab-page .select-panel { cursor: pointer; }
-.lab-page .select-panel.active-panel {
-  border-color: #1a6b7a;
-  box-shadow: 0 0 0 1px #1a6b7a;
-}
-.lab-page .workspace-card.booking-card {
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.lab-page .section-heading { margin-bottom: 4px; flex: 0 0 auto; }
-.lab-page .section-heading h2 {
-  margin: 0;
-  color: #143246;
-  font-size: 13px;
-  line-height: 1.2;
-}
-.lab-page .section-heading p {
-  margin: 0;
-  color: #7a8b96;
-  font-size: 11px;
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.lab-page .selection-grid,
-.lab-page .form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px 8px;
-  flex: 0 0 auto;
-}
-.lab-page .field-group { display: flex; flex-direction: column; min-width: 0; }
-.lab-page .field-group.full-width { grid-column: 1 / -1; }
-.lab-page .field-group label {
-  margin-bottom: 2px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #34546b;
-}
-.lab-page .field-group label span { color: #d84b4b; }
-.lab-page .field-group input,
-.lab-page .field-group select,
-.lab-page .field-group textarea {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 4px 8px;
-  border: 1px solid #d7e2e9;
-  border-radius: 6px;
-  background: #fff;
-  color: #143246;
-  font-size: 12px;
-  font-family: inherit;
-  outline: none;
-  min-height: 28px;
-  height: 28px;
-}
-.lab-page .field-group textarea {
-  min-height: 28px;
-  height: 28px;
-  resize: none;
-  line-height: 1.2;
-}
-.lab-page .field-group input:focus,
-.lab-page .field-group select:focus,
-.lab-page .field-group textarea:focus {
-  border-color: #1a6b7a;
-}
-.lab-page .field-group select:disabled {
-  background: #f3f7f8;
-  cursor: not-allowed;
-}
-.lab-page .error {
-  margin-top: 1px;
-  color: #d84b4b;
-  font-size: 10px;
-  line-height: 1.2;
-}
-.lab-page .add-test-line {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px;
-}
-.lab-page .add-test-button,
-.lab-page .primary-button {
-  border: none;
-  border-radius: 6px;
-  background: #1a6b7a;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  white-space: nowrap;
-}
-.lab-page .add-test-button { padding: 0 10px; min-height: 28px; height: 28px; }
-.lab-page .primary-button { padding: 6px 12px; min-height: 30px; }
-.lab-page .selected-tests-card {
-  margin-top: 4px;
-  padding: 4px 6px;
-  border-radius: 6px;
-  background: #f7fbfc;
-  border: 1px solid #e1ebf0;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.lab-page .selected-tests-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
-}
-.lab-page .selected-tests-header span {
-  display: inline;
-  font-size: 11px;
-  color: #5d7180;
-  margin-right: 6px;
-}
-.lab-page .selected-tests-header strong {
-  color: #143246;
-  font-size: 12px;
-}
-.lab-page .clear-button {
-  border: 1px solid #d8e3e9;
-  background: #fff;
-  color: #b64b4b;
-  border-radius: 5px;
-  padding: 2px 8px;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 700;
-  font-family: inherit;
-}
-.lab-page .empty-tests {
-  margin: 4px 0;
-  color: #7a8b96;
-  font-size: 11px;
-}
-.lab-page .test-list {
-  margin-top: 3px;
-  display: grid;
-  gap: 2px;
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-}
-.lab-page .test-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 6px;
-  background: #fff;
-  border-radius: 5px;
-  border: 1px solid #e2ebef;
-  min-height: 22px;
-}
-.lab-page .test-number {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #e8f4f6;
-  color: #1a6b7a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 10px;
-  flex-shrink: 0;
-}
-.lab-page .test-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-.lab-page .test-info strong {
-  color: #143246;
-  font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.lab-page .test-info span {
-  color: #159a8c;
-  font-size: 11px;
-  font-weight: 800;
-  flex-shrink: 0;
-}
-.lab-page .remove-button {
-  border: none;
-  background: transparent;
-  color: #c45151;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 700;
-  font-family: inherit;
-}
-.lab-page .selected-tests-total {
-  margin-top: 3px;
-  padding-top: 3px;
-  border-top: 1px solid #dfe8ed;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex: 0 0 auto;
-}
-.lab-page .selected-tests-total span {
-  color: #5d7180;
-  font-size: 11px;
-  font-weight: 700;
-}
-.lab-page .selected-tests-total strong {
-  color: #159a8c;
-  font-size: 14px;
-}
-.lab-page .mini-section-title {
-  margin: 4px 0 3px;
-  color: #34546b;
-  font-size: 11px;
-  font-weight: 800;
-  flex: 0 0 auto;
-}
-.lab-page .visit-options {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  flex: 0 0 auto;
-}
-.lab-page .visit-card {
-  padding: 4px 8px;
-  border: 1px solid #e4ecef;
-  border-radius: 7px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-.lab-page .visit-card.selected {
-  border-color: #1a6b7a;
-  background: #eff8f9;
-}
-.lab-page .visit-card input { accent-color: #1a6b7a; }
-.lab-page .visit-icon { font-size: 14px; }
-.lab-page .visit-card strong {
-  display: block;
-  color: #143246;
-  font-size: 12px;
-  margin-bottom: 0;
-  line-height: 1.2;
-}
-.lab-page .visit-card small {
-  color: #5d7180;
-  font-size: 10px;
-}
-.lab-page .radiology-note {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 8px;
-  border: 1px solid #e4ecef;
-  border-radius: 7px;
-  background: #f7fbfc;
-  flex: 0 0 auto;
-}
-.lab-page .radiology-note > span { font-size: 16px; }
-.lab-page .radiology-note strong {
-  display: block;
-  color: #143246;
-  font-size: 12px;
-}
-.lab-page .radiology-note small {
-  display: block;
-  margin-top: 0;
-  color: #5d7180;
-  font-size: 11px;
-  line-height: 1.25;
-}
-.lab-page .appointment-grid { margin-top: 0; }
-.lab-page .booking-summary {
-  margin: auto 0 0;
-  padding: 5px 8px;
-  background: #eff8f9;
-  border: 1px solid #dce9ec;
-  border-radius: 8px;
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.7fr) auto;
-  gap: 4px 8px;
-  align-items: center;
-  box-sizing: border-box;
-  flex: 0 0 auto;
-}
-.lab-page .booking-summary .primary-button {
-  grid-column: 1 / -1;
-}
-.lab-page .booking-summary span {
-  display: block;
-  margin-bottom: 0;
-  font-size: 10px;
-  color: #5d7180;
-}
-.lab-page .booking-summary strong {
-  color: #143246;
-  font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: block;
-}
-.lab-page .summary-price { text-align: right; }
-.lab-page .summary-price strong {
-  font-size: 15px;
-  color: #159a8c;
-}
-.lab-page .lab-confirmation {
-  flex: 1;
-  min-height: 0;
-  max-width: none;
-  margin: 0;
-  padding: 4px 0;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.lab-page .success-icon {
-  width: 32px;
-  height: 32px;
-  margin: 0 auto 4px;
-  border-radius: 50%;
-  background: #e5f8ee;
-  color: #1c9b61;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 800;
-  flex: 0 0 auto;
-}
-.lab-page .lab-confirmation h1 {
-  margin: 0 0 2px;
-  color: #143246;
-  font-size: 16px;
-}
-.lab-page .confirmation-message {
-  margin: 0 auto 6px;
-  color: #5d7180;
-  font-size: 12px;
-  line-height: 1.3;
-}
-.lab-page .lab-confirmation .booking-card {
-  text-align: left;
-  background: #fff;
-  border-radius: 8px;
-  padding: 8px 10px;
-  border: 1px solid #e4ecef;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 16px;
-}
-.lab-page .booking-header {
-  grid-column: 1 / -1;
-  padding-bottom: 4px;
-  margin-bottom: 2px;
-  border-bottom: 1px solid #e5edf1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-.lab-page .booking-header h2 {
-  margin: 0;
-  color: #143246;
-  font-size: 13px;
-}
-.lab-page .booking-id {
-  padding: 3px 8px;
-  border-radius: 5px;
-  background: #e8f4f6;
-  color: #1a6b7a;
-  font-size: 11px;
-  font-weight: 800;
-}
-.lab-page .booking-row {
-  padding: 4px 0;
-  border-bottom: 1px solid #edf1f3;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-}
-.lab-page .booking-row span { color: #5d7180; font-size: 11px; }
-.lab-page .booking-row strong {
-  color: #143246;
-  font-size: 12px;
-  text-align: right;
-}
-.lab-page .tests-confirmation {
-  grid-column: 1 / -1;
-  padding: 4px 0;
-  border-bottom: 1px solid #edf1f3;
-}
-.lab-page .booking-row-label {
-  margin-bottom: 2px;
-  color: #5d7180;
-  font-size: 11px;
-}
-.lab-page .confirmation-test {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 1px 0;
-  font-size: 12px;
-}
-.lab-page .confirmation-test strong { color: #159a8c; }
-.lab-page .booking-row.total-row { border-bottom: none; }
-.lab-page .booking-row.total-row strong { color: #159a8c; font-size: 15px; }
-.lab-page .confirmation-note {
-  margin: 6px 0;
-  padding: 6px 8px;
-  border-radius: 7px;
-  background: #fffaf0;
-  border: 1px solid #f1e4c7;
-  text-align: left;
-  flex: 0 0 auto;
-}
-.lab-page .confirmation-note strong { color: #775d20; font-size: 12px; }
-.lab-page .confirmation-note p {
-  margin: 2px 0 0;
-  color: #7c7059;
-  font-size: 11px;
-  line-height: 1.3;
-}
-.lab-page .lab-confirmation .primary-button {
-  align-self: center;
-  flex: 0 0 auto;
-}
-@media (max-width: 800px) {
-  .lab-page .lab-hero-icon { display: none; }
-  .lab-page .summary-price { text-align: left; }
+.lab-page{width:100%;max-width:none;padding:18px 22px 20px 16px;box-sizing:border-box;color:#143246;background:#f6fbff}
+.lab-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 0 16px;flex-wrap:wrap}
+.lab-kicker{margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1a6b7a}
+.lab-head h1{margin:0;font-size:24px;line-height:1.2;font-weight:700;color:#123b59}
+.lab-lead{margin:6px 0 0;font-size:14px;line-height:1.45;color:#5d7180}
+.lab-tabs{display:inline-flex;padding:4px;border-radius:10px;background:#e8f1f6;gap:4px}
+.lab-tabs button{border:0;background:transparent;color:#3d5a6c;font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.lab-tabs button.is-on{background:#fff;color:#1a6b7a;box-shadow:0 1px 3px rgba(20,50,70,.08)}
+.lab-tabs span{min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#1a6b7a;color:#fff;font-size:11px;line-height:18px;text-align:center}
+.lab-shell{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.9fr);gap:16px;align-items:start}
+.lab-card{background:#fff;border:1px solid #e4ecef;border-radius:12px;padding:16px 18px;min-width:0}
+.lab-card-head{margin:0 0 14px;padding-bottom:12px;border-bottom:1px solid #eef3f6}
+.lab-card-head h2{margin:0;font-size:16px;font-weight:700;color:#143246}
+.lab-card-head p{margin:4px 0 0;font-size:13px;color:#5d7180;line-height:1.4}
+.lab-label{display:block;margin:0 0 6px;font-size:12px;font-weight:700;color:#34546b}
+.lab-label em,.lab-field label em{color:#d84b4b;font-style:normal}
+.lab-card>select,.lab-field input,.lab-field select,.lab-field textarea{
+  width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;min-height:40px;background:#fff
+}
+.lab-field textarea{min-height:64px;resize:vertical}
+.lab-card>select:focus,.lab-field input:focus,.lab-field select:focus,.lab-field textarea:focus{border-color:#1a6b7a}
+.lab-error{display:block;margin-top:6px;color:#d84b4b;font-size:12px}
+.lab-hint{display:block;margin-top:6px;color:#5d7180;font-size:12px}
+.lab-table{margin-top:14px;border:1px solid #e8eef2;border-radius:10px;overflow:hidden;background:#fff}
+.lab-table-head{display:flex;justify-content:space-between;padding:8px 14px 8px 42px;background:#f7fafc;color:#5d7180;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.lab-empty{margin:0;padding:28px 16px;text-align:center;color:#7a8b96;font-size:13px;line-height:1.45}
+.lab-row{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border:0;border-top:1px solid #eef3f6;background:#fff;color:inherit;text-align:left;cursor:pointer;font-family:inherit}
+.lab-row:hover{background:#f7fbfd}
+.lab-row.is-on{background:#f3fafb}
+.lab-check{width:18px;height:18px;border-radius:4px;border:1px solid #c5d8e6;background:#fff;color:#1a6b7a;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.lab-row.is-on .lab-check{border-color:#1a6b7a;background:#e8f4f6}
+.lab-row-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.lab-row-main strong{font-size:14px;font-weight:600;color:#143246}
+.lab-row-main em{font-style:normal;font-size:11px;font-weight:600;color:#1a6b7a}
+.lab-row-price{flex-shrink:0;font-size:14px;font-weight:700;color:#143246}
+.lab-card-foot{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid #eef3f6;font-size:13px;color:#5d7180}
+.lab-card-foot strong{margin-left:auto;font-size:15px;color:#143246}
+.lab-clear{border:0;background:none;padding:0;color:#b64b4b;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.lab-book{position:sticky;top:8px}
+.lab-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.lab-field{display:flex;flex-direction:column;min-width:0}
+.lab-field.lab-span{grid-column:1/-1}
+.lab-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
+.visit-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.visit-card{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border:1px solid #e4ecef;border-radius:8px;background:#f7fbfe;cursor:pointer}
+.visit-card.selected{border-color:#1a6b7a;background:#eef7fb}
+.visit-card input{accent-color:#1a6b7a;margin-top:2px}
+.visit-card strong{display:block;font-size:13px;color:#143246}
+.visit-card small{display:block;margin-top:2px;font-size:12px;color:#5d7180}
+.centre-note{margin:0;padding:10px 12px;border-radius:8px;background:#f7fbfe;border:1px solid #e4ecef;font-size:13px;line-height:1.45;color:#5d7180}
+.lab-book-foot{margin-top:14px;padding-top:14px;border-top:1px solid #eef3f6;display:flex;flex-direction:column;gap:10px}
+.lab-book-foot>div{display:flex;flex-direction:column;gap:2px}
+.lab-book-foot span{font-size:13px;color:#5d7180}
+.lab-book-foot strong{font-size:15px;color:#143246}
+.lab-submit,.service-submit{border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:42px;cursor:pointer;font-family:inherit;width:100%}
+.lab-submit:disabled{opacity:.7;cursor:wait}
+.confirm-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.confirm-actions .service-submit,.confirm-actions .lab-submit{width:auto;min-width:180px}
+.service-confirm{max-width:640px;margin:12px auto;text-align:center}
+.success-icon{width:52px;height:52px;margin:0 auto 10px;border-radius:50%;background:#e5f8ee;color:#1c9b61;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
+.service-confirm h1{margin:0 0 6px;font-size:22px}
+.service-confirm p{margin:0 0 14px;color:#5d7180;font-size:14px}
+.confirm-card{text-align:left;background:#fff;border:1px solid #e4ecef;border-radius:12px;padding:14px;margin-bottom:14px}
+.confirm-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-bottom:8px;margin-bottom:4px;border-bottom:1px solid #e5edf1}
+.confirm-head h2{margin:0;font-size:16px}
+.confirm-head span{padding:5px 9px;border-radius:6px;background:#e8f4f6;color:#1a6b7a;font-size:12px;font-weight:800}
+.confirm-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #edf1f3;font-size:14px}
+.confirm-row span{color:#5d7180}
+.confirm-row strong{text-align:right}
+.confirm-row:last-child{border-bottom:none}
+.confirm-note{margin:0 0 12px;font-size:13px;color:#5d7180}
+.tests-confirmation{padding:8px 0;border-bottom:1px solid #edf1f3}
+.booking-row-label{margin-bottom:6px;color:#5d7180;font-size:13px}
+.confirmation-test{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:14px}
+.confirmation-test strong{color:#1a6b7a}
+.prep-summary{padding:12px 14px;border-radius:10px;border:1px solid #d7e8f0;background:#f7fbfd}
+.prep-summary.has-fasting{border-color:#b7d4de;background:#eef7f9}
+.prep-summary-kicker{margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#1a6b7a}
+.prep-summary-alert{margin:0 0 8px;font-size:13px;font-weight:700;line-height:1.4;color:#143246}
+.prep-summary ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.prep-summary li{display:flex;flex-direction:column;gap:1px}
+.prep-summary li strong{font-size:13px;color:#143246}
+.prep-summary li span{font-size:13px;color:#5d7180;line-height:1.4}
+.prep-overlay{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(20,50,70,.46)}
+.prep-dialog{width:min(440px,100%);max-height:min(86vh,620px);overflow:auto;padding:22px 22px 18px;border-radius:12px;background:#fff;border:1px solid #e4ecef;box-shadow:0 18px 48px rgba(20,50,70,.22);color:#143246}
+.prep-dialog-kicker{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#1a6b7a}
+.prep-dialog h2{margin:0 0 12px;font-size:18px;font-weight:700;color:#143246}
+.prep-dialog-body p{margin:0 0 10px;font-size:14px;line-height:1.55;color:#34546b}
+.prep-dialog-body p:last-child{margin-bottom:0}
+.prep-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid #e5edf1}
+.ghost-button{border:1px solid #d8e3e9;border-radius:8px;background:#fff;color:#34546b;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;min-height:40px;padding:8px 14px}
+.ghost-button:hover{background:#f7fbfe}
+.prep-dialog-actions .service-submit,.prep-dialog-actions .lab-submit{width:auto;min-width:112px}
+@media (max-width:900px){
+  .lab-page{padding:14px}
+  .lab-shell,.lab-fields,.visit-options{grid-template-columns:1fr}
+  .lab-book{position:static}
 }
 `;
+
 
 export default LabTests;

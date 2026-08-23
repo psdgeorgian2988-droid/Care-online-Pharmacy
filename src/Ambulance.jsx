@@ -1,4 +1,8 @@
 import { useMemo, useState } from "react";
+import PinGpsBlock from "./PinGpsBlock";
+import AssignedAgent from "./AssignedAgent";
+import { resolvePinLocation } from "./pinLocation";
+import { trackHref, withTracking } from "./orderTracking";
 
 const STORAGE_KEY = "mediHomeAmbulanceRequests";
 
@@ -31,6 +35,7 @@ function Ambulance() {
   });
   const [errors, setErrors] = useState({});
   const [request, setRequest] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -53,31 +58,42 @@ function Ambulance() {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (!validate()) return;
+
+    setSubmitting(true);
+    const gps = await resolvePinLocation(form.pinCode);
 
     const requestDetails = {
       requestId: "MH-AMB-" + Math.floor(100000 + Math.random() * 900000),
       patientName: form.patientName.trim(),
       mobile: form.mobile,
       pickupAddress: form.pickupAddress.trim(),
-      pinCode: form.pinCode,
+      pinCode: gps.pinCode,
+      pin: gps.pin,
+      lat: gps.lat,
+      lng: gps.lng,
+      locality: gps.locality,
+      mapsUrl: gps.mapsUrl,
       emergencyType: form.emergencyType,
       notes: form.notes.trim(),
       requestedAt: new Date().toLocaleString(),
       requestedAtMs: Date.now(),
     };
 
+    const trackedRequest = withTracking(requestDetails, "ambulance");
+
     try {
       const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
       const list = Array.isArray(existing) ? existing : [];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([requestDetails, ...list]));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([trackedRequest, ...list]));
     } catch {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([requestDetails]));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([trackedRequest]));
     }
 
-    setRequest(requestDetails);
+    setRequest(trackedRequest);
+    setSubmitting(false);
   };
 
   const startNew = () => {
@@ -127,10 +143,17 @@ function Ambulance() {
                 <span>Pickup</span>
                 <strong>{request.pickupAddress}</strong>
               </div>
+              {request.destinationName ? (
+                <div className="confirm-row">
+                  <span>Drop at</span>
+                  <strong>{request.destinationName}</strong>
+                </div>
+              ) : null}
               <div className="confirm-row">
                 <span>PIN</span>
                 <strong>{request.pinCode}</strong>
               </div>
+              <PinGpsBlock record={request} />
               {request.notes ? (
                 <div className="confirm-row">
                   <span>Notes</span>
@@ -138,12 +161,33 @@ function Ambulance() {
                 </div>
               ) : null}
             </div>
+            <AssignedAgent record={request} />
             <p className="confirm-note">
-              This is a local confirmation only. GPS tracking is not live yet.
+              Live tracking follows the assigned ambulance toward your pickup PIN.
             </p>
-            <button type="button" className="service-submit" onClick={startNew}>
-              Request another ambulance
-            </button>
+            <div className="confirm-actions">
+              <button
+                type="button"
+                className="service-submit"
+                onClick={() => {
+                  window.location.hash = trackHref(request.requestId);
+                }}
+              >
+                Track live
+              </button>
+              <button type="button" className="service-submit" onClick={startNew}>
+                Request another ambulance
+              </button>
+              <button
+                type="button"
+                className="service-submit"
+                onClick={() => {
+                  window.location.hash = "#feedback";
+                }}
+              >
+                Share feedback
+              </button>
+            </div>
           </section>
         </div>
       </>
@@ -223,6 +267,7 @@ function Ambulance() {
               placeholder="6-digit PIN"
             />
             {errors.pinCode && <small>{errors.pinCode}</small>}
+            <small className="pin-gps-hint">Pickup GPS is connected from this PIN.</small>
           </div>
 
           <div className="field">
@@ -253,8 +298,8 @@ function Ambulance() {
             />
           </div>
 
-          <button type="submit" className="service-submit">
-            Submit ambulance request
+          <button type="submit" className="service-submit" disabled={submitting}>
+            {submitting ? "Connecting PIN to map…" : "Submit ambulance request"}
           </button>
         </form>
       </div>
@@ -277,7 +322,10 @@ const styles = `
 .service-form textarea{min-height:56px;resize:vertical}
 .service-form input:focus,.service-form select:focus,.service-form textarea:focus{border-color:#1a6b7a}
 .service-form small{margin-top:4px;color:#d84b4b;font-size:12px}
+.service-form small.pin-gps-hint{color:#5d7180}
 .service-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:40px;cursor:pointer;font-family:inherit}
+.confirm-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.confirm-actions .service-submit{grid-column:auto;min-width:180px}
 .service-confirm{max-width:640px;margin:12px auto;text-align:center}
 .success-icon{width:52px;height:52px;margin:0 auto 10px;border-radius:50%;background:#e5f8ee;color:#1c9b61;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
 .service-confirm h1{margin:0 0 6px;font-size:22px}
