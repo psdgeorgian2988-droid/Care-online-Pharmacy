@@ -3,6 +3,7 @@ import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
 import { trackHref, withTracking } from "./orderTracking";
+import { buildIndiaCombos } from "./indiaMedicineCombos";
 
 function readHomeMedicineSearch() {
   const hash = window.location.hash || "";
@@ -56,6 +57,10 @@ const CATEGORY_PACK_ART = {
   Gastric: "/meds/pack-violet.svg",
   Infection: "/meds/pack-gold.svg",
   Allergy: "/meds/pack-rose.svg",
+  Neurology: "/meds/pack-violet.svg",
+  Urology: "/meds/pack-slate.svg",
+  "Women's Health": "/meds/pack-rose.svg",
+  Dermatology: "/meds/pack-amber.svg",
 };
 
 function withHouseBrand(medicine) {
@@ -76,7 +81,7 @@ function withHouseBrand(medicine) {
   };
 }
 
-const medicines = [
+const seedMedicines = [
   withHouseBrand({
     id: 1,
     name: "MediHome Metformin 500 mg",
@@ -2504,6 +2509,28 @@ const medicines = [
   },
 ];
 
+function medicineSkuKey(medicine) {
+  const house = medicine.isMediHome ?? String(medicine.brand || "MediHome").toLowerCase() === "medihome";
+  const brand = house ? "medihome" : String(medicine.brand || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const salt = String(medicine.salt || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const strength = String(medicine.strength || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  return `${brand}:${salt}:${strength}`;
+}
+
+function mergeMedicineLists(...lists) {
+  const seen = new Set();
+  const merged = [];
+  lists.flat().forEach((item) => {
+    const key = medicineSkuKey(item);
+    if (seen.has(key)) return;
+    seen.add(key);
+    merged.push(item);
+  });
+  return merged;
+}
+
+const medicines = mergeMedicineLists(seedMedicines, buildIndiaCombos(withHouseBrand, 1000));
+
 const FLAGSHIP_BRANDS = new Set([
   "dolo650",
   "crocin650advance",
@@ -2535,6 +2562,17 @@ function normalizeSearchText(value) {
 function compositionKey(medicine) {
   return normalizeSearchText(`${medicine.salt || ""} ${medicine.strength || ""}`);
 }
+
+const indianBrandsByComposition = catalogue.reduce((map, medicine) => {
+  if (medicine.isMediHome) return map;
+  const key = compositionKey(medicine);
+  const name = medicine.brand || medicine.name;
+  if (!name) return map;
+  const current = map.get(key) || [];
+  if (!current.includes(name)) current.push(name);
+  map.set(key, current);
+  return map;
+}, new Map());
 
 function extractStrengthTokens(query) {
   const matches = String(query || "")
@@ -2766,7 +2804,7 @@ function MedicinePhoto({ medicine, className = "medicine-photo" }) {
   );
 }
 
-function MedicineCard({ medicine, onAdd }) {
+function MedicineCard({ medicine, onAdd, sameBrands = [] }) {
   return (
     <div className="medicine-card">
       <MedicinePhoto medicine={medicine} />
@@ -2778,6 +2816,12 @@ function MedicineCard({ medicine, onAdd }) {
           <span className="medicine-brand-label">Brand: {medicine.brand}</span>
         )}
         <span className="medicine-salt">{medicine.composition}</span>
+        {medicine.isMediHome && sameBrands.length > 0 ? (
+          <p className="medicine-same-brands">
+            Same composition as {sameBrands.slice(0, 4).join(", ")}
+            {sameBrands.length > 4 ? ` +${sameBrands.length - 4} more` : ""}
+          </p>
+        ) : null}
         <div className="medicine-card-meta">
           <span>
             <strong>Strength:</strong> {medicine.strength}
@@ -3101,6 +3145,10 @@ function Medicines({ initialSearch = "" }) {
     "Gastric",
     "Infection",
     "Allergy",
+    "Neurology",
+    "Urology",
+    "Women's Health",
+    "Dermatology",
   ];
 
   const searchResult = searchMedicines(catalogue, search);
@@ -3280,7 +3328,10 @@ function Medicines({ initialSearch = "" }) {
         <div className="medicines-title-row">
           <div>
             <h1>Order Medicines</h1>
-            <p>Get your medicines conveniently delivered to your doorstep.</p>
+            <p>
+              Common Indian brands and the same composition as MediHome, for
+              comparison and savings.
+            </p>
           </div>
           <div
             className="cart-box"
@@ -3323,6 +3374,10 @@ function Medicines({ initialSearch = "" }) {
             </button>
           ))}
         </div>
+        <p className="medicines-combo-hint">
+          Each MediHome pack uses the same composition as common Indian brands.
+          Search a brand name to compare price.
+        </p>
         <div className="medicine-search-box">
           <input
             type="text"
@@ -3608,6 +3663,7 @@ function Medicines({ initialSearch = "" }) {
                 <MedicineCard
                   key={medicine.id}
                   medicine={medicine}
+                  sameBrands={indianBrandsByComposition.get(compositionKey(medicine)) || []}
                   onAdd={addToCart}
                 />
               ))

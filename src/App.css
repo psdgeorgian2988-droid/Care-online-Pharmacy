@@ -3175,6 +3175,19 @@ body,
   font-weight: 600;
 }
 
+#medicines .medicine-same-brands {
+  margin: 4px 0 0 !important;
+  color: #5d7180 !important;
+  font-size: 12px !important;
+  line-height: 1.35;
+}
+
+.medicines-combo-hint {
+  margin: 8px 0 0;
+  color: #5d7180;
+  font-size: 13px;
+}
+
 #medicines .medicine-card-meta {
   display: flex;
   flex-wrap: wrap;
