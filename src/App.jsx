@@ -19,6 +19,7 @@ import Partner from "./Partner";
 import Seo from "./Seo";
 import SocialLinks from "./SocialLinks";
 import Social from "./Social";
+import MedicineSearchTools from "./MedicineSearchTools";
 import { reviewStats } from "./reviewStore";
 
 const NAV_LINKS = [
@@ -448,23 +449,25 @@ function HomeReviewsTeaser() {
 function HomePage() {
   const [query, setQuery] = useState("");
 
-  const goToMedicines = (event) => {
-    event.preventDefault();
-    const value = query.trim();
+  const applyMedicineQuery = (value) => {
+    const next = String(value || "").trim();
+    setQuery(next);
     try {
-      if (value) {
-        sessionStorage.setItem("mediHomeMedicineSearch", value);
-      } else {
-        sessionStorage.removeItem("mediHomeMedicineSearch");
-      }
+      if (next) sessionStorage.setItem("mediHomeMedicineSearch", next);
+      else sessionStorage.removeItem("mediHomeMedicineSearch");
     } catch {
-      /* ignore private-mode storage errors */
+      /* ignore */
     }
     goToHash(
-      value
-        ? `#medicine-search?q=${encodeURIComponent(value)}`
+      next
+        ? `#medicine-search?q=${encodeURIComponent(next)}`
         : "#medicine-search"
     );
+  };
+
+  const goToMedicines = (event) => {
+    event.preventDefault();
+    applyMedicineQuery(query);
   };
 
   return (
@@ -493,6 +496,7 @@ function HomePage() {
               />
               <button type="submit">Search</button>
             </form>
+            <MedicineSearchTools onQuery={applyMedicineQuery} />
 
             <p className="home-whatsapp-line">
               Prefer to talk?{" "}

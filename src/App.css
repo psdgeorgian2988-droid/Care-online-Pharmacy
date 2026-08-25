@@ -5425,3 +5425,44 @@ a.order-details-btn {
   outline: 2px solid #7eb8ff;
   outline-offset: 1px;
 }
+
+.med-search-tools {
+  margin: 8px 0 0;
+  text-align: left;
+}
+.med-search-tools-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.med-search-tool {
+  border: 1px solid #c5d4dc;
+  border-radius: 8px;
+  background: #fff;
+  color: #17556a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  min-height: 38px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+.med-search-tool:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.med-search-tools-hint,
+.med-search-tools-status {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #5d7180;
+}
+.med-search-tools-status {
+  color: #1a6b7a;
+  font-weight: 600;
+}
+.home-landing .med-search-tools {
+  max-width: 100%;
+  margin-top: 10px;
+}

@@ -6,6 +6,7 @@ import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import { buildIndiaCombos } from "./indiaMedicineCombos";
 import PaymentBlock from "./PaymentBlock";
 import { settleCheckoutPayment } from "./paymentApi";
+import MedicineSearchTools from "./MedicineSearchTools";
 
 function readHomeMedicineSearch() {
   const hash = window.location.hash || "";
@@ -3443,6 +3444,12 @@ function Medicines({ initialSearch = "" }) {
             </button>
           )}
         </div>
+        <MedicineSearchTools
+          onQuery={(value) => {
+            setSearch(value);
+            setCategory("All");
+          }}
+        />
       </div>
 
       {showCart && (
