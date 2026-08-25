@@ -1,0 +1,33 @@
+{
+  "payments": [
+    {
+      "id": "MH-PAY-840ea0b5734b",
+      "status": "paid",
+      "kind": "medicine",
+      "pin": "110001",
+      "reference": "",
+      "name": "Test",
+      "mobile": "9654222988",
+      "split": {
+        "currency": "INR",
+        "kind": "medicine",
+        "totalRupees": 500,
+        "totalPaise": 50000,
+        "platformPercent": 20,
+        "platformPaise": 10000,
+        "platformRupees": 100,
+        "partnerPaise": 40000,
+        "partnerRupees": 400,
+        "partnerLabel": "Delivery outlet",
+        "outletId": "MH-OUT-CD",
+        "outletName": "Central Delhi Outlet",
+        "razorpayAccountId": ""
+      },
+      "razorpayOrderId": "",
+      "razorpayPaymentId": "",
+      "createdAt": 1787596345960,
+      "paidAt": 1787596345999,
+      "testPaid": true
+    }
+  ]
+}

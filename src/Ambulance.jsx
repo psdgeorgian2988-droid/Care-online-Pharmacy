@@ -2,9 +2,15 @@ import { useMemo, useState } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
-import { trackHref, withTracking } from "./orderTracking";
+import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import PaymentBlock from "./PaymentBlock";
+import { settleCheckoutPayment } from "./paymentApi";
 
 const STORAGE_KEY = "mediHomeAmbulanceRequests";
+const AMBULANCE_FEE = {
+  emergency: 3999,
+  "non-emergency": 2499,
+};
 
 function readProfile() {
   try {
@@ -36,6 +42,8 @@ function Ambulance() {
   const [errors, setErrors] = useState({});
   const [request, setRequest] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [payMethod, setPayMethod] = useState("cod");
+  const ambFee = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -63,37 +71,48 @@ function Ambulance() {
     if (!validate()) return;
 
     setSubmitting(true);
-    const gps = await resolvePinLocation(form.pinCode);
-
-    const requestDetails = {
-      requestId: "MH-AMB-" + Math.floor(100000 + Math.random() * 900000),
-      patientName: form.patientName.trim(),
-      mobile: form.mobile,
-      pickupAddress: form.pickupAddress.trim(),
-      pinCode: gps.pinCode,
-      pin: gps.pin,
-      lat: gps.lat,
-      lng: gps.lng,
-      locality: gps.locality,
-      mapsUrl: gps.mapsUrl,
-      emergencyType: form.emergencyType,
-      notes: form.notes.trim(),
-      requestedAt: new Date().toLocaleString(),
-      requestedAtMs: Date.now(),
-    };
-
-    const trackedRequest = withTracking(requestDetails, "ambulance");
-
     try {
-      const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      const list = Array.isArray(existing) ? existing : [];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([trackedRequest, ...list]));
-    } catch {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([trackedRequest]));
-    }
+      const gps = await resolvePinLocation(form.pinCode);
+      const total = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
+      const method =
+        form.emergencyType === "emergency" ? "cod" : payMethod;
+      const payment = await settleCheckoutPayment({
+        method,
+        amountRupees: total,
+        kind: "ambulance",
+        pin: gps.pinCode,
+        name: form.patientName.trim(),
+        mobile: form.mobile,
+        reference: `amb-${Date.now()}`,
+        description: "MediHome ambulance",
+      });
 
-    setRequest(trackedRequest);
-    setSubmitting(false);
+      const requestDetails = {
+        requestId: "MH-AMB-" + Math.floor(100000 + Math.random() * 900000),
+        patientName: form.patientName.trim(),
+        mobile: form.mobile,
+        pickupAddress: form.pickupAddress.trim(),
+        pinCode: gps.pinCode,
+        pin: gps.pin,
+        lat: gps.lat,
+        lng: gps.lng,
+        locality: gps.locality,
+        mapsUrl: gps.mapsUrl,
+        emergencyType: form.emergencyType,
+        notes: form.notes.trim(),
+        total,
+        requestedAt: new Date().toLocaleString(),
+        requestedAtMs: Date.now(),
+        ...payment,
+      };
+
+      const trackedRequest = persistOrder(withTracking(requestDetails, "ambulance"));
+      setRequest(trackedRequest);
+    } catch (error) {
+      alert(error.message || "Ambulance request could not be completed.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const startNew = () => {
@@ -106,6 +125,7 @@ function Ambulance() {
       emergencyType: "emergency",
       notes: "",
     });
+    setPayMethod("cod");
     setErrors({});
   };
 
@@ -129,6 +149,20 @@ function Ambulance() {
                   {request.emergencyType === "emergency"
                     ? "Emergency"
                     : "Non-emergency"}
+                </strong>
+              </div>
+              <div className="confirm-row">
+                <span>Charges</span>
+                <strong>
+                  ₹{Number(request.total || 0).toLocaleString("en-IN")}
+                </strong>
+              </div>
+              <div className="confirm-row">
+                <span>Payment</span>
+                <strong>
+                  {request.paymentMethod === "online"
+                    ? "Paid online"
+                    : "Cash on arrival"}
                 </strong>
               </div>
               <div className="confirm-row">
@@ -202,7 +236,7 @@ function Ambulance() {
           <div>
             <span className="service-kicker">MediHome Ambulance</span>
             <h1>Request An Ambulance</h1>
-            <p>Emergency or planned transfer in Delhi NCR. We confirm by phone.</p>
+            <p>Emergency or Planned Transfer in Delhi NCR.</p>
           </div>
         </section>
 
@@ -297,6 +331,20 @@ function Ambulance() {
               placeholder="Symptoms, hospital preference, floor, etc."
             />
           </div>
+
+          {form.emergencyType === "emergency" ? (
+            <p className="pin-gps-hint">
+              Emergency rides are cash on arrival.
+            </p>
+          ) : (
+            <PaymentBlock
+              kind="ambulance"
+              amount={ambFee}
+              pin={form.pinCode}
+              method={payMethod}
+              onMethodChange={setPayMethod}
+            />
+          )}
 
           <button type="submit" className="service-submit" disabled={submitting}>
             {submitting ? "Connecting PIN to map…" : "Submit ambulance request"}

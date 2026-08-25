@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
-import { trackHref, withTracking } from "./orderTracking";
+import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import { buildIndiaCombos } from "./indiaMedicineCombos";
+import PaymentBlock from "./PaymentBlock";
+import { settleCheckoutPayment } from "./paymentApi";
 
 function readHomeMedicineSearch() {
   const hash = window.location.hash || "";
@@ -2708,6 +2710,15 @@ function findMediHomeMatch(list, brandMedicine) {
   );
 }
 
+function findBrandFamily(list, mediHomeMedicine) {
+  if (!mediHomeMedicine) return [];
+  const key = compositionKey(mediHomeMedicine);
+  if (!key) return [];
+  return list.filter(
+    (medicine) => !medicine.isMediHome && compositionKey(medicine) === key
+  );
+}
+
 function findMediHomeFamily(list, brandMedicine) {
   if (!brandMedicine) return [];
   const key = saltKey(brandMedicine);
@@ -2720,7 +2731,7 @@ function searchMedicines(list, query) {
   const searchText = query.trim();
   if (searchText.length < 2) {
     return {
-      items: list,
+      items: [],
       brandMatch: null,
       brandMatches: [],
       mediHomeMatch: null,
@@ -2774,17 +2785,29 @@ function searchMedicines(list, query) {
   if (mediHomeMatch) itemMap.set(mediHomeMatch.id, mediHomeMatch);
   mediHomeFamily.forEach((medicine) => itemMap.set(medicine.id, medicine));
 
-  if (!brandMatch && !emptyHint && itemMap.size === 0) {
+  if (!brandMatches.length) {
+    const mediHomeHit = mediHomeMatch ||
+      Array.from(itemMap.values()).find((medicine) => medicine.isMediHome);
+    const relatedBrands = findBrandFamily(list, mediHomeHit);
+    if (relatedBrands.length) {
+      brandMatches = relatedBrands;
+    }
+  }
+
+  const resolvedBrand = brandMatches[0] || brandMatch;
+  const resolvedMediHome = mediHomeMatch || findMediHomeMatch(list, resolvedBrand);
+
+  if (!resolvedBrand && !emptyHint && itemMap.size === 0) {
     emptyHint = "No medicines match your search.";
   }
 
   return {
     items: Array.from(itemMap.values()),
-    brandMatch,
+    brandMatch: resolvedBrand,
     brandMatches,
-    mediHomeMatch,
+    mediHomeMatch: resolvedMediHome,
     mediHomeFamily,
-    noExactMatch,
+    noExactMatch: Boolean(resolvedBrand && !resolvedMediHome),
     emptyHint,
   };
 }
@@ -3101,6 +3124,7 @@ function Medicines({ initialSearch = "" }) {
   const [pinCode, setPinCode] = useState(savedProfile?.pinCode || "");
   const [confirmedOrder, setConfirmedOrder] = useState(null);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [payMethod, setPayMethod] = useState("cod");
   const [pickedBrandId, setPickedBrandId] = useState(null);
   const [packsPerMonth, setPacksPerMonth] = useState(3);
 
@@ -3172,7 +3196,8 @@ function Medicines({ initialSearch = "" }) {
       (category === "All" || medicine.category === category) &&
       !(search.trim().length >= 2 && featuredIds.has(medicine.id))
   );
-  const showBrandStrip = search.trim().length >= 2;
+  const hasSearch = search.trim().length >= 2;
+  const showBrandStrip = hasSearch;
 
   const cartCount = cart.reduce(
     (total, item) => total + (item.quantity || 1),
@@ -3272,54 +3297,61 @@ function Medicines({ initialSearch = "" }) {
     }
 
     setPlacingOrder(true);
-    const gps = await resolvePinLocation(pinCode);
+    try {
+      const gps = await resolvePinLocation(pinCode);
+      const payment = await settleCheckoutPayment({
+        method: payMethod,
+        amountRupees: cartTotal,
+        kind: "medicine",
+        pin: gps.pinCode,
+        name: fullName.trim(),
+        mobile: mobileNumber.trim(),
+        reference: `med-${Date.now()}`,
+        description: "MediHome medicines",
+      });
 
-    const existingOrders = JSON.parse(
-      localStorage.getItem("mediHomeOrders") || "[]"
-    );
+      const newOrder = {
+        id: Date.now(),
+        items: cart.map((item) => ({
+          id: item.id,
+          name: item.name,
+          salt: item.salt,
+          strength: item.strength,
+          packSize: item.packSize,
+          category: item.category,
+          price: item.price,
+          mrp: item.mrp,
+          prescription: requiresPrescription(item),
+          quantity: item.quantity || 1,
+        })),
+        total: cartTotal,
+        status: "Order Placed",
+        date: new Date().toLocaleString(),
+        fullName: fullName.trim(),
+        mobileNumber: mobileNumber.trim(),
+        prescription: prescriptionFile ? prescriptionFile.name : "",
+        deliveryAddress: deliveryAddress.trim(),
+        pinCode: gps.pinCode,
+        pin: gps.pin,
+        lat: gps.lat,
+        lng: gps.lng,
+        locality: gps.locality,
+        mapsUrl: gps.mapsUrl,
+        ...payment,
+      };
 
-    const newOrder = {
-      id: Date.now(),
-      items: cart.map((item) => ({
-        id: item.id,
-        name: item.name,
-        salt: item.salt,
-        strength: item.strength,
-        packSize: item.packSize,
-        category: item.category,
-        price: item.price,
-        mrp: item.mrp,
-        prescription: requiresPrescription(item),
-        quantity: item.quantity || 1,
-      })),
-      total: cartTotal,
-      status: "Order Placed",
-      date: new Date().toLocaleString(),
-      fullName: fullName.trim(),
-      mobileNumber: mobileNumber.trim(),
-      prescription: prescriptionFile ? prescriptionFile.name : "",
-      deliveryAddress: deliveryAddress.trim(),
-      pinCode: gps.pinCode,
-      pin: gps.pin,
-      lat: gps.lat,
-      lng: gps.lng,
-      locality: gps.locality,
-      mapsUrl: gps.mapsUrl,
-    };
+      const trackedOrder = persistOrder(withTracking(newOrder, "medicine"));
 
-    const trackedOrder = withTracking(newOrder, "medicine");
-
-    localStorage.setItem(
-      "mediHomeOrders",
-      JSON.stringify([...existingOrders, trackedOrder])
-    );
-
-    setCart([]);
-    setShowCart(false);
-    setShowCheckout(false);
-    resetCheckoutForm();
-    setConfirmedOrder(trackedOrder);
-    setPlacingOrder(false);
+      setCart([]);
+      setShowCart(false);
+      setShowCheckout(false);
+      resetCheckoutForm();
+      setConfirmedOrder(trackedOrder);
+    } catch (error) {
+      alert(error.message || "Payment or order could not be completed.");
+    } finally {
+      setPlacingOrder(false);
+    }
   };
 
   return (
@@ -3329,8 +3361,8 @@ function Medicines({ initialSearch = "" }) {
           <div>
             <h1>Order Medicines</h1>
             <p>
-              Common Indian brands and the same composition as MediHome, for
-              comparison and savings.
+              You are ordering genuine medicines from GMP certified Manufacturer
+              at affordable price.
             </p>
           </div>
           <div
@@ -3359,7 +3391,6 @@ function Medicines({ initialSearch = "" }) {
               }
               onClick={() => {
                 setCategory(item);
-                setSearch("");
                 setShowCart(false);
                 setShowCheckout(false);
                 setConfirmedOrder(null);
@@ -3375,8 +3406,8 @@ function Medicines({ initialSearch = "" }) {
           ))}
         </div>
         <p className="medicines-combo-hint">
-          Each MediHome pack uses the same composition as common Indian brands.
-          Search a brand name to compare price.
+          Search a brand or salt to compare the prescribed pack with MediHome.
+          Brands stay hidden until you search.
         </p>
         <div className="medicine-search-box">
           <input
@@ -3547,6 +3578,13 @@ function Medicines({ initialSearch = "" }) {
             />
             <p className="pin-gps-hint">Delivery GPS is connected from this 6-digit PIN.</p>
           </div>
+          <PaymentBlock
+            kind="medicine"
+            amount={cartTotal}
+            pin={pinCode}
+            method={payMethod}
+            onMethodChange={setPayMethod}
+          />
           <div className="cart-actions">
             <button
               type="button"
@@ -3584,11 +3622,21 @@ function Medicines({ initialSearch = "" }) {
             <strong>Total:</strong> ₹{confirmedOrder.total}
           </p>
           <p>
+            <strong>Payment:</strong>{" "}
+            {confirmedOrder.paymentMethod === "online" ? "Paid online" : "Cash on delivery"}
+          </p>
+          <p>
             <strong>Delivery Address:</strong> {confirmedOrder.deliveryAddress}
           </p>
           <p>
             <strong>PIN Code:</strong> {confirmedOrder.pinCode}
           </p>
+          {confirmedOrder.outletName ? (
+            <p>
+              <strong>Delivery outlet:</strong> {confirmedOrder.outletName}
+              {confirmedOrder.outletArea ? ` · ${confirmedOrder.outletArea}` : ""}
+            </p>
+          ) : null}
           <PinGpsBlock record={confirmedOrder} />
           <AssignedAgent record={confirmedOrder} />
           <div className="cart-actions">
@@ -3652,7 +3700,12 @@ function Medicines({ initialSearch = "" }) {
             />
           )}
           <div className="medicine-grid">
-            {filteredMedicines.length === 0 ? (
+            {!hasSearch ? (
+              <p className="medicines-empty-hint">
+                Type a brand or medicine name and tap Search Medicine to see
+                matching packs.
+              </p>
+            ) : filteredMedicines.length === 0 ? (
               showBrandStrip && searchResult.brandMatch ? null : (
                 <p className="medicines-empty-hint">
                   {searchResult.emptyHint || "No medicines match your search."}

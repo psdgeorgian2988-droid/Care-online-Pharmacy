@@ -2,10 +2,14 @@ import { useMemo, useState } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
-import { trackHref, withTracking } from "./orderTracking";
+import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import PaymentBlock from "./PaymentBlock";
+import { settleCheckoutPayment } from "./paymentApi";
 
 const STORAGE_KEY = "mediHomeStepDownBookings";
 const AMBULANCE_STORAGE_KEY = "mediHomeAmbulanceRequests";
+const STEPDOWN_DAY_RATE = 4999;
+const TRANSFER_FEE = 2499;
 
 const CARE_TYPES = [
   { value: "post-icu", label: "Post-ICU step-down" },
@@ -162,6 +166,8 @@ function StepDownCare() {
   const [errors, setErrors] = useState({});
   const [booking, setBooking] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [payMethod, setPayMethod] = useState("cod");
+  const stayTotal = Math.max(1, Number(form.durationDays) || 1) * STEPDOWN_DAY_RATE;
 
   const selectedCentre = CENTRES.find((item) => item.id === form.centreId) || null;
   const centres = CENTRES.filter((centre) => centreMatches(centre, query, focus));
@@ -213,78 +219,98 @@ function StepDownCare() {
       CARE_TYPES.find((item) => item.value === form.serviceType)?.label || form.serviceType;
 
     setSubmitting(true);
-    const gps = await resolvePinLocation(form.pinCode);
-    const bookingId = "MH-SD-" + Math.floor(100000 + Math.random() * 900000);
-    const wantsAmbulance = form.needAmbulance === "yes";
-    let ambulanceRequestId = "";
-
-    if (wantsAmbulance && centre) {
-      ambulanceRequestId = "MH-AMB-" + Math.floor(100000 + Math.random() * 900000);
-      const ambulanceDetails = {
-        requestId: ambulanceRequestId,
-        patientName: form.patientName.trim(),
+    try {
+      const gps = await resolvePinLocation(form.pinCode);
+      const bookingId = "MH-SD-" + Math.floor(100000 + Math.random() * 900000);
+      const wantsAmbulance = form.needAmbulance === "yes";
+      let ambulanceRequestId = "";
+      const total = Math.max(1, Number(form.durationDays) || 1) * STEPDOWN_DAY_RATE;
+      const payment = await settleCheckoutPayment({
+        method: payMethod,
+        amountRupees: total,
+        kind: "stepdown",
+        pin: gps.pinCode,
+        name: form.patientName.trim(),
         mobile: form.mobile,
-        pickupAddress: form.address.trim(),
+        reference: bookingId,
+        description: "MediHome step-down stay",
+      });
+
+      if (wantsAmbulance && centre) {
+        ambulanceRequestId = "MH-AMB-" + Math.floor(100000 + Math.random() * 900000);
+      }
+
+      const bookingDetails = {
+        bookingId,
+        orderType: "stepdown",
+        ...form,
+        patientName: form.patientName.trim(),
+        address: form.address.trim(),
         pinCode: gps.pinCode,
         pin: gps.pin,
         lat: gps.lat,
         lng: gps.lng,
         locality: gps.locality,
         mapsUrl: gps.mapsUrl,
-        emergencyType: "non-emergency",
-        destinationName: centre.name,
-        destinationAddress: centre.address,
-        destinationPin: centre.pin,
-        linkedStepDownId: bookingId,
-        notes: `Automatic transfer to ${centre.name}, ${centre.address} (PIN ${centre.pin}). Linked step-down booking ${bookingId}.`,
-        requestedAt: new Date().toLocaleString(),
-        requestedAtMs: Date.now(),
+        centreName: centre?.name || "",
+        centreAddress: centre?.address || "",
+        centrePin: centre?.pin || "",
+        serviceLabel,
+        durationDays: Number(form.durationDays),
+        needAmbulance: wantsAmbulance,
+        ambulanceRequestId,
+        total,
+        bookedAt: new Date().toLocaleString(),
+        bookedAtMs: Date.now(),
+        ...payment,
       };
-      const trackedAmbulance = withTracking(ambulanceDetails, "ambulance");
-      try {
-        const existingAmb = JSON.parse(localStorage.getItem(AMBULANCE_STORAGE_KEY) || "[]");
-        const ambList = Array.isArray(existingAmb) ? existingAmb : [];
-        localStorage.setItem(
-          AMBULANCE_STORAGE_KEY,
-          JSON.stringify([trackedAmbulance, ...ambList])
-        );
-      } catch {
-        localStorage.setItem(AMBULANCE_STORAGE_KEY, JSON.stringify([trackedAmbulance]));
-      }
-    }
+      const trackedBooking = persistOrder(withTracking(bookingDetails, "stepdown"));
 
-    const bookingDetails = {
-      bookingId,
-      orderType: "stepdown",
-      ...form,
-      patientName: form.patientName.trim(),
-      address: form.address.trim(),
-      pinCode: gps.pinCode,
-      pin: gps.pin,
-      lat: gps.lat,
-      lng: gps.lng,
-      locality: gps.locality,
-      mapsUrl: gps.mapsUrl,
-      centreName: centre?.name || "",
-      centreAddress: centre?.address || "",
-      centrePin: centre?.pin || "",
-      serviceLabel,
-      durationDays: Number(form.durationDays),
-      needAmbulance: wantsAmbulance,
-      ambulanceRequestId,
-      bookedAt: new Date().toLocaleString(),
-      bookedAtMs: Date.now(),
-    };
-    const trackedBooking = withTracking(bookingDetails, "stepdown");
-    try {
-      const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      const list = Array.isArray(existing) ? existing : [];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([trackedBooking, ...list]));
-    } catch {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([trackedBooking]));
+      if (wantsAmbulance && centre) {
+        const ambPay = await settleCheckoutPayment({
+          method: "cod",
+          amountRupees: TRANSFER_FEE,
+          kind: "ambulance",
+          pin: gps.pinCode,
+          name: form.patientName.trim(),
+          mobile: form.mobile,
+          reference: ambulanceRequestId,
+          description: "Transfer to step-down centre",
+        });
+        persistOrder(
+          withTracking(
+            {
+              requestId: ambulanceRequestId,
+              patientName: form.patientName.trim(),
+              mobile: form.mobile,
+              pickupAddress: form.address.trim(),
+              pinCode: gps.pinCode,
+              pin: gps.pin,
+              lat: gps.lat,
+              lng: gps.lng,
+              locality: gps.locality,
+              mapsUrl: gps.mapsUrl,
+              emergencyType: "non-emergency",
+              destinationName: centre.name,
+              destinationAddress: centre.address,
+              destinationPin: centre.pin,
+              linkedStepDownId: bookingId,
+              notes: `Automatic transfer to ${centre.name}, ${centre.address} (PIN ${centre.pin}). Linked step-down booking ${bookingId}.`,
+              total: TRANSFER_FEE,
+              requestedAt: new Date().toLocaleString(),
+              requestedAtMs: Date.now(),
+              ...ambPay,
+            },
+            "ambulance"
+          )
+        );
+      }
+      setBooking(trackedBooking);
+    } catch (error) {
+      alert(error.message || "Booking or payment could not be completed.");
+    } finally {
+      setSubmitting(false);
     }
-    setBooking(trackedBooking);
-    setSubmitting(false);
   };
 
   const startNew = () => {
@@ -302,6 +328,7 @@ function StepDownCare() {
       durationDays: "7",
       needAmbulance: "",
     });
+    setPayMethod("cod");
     setErrors({});
   };
 
@@ -359,6 +386,20 @@ function StepDownCare() {
               <div className="confirm-row">
                 <span>Days</span>
                 <strong>{booking.durationDays}</strong>
+              </div>
+              <div className="confirm-row">
+                <span>Stay estimate</span>
+                <strong>
+                  ₹{Number(booking.total || 0).toLocaleString("en-IN")}
+                </strong>
+              </div>
+              <div className="confirm-row">
+                <span>Payment</span>
+                <strong>
+                  {booking.paymentMethod === "online"
+                    ? "Paid online"
+                    : "Pay at centre"}
+                </strong>
               </div>
               <div className="confirm-row">
                 <span>Ambulance to centre</span>
@@ -421,8 +462,7 @@ function StepDownCare() {
             <p className="lab-kicker">Step-down recovery</p>
             <h1>Find A Step-Down Care Centre</h1>
             <p className="lab-lead">
-              Post-ICU, post-surgery and rehab centres across Delhi NCR. Choose a
-              centre, then book a recovery stay or assisted visit.
+              Post-ICU, Post-Surgery and Rehab centres across Delhi NCR.
             </p>
           </div>
           <div className="lab-tabs" role="tablist" aria-label="Step-down care">
@@ -733,6 +773,14 @@ function StepDownCare() {
                   ) : null}
                 </div>
               </div>
+
+              <PaymentBlock
+                kind="stepdown"
+                amount={stayTotal}
+                pin={form.pinCode}
+                method={payMethod}
+                onMethodChange={setPayMethod}
+              />
 
               <button type="submit" className="service-submit" disabled={submitting}>
                 {submitting

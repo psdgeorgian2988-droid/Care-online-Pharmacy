@@ -1,0 +1,70 @@
+{
+  "partners": [
+    {
+      "id": "P-MED-01",
+      "name": "Ravi Kumar",
+      "role": "Medicine rider",
+      "kinds": [
+        "medicine"
+      ],
+      "mobile": "9654222901",
+      "pin": "1111",
+      "outletId": "MH-OUT-CD"
+    },
+    {
+      "id": "P-LAB-01",
+      "name": "Neha Sharma",
+      "role": "Phlebotomist",
+      "kinds": [
+        "lab"
+      ],
+      "mobile": "9654222902",
+      "pin": "1111",
+      "outletId": "MH-OUT-CD"
+    },
+    {
+      "id": "P-RAD-01",
+      "name": "Imaging Desk — Green Park",
+      "role": "Radiology centre",
+      "kinds": [
+        "radiology"
+      ],
+      "mobile": "9654222903",
+      "pin": "1111",
+      "outletId": "MH-OUT-SD"
+    },
+    {
+      "id": "P-HC-01",
+      "name": "Priya Singh",
+      "role": "Home Care nurse",
+      "kinds": [
+        "homecare"
+      ],
+      "mobile": "9654222904",
+      "pin": "1111",
+      "outletId": "MH-OUT-SD"
+    },
+    {
+      "id": "P-AMB-01",
+      "name": "Sanjay Ambulance",
+      "role": "Ambulance operator",
+      "kinds": [
+        "ambulance"
+      ],
+      "mobile": "9654222905",
+      "pin": "1111",
+      "outletId": "MH-OUT-HQ"
+    },
+    {
+      "id": "P-SD-01",
+      "name": "Dwarka Step-Down desk",
+      "role": "Step-down centre",
+      "kinds": [
+        "stepdown"
+      ],
+      "mobile": "9654222906",
+      "pin": "1111",
+      "outletId": "MH-OUT-DWK"
+    }
+  ]
+}

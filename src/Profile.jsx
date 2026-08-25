@@ -1,4 +1,6 @@
 import { useState } from "react";
+import ReferFamily from "./ReferFamily";
+import { POINT_VALUES, useWallet } from "./pointsStore";
 
 const PROFILE_KEY = "mediHomeUser";
 
@@ -20,6 +22,7 @@ function readProfile() {
 }
 
 function Profile() {
+  const wallet = useWallet();
   const [form, setForm] = useState(readProfile);
   const [errors, setErrors] = useState({});
   const [saved, setSaved] = useState(false);
@@ -79,7 +82,6 @@ function Profile() {
               Diagnostics “Myself” bookings.
             </p>
           </div>
-          <div className="profile-hero-icon">👤</div>
         </section>
 
         <form className="profile-card" onSubmit={handleSave}>
@@ -162,6 +164,36 @@ function Profile() {
             Save Profile
           </button>
         </form>
+
+        <section className="profile-points-card">
+          <h2>Your MediHome points</h2>
+          <p>
+            Webinar +{POINT_VALUES.webinar} · Quiz +{POINT_VALUES.quiz} · Referral
+            uses {POINT_VALUES.referral} points for family and friends.
+          </p>
+          {wallet.ledger.length ? (
+            <ul className="profile-ledger">
+              {wallet.ledger.slice(0, 8).map((row) => (
+                <li key={row.id}>
+                  <strong>
+                    {row.amount > 0 ? "+" : ""}
+                    {row.amount}
+                  </strong>
+                  <span>{row.label}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="profile-ledger-empty">
+              No points yet. Earn them in{" "}
+              <a href="#education">Health Education</a>.
+            </p>
+          )}
+        </section>
+
+        <div className="profile-refer-wrap">
+          <ReferFamily />
+        </div>
       </div>
     </>
   );
@@ -174,6 +206,17 @@ const styles = `
   .profile-hero h1{margin:0 0 4px;font-size:25px;color:#123b59}
   .profile-hero p{margin:0;color:#607589;font-size:13px;line-height:1.4}
   .profile-hero-icon{width:54px;height:54px;border-radius:50%;background:#fff;display:flex;justify-content:center;align-items:center;font-size:27px;box-shadow:0 3px 10px rgba(0,0,0,.07);flex-shrink:0}
+  .profile-points-chip{flex-shrink:0;min-width:118px;padding:10px 12px;border-radius:12px;background:#0639b8;color:#fff;text-decoration:none;text-align:center;box-shadow:0 3px 8px rgba(6,57,184,.22)}
+  .profile-points-chip strong{display:block;font-size:22px;line-height:1.1}
+  .profile-points-chip span{display:block;margin-top:4px;font-size:11px;font-weight:800}
+  .profile-points-card,.profile-refer-wrap{max-width:760px;margin:0 auto 14px}
+  .profile-points-card{padding:16px 18px;background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.06)}
+  .profile-points-card h2{margin:0 0 6px;font-size:18px;color:#123b59}
+  .profile-points-card p{margin:0 0 10px;color:#607589;font-size:13px}
+  .profile-ledger{margin:0;padding:0;list-style:none}
+  .profile-ledger li{display:flex;gap:10px;padding:6px 0;border-top:1px solid #edf1f3;font-size:13px;color:#34546b}
+  .profile-ledger strong{min-width:36px;color:#0639b8}
+  .profile-ledger-empty a{color:#1a6b7a;font-weight:700;text-decoration:none}
   .profile-card{max-width:760px;margin:0 auto;padding:18px;background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.06);display:grid;gap:12px}
   .profile-field{display:flex;flex-direction:column}
   .profile-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}

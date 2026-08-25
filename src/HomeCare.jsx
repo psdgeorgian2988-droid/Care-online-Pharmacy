@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
-import { ORDER_STORAGE, trackHref, withTracking } from "./orderTracking";
+import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import PaymentBlock from "./PaymentBlock";
+import { settleCheckoutPayment } from "./paymentApi";
 
-const STORAGE_KEY = ORDER_STORAGE.homecare;
 const LEGACY_STORAGE_KEY = "mediHomeHomeCareBookings";
 const SERVICE_TYPES = [
   { value: "nurse", label: "Nurse Visit" },
@@ -89,6 +90,7 @@ function HomeCare() {
   const [errors, setErrors] = useState({});
   const [booking, setBooking] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [payMethod, setPayMethod] = useState("cod");
 
   const activePlans = plansFor(form.serviceType);
 
@@ -154,64 +156,72 @@ function HomeCare() {
       plansFor(form.serviceType)[0];
 
     setSubmitting(true);
-    const gps = await resolvePinLocation(form.pinCode);
-
-    const bookingDetails = {
-      bookingId: "MH-HC-" + Math.floor(100000 + Math.random() * 900000),
-      ...form,
-      patientName: form.patientName.trim(),
-      address: form.address.trim(),
-      pinCode: gps.pinCode,
-      pin: gps.pin,
-      lat: gps.lat,
-      lng: gps.lng,
-      locality: gps.locality,
-      mapsUrl: gps.mapsUrl,
-      serviceLabel,
-      carePlan: plan.value,
-      carePlanLabel: plan.label,
-      otherNote: form.otherNote.trim(),
-      otherRate:
-        plan.value === "nurse-other" ? String(Number(form.otherRate) || plan.price) : "",
-      total:
+    try {
+      const gps = await resolvePinLocation(form.pinCode);
+      const total =
         plan.value === "nurse-other"
           ? Number(form.otherRate) || plan.price
-          : plan.price,
-      bookedAt: new Date().toLocaleString(),
-      bookedAtMs: Date.now(),
-    };
+          : plan.price;
+      const payment = await settleCheckoutPayment({
+        method: payMethod,
+        amountRupees: total,
+        kind: "homecare",
+        pin: gps.pinCode,
+        name: form.patientName.trim(),
+        mobile: form.mobile,
+        reference: `hc-${Date.now()}`,
+        description: "MediHome Home Care",
+      });
 
-    const trackedBooking = withTracking(
-      {
-        ...bookingDetails,
-        items: [
+      const bookingDetails = {
+        bookingId: "MH-HC-" + Math.floor(100000 + Math.random() * 900000),
+        ...form,
+        patientName: form.patientName.trim(),
+        address: form.address.trim(),
+        pinCode: gps.pinCode,
+        pin: gps.pin,
+        lat: gps.lat,
+        lng: gps.lng,
+        locality: gps.locality,
+        mapsUrl: gps.mapsUrl,
+        serviceLabel,
+        carePlan: plan.value,
+        carePlanLabel: plan.label,
+        otherNote: form.otherNote.trim(),
+        otherRate:
+          plan.value === "nurse-other" ? String(Number(form.otherRate) || plan.price) : "",
+        total,
+        bookedAt: new Date().toLocaleString(),
+        bookedAtMs: Date.now(),
+        ...payment,
+      };
+
+      const trackedBooking = persistOrder(
+        withTracking(
           {
-            name: `${serviceLabel} · ${plan.label}`,
-            price: bookingDetails.total,
+            ...bookingDetails,
+            items: [
+              {
+                name: `${serviceLabel} · ${plan.label}`,
+                price: bookingDetails.total,
+              },
+            ],
           },
-        ],
-      },
-      "homecare"
-    );
-
-    try {
-      const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      const legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) || "[]");
-      const list = [
-        trackedBooking,
-        ...(Array.isArray(existing) ? existing : []),
-        ...(STORAGE_KEY !== LEGACY_STORAGE_KEY && Array.isArray(legacy) ? legacy : []),
-      ];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-      if (STORAGE_KEY !== LEGACY_STORAGE_KEY) {
+          "homecare"
+        )
+      );
+      try {
         localStorage.removeItem(LEGACY_STORAGE_KEY);
+      } catch {
+        /* ignore */
       }
-    } catch {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([trackedBooking]));
-    }
 
-    setBooking(trackedBooking);
-    setSubmitting(false);
+      setBooking(trackedBooking);
+    } catch (error) {
+      alert(error.message || "Payment or booking could not be completed.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const startNew = () => {
@@ -228,6 +238,7 @@ function HomeCare() {
       otherNote: "",
       otherRate: "999",
     });
+    setPayMethod("cod");
     setErrors({});
   };
 
@@ -265,6 +276,14 @@ function HomeCare() {
               <div className="confirm-row">
                 <span>Charges</span>
                 <strong>{formatRupee(booking.total)}</strong>
+              </div>
+              <div className="confirm-row">
+                <span>Payment</span>
+                <strong>
+                  {booking.paymentMethod === "online"
+                    ? "Paid online"
+                    : "Cash on visit"}
+                </strong>
               </div>
               <div className="confirm-row">
                 <span>Patient</span>
@@ -517,6 +536,18 @@ function HomeCare() {
               {errors.timeSlot && <small>{errors.timeSlot}</small>}
             </div>
           ) : null}
+
+          <PaymentBlock
+            kind="homecare"
+            amount={
+              form.carePlan === "nurse-other"
+                ? Number(form.otherRate) || 999
+                : activePlans.find((item) => item.value === form.carePlan)?.price || 0
+            }
+            pin={form.pinCode}
+            method={payMethod}
+            onMethodChange={setPayMethod}
+          />
 
           <button type="submit" className="service-submit" disabled={submitting}>
             {submitting

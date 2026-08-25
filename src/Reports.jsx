@@ -214,7 +214,7 @@ function Reports() {
           <div>
             <span className="service-kicker">MediHome Reports</span>
             <h1>Save Health Reports</h1>
-            <p>Keep lab PDFs or images on this device. Nothing is uploaded to a server.</p>
+            <p>Keep Lab PDFs or Images on this device. Nothing is Uploaded to a Server.</p>
           </div>
         </section>
 

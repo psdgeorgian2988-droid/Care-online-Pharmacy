@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
-import { trackHref, withTracking } from "./orderTracking";
+import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import PaymentBlock from "./PaymentBlock";
+import { settleCheckoutPayment } from "./paymentApi";
 
 const PREP_LABEL = {
   fasting: "Fasting required",
@@ -264,6 +266,7 @@ function LabTests() {
   const [errors, setErrors] = useState({});
   const [booking, setBooking] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [payMethod, setPayMethod] = useState("cod");
   const [prepPopup, setPrepPopup] = useState(null);
 
   const selectedLab = useMemo(() => LABS.find((lab) => lab.id === selectedLabId), [selectedLabId]);
@@ -429,55 +432,62 @@ function LabTests() {
     if (!validate()) return;
 
     setSubmitting(true);
-    const gps = await resolvePinLocation(form.pinCode);
-
-    const bookingDetails = {
-      bookingId:
-        (serviceType === "lab" ? "MH-LAB-" : "MH-RAD-") +
-        Math.floor(100000 + Math.random() * 900000),
-      serviceType,
-      partner: activePartner.name,
-      tests: activeTests,
-      total,
-      ...form,
-      pinCode: gps.pinCode,
-      pin: gps.pin,
-      lat: gps.lat,
-      lng: gps.lng,
-      locality: gps.locality,
-      mapsUrl: gps.mapsUrl,
-      preferredLab: serviceType === "lab" ? activePartner.name : "",
-      preferredLabId: serviceType === "lab" ? selectedLabId : "",
-      visitType: serviceType === "radiology" ? "centre" : form.visitType,
-      bookedAt: new Date().toLocaleString(),
-      bookedAtMs: Date.now(),
-    };
-
-    const trackedBooking = withTracking(
-      bookingDetails,
-      serviceType === "radiology" ? "radiology" : "lab"
-    );
-
-    setBooking(trackedBooking);
-
     try {
-      const existing = JSON.parse(localStorage.getItem("mediHomeDiagnosticsBookings") || "[]");
-      const list = Array.isArray(existing) ? existing : [];
-      localStorage.setItem(
-        "mediHomeDiagnosticsBookings",
-        JSON.stringify([trackedBooking, ...list])
-      );
-    } catch {
-      localStorage.setItem("mediHomeDiagnosticsBookings", JSON.stringify([trackedBooking]));
-    }
+      const gps = await resolvePinLocation(form.pinCode);
+      const kind = serviceType === "radiology" ? "radiology" : "lab";
+      const payment = await settleCheckoutPayment({
+        method: payMethod,
+        amountRupees: total,
+        kind,
+        pin: gps.pinCode,
+        name: form.patientName,
+        mobile: form.mobile,
+        reference: `${kind}-${Date.now()}`,
+        description:
+          kind === "radiology"
+            ? "MediHome radiology booking"
+            : "MediHome lab booking",
+      });
 
-    localStorage.setItem("mediHomeLabBooking", JSON.stringify(trackedBooking));
-    localStorage.setItem("mediHomeLastBooking", JSON.stringify(trackedBooking));
-    setSubmitting(false);
+      const bookingDetails = {
+        bookingId:
+          (serviceType === "lab" ? "MH-LAB-" : "MH-RAD-") +
+          Math.floor(100000 + Math.random() * 900000),
+        serviceType,
+        partner: activePartner.name,
+        tests: activeTests,
+        total,
+        ...form,
+        pinCode: gps.pinCode,
+        pin: gps.pin,
+        lat: gps.lat,
+        lng: gps.lng,
+        locality: gps.locality,
+        mapsUrl: gps.mapsUrl,
+        preferredLab: serviceType === "lab" ? activePartner.name : "",
+        preferredLabId: serviceType === "lab" ? selectedLabId : "",
+        visitType: serviceType === "radiology" ? "centre" : form.visitType,
+        bookedAt: new Date().toLocaleString(),
+        bookedAtMs: Date.now(),
+        ...payment,
+      };
+
+      const trackedBooking = persistOrder(withTracking(bookingDetails, kind));
+
+      setBooking(trackedBooking);
+
+      localStorage.setItem("mediHomeLabBooking", JSON.stringify(trackedBooking));
+      localStorage.setItem("mediHomeLastBooking", JSON.stringify(trackedBooking));
+    } catch (error) {
+      alert(error.message || "Payment or booking could not be completed.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const startNewBooking = () => {
     setBooking(null);
+    setPayMethod("cod");
     setServiceType("lab");
     setSelectedLabId("");
     setSelectedTestId("");
@@ -566,6 +576,12 @@ function LabTests() {
                 <span>Total</span>
                 <strong>₹{booking.total}</strong>
               </div>
+              <div className="confirm-row">
+                <span>Payment</span>
+                <strong>
+                  {booking.paymentMethod === "online" ? "Paid online" : "Pay on visit / collection"}
+                </strong>
+              </div>
             </div>
             <AssignedAgent record={booking} />
             <p className="confirm-note">
@@ -615,7 +631,7 @@ function LabTests() {
             <p className="lab-kicker">Diagnostics</p>
             <h1>Book Lab Tests And Imaging</h1>
             <p className="lab-lead">
-              Home sample collection and partner centres across Delhi NCR.
+              Home sample collection/Booking from your trusted Lab.
             </p>
           </div>
           <div className="lab-tabs" role="tablist" aria-label="Service type">
@@ -915,6 +931,14 @@ function LabTests() {
               </div>
             ) : null}
             </div>
+
+            <PaymentBlock
+              kind={serviceType === "radiology" ? "radiology" : "lab"}
+              amount={total}
+              pin={form.pinCode}
+              method={payMethod}
+              onMethodChange={setPayMethod}
+            />
 
             <div className="lab-book-foot">
               <div>

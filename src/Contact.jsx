@@ -1,4 +1,5 @@
 import { useState } from "react";
+import SocialLinks from "./SocialLinks";
 
 const CARE_WHATSAPP = "919654222988";
 const CARE_PHONE_DISPLAY = "+91 96542 22988";
@@ -96,6 +97,16 @@ function Contact() {
             </div>
           </section>
 
+          <section className="info-panel social-panel">
+            <h2>Social Media</h2>
+            <p>
+              Follow MediHome for health tips, offers, and service updates. Open{" "}
+              <a href="#social">Social Media</a> for ready captions and campaign
+              links.
+            </p>
+            <SocialLinks className="contact-social" showHandles />
+          </section>
+
           <form className="service-form" onSubmit={handleSubmit}>
             <div className="field">
               <label htmlFor="contact-name">
@@ -179,7 +190,13 @@ const styles = `
 .service-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:40px;cursor:pointer;font-family:inherit}
 .info-footnote{max-width:760px;margin:12px auto 0;color:#5d7180;font-size:13px}
 .info-footnote a{color:#1a6b7a;font-weight:700;text-decoration:none}
-@media (max-width:800px){.service-page{padding:14px}.service-form,.contact-details{grid-template-columns:1fr}}
+.social-panel p{margin:0 0 10px;color:#5d7180;font-size:13px}
+.social-panel p a{color:#1a6b7a;font-weight:700;text-decoration:none}
+.contact-social{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.contact-social a{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e4ecef;border-radius:8px;color:#1a6b7a;font-size:13px;font-weight:700;text-decoration:none;background:#f7fbfe}
+.contact-social a:hover{border-color:#1a6b7a}
+.contact-social svg{width:18px;height:18px;flex:0 0 18px}
+@media (max-width:800px){.service-page{padding:14px}.service-form,.contact-details,.contact-social{grid-template-columns:1fr}}
 `;
 
 export default Contact;

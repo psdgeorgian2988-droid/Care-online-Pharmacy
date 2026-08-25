@@ -4,6 +4,8 @@ import {
   pinLocationForDisplay,
   resolvePinLocation,
 } from "./pinLocation";
+import { publishOrder } from "./adminApi";
+import { withDeliveryOutlet } from "./deliveryOutlets";
 
 export const ORDER_STORAGE = {
   medicine: "mediHomeOrders",
@@ -421,6 +423,7 @@ export function unifyOrder(record, kind) {
             : [];
   return {
     ...tracked,
+    ...withDeliveryOutlet(tracked),
     kind: resolvedKind,
     id,
     orderType: resolvedKind,
@@ -469,7 +472,9 @@ export function persistOrder(unified, patch = {}) {
     ? list.map((row) => (sameRecord(row, next) ? stripViewFields({ ...row, ...next }) : row))
     : [stripViewFields(next), ...list];
   writeList(key, nextList);
-  return unifyOrder(next, kind);
+  const saved = unifyOrder(next, kind);
+  publishOrder(saved);
+  return saved;
 }
 
 function stripViewFields(record) {

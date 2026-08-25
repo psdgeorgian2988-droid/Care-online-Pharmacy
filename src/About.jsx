@@ -45,8 +45,9 @@ function About() {
           </section>
 
           <p className="info-footnote">
-            Questions? Open <a href="#contact">Contact Us</a> or Customer Care
-            in the sidebar. Read <a href="#reviews">patient reviews</a> or{" "}
+            Questions? Open <a href="#contact">Contact Us</a> or follow
+            @medihome.in on Instagram, Facebook, YouTube, LinkedIn, and X. Read{" "}
+            <a href="#reviews">patient reviews</a> or{" "}
             <a href="#feedback">share feedback</a>.
           </p>
         </div>

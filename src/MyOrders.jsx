@@ -50,9 +50,20 @@ function MyOrders() {
             tracking.
           </p>
         </div>
-        <a className="orders-home-link" href="#home">
-          Back to Home
-        </a>
+        <div className="orders-header-actions">
+          <a className="orders-nav-btn orders-nav-home" href="#home">
+            Back to Home
+          </a>
+          {selectedOrder ? (
+            <button
+              type="button"
+              className="orders-nav-btn orders-nav-orders"
+              onClick={() => setSelectedOrder(null)}
+            >
+              Back to Orders
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {selectedOrder && (
@@ -218,6 +229,20 @@ function MyOrders() {
             <p>
               <strong>PIN Code:</strong> {selectedOrder.pinCode || "Not provided"}
             </p>
+            {selectedOrder.outletName ? (
+              <p>
+                <strong>Delivery outlet:</strong> {selectedOrder.outletName}
+                {selectedOrder.outletArea ? ` · ${selectedOrder.outletArea}` : ""}
+              </p>
+            ) : null}
+            {selectedOrder.paymentMethod ? (
+              <p>
+                <strong>Payment:</strong>{" "}
+                {selectedOrder.paymentMethod === "online"
+                  ? "Paid online"
+                  : "Cash on delivery / visit"}
+              </p>
+            ) : null}
             <PinGpsBlock record={selectedOrder} compact />
             {selectedOrder.kind === "medicine" && (
               <p>
@@ -308,6 +333,17 @@ function MyOrders() {
                   <p>
                     <strong>PIN:</strong> {order.pinCode || "Add PIN to track"}
                   </p>
+                  {order.outletName ? (
+                    <p>
+                      <strong>Outlet:</strong> {order.outletName}
+                    </p>
+                  ) : null}
+                  {order.paymentMethod ? (
+                    <p>
+                      <strong>Payment:</strong>{" "}
+                      {order.paymentMethod === "online" ? "Online" : "Cash on delivery"}
+                    </p>
+                  ) : null}
                   <p>
                     <strong>Status:</strong> {order.status}
                   </p>

@@ -14,6 +14,11 @@ import About from "./About";
 import Contact from "./Contact";
 import Feedback from "./Feedback";
 import Reviews from "./Reviews";
+import Admin from "./Admin";
+import Partner from "./Partner";
+import Seo from "./Seo";
+import SocialLinks from "./SocialLinks";
+import Social from "./Social";
 import { reviewStats } from "./reviewStore";
 
 const NAV_LINKS = [
@@ -34,6 +39,7 @@ const BOTTOM_LINKS = [
   { href: "#feedback", label: "Feedback", icon: "📝" },
   { href: "#about", label: "About Us", icon: "ℹ️" },
   { href: "#contact", label: "Contact Us", icon: "📞" },
+  { href: "#social", label: "Social Media", icon: "📣" },
 ];
 
 const HOME_WHATSAPP = "919654222988";
@@ -597,10 +603,16 @@ function App() {
         return <About />;
       case "#contact":
         return <Contact />;
+      case "#social":
+        return <Social />;
       case "#feedback":
         return <Feedback />;
       case "#reviews":
         return <Reviews />;
+      case "#admin":
+        return <Admin />;
+      case "#partner":
+        return <Partner />;
       default:
         return <HomePage />;
     }
@@ -608,6 +620,7 @@ function App() {
 
   return (
     <div className="app">
+      <Seo route={route} />
       <div className="top-ticker">
         <div className="ticker-track">
           <span className="ticker-item">
@@ -631,6 +644,7 @@ function App() {
           <span className="logo-wordmark">MediHome</span>
         </a>
 
+        <div className="sidebar-links">
         <nav className="sidebar-nav" aria-label="Main">
           {NAV_LINKS.map((link) => (
             <a
@@ -676,6 +690,7 @@ function App() {
             <span className="nav-label">Customer Care</span>
           </button>
         </div>
+        </div>
       </aside>
 
       <main>
@@ -685,6 +700,7 @@ function App() {
       <footer className="app-footer">
         <LogoMark />
         <p>© 2026 MediHome. All rights reserved.</p>
+        <SocialLinks className="footer-social" />
       </footer>
 
       {careOpen ? (
