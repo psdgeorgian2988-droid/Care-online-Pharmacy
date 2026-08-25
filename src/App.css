@@ -4318,6 +4318,7 @@ footer .logo .logo-wordmark {
 
 .care-panel-whatsapp:hover {
   filter: brightness(1.05);
+  background: #155a66;
 }
 
 .care-panel-extra {
@@ -4336,8 +4337,6 @@ footer .logo .logo-wordmark {
 
 .care-panel-extra a:hover {
   text-decoration: underline;
-}
-  background: #155a66;
 }
 
 .pin-gps-block {
