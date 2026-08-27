@@ -202,7 +202,7 @@ const styles = `
 .pay-block{margin:12px 0;padding:12px;border:1px solid #d7e2e9;border-radius:10px;background:#f7fbfd;text-align:left}
 .pay-kicker{margin:0 0 8px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#1a6b7a}
 .pay-block > label{display:flex;gap:10px;align-items:flex-start;margin:0 0 8px;padding:8px 10px;border:1px solid #e4ecef;border-radius:8px;background:#fff;cursor:pointer}
-.pay-block > label.is-on{border-color:#0639b8;background:#eaf0ff}
+.pay-block > label.is-on{border-color:#1a6b7a;background:#e8f4f6}
 .pay-block > label input{margin-top:3px}
 .pay-block strong{display:block;font-size:13px;color:#143246}
 .pay-block em{display:block;margin-top:2px;font-style:normal;color:#5d7180;font-size:12px;line-height:1.35}
@@ -210,7 +210,7 @@ const styles = `
 .pay-coupon > label{display:block;margin:0 0 6px;font-size:12px;font-weight:700;color:#34546b}
 .pay-coupon-row{display:flex;gap:6px;flex-wrap:wrap}
 .pay-coupon-row input{flex:1;min-width:120px;border:1px solid #d7e2e9;border-radius:6px;padding:7px 8px;font:inherit;font-size:13px;text-transform:uppercase}
-.pay-coupon-row button{border:1px solid #0639b8;border-radius:6px;background:#0639b8;color:#fff;font:inherit;font-size:12px;font-weight:700;padding:7px 10px;cursor:pointer}
+.pay-coupon-row button{border:1px solid #1a6b7a;border-radius:6px;background:#1a6b7a;color:#fff;font:inherit;font-size:12px;font-weight:700;padding:7px 10px;cursor:pointer}
 .pay-coupon-row button.is-clear{background:#fff;color:#1a6b7a;border-color:#d7e2e9}
 .pay-coupon-hint,.pay-coupon-ok,.pay-coupon-err{margin:6px 0 0;font-size:12px;line-height:1.4}
 .pay-coupon-hint{color:#5d7180}

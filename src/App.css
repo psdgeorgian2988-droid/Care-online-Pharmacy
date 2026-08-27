@@ -5509,6 +5509,10 @@ a.order-details-btn {
   background: #ffffff !important;
 }
 
+.app:not(.app-ops) > main {
+  background: #eaf4fb !important;
+}
+
 .med-search-tools {
   margin: 8px 0 0;
   text-align: left;
@@ -5647,4 +5651,180 @@ body,
 .app > footer.app-footer .logo-house-svg rect {
   rx: 0;
   ry: 0;
+}
+
+/* Public service pages match the home landing canvas, cards, and teal actions */
+.app:not(.app-ops) .service-page,
+.app:not(.app-ops) .lab-page,
+.app:not(.app-ops) .profile-page,
+.app:not(.app-ops) .reports-page,
+.app:not(.app-ops) .info-page,
+.app:not(.app-ops) .medicines-page,
+.app:not(.app-ops) .my-orders-page {
+  background: transparent !important;
+  color: #143246 !important;
+  padding: 12px 18px 20px 14px !important;
+}
+
+.app:not(.app-ops) .service-hero,
+.app:not(.app-ops) .profile-hero,
+.app:not(.app-ops) .lab-head {
+  max-width: none !important;
+  width: 100% !important;
+  margin: 0 0 14px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: block !important;
+}
+
+.app:not(.app-ops) .service-kicker,
+.app:not(.app-ops) .profile-label,
+.app:not(.app-ops) .lab-kicker,
+.app:not(.app-ops) .orders-eyebrow {
+  display: block !important;
+  margin: 0 0 6px !important;
+  color: #2f7a7a !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+.app:not(.app-ops) .service-hero h1,
+.app:not(.app-ops) .profile-hero h1,
+.app:not(.app-ops) .lab-head h1,
+.app:not(.app-ops) .medicines-title-row h1,
+.app:not(.app-ops) .orders-page-header h1 {
+  margin: 0 0 6px !important;
+  color: #143246 !important;
+  font-size: clamp(18px, 2.2vw, 26px) !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  letter-spacing: -0.01em !important;
+  text-align: left !important;
+}
+
+.app:not(.app-ops) .service-hero p,
+.app:not(.app-ops) .profile-hero p,
+.app:not(.app-ops) .lab-lead,
+.app:not(.app-ops) .medicines-title-row p,
+.app:not(.app-ops) .orders-subtitle {
+  margin: 0 !important;
+  color: #5d7180 !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  font-weight: 400 !important;
+  text-align: left !important;
+}
+
+.app:not(.app-ops) .service-form,
+.app:not(.app-ops) .profile-card,
+.app:not(.app-ops) .profile-points-card,
+.app:not(.app-ops) .lab-card,
+.app:not(.app-ops) .confirm-card,
+.app:not(.app-ops) .info-panel,
+.app:not(.app-ops) .report-list li,
+.app:not(.app-ops) .pay-block {
+  background: #f7fbfe !important;
+  border: 1px solid #d3e6f3 !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+.app:not(.app-ops) .service-form,
+.app:not(.app-ops) .profile-card,
+.app:not(.app-ops) .profile-points-card,
+.app:not(.app-ops) .info-stack,
+.app:not(.app-ops) .report-list,
+.app:not(.app-ops) .service-confirm {
+  max-width: 760px !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.app:not(.app-ops) .service-form input,
+.app:not(.app-ops) .service-form select,
+.app:not(.app-ops) .service-form textarea,
+.app:not(.app-ops) .profile-field input,
+.app:not(.app-ops) .profile-field textarea,
+.app:not(.app-ops) .lab-field input,
+.app:not(.app-ops) .lab-field select,
+.app:not(.app-ops) .lab-field textarea {
+  background: #ffffff !important;
+  border: 1px solid #d7e2e9 !important;
+  border-radius: 8px !important;
+  color: #143246 !important;
+}
+
+.app:not(.app-ops) .service-form input:focus,
+.app:not(.app-ops) .service-form select:focus,
+.app:not(.app-ops) .service-form textarea:focus,
+.app:not(.app-ops) .profile-field input:focus,
+.app:not(.app-ops) .profile-field textarea:focus,
+.app:not(.app-ops) .lab-field input:focus,
+.app:not(.app-ops) .lab-field select:focus,
+.app:not(.app-ops) .lab-field textarea:focus {
+  border-color: #1a6b7a !important;
+  box-shadow: none !important;
+}
+
+.app:not(.app-ops) .service-submit,
+.app:not(.app-ops) .profile-save-btn,
+.app:not(.app-ops) .lab-submit,
+.app:not(.app-ops) .lab-book-foot button {
+  background: #1a6b7a !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+
+.app:not(.app-ops) .lab-tabs,
+.app:not(.app-ops) .vac-tabs,
+.app:not(.app-ops) .admin-tabs {
+  background: #e7f2fa !important;
+}
+
+.app:not(.app-ops) .lab-tabs button.is-on,
+.app:not(.app-ops) .vac-tabs button.is-on,
+.app:not(.app-ops) .vac-tabs button.is-on {
+  background: #ffffff !important;
+  color: #1a6b7a !important;
+}
+
+.app:not(.app-ops) .care-plans label.is-on,
+.app:not(.app-ops) .vac-suggest label.is-on,
+.app:not(.app-ops) .pay-block > label.is-on {
+  border-color: #1a6b7a !important;
+  background: #e8f4f6 !important;
+}
+
+.app:not(.app-ops) .profile-points-chip {
+  background: #1a6b7a !important;
+  box-shadow: none !important;
+}
+
+.app:not(.app-ops) .profile-hero-icon {
+  display: none !important;
+}
+
+.app:not(.app-ops) .success-icon {
+  background: #e5f8ee !important;
+  color: #1c9b61 !important;
+}
+
+.app:not(.app-ops) .lab-shell {
+  width: 100% !important;
+}
+
+.app:not(.app-ops) .medicines-title-row {
+  justify-content: flex-start !important;
+  text-align: left !important;
+}
+
+.app:not(.app-ops) .medicines-title-row > div:first-child {
+  text-align: left !important;
 }

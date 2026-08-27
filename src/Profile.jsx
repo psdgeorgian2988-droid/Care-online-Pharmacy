@@ -203,7 +203,7 @@ const styles = `
   .profile-hero h1{margin:0 0 4px;font-size:25px;color:#123b59}
   .profile-hero p{margin:0;color:#607589;font-size:13px;line-height:1.4}
   .profile-hero-icon{width:54px;height:54px;border-radius:50%;background:#fff;display:flex;justify-content:center;align-items:center;font-size:27px;box-shadow:0 3px 10px rgba(0,0,0,.07);flex-shrink:0}
-  .profile-points-chip{flex-shrink:0;min-width:118px;padding:10px 12px;border-radius:12px;background:#0639b8;color:#fff;text-decoration:none;text-align:center;box-shadow:0 3px 8px rgba(6,57,184,.22)}
+  .profile-points-chip{flex-shrink:0;min-width:118px;padding:10px 12px;border-radius:12px;background:#1a6b7a;color:#fff;text-decoration:none;text-align:center}
   .profile-points-chip strong{display:block;font-size:22px;line-height:1.1}
   .profile-points-chip span{display:block;margin-top:4px;font-size:11px;font-weight:800}
   .profile-points-card,.profile-refer-wrap{max-width:760px;margin:0 auto 14px}
@@ -212,7 +212,7 @@ const styles = `
   .profile-points-card p{margin:0 0 10px;color:#607589;font-size:13px}
   .profile-ledger{margin:0;padding:0;list-style:none}
   .profile-ledger li{display:flex;gap:10px;padding:6px 0;border-top:1px solid #edf1f3;font-size:13px;color:#34546b}
-  .profile-ledger strong{min-width:36px;color:#0639b8}
+  .profile-ledger strong{min-width:36px;color:#1a6b7a}
   .profile-ledger-empty a{color:#1a6b7a;font-weight:700;text-decoration:none}
   .profile-card{max-width:760px;margin:0 auto;padding:18px;background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.06);display:grid;gap:12px}
   .profile-field{display:flex;flex-direction:column}
@@ -222,7 +222,7 @@ const styles = `
   .profile-field input:focus,.profile-field textarea:focus{border-color:#35a8d2;box-shadow:0 0 0 2px rgba(53,168,210,.1)}
   .profile-error{margin-top:4px;color:#d84b4b;font-size:11px}
   .profile-success{margin:0;padding:10px 12px;border-radius:8px;background:#e5f8ee;color:#1c9b61;font-size:13px;font-weight:600}
-  .profile-save-btn{border:none;border-radius:8px;padding:11px 16px;background:linear-gradient(135deg,#1686b8,#22a77a);color:#fff;font-size:14px;font-weight:800;cursor:pointer}
+  .profile-save-btn{border:none;border-radius:8px;padding:11px 16px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:800;cursor:pointer}
   @media (max-width:800px){.profile-page{padding:14px 10px}.profile-hero{padding:14px}.profile-hero-icon{display:none}}
 `;
 
