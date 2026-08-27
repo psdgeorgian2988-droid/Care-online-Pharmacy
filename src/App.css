@@ -5356,12 +5356,13 @@ a.order-details-btn {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 0 0 10px;
-  padding: 6px 8px !important;
+  margin: 0 0 8px;
+  padding: 6px 8px 10px !important;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   flex-shrink: 0;
+  border-bottom: 1px solid #8eb8c0;
 }
 
 .sidebar-logo .logo-wordmark {
@@ -5393,6 +5394,9 @@ a.order-details-btn {
 .sidebar-nav {
   flex: 1 1 auto;
   min-height: 0;
+  border-bottom: 1px solid #8eb8c0;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
 }
 
 .sidebar-account,
@@ -5622,8 +5626,8 @@ body,
 }
 
 .sidebar {
-  border-bottom: 0 !important;
-  border-top: 0 !important;
+  border-top: 2px solid #0c323b !important;
+  border-bottom: 2px solid #0c323b !important;
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
   height: 100% !important;
