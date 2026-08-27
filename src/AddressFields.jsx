@@ -42,6 +42,8 @@ export default function AddressFields({
                 <small className="addr-error">{errors[field.name]}</small>
               ) : field.name === "pinCode" && pinHint ? (
                 <small className="addr-hint">{pinHint}</small>
+              ) : field.hint ? (
+                <small className="addr-hint">{field.hint}</small>
               ) : null}
             </div>
           );

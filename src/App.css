@@ -413,6 +413,16 @@ footer p {
   resize: vertical;
 }
 
+.checkout-panel .addr-fields {
+  margin: 4px 0 12px;
+}
+
+.checkout-panel .addr-field input {
+  margin-bottom: 0;
+  font-size: 13px;
+  padding: 8px 11px;
+}
+
 .checkout-panel button {
   padding: 10px 18px;
   margin: 5px;

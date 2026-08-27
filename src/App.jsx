@@ -25,6 +25,13 @@ import MedicineSearchTools from "./MedicineSearchTools";
 import { reviewStats } from "./reviewStore";
 import CareChat from "./CareChat";
 import { CARE_WHATSAPP } from "./careChat";
+import AddressFields from "./AddressFields";
+import {
+  emptyAddress,
+  readUserProfile,
+  validateAddress,
+  withFormattedAddress,
+} from "./addressFields";
 import { useFeatures } from "./featureFlags";
 import { pausedServiceTitle, routeEnabled } from "./salesReport";
 import ComingSoon from "./ComingSoon";
@@ -128,20 +135,7 @@ function goToHash(nextHash) {
 }
 
 function readStoredUser() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(PROFILE_KEY) || "null");
-    if (!parsed || typeof parsed !== "object") {
-      return { name: "", mobile: "", address: "", pinCode: "" };
-    }
-    return {
-      name: String(parsed.name || parsed.fullName || "").trim(),
-      mobile: String(parsed.mobile || parsed.mobileNumber || "").trim(),
-      address: String(parsed.address || parsed.deliveryAddress || "").trim(),
-      pinCode: String(parsed.pinCode || parsed.pincode || "").trim(),
-    };
-  } catch {
-    return { name: "", mobile: "", address: "", pinCode: "" };
-  }
+  return readUserProfile();
 }
 
 function HomeAuthCard() {
@@ -150,8 +144,7 @@ function HomeAuthCard() {
   const [register, setRegister] = useState({
     name: "",
     mobile: "",
-    address: "",
-    pinCode: "",
+    ...emptyAddress(),
   });
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState({ type: "", text: "" });
@@ -222,18 +215,14 @@ function HomeAuthCard() {
     if (!/^[6-9]\d{9}$/.test(register.mobile)) {
       nextErrors.mobile = "Enter a valid 10-digit mobile number.";
     }
-    if (!register.address.trim()) nextErrors.address = "Address is required.";
-    if (!/^\d{6}$/.test(register.pinCode)) {
-      nextErrors.pinCode = "Enter a valid 6-digit PIN Code.";
-    }
+    Object.assign(nextErrors, validateAddress(register));
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
     const profile = {
       name: register.name.trim(),
       mobile: register.mobile.trim(),
-      address: register.address.trim(),
-      pinCode: register.pinCode.trim(),
+      ...withFormattedAddress(register),
     };
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     setStatus({
@@ -316,31 +305,13 @@ function HomeAuthCard() {
           {errors.mobile && (
             <small className="home-auth-error">{errors.mobile}</small>
           )}
-          <label htmlFor="home-register-address">Address</label>
-          <textarea
-            id="home-register-address"
-            name="address"
-            rows="2"
-            placeholder="Delivery address"
-            value={register.address}
+          <AddressFields
+            idPrefix="home-register"
+            values={register}
+            errors={errors}
             onChange={handleRegisterChange}
+            pinHint="This PIN is also used to sign in."
           />
-          {errors.address && (
-            <small className="home-auth-error">{errors.address}</small>
-          )}
-          <label htmlFor="home-register-pin">PIN code</label>
-          <input
-            id="home-register-pin"
-            name="pinCode"
-            inputMode="numeric"
-            maxLength="6"
-            placeholder="6-digit PIN"
-            value={register.pinCode}
-            onChange={handleRegisterChange}
-          />
-          {errors.pinCode && (
-            <small className="home-auth-error">{errors.pinCode}</small>
-          )}
           <button type="submit">Create account</button>
         </form>
       )}

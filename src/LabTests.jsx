@@ -9,6 +9,14 @@ import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
 import { DIAGNOSTIC_LABS, IMAGING_CENTRES } from "./diagnosticPartners";
+import AddressFields from "./AddressFields";
+import {
+  addressFromUnknown,
+  applyResolvedPin,
+  emptyAddress,
+  pickAddress,
+  validateAddress,
+} from "./addressFields";
 
 const PREP_LABEL = {
   fasting: "Fasting required",
@@ -80,8 +88,7 @@ const RADIOLOGY_PARTNERS = withPrep(IMAGING_CENTRES);
 const EMPTY_FORM = {
   patientName: "",
   mobile: "",
-  address: "",
-  pinCode: "",
+  ...emptyAddress(),
   visitType: "home",
   date: "",
   timeSlot: "",
@@ -115,10 +122,17 @@ function normalizeProfile(raw) {
   const source = raw.user && typeof raw.user === "object" ? raw.user : raw;
   const name = firstValue(source, ["name", "fullName", "userName", "username", "patientName"]);
   const mobile = firstValue(source, ["mobile", "mobileNumber", "phone", "phoneNumber", "contactNo", "contactNumber"]);
-  const address = firstValue(source, ["address", "deliveryAddress", "savedAddress"]);
-  const pinCode = firstValue(source, ["pinCode", "pincode", "pin", "zipCode", "postalCode"]);
-  if (!name && !mobile && !address && !pinCode) return null;
-  return { name, mobile, address, pinCode };
+  const address = addressFromUnknown(source);
+  if (
+    !name &&
+    !mobile &&
+    !address.houseNo &&
+    !address.society &&
+    !address.pinCode
+  ) {
+    return null;
+  }
+  return { name, mobile, ...address };
 }
 
 function getRegisteredProfile() {
@@ -138,7 +152,7 @@ function getRegisteredProfile() {
 
     for (const candidate of candidates) {
       const profile = normalizeProfile(candidate);
-      if (profile && (profile.name || profile.mobile || profile.address || profile.pinCode)) {
+      if (profile && (profile.name || profile.mobile || profile.houseNo || profile.society || profile.pinCode)) {
         return profile;
       }
     }
@@ -149,7 +163,7 @@ function getRegisteredProfile() {
       try {
         const parsed = JSON.parse(localStorage.getItem(key));
         const profile = normalizeProfile(parsed);
-        if (profile && (profile.name || profile.mobile || profile.address || profile.pinCode)) return profile;
+        if (profile && (profile.name || profile.mobile || profile.houseNo || profile.society || profile.pinCode)) return profile;
       } catch {
         // Ignore unrelated values.
       }
@@ -175,8 +189,7 @@ function LabTests() {
       ? {
           patientName: registeredProfile.name,
           mobile: registeredProfile.mobile,
-          address: registeredProfile.address,
-          pinCode: registeredProfile.pinCode,
+          ...pickAddress(registeredProfile),
         }
       : {}),
   }));
@@ -338,8 +351,7 @@ function LabTests() {
 
     if (!form.patientName.trim()) newErrors.patientName = "Patient name is required.";
     if (!/^[6-9]\d{9}$/.test(form.mobile)) newErrors.mobile = "Enter a valid 10-digit mobile number.";
-    if (!form.address.trim()) newErrors.address = "Address is required.";
-    if (!/^\d{6}$/.test(form.pinCode)) newErrors.pinCode = "Enter a valid 6-digit PIN Code.";
+    Object.assign(newErrors, validateAddress(form));
     if (!form.date) newErrors.date = "Please select a date.";
     if (!form.timeSlot) newErrors.timeSlot = "Please select a time slot.";
 
@@ -356,6 +368,7 @@ function LabTests() {
       const kind = serviceType === "radiology" ? "radiology" : "lab";
       const queue = await holdForPartnerQueue(kind);
       const gps = await resolvePinLocation(form.pinCode);
+      const addr = applyResolvedPin(form, gps);
       const pay = paymentFromQuote(payQuote, total);
       const payment = await settleCheckoutPayment({
         method: payMethod,
@@ -389,7 +402,7 @@ function LabTests() {
         discountRupees: pay.discountRupees,
         highTrafficWait: queue.busy || queue.waited,
         ...form,
-        pinCode: gps.pinCode,
+        ...addr,
         pin: gps.pin,
         lat: gps.lat,
         lng: gps.lng,
@@ -430,10 +443,9 @@ function LabTests() {
       ...EMPTY_FORM,
       ...(registeredProfile
         ? {
-            patientName: registeredProfile.name,
-            mobile: registeredProfile.mobile,
-            address: registeredProfile.address,
-            pinCode: registeredProfile.pinCode,
+          patientName: registeredProfile.name,
+          mobile: registeredProfile.mobile,
+          ...pickAddress(registeredProfile),
           }
         : {}),
     });
@@ -732,35 +744,13 @@ function LabTests() {
             </div>
 
             <div className="lab-field lab-span">
-              <label htmlFor="address">
-                Address <em>*</em>
-              </label>
-              <textarea
-                id="address"
-                name="address"
-                rows="2"
-                placeholder="Complete visit address"
-                value={form.address}
+              <AddressFields
+                idPrefix="lab"
+                values={form}
+                errors={errors}
                 onChange={handleChange}
+                pinHint="Location is taken from this PIN."
               />
-              {errors.address ? <small className="lab-error">{errors.address}</small> : null}
-            </div>
-
-            <div className="lab-field">
-              <label htmlFor="pinCode">
-                PIN code <em>*</em>
-              </label>
-              <input
-                id="pinCode"
-                name="pinCode"
-                inputMode="numeric"
-                maxLength="6"
-                placeholder="6-digit PIN"
-                value={form.pinCode}
-                onChange={handleChange}
-              />
-              {errors.pinCode ? <small className="lab-error">{errors.pinCode}</small> : null}
-              <small className="lab-hint">Location is taken from this PIN.</small>
             </div>
 
             <div className="lab-field">

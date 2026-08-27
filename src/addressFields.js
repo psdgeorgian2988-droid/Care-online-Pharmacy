@@ -44,8 +44,9 @@ export const ADDRESS_FIELDS = [
   {
     name: "nearby",
     label: "Landmark Near By",
-    placeholder: "Optional landmark",
+    placeholder: "Temple, metro, market — optional",
     required: false,
+    hint: "Optional. You can leave this blank.",
   },
 ];
 
@@ -119,6 +120,19 @@ export function withFormattedAddress(source = {}) {
     address: formatted,
     deliveryAddress: formatted,
     pickupAddress: formatted,
+  };
+}
+
+export function applyResolvedPin(source = {}, gps = {}) {
+  const formatted = withFormattedAddress(source);
+  return {
+    ...formatted,
+    pinCode: gps.pinCode || formatted.pinCode,
+    pin: gps.pin,
+    lat: gps.lat,
+    lng: gps.lng,
+    locality: gps.locality,
+    mapsUrl: gps.mapsUrl,
   };
 }
 

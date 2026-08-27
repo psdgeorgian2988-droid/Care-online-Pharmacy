@@ -10,6 +10,14 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import MedicineSearchTools from "./MedicineSearchTools";
+import AddressFields from "./AddressFields";
+import {
+  addressFromUnknown,
+  applyResolvedPin,
+  emptyAddress,
+  pickAddress,
+  validateAddress,
+} from "./addressFields";
 
 function readHomeMedicineSearch() {
   const hash = window.location.hash || "";
@@ -41,8 +49,7 @@ function readSavedProfile() {
     return {
       name: String(parsed.name || parsed.fullName || "").trim(),
       mobile: String(parsed.mobile || parsed.mobileNumber || "").trim(),
-      address: String(parsed.address || parsed.deliveryAddress || "").trim(),
-      pinCode: String(parsed.pinCode || parsed.pincode || "").trim(),
+      ...addressFromUnknown(parsed),
     };
   } catch {
     return null;
@@ -3122,10 +3129,11 @@ function Medicines({ initialSearch = "" }) {
   const savedProfile = readSavedProfile();
   const [fullName, setFullName] = useState(savedProfile?.name || "");
   const [mobileNumber, setMobileNumber] = useState(savedProfile?.mobile || "");
-  const [deliveryAddress, setDeliveryAddress] = useState(
-    savedProfile?.address || ""
-  );
-  const [pinCode, setPinCode] = useState(savedProfile?.pinCode || "");
+  const [delivery, setDelivery] = useState(() => ({
+    ...emptyAddress(),
+    ...(savedProfile ? pickAddress(savedProfile) : {}),
+  }));
+  const [deliveryErrors, setDeliveryErrors] = useState({});
   const [confirmedOrder, setConfirmedOrder] = useState(null);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
@@ -3272,8 +3280,8 @@ function Medicines({ initialSearch = "" }) {
   const resetCheckoutForm = () => {
     setFullName("");
     setMobileNumber("");
-    setDeliveryAddress("");
-    setPinCode("");
+    setDelivery(emptyAddress());
+    setDeliveryErrors({});
     setPrescriptionFile(null);
   };
 
@@ -3293,15 +3301,13 @@ function Medicines({ initialSearch = "" }) {
       return;
     }
 
-    if (!deliveryAddress.trim()) {
-      alert("Please enter your Delivery Address.");
+    const nextAddressErrors = validateAddress(delivery);
+    if (Object.keys(nextAddressErrors).length) {
+      setDeliveryErrors(nextAddressErrors);
+      alert(Object.values(nextAddressErrors)[0]);
       return;
     }
-
-    if (pinCode.length !== 6) {
-      alert("Please enter a valid 6-digit PIN Code.");
-      return;
-    }
+    setDeliveryErrors({});
 
     if (cartNeedsPrescription && !prescriptionFile) {
       alert("Please upload your prescription.");
@@ -3311,7 +3317,8 @@ function Medicines({ initialSearch = "" }) {
     setPlacingOrder(true);
     try {
       const queue = await holdForPartnerQueue("medicine");
-      const gps = await resolvePinLocation(pinCode);
+      const gps = await resolvePinLocation(delivery.pinCode);
+      const addr = applyResolvedPin(delivery, gps);
       const pay = paymentFromQuote(payQuote, cartTotal);
       const payment = await settleCheckoutPayment({
         method: payMethod,
@@ -3348,13 +3355,7 @@ function Medicines({ initialSearch = "" }) {
         fullName: fullName.trim(),
         mobileNumber: mobileNumber.trim(),
         prescription: prescriptionFile ? prescriptionFile.name : "",
-        deliveryAddress: deliveryAddress.trim(),
-        pinCode: gps.pinCode,
-        pin: gps.pin,
-        lat: gps.lat,
-        lng: gps.lng,
-        locality: gps.locality,
-        mapsUrl: gps.mapsUrl,
+        ...addr,
         ...payment,
       };
 
@@ -3537,8 +3538,13 @@ function Medicines({ initialSearch = "" }) {
                 if (profile) {
                   setFullName((current) => current || profile.name);
                   setMobileNumber((current) => current || profile.mobile);
-                  setDeliveryAddress((current) => current || profile.address);
-                  setPinCode((current) => current || profile.pinCode);
+                  setDelivery((current) => {
+                    const filled =
+                      current.houseNo || current.society || current.pinCode;
+                    return filled
+                      ? current
+                      : { ...emptyAddress(), ...pickAddress(profile) };
+                  });
                 }
               }}
             >
@@ -3581,33 +3587,22 @@ function Medicines({ initialSearch = "" }) {
             </div>
           )}
 
-          <div>
-            <label>Delivery Address</label>
-
-            <textarea
-              placeholder="Delivery Address"
-              value={deliveryAddress}
-              onChange={(e) => setDeliveryAddress(e.target.value)}
-              rows={3}
-            />
-            <label>PIN Code</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="Enter 6-digit PIN Code"
-              value={pinCode}
-              maxLength={6}
-              onChange={(e) =>
-                setPinCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-              }
-            />
-            <p className="pin-gps-hint">Delivery GPS is connected from this 6-digit PIN.</p>
-          </div>
+          <AddressFields
+            idPrefix="med-checkout"
+            values={delivery}
+            errors={deliveryErrors}
+            onChange={(event) => {
+              const { name, value } = event.target;
+              setDelivery((prev) => ({ ...prev, [name]: value }));
+              setDeliveryErrors((prev) => ({ ...prev, [name]: "" }));
+            }}
+            pinHint="Delivery GPS is connected from this 6-digit PIN."
+          />
           <PaymentBlock
             kind="medicine"
             amount={cartTotal}
             saleAmount={cartMrp}
-            pin={pinCode}
+            pin={delivery.pinCode}
             method={payMethod}
             onMethodChange={setPayMethod}
             onQuoteChange={setPayQuote}

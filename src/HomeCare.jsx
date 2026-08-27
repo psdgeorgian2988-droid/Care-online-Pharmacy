@@ -8,6 +8,13 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
+import AddressFields from "./AddressFields";
+import {
+  applyResolvedPin,
+  pickAddress,
+  readUserProfile,
+  validateAddress,
+} from "./addressFields";
 
 const LEGACY_STORAGE_KEY = "mediHomeHomeCareBookings";
 const SERVICE_TYPES = [
@@ -59,20 +66,7 @@ const TIME_SLOTS = [
 ];
 
 function readProfile() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem("mediHomeUser") || "null");
-    if (!parsed || typeof parsed !== "object") {
-      return { name: "", mobile: "", address: "", pinCode: "" };
-    }
-    return {
-      name: String(parsed.name || parsed.fullName || "").trim(),
-      mobile: String(parsed.mobile || parsed.mobileNumber || "").trim(),
-      address: String(parsed.address || parsed.deliveryAddress || "").trim(),
-      pinCode: String(parsed.pinCode || parsed.pincode || "").trim(),
-    };
-  } catch {
-    return { name: "", mobile: "", address: "", pinCode: "" };
-  }
+  return readUserProfile();
 }
 
 function HomeCare() {
@@ -81,8 +75,7 @@ function HomeCare() {
   const [form, setForm] = useState({
     patientName: profile.name,
     mobile: profile.mobile,
-    address: profile.address,
-    pinCode: profile.pinCode,
+    ...pickAddress(profile),
     serviceType: "caregiver",
     carePlan: "visit",
     date: "",
@@ -127,8 +120,7 @@ function HomeCare() {
     if (!/^[6-9]\d{9}$/.test(form.mobile)) {
       next.mobile = "Enter a valid 10-digit mobile number.";
     }
-    if (!form.address.trim()) next.address = "Address is required.";
-    if (!/^\d{6}$/.test(form.pinCode)) next.pinCode = "Enter a valid 6-digit PIN.";
+    Object.assign(next, validateAddress(form));
     if (!form.serviceType) next.serviceType = "Select a service type.";
     if (!form.carePlan) next.carePlan = "Select a care plan.";
     if (form.carePlan === "nurse-other") {
@@ -164,6 +156,7 @@ function HomeCare() {
     try {
       const queue = await holdForPartnerQueue("homecare");
       const gps = await resolvePinLocation(form.pinCode);
+      const addr = applyResolvedPin(form, gps);
       const total =
         plan.value === "nurse-other"
           ? Number(form.otherRate) || plan.price
@@ -183,9 +176,8 @@ function HomeCare() {
       const bookingDetails = {
         bookingId: "MH-HC-" + Math.floor(100000 + Math.random() * 900000),
         ...form,
+        ...addr,
         patientName: form.patientName.trim(),
-        address: form.address.trim(),
-        pinCode: gps.pinCode,
         pin: gps.pin,
         lat: gps.lat,
         lng: gps.lng,
@@ -240,8 +232,7 @@ function HomeCare() {
     setForm({
       patientName: profile.name,
       mobile: profile.mobile,
-      address: profile.address,
-      pinCode: profile.pinCode,
+      ...pickAddress(profile),
       serviceType: "caregiver",
       carePlan: "visit",
       date: "",
@@ -394,35 +385,13 @@ function HomeCare() {
           </div>
 
           <div className="field full">
-            <label htmlFor="hc-address">
-              Address <span>*</span>
-            </label>
-            <textarea
-              id="hc-address"
-              name="address"
-              rows="2"
-              value={form.address}
+            <AddressFields
+              idPrefix="hc"
+              values={form}
+              errors={errors}
               onChange={handleChange}
-              placeholder="Complete visit address"
+              pinHint="Visit GPS is connected from this PIN."
             />
-            {errors.address && <small>{errors.address}</small>}
-          </div>
-
-          <div className="field">
-            <label htmlFor="hc-pin">
-              PIN code <span>*</span>
-            </label>
-            <input
-              id="hc-pin"
-              name="pinCode"
-              inputMode="numeric"
-              maxLength="6"
-              value={form.pinCode}
-              onChange={handleChange}
-              placeholder="6-digit PIN"
-            />
-            {errors.pinCode && <small>{errors.pinCode}</small>}
-            <small className="pin-gps-hint">Visit GPS is connected from this PIN.</small>
           </div>
 
           <div className="field">

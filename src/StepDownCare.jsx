@@ -8,6 +8,13 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
+import AddressFields from "./AddressFields";
+import {
+  applyResolvedPin,
+  pickAddress,
+  readUserProfile,
+  validateAddress,
+} from "./addressFields";
 
 const STORAGE_KEY = "mediHomeStepDownBookings";
 const AMBULANCE_STORAGE_KEY = "mediHomeAmbulanceRequests";
@@ -108,20 +115,7 @@ const CENTRES = [
 ];
 
 function readProfile() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem("mediHomeUser") || "null");
-    if (!parsed || typeof parsed !== "object") {
-      return { name: "", mobile: "", address: "", pinCode: "" };
-    }
-    return {
-      name: String(parsed.name || parsed.fullName || "").trim(),
-      mobile: String(parsed.mobile || parsed.mobileNumber || "").trim(),
-      address: String(parsed.address || parsed.deliveryAddress || "").trim(),
-      pinCode: String(parsed.pinCode || parsed.pincode || "").trim(),
-    };
-  } catch {
-    return { name: "", mobile: "", address: "", pinCode: "" };
-  }
+  return readUserProfile();
 }
 
 function focusLabel(value) {
@@ -158,8 +152,7 @@ function StepDownCare() {
     centreId: "",
     patientName: profile.name,
     mobile: profile.mobile,
-    address: profile.address,
-    pinCode: profile.pinCode,
+    ...pickAddress(profile),
     serviceType: "post-icu",
     date: "",
     timeSlot: "",
@@ -200,8 +193,7 @@ function StepDownCare() {
     if (!/^[6-9]\d{9}$/.test(form.mobile)) {
       next.mobile = "Enter a valid 10-digit mobile number.";
     }
-    if (!form.address.trim()) next.address = "Address is required.";
-    if (!/^\d{6}$/.test(form.pinCode)) next.pinCode = "Enter a valid 6-digit PIN.";
+    Object.assign(next, validateAddress(form));
     if (!form.serviceType) next.serviceType = "Select a care type.";
     if (!form.date) next.date = "Please select a date.";
     if (!form.timeSlot) next.timeSlot = "Please select a time slot.";
@@ -227,6 +219,7 @@ function StepDownCare() {
     try {
       const queue = await holdForPartnerQueue("stepdown");
       const gps = await resolvePinLocation(form.pinCode);
+      const addr = applyResolvedPin(form, gps);
       const bookingId = "MH-SD-" + Math.floor(100000 + Math.random() * 900000);
       const wantsAmbulance = form.needAmbulance === "yes";
       let ambulanceRequestId = "";
@@ -251,9 +244,8 @@ function StepDownCare() {
         bookingId,
         orderType: "stepdown",
         ...form,
+        ...addr,
         patientName: form.patientName.trim(),
-        address: form.address.trim(),
-        pinCode: gps.pinCode,
         pin: gps.pin,
         lat: gps.lat,
         lng: gps.lng,
@@ -294,7 +286,7 @@ function StepDownCare() {
               requestId: ambulanceRequestId,
               patientName: form.patientName.trim(),
               mobile: form.mobile,
-              pickupAddress: form.address.trim(),
+              pickupAddress: addr.pickupAddress,
               pinCode: gps.pinCode,
               pin: gps.pin,
               lat: gps.lat,
@@ -331,8 +323,7 @@ function StepDownCare() {
       centreId: "",
       patientName: profile.name,
       mobile: profile.mobile,
-      address: profile.address,
-      pinCode: profile.pinCode,
+      ...pickAddress(profile),
       serviceType: "post-icu",
       date: "",
       timeSlot: "",
@@ -637,33 +628,13 @@ function StepDownCare() {
                   {errors.mobile ? <small className="lab-error">{errors.mobile}</small> : null}
                 </div>
                 <div className="lab-field sd-full">
-                  <label htmlFor="sd-address">
-                    Home / pickup address <em>*</em>
-                  </label>
-                  <textarea
-                    id="sd-address"
-                    name="address"
-                    rows="2"
-                    value={form.address}
+                  <AddressFields
+                    idPrefix="sd"
+                    values={form}
+                    errors={errors}
                     onChange={handleChange}
-                    placeholder="Address for pickup or assisted recovery"
+                    pinHint="Pickup and visit GPS are connected from this PIN."
                   />
-                  {errors.address ? <small className="lab-error">{errors.address}</small> : null}
-                </div>
-                <div className="lab-field">
-                  <label htmlFor="sd-pin">
-                    PIN code <em>*</em>
-                  </label>
-                  <input
-                    id="sd-pin"
-                    name="pinCode"
-                    inputMode="numeric"
-                    maxLength="6"
-                    value={form.pinCode}
-                    onChange={handleChange}
-                    placeholder="6-digit PIN"
-                  />
-                  {errors.pinCode ? <small className="lab-error">{errors.pinCode}</small> : null}
                 </div>
                 <div className="lab-field">
                   <label htmlFor="sd-type">

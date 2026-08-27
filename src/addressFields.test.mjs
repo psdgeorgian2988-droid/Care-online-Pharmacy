@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  applyResolvedPin,
   formatAddress,
   validateAddress,
   addressFromUnknown,
@@ -51,4 +52,36 @@ test("old single-line address is kept in society/mohalla until the form is fille
   });
   assert.equal(next.society, "Old saved line");
   assert.equal(next.pinCode, "110001");
+});
+
+test("format omits landmark when it is left blank", () => {
+  assert.equal(
+    formatAddress({
+      houseNo: "B-14",
+      society: "Green Park Society",
+      city: "New Delhi",
+      district: "South Delhi",
+      state: "Delhi",
+      pinCode: "110016",
+    }),
+    "B-14, Green Park Society, New Delhi, South Delhi, Delhi, 110016"
+  );
+});
+
+test("PIN GPS locality does not replace society and landmark stays blank", () => {
+  const next = applyResolvedPin(
+    {
+      houseNo: "B-14",
+      society: "Green Park Society",
+      city: "New Delhi",
+      district: "South Delhi",
+      state: "Delhi",
+      pinCode: "110016",
+    },
+    { pinCode: "110016", locality: "Hauz Khas", pin: "110016" }
+  );
+  assert.equal(next.society, "Green Park Society");
+  assert.equal(next.locality, "Hauz Khas");
+  assert.equal(next.nearby, "");
+  assert.equal(next.address.includes("Near"), false);
 });

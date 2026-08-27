@@ -8,6 +8,13 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
+import AddressFields from "./AddressFields";
+import {
+  applyResolvedPin,
+  pickAddress,
+  readUserProfile,
+  validateAddress,
+} from "./addressFields";
 
 const STORAGE_KEY = "mediHomeAmbulanceRequests";
 const AMBULANCE_FEE = {
@@ -16,20 +23,7 @@ const AMBULANCE_FEE = {
 };
 
 function readProfile() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem("mediHomeUser") || "null");
-    if (!parsed || typeof parsed !== "object") {
-      return { name: "", mobile: "", address: "", pinCode: "" };
-    }
-    return {
-      name: String(parsed.name || parsed.fullName || "").trim(),
-      mobile: String(parsed.mobile || parsed.mobileNumber || "").trim(),
-      address: String(parsed.address || parsed.deliveryAddress || "").trim(),
-      pinCode: String(parsed.pinCode || parsed.pincode || "").trim(),
-    };
-  } catch {
-    return { name: "", mobile: "", address: "", pinCode: "" };
-  }
+  return readUserProfile();
 }
 
 function Ambulance() {
@@ -37,8 +31,7 @@ function Ambulance() {
   const [form, setForm] = useState({
     patientName: profile.name,
     mobile: profile.mobile,
-    pickupAddress: profile.address,
-    pinCode: profile.pinCode,
+    ...pickAddress(profile),
     emergencyType: "emergency",
     notes: "",
   });
@@ -65,8 +58,7 @@ function Ambulance() {
     if (!/^[6-9]\d{9}$/.test(form.mobile)) {
       next.mobile = "Enter a valid 10-digit mobile number.";
     }
-    if (!form.pickupAddress.trim()) next.pickupAddress = "Pickup address is required.";
-    if (!/^\d{6}$/.test(form.pinCode)) next.pinCode = "Enter a valid 6-digit PIN.";
+    Object.assign(next, validateAddress(form));
     if (!form.emergencyType) next.emergencyType = "Select emergency type.";
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -81,6 +73,7 @@ function Ambulance() {
       const urgent = form.emergencyType === "emergency";
       const queue = await holdForPartnerQueue("ambulance", { urgent });
       const gps = await resolvePinLocation(form.pinCode);
+      const addr = applyResolvedPin(form, gps);
       const total = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
       const method =
         form.emergencyType === "emergency" ? "cod" : payMethod;
@@ -100,13 +93,7 @@ function Ambulance() {
         requestId: "MH-AMB-" + Math.floor(100000 + Math.random() * 900000),
         patientName: form.patientName.trim(),
         mobile: form.mobile,
-        pickupAddress: form.pickupAddress.trim(),
-        pinCode: gps.pinCode,
-        pin: gps.pin,
-        lat: gps.lat,
-        lng: gps.lng,
-        locality: gps.locality,
-        mapsUrl: gps.mapsUrl,
+        ...addr,
         emergencyType: form.emergencyType,
         notes: form.notes.trim(),
         total: pay.amountRupees,
@@ -133,8 +120,7 @@ function Ambulance() {
     setForm({
       patientName: profile.name,
       mobile: profile.mobile,
-      pickupAddress: profile.address,
-      pinCode: profile.pinCode,
+      ...pickAddress(profile),
       emergencyType: "emergency",
       notes: "",
     });
@@ -280,35 +266,13 @@ function Ambulance() {
           </div>
 
           <div className="field full">
-            <label htmlFor="amb-address">
-              Pickup address <span>*</span>
-            </label>
-            <textarea
-              id="amb-address"
-              name="pickupAddress"
-              rows="2"
-              value={form.pickupAddress}
+            <AddressFields
+              idPrefix="amb"
+              values={form}
+              errors={errors}
               onChange={handleChange}
-              placeholder="Pickup location"
+              pinHint="Pickup GPS is connected from this PIN."
             />
-            {errors.pickupAddress && <small>{errors.pickupAddress}</small>}
-          </div>
-
-          <div className="field">
-            <label htmlFor="amb-pin">
-              PIN code <span>*</span>
-            </label>
-            <input
-              id="amb-pin"
-              name="pinCode"
-              inputMode="numeric"
-              maxLength="6"
-              value={form.pinCode}
-              onChange={handleChange}
-              placeholder="6-digit PIN"
-            />
-            {errors.pinCode && <small>{errors.pinCode}</small>}
-            <small className="pin-gps-hint">Pickup GPS is connected from this PIN.</small>
           </div>
 
           <div className="field">

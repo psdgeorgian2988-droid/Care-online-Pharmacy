@@ -1,24 +1,17 @@
 import { useState } from "react";
 import ReferFamily from "./ReferFamily";
 import { POINT_VALUES, useWallet } from "./pointsStore";
+import AddressFields from "./AddressFields";
+import {
+  readUserProfile,
+  validateAddress,
+  withFormattedAddress,
+} from "./addressFields";
 
 const PROFILE_KEY = "mediHomeUser";
 
 function readProfile() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(PROFILE_KEY) || "null");
-    if (!parsed || typeof parsed !== "object") {
-      return { name: "", mobile: "", address: "", pinCode: "" };
-    }
-    return {
-      name: String(parsed.name || parsed.fullName || "").trim(),
-      mobile: String(parsed.mobile || parsed.mobileNumber || "").trim(),
-      address: String(parsed.address || parsed.deliveryAddress || "").trim(),
-      pinCode: String(parsed.pinCode || parsed.pincode || "").trim(),
-    };
-  } catch {
-    return { name: "", mobile: "", address: "", pinCode: "" };
-  }
+  return readUserProfile();
 }
 
 function Profile() {
@@ -45,10 +38,7 @@ function Profile() {
     if (!/^[6-9]\d{9}$/.test(form.mobile)) {
       newErrors.mobile = "Enter a valid 10-digit mobile number.";
     }
-    if (!form.address.trim()) newErrors.address = "Address is required.";
-    if (!/^\d{6}$/.test(form.pinCode)) {
-      newErrors.pinCode = "Enter a valid 6-digit PIN Code.";
-    }
+    Object.assign(newErrors, validateAddress(form));
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -60,8 +50,7 @@ function Profile() {
     const profile = {
       name: form.name.trim(),
       mobile: form.mobile.trim(),
-      address: form.address.trim(),
-      pinCode: form.pinCode.trim(),
+      ...withFormattedAddress(form),
     };
 
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
@@ -118,40 +107,13 @@ function Profile() {
             )}
           </div>
 
-          <div className="profile-field">
-            <label htmlFor="address">
-              Address <span>*</span>
-            </label>
-            <textarea
-              id="address"
-              name="address"
-              rows="3"
-              placeholder="Enter complete address"
-              value={form.address}
-              onChange={handleChange}
-            />
-            {errors.address && (
-              <small className="profile-error">{errors.address}</small>
-            )}
-          </div>
-
-          <div className="profile-field">
-            <label htmlFor="pinCode">
-              PIN Code <span>*</span>
-            </label>
-            <input
-              id="pinCode"
-              name="pinCode"
-              inputMode="numeric"
-              maxLength="6"
-              placeholder="6-digit PIN Code"
-              value={form.pinCode}
-              onChange={handleChange}
-            />
-            {errors.pinCode && (
-              <small className="profile-error">{errors.pinCode}</small>
-            )}
-          </div>
+          <AddressFields
+            idPrefix="profile"
+            values={form}
+            errors={errors}
+            onChange={handleChange}
+            pinHint="This PIN is also used to sign in."
+          />
 
           {saved && (
             <p className="profile-success">
