@@ -5335,21 +5335,29 @@ a.order-details-btn {
   }
 }
 
-/* Left panel: sharp rail + My Orders-style nav buttons */
+/* Left panel: quiet text rail */
 .sidebar {
-  background: linear-gradient(180deg, #f4f8fb 0%, #eef4f8 100%) !important;
-  padding: 8px 8px 10px 8px !important;
-  border-right: 1px solid #d5e0e8 !important;
+  background: #f7f7f5 !important;
+  padding: 16px 10px 12px 10px !important;
+  border-right: 1px solid #e6e6e2 !important;
   overflow: hidden !important;
+  box-shadow: none !important;
 }
 
 .sidebar-logo {
-  margin: 0 2px 8px;
-  padding: 6px 8px !important;
-  border-radius: 10px;
-  background: #ffffff;
-  box-shadow: 0 1px 4px rgba(20, 50, 70, 0.08);
+  margin: 0 4px 18px;
+  padding: 2px 8px !important;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   flex-shrink: 0;
+}
+
+.sidebar-logo .logo-wordmark {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em;
+  color: #3a4548 !important;
 }
 
 .sidebar-links {
@@ -5357,14 +5365,17 @@ a.order-details-btn {
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  gap: 8px;
+  gap: 12px;
   overflow: hidden;
 }
 
 .sidebar-nav,
+.sidebar-account,
 .sidebar-bottom {
-  gap: 4px !important;
-  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+  gap: 1px !important;
+  overflow: auto !important;
 }
 
 .sidebar-nav {
@@ -5372,71 +5383,94 @@ a.order-details-btn {
   min-height: 0;
 }
 
+.sidebar-account {
+  flex-shrink: 0;
+  padding-top: 10px;
+  border-top: 1px solid #e6e6e2;
+}
+
 .sidebar-bottom {
   flex-shrink: 0;
   margin-top: auto;
-  padding-top: 8px !important;
-  border-top: 1px solid #d5e0e8 !important;
+  padding-top: 10px !important;
+  border-top: 1px solid #e6e6e2 !important;
 }
 
 .sidebar-nav a,
+.sidebar-account a,
 .sidebar-bottom a,
 .sidebar-bottom button {
   appearance: none;
-  width: calc(100% - 4px);
-  min-height: 0;
+  width: 100%;
+  min-height: 30px;
   height: auto;
-  margin: 0 2px;
-  padding: 5px 10px !important;
-  border: 2px solid #c5d5df !important;
-  border-radius: 8px !important;
-  background: #ffffff !important;
-  color: #1a4458 !important;
-  font-size: 12px !important;
-  font-weight: 800 !important;
+  margin: 0;
+  padding: 6px 10px !important;
+  border: none !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+  color: #5a6568 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
   letter-spacing: 0.01em;
-  line-height: 1.15;
-  box-shadow: 0 1px 3px rgba(20, 50, 70, 0.08);
+  line-height: 1.3;
+  box-shadow: none !important;
 }
 
 .sidebar-nav a.active,
+.sidebar-account a.active,
 .sidebar-bottom a.active,
 .sidebar-bottom button.active {
-  border-color: #0639b8 !important;
-  background: #0639b8 !important;
-  color: #ffffff !important;
-  font-weight: 800 !important;
-  margin-right: 2px !important;
-  border-right: 2px solid #0639b8 !important;
-  box-shadow: none;
+  background: #eceeea !important;
+  color: #2c3a3d !important;
+  font-weight: 600 !important;
+  margin-right: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .sidebar-nav a:hover,
+.sidebar-account a:hover,
 .sidebar-bottom a:hover,
 .sidebar-bottom button:hover {
-  border-color: #c5d5df !important;
-  background: #ffffff !important;
-  color: #1a4458 !important;
+  border: none !important;
+  background: #f0f1ee !important;
+  color: #2c3a3d !important;
   transform: none !important;
   filter: none !important;
   opacity: 1 !important;
-  box-shadow: 0 1px 3px rgba(20, 50, 70, 0.08) !important;
+  box-shadow: none !important;
 }
 
 .sidebar-nav a.active:hover,
+.sidebar-account a.active:hover,
 .sidebar-bottom a.active:hover,
 .sidebar-bottom button.active:hover {
-  border-color: #0639b8 !important;
-  background: #0639b8 !important;
-  color: #ffffff !important;
+  background: #eceeea !important;
+  color: #2c3a3d !important;
   box-shadow: none !important;
 }
 
 .sidebar-nav a:focus-visible,
+.sidebar-account a:focus-visible,
 .sidebar-bottom a:focus-visible,
 .sidebar-bottom button:focus-visible {
-  outline: 2px solid #7eb8ff;
+  outline: 1px solid #8aa0a4;
   outline-offset: 1px;
+}
+
+.nav-care-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.nav-care-no {
+  font-size: 11px;
+  font-weight: 500;
+  color: #8a9598;
+  letter-spacing: 0.01em;
 }
 
 .med-search-tools {

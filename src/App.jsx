@@ -30,24 +30,27 @@ import { pausedServiceTitle, routeEnabled } from "./salesReport";
 import ComingSoon from "./ComingSoon";
 
 const NAV_LINKS = [
-  { href: "#home", label: "Home", icon: "🏠" },
-  { href: "#medicine-search", label: "Search Medicine", icon: "🔍" },
-  { href: "#labs", label: "Lab Tests", icon: "🧪" },
-  { href: "#homecare", label: "Home Care", icon: "🩺" },
-  { href: "#psychologist", label: "Psychologist", icon: "🧠" },
-  { href: "#stepdown", label: "Step-Down Care", icon: "🏥" },
-  { href: "#ambulance", label: "Ambulance", icon: "🚑" },
-  { href: "#reports", label: "Reports", icon: "📄" },
-  { href: "#education", label: "Health Education", icon: "📚" },
-  { href: "#myorders", label: "My Orders", icon: "📦" },
-  { href: "#scan?step=deliver", label: "Scan Delivery", icon: "▦" },
-  { href: "#profile", label: "Profile", icon: "👤" },
+  { href: "#home", label: "Home" },
+  { href: "#medicine-search", label: "Medicines" },
+  { href: "#labs", label: "Lab Tests" },
+  { href: "#homecare", label: "Home Care" },
+  { href: "#psychologist", label: "Psychologist" },
+  { href: "#stepdown", label: "Step-Down" },
+  { href: "#ambulance", label: "Ambulance" },
+  { href: "#reports", label: "Reports" },
+  { href: "#education", label: "Education" },
+];
+
+const ACCOUNT_LINKS = [
+  { href: "#myorders", label: "My Orders" },
+  { href: "#scan?step=deliver", label: "Scan Delivery" },
+  { href: "#profile", label: "Profile" },
 ];
 
 const BOTTOM_LINKS = [
-  { href: "#about", label: "About Us", icon: "ℹ️" },
-  { href: "#contact", label: "Contact Us", icon: "📞" },
-  { href: "#social", label: "Social Media", icon: "📣" },
+  { href: "#about", label: "About" },
+  { href: "#contact", label: "Contact" },
+  { href: "#social", label: "Social" },
 ];
 
 const OPS_LINKS = [
@@ -116,6 +119,8 @@ function hashLinkActive(linkHref, route, scanStep) {
   }
   return false;
 }
+
+function goToHash(nextHash) {
   const hash = nextHash.startsWith("#") ? nextHash : `#${nextHash}`;
   const url = `${window.location.pathname}${window.location.search}${hash}`;
   window.history.pushState(null, "", url);
@@ -660,52 +665,57 @@ function App() {
         </a>
 
         <div className="sidebar-links">
-        <nav className="sidebar-nav" aria-label="Main">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className={
-                hashLinkActive(link.href, route, scanStep) ? "active" : undefined
-              }
-            >
-              <span className="nav-icon" aria-hidden="true">
-                {link.icon}
-              </span>
-              <span className="nav-label">{link.label}</span>
-            </a>
-          ))}
-        </nav>
+          <nav className="sidebar-nav" aria-label="Main">
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className={
+                  hashLinkActive(link.href, route, scanStep) ? "active" : undefined
+                }
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
 
-        <div className="sidebar-bottom">
-          {BOTTOM_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className={route === link.href ? "active" : undefined}
+          <nav className="sidebar-account" aria-label="Account">
+            {ACCOUNT_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className={
+                  hashLinkActive(link.href, route, scanStep) ? "active" : undefined
+                }
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+
+          <div className="sidebar-bottom">
+            {BOTTOM_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className={route === link.href ? "active" : undefined}
+              >
+                {link.label}
+              </a>
+            ))}
+            <button
+              type="button"
+              className={careOpen ? "active" : undefined}
+              aria-haspopup="dialog"
+              aria-expanded={careOpen}
+              onClick={() => setCareOpen(true)}
             >
-              <span className="nav-icon" aria-hidden="true">
-                {link.icon}
+              <span className="nav-care-copy">
+                <span>Customer Care</span>
+                <span className="nav-care-no">{CARE_PHONE_DISPLAY}</span>
               </span>
-              <span className="nav-label">{link.label}</span>
-            </a>
-          ))}
-          <button
-            type="button"
-            className={careOpen ? "active" : undefined}
-            aria-haspopup="dialog"
-            aria-expanded={careOpen}
-            onClick={() => setCareOpen(true)}
-          >
-            <span className="nav-icon" aria-hidden="true">
-              💬
-            </span>
-            <span className="nav-care-copy">
-              <span className="nav-label">Customer Care</span>
-              <span className="nav-care-no">{CARE_PHONE_DISPLAY}</span>
-            </span>
-          </button>
-        </div>
+            </button>
+          </div>
         </div>
       </aside>
 
