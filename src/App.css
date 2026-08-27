@@ -5379,6 +5379,7 @@ a.order-details-btn {
 .sidebar-bottom {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 0 !important;
   overflow: auto !important;
 }
@@ -5403,12 +5404,12 @@ a.order-details-btn {
   appearance: none;
   display: flex !important;
   align-items: center !important;
-  justify-content: center !important;
+  justify-content: flex-start !important;
   width: 100%;
   min-height: 30px;
   height: auto;
   margin: 0;
-  padding: 6px 8px !important;
+  padding: 6px 16px 6px 36px !important;
   border: none !important;
   border-radius: 0 !important;
   background: transparent !important;
@@ -5417,12 +5418,12 @@ a.order-details-btn {
   font-weight: 700 !important;
   letter-spacing: 0.01em;
   line-height: 1.3;
-  text-align: center !important;
+  text-align: left !important;
   box-shadow: none !important;
 }
 
 .sidebar-bottom button {
-  text-align: center !important;
+  text-align: left !important;
 }
 
 .sidebar-nav a.active,
@@ -5470,11 +5471,11 @@ a.order-details-btn {
 .nav-care-copy {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   gap: 1px;
   min-width: 0;
-  text-align: center;
+  text-align: left;
 }
 
 .nav-care-no {
