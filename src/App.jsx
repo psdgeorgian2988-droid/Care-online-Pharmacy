@@ -21,6 +21,7 @@ import SocialLinks from "./SocialLinks";
 import Social from "./Social";
 import MedicineSearchTools from "./MedicineSearchTools";
 import { reviewStats } from "./reviewStore";
+import CareChat from "./CareChat";
 import { useFeatures } from "./featureFlags";
 import { routeEnabled } from "./salesReport";
 
@@ -54,12 +55,6 @@ const HOME_WHATSAPP = "919654222988";
 const HOME_WHATSAPP_URL = `https://wa.me/${HOME_WHATSAPP}?text=${encodeURIComponent(
   "Hi MediHome, I would like to order medicines."
 )}`;
-const CARE_WHATSAPP_URL = `https://wa.me/${HOME_WHATSAPP}?text=${encodeURIComponent(
-  "Hi MediHome, I need help from customer care."
-)}`;
-const CARE_PHONE_DISPLAY = "+91 96542 22988";
-const CARE_PHONE_TEL = "+919654222988";
-const CARE_EMAIL = "care@medihome.in";
 const PROFILE_KEY = "mediHomeUser";
 
 function openWhatsAppUrl(url, event) {
@@ -349,90 +344,6 @@ function LogoMark() {
         />
       </svg>
     </span>
-  );
-}
-
-function CustomerCarePanel({ onClose }) {
-  useEffect(() => {
-    const onKey = (event) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  const openWhatsApp = (event) => {
-    openWhatsAppUrl(CARE_WHATSAPP_URL, event);
-  };
-
-  return (
-    <div
-      className="care-overlay"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        className="care-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="care-panel-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="care-panel-head">
-          <div>
-            <p className="care-panel-kicker">MediHome</p>
-            <h2 id="care-panel-title">Customer Care</h2>
-          </div>
-          <button
-            type="button"
-            className="care-panel-close"
-            onClick={onClose}
-            aria-label="Close customer care"
-          >
-            ×
-          </button>
-        </div>
-        <p className="care-panel-lead">
-          Help with orders, lab bookings, Home Care, step-down centres, and
-          ambulance requests.
-        </p>
-        <dl className="care-panel-details">
-          <div>
-            <dt>Phone</dt>
-            <dd>
-              <a href={`tel:${CARE_PHONE_TEL}`}>{CARE_PHONE_DISPLAY}</a>
-            </dd>
-          </div>
-          <div>
-            <dt>Email</dt>
-            <dd>
-              <a href={`mailto:${CARE_EMAIL}`}>{CARE_EMAIL}</a>
-            </dd>
-          </div>
-          <div>
-            <dt>Hours</dt>
-            <dd>8:00 AM – 10:00 PM IST, all days</dd>
-          </div>
-        </dl>
-        <a
-          className="care-panel-whatsapp"
-          href={CARE_WHATSAPP_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={openWhatsApp}
-        >
-          Chat on WhatsApp
-        </a>
-        <div className="care-panel-extra">
-          <a href="#feedback" onClick={onClose}>
-            Share feedback
-          </a>
-          <a href="#reviews" onClick={onClose}>
-            Read reviews
-          </a>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -781,9 +692,11 @@ function App() {
         <SocialLinks className="footer-social" />
       </footer>
 
-      {careOpen ? (
-        <CustomerCarePanel onClose={() => setCareOpen(false)} />
-      ) : null}
+      <CareChat
+        open={careOpen}
+        onOpen={() => setCareOpen(true)}
+        onClose={() => setCareOpen(false)}
+      />
     </div>
   );
 }

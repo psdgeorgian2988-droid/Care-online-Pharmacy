@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  fetchStaffChats,
   fetchStaffOrders,
   fetchStaffPartners,
   fetchStaffSettings,
   patchStaffOrder,
   patchStaffSettings,
   publishOrder,
+  replyStaffChat,
   staffLogin,
   staffLogout,
   staffToken,
@@ -89,6 +91,9 @@ function Admin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [orders, setOrders] = useState([]);
+  const [chats, setChats] = useState([]);
+  const [chatId, setChatId] = useState("");
+  const [chatDraft, setChatDraft] = useState("");
   const [partners, setPartners] = useState([]);
   const [features, setFeatures] = useState(DEFAULT_FEATURES);
   const [loading, setLoading] = useState(false);
@@ -105,13 +110,15 @@ function Admin() {
     setLoading(true);
     setError("");
     try {
-      const [data, partnerData, settings] = await Promise.all([
+      const [data, partnerData, settings, chatData] = await Promise.all([
         fetchStaffOrders(),
         fetchStaffPartners().catch(() => ({ partners: [] })),
         fetchStaffSettings().catch(() => ({ features: DEFAULT_FEATURES })),
+        fetchStaffChats().catch(() => ({ threads: [] })),
       ]);
       setOrders(Array.isArray(data.orders) ? data.orders : []);
       setPartners(Array.isArray(partnerData.partners) ? partnerData.partners : []);
+      setChats(Array.isArray(chatData.threads) ? chatData.threads : []);
       const nextFeatures = mergeFeatures(settings.features);
       setFeatures(nextFeatures);
       cacheFeatures(nextFeatures);
@@ -237,6 +244,22 @@ function Admin() {
     const local = loadAllOrders();
     await Promise.all(local.map((row) => publishOrder(row)));
     await loadDesk();
+  };
+
+  const handleChatReply = async (event) => {
+    event.preventDefault();
+    const id = chatId || chats[0]?.sessionId;
+    if (!id || !chatDraft.trim()) return;
+    setError("");
+    try {
+      const data = await replyStaffChat(id, chatDraft.trim());
+      setChatDraft("");
+      setChats((rows) =>
+        rows.map((row) => (row.sessionId === id ? data.thread : row))
+      );
+    } catch (err) {
+      setError(err.message || "Could not send care reply.");
+    }
   };
 
   const toggleFeature = async (key) => {
@@ -378,6 +401,54 @@ function Admin() {
         </section>
 
         {error ? <p className="admin-error">{error}</p> : null}
+
+        <section className="admin-panel" aria-label="Customer care inbox">
+          <h2>Customer care inbox</h2>
+          <p>Replies from this desk show in the public chatbox.</p>
+          {chats.length === 0 ? (
+            <p className="admin-muted">No website chats yet.</p>
+          ) : (
+            <div className="admin-chat-layout">
+              <ul className="admin-chat-list">
+                {chats.map((row) => (
+                  <li key={row.sessionId}>
+                    <button
+                      type="button"
+                      className={
+                        (chatId || chats[0]?.sessionId) === row.sessionId ? "is-on" : ""
+                      }
+                      onClick={() => setChatId(row.sessionId)}
+                    >
+                      <strong>{row.name || "Guest"}</strong>
+                      <span>
+                        {row.needsStaff ? "Needs staff · " : ""}
+                        {row.messages?.at(-1)?.text?.slice(0, 48) || "Empty"}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <div className="admin-chat-thread">
+                {(chats.find((row) => row.sessionId === (chatId || chats[0]?.sessionId))
+                  ?.messages || []
+                ).map((row) => (
+                  <p key={row.id} className={`admin-chat-line is-${row.from}`}>
+                    <strong>{row.from === "user" ? "Customer" : row.from === "staff" ? "You" : "Bot"}:</strong>{" "}
+                    {row.text}
+                  </p>
+                ))}
+                <form onSubmit={handleChatReply} className="admin-chat-compose">
+                  <input
+                    value={chatDraft}
+                    onChange={(event) => setChatDraft(event.target.value)}
+                    placeholder="Reply to this chat"
+                  />
+                  <button type="submit">Send</button>
+                </form>
+              </div>
+            </div>
+          )}
+        </section>
 
         <section className="admin-kpis" aria-label="Sales figures">
           <article>
@@ -976,6 +1047,22 @@ const styles = `
 .admin-status-pill.is-done{background:#e7f6ef;color:#1a7a45}
 .admin-table tr.is-unassigned{background:#fffaf4}
 .admin-table td select{max-width:140px}
+.admin-chat-layout{display:grid;grid-template-columns:220px 1fr;gap:10px}
+.admin-chat-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:240px;overflow:auto}
+.admin-chat-list button{width:100%;border:1px solid #e4ecef;border-radius:8px;background:#f7fafc;padding:8px;text-align:left;font:inherit;cursor:pointer}
+.admin-chat-list button.is-on{background:#e7f1f6;border-color:#b7d0dc}
+.admin-chat-list strong{display:block;font-size:13px}
+.admin-chat-list span{display:block;color:#5d7180;font-size:11px}
+.admin-chat-thread{border:1px solid #e4ecef;border-radius:8px;padding:8px;max-height:240px;overflow:auto;background:#f7fafc}
+.admin-chat-line{margin:0 0 6px;font-size:12px}
+.admin-chat-line.is-user{color:#123b5d}
+.admin-chat-line.is-staff{color:#1a7a45}
+.admin-chat-compose{display:flex;gap:6px;margin-top:8px}
+.admin-chat-compose input{flex:1;min-height:34px;border:1px solid #d7e2e9;border-radius:8px;padding:0 8px;font:inherit}
+.admin-chat-compose button{border:0;border-radius:8px;background:#1a6b7a;color:#fff;font:inherit;font-weight:700;padding:0 10px;cursor:pointer}
+@media (max-width:800px){
+  .admin-chat-layout{grid-template-columns:1fr}
+}
 @media (max-width:1100px){
   .admin-pipe{grid-template-columns:repeat(5,minmax(180px,1fr))}
 }

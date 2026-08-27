@@ -17,6 +17,13 @@ import {
   partnerIdFromToken,
   partnerLogin,
 } from "./partners.mjs";
+import {
+  appendCustomerMessage,
+  getThread,
+  listThreads,
+  markCustomerRead,
+  staffReply,
+} from "./chats.mjs";
 import { readSettings, writeSettings } from "./settings.mjs";
 
 const ADMIN_USER = process.env.MEDIHOME_ADMIN_USER || "admin";
@@ -246,6 +253,46 @@ export async function handleApi(req, res) {
     if (pathname === "/api/admin/partners" && req.method === "GET") {
       if (!requireStaff(req, res)) return true;
       send(res, 200, { partners: await listPartners() });
+      return true;
+    }
+
+    if (pathname === "/api/care/thread" && req.method === "GET") {
+      const sessionId = String(url.searchParams.get("sessionId") || "");
+      const thread = await getThread(sessionId);
+      if (thread && url.searchParams.get("ack") === "1") {
+        await markCustomerRead(sessionId);
+      }
+      send(res, 200, { thread: (await getThread(sessionId)) || thread });
+      return true;
+    }
+
+    if (pathname === "/api/care/messages" && req.method === "POST") {
+      const body = await readJson(req);
+      const thread = await appendCustomerMessage(body);
+      if (!thread) {
+        send(res, 400, { error: "A chat message is required." });
+        return true;
+      }
+      send(res, 200, { thread });
+      return true;
+    }
+
+    if (pathname === "/api/admin/chats" && req.method === "GET") {
+      if (!requireStaff(req, res)) return true;
+      send(res, 200, { threads: await listThreads() });
+      return true;
+    }
+
+    const chatReply = pathname.match(/^\/api\/admin\/chats\/([^/]+)$/);
+    if (chatReply && req.method === "PATCH") {
+      if (!requireStaff(req, res)) return true;
+      const body = await readJson(req);
+      const thread = await staffReply(decodeURIComponent(chatReply[1]), body.text);
+      if (!thread) {
+        send(res, 404, { error: "Chat not found." });
+        return true;
+      }
+      send(res, 200, { thread });
       return true;
     }
 

@@ -94,6 +94,27 @@ export async function patchStaffSettings(patch) {
   );
 }
 
+export async function fetchStaffChats() {
+  return parseResponse(
+    await fetch("/api/admin/chats", {
+      headers: { Authorization: `Bearer ${staffToken()}` },
+    })
+  );
+}
+
+export async function replyStaffChat(sessionId, text) {
+  return parseResponse(
+    await fetch(`/api/admin/chats/${encodeURIComponent(sessionId)}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${staffToken()}`,
+      },
+      body: JSON.stringify({ text }),
+    })
+  );
+}
+
 export async function patchStaffOrder(id, patch) {
   return parseResponse(
     await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
