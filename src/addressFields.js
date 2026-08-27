@@ -7,6 +7,7 @@ export const EMPTY_ADDRESS = {
   state: "",
   pinCode: "",
   nearby: "",
+  addressConfirmed: "",
 };
 
 export const ADDRESS_FIELDS = [
@@ -31,25 +32,28 @@ export const ADDRESS_FIELDS = [
     name: "area",
     label: "Village / Sector / Mohalla",
     placeholder: "Select for this PIN",
-    auto: true,
+    afterPin: true,
     select: true,
   },
   {
     name: "city",
     label: "City",
     placeholder: "Filled from PIN Code",
+    afterPin: true,
     auto: true,
   },
   {
     name: "district",
     label: "District",
     placeholder: "Filled from PIN Code",
+    afterPin: true,
     auto: true,
   },
   {
     name: "state",
     label: "State",
     placeholder: "Filled from PIN Code",
+    afterPin: true,
     auto: true,
   },
   {
@@ -61,12 +65,24 @@ export const ADDRESS_FIELDS = [
   },
 ];
 
+export function visibleAddressFields(pinReady = false) {
+  return ADDRESS_FIELDS.filter((field) => {
+    if (field.hidden) return false;
+    if (field.afterPin && !pinReady) return false;
+    return true;
+  });
+}
+
 function clean(value) {
   return String(value || "").trim();
 }
 
 export function emptyAddress() {
   return { ...EMPTY_ADDRESS };
+}
+
+export function isAddressConfirmed(value) {
+  return value === true || value === "yes" || value === "true";
 }
 
 export function pickAddress(source = {}) {
@@ -81,7 +97,22 @@ export function pickAddress(source = {}) {
       .replace(/\D/g, "")
       .slice(0, 6),
     nearby: clean(source.nearby),
+    addressConfirmed: isAddressConfirmed(source.addressConfirmed) ? "yes" : "",
   };
+}
+
+export function addressConfirmRows(source = {}) {
+  const addr = pickAddress(source);
+  return [
+    ["Flat / House No.", addr.houseNo],
+    ["Society / Mohalla / Gali No.", addr.society],
+    ["PIN Code", addr.pinCode],
+    ["Village / Sector / Mohalla", addr.area],
+    ["City", addr.city],
+    ["District", addr.district],
+    ["State", addr.state],
+    ["Landmark Near By", addr.nearby || "—"],
+  ];
 }
 
 export function addressFromUnknown(source = {}) {
@@ -127,6 +158,9 @@ export function validateAddress(source = {}) {
     errors.pinCode =
       "Enter a valid PIN Code and select the Village / Sector / Mohalla attached to it.";
     if (!addr.area) errors.area = "Select the Village / Sector / Mohalla for this PIN.";
+  } else if (!isAddressConfirmed(addr.addressConfirmed)) {
+    errors.addressConfirmed =
+      "Please recheck and confirm these details before submitting.";
   }
   return errors;
 }
@@ -136,6 +170,7 @@ export function withFormattedAddress(source = {}) {
   const formatted = formatAddress(addr);
   return {
     ...addr,
+    addressConfirmed: "",
     address: formatted,
     deliveryAddress: formatted,
     pickupAddress: formatted,

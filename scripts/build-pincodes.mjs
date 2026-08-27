@@ -3,6 +3,7 @@ import { createInterface } from "node:readline";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { LOCALITY_OVERLAY } from "./locality-overlay.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const INPUT = process.argv[2] || "/tmp/pincodes/IN.txt";
@@ -158,9 +159,17 @@ function cleanPlace(name) {
     String(name || "")
       .replace(/\s*\(([^)]*)\)/g, " $1 ")
       .replace(/\s+(H\.?O\.?|S\.?O\.?|B\.?O\.?|G\.?P\.?O\.?|P\.?O\.?)\.?$/i, "")
+      .replace(/\bsec(?:t(?:or)?)?[-\s.]*([0-9]+|[ivxlcdm]+)\b/gi, "Sector $1")
       .replace(/\s+/g, " ")
       .trim()
   );
+}
+
+function localityKey(name) {
+  return String(name || "")
+    .toLowerCase()
+    .replace(/sec(?:t(?:or)?)?/g, "sector")
+    .replace(/[^a-z0-9]+/g, "");
 }
 
 function isOfficeName(name) {
@@ -197,15 +206,16 @@ function areaScore(place, taluk) {
 }
 
 function uniquePlaces(places) {
-  const seen = new Set();
-  const list = [];
+  const seen = new Map();
+  const rank = (name) => name.length + (/\bsector\b/i.test(name) ? 20 : 0);
   for (const place of places) {
-    const key = normName(place.clean);
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    list.push(place.clean);
+    const name = place.clean;
+    const key = localityKey(name);
+    if (!key) continue;
+    const previous = seen.get(key);
+    if (!previous || rank(name) > rank(previous)) seen.set(key, name);
   }
-  return list.sort((a, b) => a.localeCompare(b));
+  return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
 
 function pickArea(places, taluk, city) {
@@ -283,6 +293,16 @@ for await (const line of createInterface({ input: stream, crlfDelay: Infinity })
   grouped.set(pin, row);
 }
 
+for (const [pin, extras] of Object.entries(LOCALITY_OVERLAY)) {
+  const row = grouped.get(String(pin));
+  if (!row) continue;
+  for (const placeName of extras) {
+    const clean = cleanPlace(placeName);
+    if (!clean) continue;
+    row.places.push({ name: placeName, clean, acc: "3" });
+  }
+}
+
 const pins = {};
 const prefixBuckets = new Map();
 
@@ -341,7 +361,8 @@ await mkdir(path.dirname(OUTPUT), { recursive: true });
 await writeFile(
   OUTPUT,
   JSON.stringify({
-    source: "GeoNames postal codes for India (CC BY 4.0, https://www.geonames.org)",
+    source:
+      "GeoNames postal codes for India (CC BY 4.0, https://www.geonames.org) plus locality overlay for sectors, villages and mohallas",
     pins,
     prefix,
   })

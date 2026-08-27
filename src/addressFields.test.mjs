@@ -5,7 +5,29 @@ import {
   formatAddress,
   validateAddress,
   addressFromUnknown,
+  visibleAddressFields,
 } from "./addressFields.js";
+
+test("village, city, district and state stay hidden until a PIN is entered", () => {
+  const beforePin = visibleAddressFields(false).map((field) => field.name);
+  assert.deepEqual(beforePin, ["houseNo", "society", "pinCode", "nearby"]);
+  const afterPin = visibleAddressFields(true).map((field) => field.name);
+  assert.deepEqual(afterPin, [
+    "houseNo",
+    "society",
+    "pinCode",
+    "area",
+    "city",
+    "district",
+    "state",
+    "nearby",
+  ]);
+  const areaField = visibleAddressFields(true).find((field) => field.name === "area");
+  const cityField = visibleAddressFields(true).find((field) => field.name === "city");
+  assert.equal(areaField.select, true);
+  assert.equal(cityField.auto, true);
+  assert.equal(cityField.select, undefined);
+});
 
 test("required address lines fail when empty, landmark stays optional", () => {
   const errors = validateAddress({});
@@ -28,7 +50,21 @@ test("city, district and state are not typed by the customer", () => {
   assert.equal(errors.city, undefined);
 });
 
-test("address is valid without a landmark", () => {
+test("address is valid without a landmark after details are confirmed", () => {
+  const errors = validateAddress({
+    houseNo: "B-14",
+    society: "Green Park Society",
+    area: "Hauz Khas",
+    city: "New Delhi",
+    district: "South Delhi",
+    state: "Delhi",
+    pinCode: "110016",
+    addressConfirmed: "yes",
+  });
+  assert.deepEqual(errors, {});
+});
+
+test("complete address must be reconfirmed before submit", () => {
   const errors = validateAddress({
     houseNo: "B-14",
     society: "Green Park Society",
@@ -38,7 +74,7 @@ test("address is valid without a landmark", () => {
     state: "Delhi",
     pinCode: "110016",
   });
-  assert.deepEqual(errors, {});
+  assert.equal(errors.addressConfirmed.includes("recheck"), true);
 });
 
 test("complete address formats in the asked order", () => {

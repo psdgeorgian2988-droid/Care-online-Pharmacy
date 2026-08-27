@@ -1,9 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { ADDRESS_FIELDS } from "./addressFields";
+import {
+  ADDRESS_FIELDS,
+  addressConfirmRows,
+  isAddressConfirmed,
+} from "./addressFields";
 import { lookupPinDirectory } from "./pinLocation";
 
 function pinAreas(values) {
   return Array.isArray(values.areas) ? values.areas.filter(Boolean) : [];
+}
+
+function digitsPin(value) {
+  return String(value || "").replace(/\D/g, "").slice(0, 6);
 }
 
 export default function AddressFields({
@@ -11,7 +19,7 @@ export default function AddressFields({
   values = {},
   errors = {},
   onChange,
-  pinHint = "Select the Village / Sector / Mohalla attached to this PIN.",
+  pinHint = "Enter the PIN Code to choose Village / Sector / Mohalla.",
 }) {
   const [pinStatus, setPinStatus] = useState("");
   const pinRequest = useRef(0);
@@ -26,10 +34,11 @@ export default function AddressFields({
     if (values.city) patch("city", "");
     if (values.district) patch("district", "");
     if (values.state) patch("state", "");
+    if (isAddressConfirmed(values.addressConfirmed)) patch("addressConfirmed", "");
   };
 
   useEffect(() => {
-    const pin = String(values.pinCode || "").replace(/\D/g, "").slice(0, 6);
+    const pin = digitsPin(values.pinCode);
     if (pin.length !== 6) {
       setPinStatus("");
       clearPinFields();
@@ -47,16 +56,21 @@ export default function AddressFields({
       }
       const areas = Array.isArray(row.areas) ? row.areas : [];
       setPinStatus(
-        areas.length > 1
-          ? `${areas.length} Village / Sector / Mohalla options for this PIN.`
+        areas.length
+          ? "Select the Village / Sector / Mohalla for this PIN."
           : ""
       );
       patch("areas", areas);
-      const nextArea = areas.includes(values.area) ? values.area : row.area || areas[0] || "";
+      const nextArea = areas.includes(values.area)
+        ? values.area
+        : areas.length === 1
+          ? areas[0]
+          : "";
       if (values.area !== nextArea) patch("area", nextArea);
       if (values.city !== row.city) patch("city", row.city);
       if (values.district !== row.district) patch("district", row.district);
       if (values.state !== row.state) patch("state", row.state);
+      if (isAddressConfirmed(values.addressConfirmed)) patch("addressConfirmed", "");
     });
     return undefined;
     // Only re-run when the PIN changes.
@@ -68,19 +82,30 @@ export default function AddressFields({
     const next =
       name === "pinCode" ? value.replace(/\D/g, "").slice(0, 6) : value;
     onChange?.({ target: { name, value: next } });
+    if (name !== "addressConfirmed" && isAddressConfirmed(values.addressConfirmed)) {
+      onChange?.({ target: { name: "addressConfirmed", value: "" } });
+    }
   };
 
+  const pin = digitsPin(values.pinCode);
   const areas = pinAreas(values);
+  const pinMissing = pinStatus.includes("not found");
+  const showAfterPin = pin.length === 6 && !pinMissing;
+  const confirmId = `${idPrefix}-addressConfirmed`;
+  const confirmRows = addressConfirmRows(values);
+  const showConfirm = showAfterPin && Boolean(values.city && values.district && values.state);
 
   return (
     <>
       <style>{styles}</style>
       <div className="addr-fields">
         {ADDRESS_FIELDS.map((field) => {
+          if (field.hidden) return null;
+          if (field.afterPin && !showAfterPin) return null;
+
           const id = `${idPrefix}-${field.name}`;
-          const required = field.required !== false && !field.auto;
           const auto = Boolean(field.auto);
-          const selectable = field.name === "area";
+          const selectable = Boolean(field.select);
           return (
             <div
               key={field.name}
@@ -90,14 +115,10 @@ export default function AddressFields({
             >
               <label htmlFor={id}>
                 {field.label}
-                {selectable ? (
-                  <span> *</span>
-                ) : auto ? (
-                  <em> (from PIN)</em>
-                ) : required ? (
-                  <span> *</span>
-                ) : (
+                {field.required === false ? (
                   <em> (optional)</em>
+                ) : (
+                  <span> *</span>
                 )}
               </label>
               {selectable ? (
@@ -112,7 +133,7 @@ export default function AddressFields({
                   <option value="">
                     {areas.length
                       ? "Select Village / Sector / Mohalla"
-                      : "Enter PIN Code First"}
+                      : "Looking up PIN…"}
                   </option>
                   {areas.map((option) => (
                     <option key={option} value={option}>
@@ -130,7 +151,7 @@ export default function AddressFields({
                   inputMode={field.inputMode}
                   maxLength={field.maxLength}
                   autoComplete="off"
-                  required={required}
+                  required={field.required !== false}
                   readOnly={auto}
                   tabIndex={auto ? -1 : undefined}
                 />
@@ -138,27 +159,59 @@ export default function AddressFields({
               {errors[field.name] ? (
                 <small className="addr-error">{errors[field.name]}</small>
               ) : field.name === "pinCode" ? (
-                <small
-                  className={
-                    pinStatus && pinStatus.includes("not found")
-                      ? "addr-error"
-                      : "addr-hint"
-                  }
-                >
+                <small className={pinMissing ? "addr-error" : "addr-hint"}>
                   {pinStatus || pinHint}
                 </small>
               ) : selectable ? (
                 <small className="addr-hint">
-                  Only places attached to this PIN Code can be selected.
+                  Only the Village / Sector / Mohalla attached to this PIN Code
+                  can be selected.
                 </small>
-              ) : field.hint && !auto ? (
+              ) : field.hint ? (
                 <small className="addr-hint">{field.hint}</small>
-              ) : auto && values[field.name] ? (
-                <small className="addr-hint">Filled from PIN Code.</small>
               ) : null}
             </div>
           );
         })}
+
+        {showConfirm ? (
+          <div className="addr-confirm">
+            <p className="addr-confirm-title">Please Recheck These Details</p>
+            <dl>
+              {confirmRows.map(([label, value]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value || "—"}</dd>
+                </div>
+              ))}
+            </dl>
+            <label htmlFor={confirmId} className="addr-confirm-check">
+              <input
+                id={confirmId}
+                name="addressConfirmed"
+                type="checkbox"
+                value="yes"
+                checked={isAddressConfirmed(values.addressConfirmed)}
+                onChange={(event) => {
+                  onChange?.({
+                    target: {
+                      name: "addressConfirmed",
+                      value: event.target.checked ? "yes" : "",
+                    },
+                  });
+                }}
+              />
+              <span>I have rechecked and confirm these details are correct.</span>
+            </label>
+            {errors.addressConfirmed ? (
+              <small className="addr-error">{errors.addressConfirmed}</small>
+            ) : (
+              <small className="addr-hint">
+                Confirm the details above before submitting.
+              </small>
+            )}
+          </div>
+        ) : null}
       </div>
     </>
   );
@@ -179,4 +232,12 @@ const styles = `
 .addr-field.addr-select select:disabled{background:#f3f7fa;color:#7a8a92;cursor:default}
 .addr-error{margin-top:4px;color:#d84b4b;font-size:11px}
 .addr-hint{margin-top:4px;color:#5d7180;font-size:11px}
+.addr-confirm{padding:12px;border:1px solid #d7e2e9;border-radius:10px;background:#f7fbfc}
+.addr-confirm-title{margin:0 0 8px;font-size:13px;font-weight:800;color:#29455a}
+.addr-confirm dl{margin:0;display:grid;gap:6px}
+.addr-confirm dl > div{display:grid;grid-template-columns:minmax(120px,38%) 1fr;gap:8px;align-items:start}
+.addr-confirm dt{font-size:11px;font-weight:700;color:#5d7180}
+.addr-confirm dd{margin:0;font-size:13px;font-weight:700;color:#29455a;word-break:break-word}
+.addr-confirm-check{display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:13px;font-weight:700;color:#29455a}
+.addr-confirm-check input{width:16px;height:16px;margin-top:2px;flex:0 0 auto;accent-color:#1e8a73}
 `;

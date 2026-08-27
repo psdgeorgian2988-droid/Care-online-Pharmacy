@@ -72,6 +72,24 @@ test("PIN 124146 dropdown is only villages attached to that PIN", () => {
   }
 });
 
+test("PIN 110075 dropdown includes Dwarka Sector 13 and other attached sectors", () => {
+  const row = lookupPin("110075");
+  assert.equal(row.city, "New Delhi");
+  assert.equal(row.district, "South West Delhi");
+  for (const name of [
+    "Dwarka Sector 6",
+    "Dwarka Sector 13",
+    "Dwarka Sector 10",
+    "Amberhai",
+  ]) {
+    assert.equal(
+      row.areas.some((area) => area.toLowerCase() === name.toLowerCase()),
+      true,
+      name
+    );
+  }
+});
+
 test("PIN 122018 dropdown includes the attached sector", () => {
   const row = lookupPin("122018");
   assert.equal(row.city, "Gurugram");
