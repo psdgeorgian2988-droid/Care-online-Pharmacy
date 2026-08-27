@@ -156,9 +156,9 @@ export default function CareChat({ open, onOpen, onClose }) {
           type="button"
           className="care-fab"
           onClick={onOpen}
-          aria-label="Open customer care chat"
+          aria-label="Need help"
         >
-          Chat with care
+          Need help
           {unread ? (
             <span className="care-fab-badge">{unread > 9 ? "9+" : unread}</span>
           ) : null}
