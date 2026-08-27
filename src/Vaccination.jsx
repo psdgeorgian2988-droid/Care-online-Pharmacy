@@ -104,11 +104,15 @@ function Vaccination() {
     };
   }, []);
 
-  const ageMonths = form.dob
-    ? ageMonthsFromDob(form.dob)
-    : yearsToMonths(form.ageYears || 0, form.extraMonths || 0);
-  const ageYears = form.dob ? ageYearsFromDob(form.dob) : Number(form.ageYears || 0);
-  const group = form.group || ageGroupFromYears(ageYears) || "child";
+  const group = form.group || ageGroupFromYears(Number(form.ageYears || 0)) || "child";
+  const ageYears =
+    group === "child" && form.dob
+      ? ageYearsFromDob(form.dob)
+      : Number(form.ageYears || 0);
+  const ageMonths =
+    group === "child" && form.dob
+      ? ageMonthsFromDob(form.dob)
+      : yearsToMonths(form.ageYears || 0, form.extraMonths || 0);
   const suggestions = suggestVaccines({
     group,
     ageYears,
@@ -145,7 +149,10 @@ function Vaccination() {
         }
       }
       if (name === "remindersOn" && next) patch.keepRecord = true;
-      if (name === "group") patch.selectedIds = [];
+      if (name === "group") {
+        patch.selectedIds = [];
+        if (next === "senior") patch.dob = "";
+      }
       return { ...prev, ...patch };
     });
     setErrors((prev) => ({ ...prev, [name]: "" }));
