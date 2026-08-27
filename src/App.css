@@ -5335,14 +5335,15 @@ a.order-details-btn {
   }
 }
 
-/* Left panel: centered bold text on light blue, flush to main */
+/* Left panel: light-blue boxed menu, separate from the main page */
 .sidebar {
   background: #e8f4fb !important;
-  padding: 12px 0 8px 0 !important;
-  border-right: none !important;
+  padding: 10px 0 8px 0 !important;
+  margin: 8px 8px 8px 8px !important;
+  border: 3px solid #143246 !important;
+  border-radius: 4px !important;
   overflow: hidden !important;
   box-shadow: none !important;
-  margin: 0 !important;
 }
 
 .sidebar-logo {
@@ -5484,7 +5485,7 @@ a.order-details-btn {
 }
 
 .app > main {
-  background: #ffffff;
+  background: #ffffff !important;
 }
 
 .med-search-tools {
