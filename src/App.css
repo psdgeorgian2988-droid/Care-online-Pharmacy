@@ -5339,9 +5339,9 @@ a.order-details-btn {
 .sidebar {
   background: #165564 !important;
   padding: 10px 0 8px 0 !important;
-  margin: 8px 8px 8px 8px !important;
+  margin: 0 8px 0 0 !important;
   border: 3px solid #0c323b !important;
-  border-radius: 4px !important;
+  border-radius: 0 !important;
   overflow: hidden !important;
   box-shadow: none !important;
 }
