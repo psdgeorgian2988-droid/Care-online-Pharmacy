@@ -17,6 +17,7 @@ import {
   kindLabel,
   loadAllOrders,
   persistOrder,
+  trackHref,
 } from "./orderTracking";
 import {
   FEATURE_CATALOG,
@@ -48,6 +49,7 @@ import {
   topMover,
   yoySnapshot,
 } from "./salesReport";
+import { OrderStatusTrack } from "./adminStatus";
 import {
   BarList,
   CompareBars,
@@ -55,6 +57,12 @@ import {
   MonthMatrix,
   MonthStackChart,
 } from "./adminCharts";
+import {
+  isUnassigned,
+  matchesStatusFilter,
+  serviceKind,
+  trackKey,
+} from "./orderStatus";
 
 function personName(order) {
   return (
@@ -85,6 +93,7 @@ function Admin() {
   const [features, setFeatures] = useState(DEFAULT_FEATURES);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [reportPeriod, setReportPeriod] = useState("mtd");
   const [reportKind, setReportKind] = useState("all");
   const [reportFrom, setReportFrom] = useState("");
@@ -122,9 +131,11 @@ function Admin() {
   }, [token]);
 
   const filtered = useMemo(() => {
-    if (filter === "all") return orders;
-    return orders.filter((order) => (order.kind || order.orderType) === filter);
-  }, [orders, filter]);
+    return orders.filter((order) => {
+      if (filter !== "all" && serviceKind(order) !== filter) return false;
+      return matchesStatusFilter(order, statusFilter);
+    });
+  }, [orders, filter, statusFilter]);
 
   const sales = useMemo(() => summarizeSales(orders), [orders]);
   const growth = useMemo(() => growthSnapshot(orders), [orders]);
@@ -676,7 +687,21 @@ function Admin() {
           ) : null}
         </section>
 
-        <div className="lab-tabs admin-tabs" role="tablist">
+        <OrderStatusTrack
+          orders={orders}
+          filter={filter}
+          statusFilter={statusFilter}
+          onSelect={(kind, step) => {
+            setFilter(kind);
+            setStatusFilter(step);
+            document
+              .getElementById("staff-orders")
+              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+          onStatus={handleStatus}
+        />
+
+        <div id="staff-orders" className="lab-tabs admin-tabs" role="tablist">
           {[
             ["all", "All"],
             ["medicine", "Medicines"],
@@ -697,6 +722,28 @@ function Admin() {
             </button>
           ))}
         </div>
+        <div className="lab-tabs admin-tabs" role="tablist" aria-label="Status filter">
+          {[
+            ["all", "All statuses"],
+            ["open", "Open"],
+            ["progress", "In progress"],
+            ["unassigned", "Unassigned"],
+            ["confirmed", "Confirmed"],
+            ["assigned", "Assigned"],
+            ["on_the_way", "On the way"],
+            ["arriving", "Arriving"],
+            ["done", "Done"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={statusFilter === value ? "is-on" : ""}
+              onClick={() => setStatusFilter(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         <div className="admin-table-wrap">
           <table className="admin-table">
@@ -712,23 +759,28 @@ function Admin() {
                 <th>Pay / split</th>
                 <th>Partner</th>
                 <th>Status</th>
+                <th>Track</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="10">
+                  <td colSpan="11">
                     {loading
                       ? "Loading…"
-                      : "No orders yet. Place a booking on the website, then Refresh. Or Import this browser."}
+                      : "No orders in this status. Place a booking, then Refresh, or choose All statuses."}
                   </td>
                 </tr>
               ) : (
                 filtered.map((order) => {
                   const id = order.id || order.bookingId || order.requestId;
-                  const kind = order.kind || order.orderType;
+                  const kind = serviceKind(order);
+                  const step = trackKey(order);
                   return (
-                    <tr key={`${kind}-${id}`}>
+                    <tr
+                      key={`${kind}-${id}`}
+                      className={isUnassigned(order) ? "is-unassigned" : ""}
+                    >
                       <td>#{id}</td>
                       <td>{kindLabel(kind)}</td>
                       <td>{personName(order)}</td>
@@ -788,16 +840,22 @@ function Admin() {
                         </select>
                       </td>
                       <td>
+                        <span className={`admin-status-pill is-${step}`}>
+                          {step === "done" ? doneLabel(kind) : TRACK_STEPS.find((row) => row.key === step)?.label}
+                        </span>
                         <select
-                          value={order.trackStatus || "confirmed"}
+                          value={step}
                           onChange={(event) => handleStatus(order, event.target.value)}
                         >
-                          {TRACK_STEPS.map((step) => (
-                            <option key={step.key} value={step.key}>
-                              {step.key === "done" ? doneLabel(kind) : step.label}
+                          {TRACK_STEPS.map((row) => (
+                            <option key={row.key} value={row.key}>
+                              {row.key === "done" ? doneLabel(kind) : row.label}
                             </option>
                           ))}
                         </select>
+                      </td>
+                      <td>
+                        <a href={trackHref(id)}>Live track</a>
                       </td>
                     </tr>
                   );
@@ -883,15 +941,50 @@ const styles = `
 .admin-report-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:12px}
 .admin-report-controls label{display:flex;flex-direction:column;gap:4px;font-size:12px}
 .admin-report-controls select,.admin-report-controls input[type=date]{min-height:34px;border:1px solid #d7e2e9;border-radius:8px;padding:4px 8px;font:inherit}
-@media (max-width:900px){
-  .admin-kpis,.admin-chart-grid,.admin-switches{grid-template-columns:1fr 1fr}
+.admin-status-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 12px}
+.admin-status-kpis button{border:1px solid #e4ecef;border-radius:10px;background:#f7fafc;padding:10px 12px;text-align:left;font:inherit;cursor:pointer}
+.admin-status-kpis button.is-on{background:#e7f1f6;border-color:#b7d0dc}
+.admin-status-kpis button.is-warn{background:#fff6ef}
+.admin-status-kpis span{display:block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
+.admin-status-kpis strong{display:block;margin-top:4px;font-size:22px;color:#123b5d}
+.admin-status-matrix{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px}
+.admin-status-matrix th,.admin-status-matrix td{padding:6px;border-bottom:1px solid #edf1f3;text-align:center}
+.admin-status-matrix th:first-child,.admin-status-matrix td:first-child{text-align:left}
+.admin-status-matrix button{border:0;background:transparent;color:inherit;font:inherit;font-weight:700;min-width:28px;padding:4px 6px;border-radius:6px;cursor:pointer}
+.admin-status-cell.is-on,.admin-status-matrix button.is-on{background:#e7f1f6}
+.admin-status-matrix .is-warn{color:#c47a2c}
+.admin-pipe{display:grid;grid-template-columns:repeat(5,minmax(160px,1fr));gap:8px;overflow:auto;align-items:start}
+.admin-pipe-col{background:#f7fafc;border:1px solid #e4ecef;border-radius:10px;padding:8px;min-height:120px}
+.admin-pipe-col header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.admin-pipe-col h3{margin:0;font-size:12px}
+.admin-pipe-col ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.admin-pipe-card{background:#fff;border:1px solid #e4ecef;border-radius:8px;padding:8px}
+.admin-pipe-card-top{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#5d7180}
+.admin-pipe-card strong{display:block;margin:4px 0 2px;font-size:13px}
+.admin-pipe-card p{margin:0 0 6px;font-size:12px}
+.admin-pipe-card button{border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:11px;font-weight:700;padding:4px 8px;cursor:pointer}
+.admin-pipe-col.is-confirmed header{color:#c47a2c}
+.admin-pipe-col.is-assigned header{color:#2a7de1}
+.admin-pipe-col.is-on_the_way header{color:#1a6b7a}
+.admin-pipe-col.is-arriving header{color:#6b5b95}
+.admin-pipe-col.is-done header{color:#1a7a45}
+.admin-status-pill{display:inline-block;margin:0 6px 4px 0;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:800}
+.admin-status-pill.is-confirmed{background:#fff3e4;color:#c47a2c}
+.admin-status-pill.is-assigned{background:#e7f0ff;color:#2a7de1}
+.admin-status-pill.is-on_the_way{background:#e6f4f7;color:#1a6b7a}
+.admin-status-pill.is-arriving{background:#eee8f6;color:#6b5b95}
+.admin-status-pill.is-done{background:#e7f6ef;color:#1a7a45}
+.admin-table tr.is-unassigned{background:#fffaf4}
+.admin-table td select{max-width:140px}
+@media (max-width:1100px){
+  .admin-pipe{grid-template-columns:repeat(5,minmax(180px,1fr))}
 }
 @media (max-width:900px){
-  .admin-kpis,.admin-chart-grid,.admin-switches{grid-template-columns:1fr 1fr}
+  .admin-kpis,.admin-chart-grid,.admin-switches,.admin-status-kpis{grid-template-columns:1fr 1fr}
 }
 @media (max-width:800px){.admin-hero{flex-direction:column}}
 @media (max-width:640px){
-  .admin-kpis,.admin-chart-grid,.admin-switches{grid-template-columns:1fr}
+  .admin-kpis,.admin-chart-grid,.admin-switches,.admin-status-kpis{grid-template-columns:1fr}
 }
 `;
 
