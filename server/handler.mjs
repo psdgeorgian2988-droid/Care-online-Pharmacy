@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { listOrders, patchOrder, upsertOrder } from "./store.mjs";
 import { splitPayment } from "../src/paymentSplit.js";
+import { openTrafficFromOrders } from "../src/partnerQueue.js";
 import {
   createRazorpayOrder,
   findPayment,
@@ -314,6 +315,11 @@ export async function handleApi(req, res) {
 
     if (pathname === "/api/features" && req.method === "GET") {
       send(res, 200, await readSettings());
+      return true;
+    }
+
+    if (pathname === "/api/traffic" && req.method === "GET") {
+      send(res, 200, { open: openTrafficFromOrders(await listOrders()) });
       return true;
     }
 
