@@ -5197,6 +5197,8 @@ a.order-details-btn {
   gap: 10px !important;
   text-align: center !important;
   z-index: 20 !important;
+  border-radius: 0 !important;
+  width: 100% !important;
 }
 
 .app > footer.app-footer .footer-social {
@@ -5339,11 +5341,15 @@ a.order-details-btn {
 .sidebar {
   background: #165564 !important;
   padding: 10px 0 8px 0 !important;
-  margin: 0 8px 0 0 !important;
-  border: 3px solid #0c323b !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-left: 3px solid #0c323b !important;
+  border-right: 3px solid #0c323b !important;
   border-radius: 0 !important;
   overflow: hidden !important;
   box-shadow: none !important;
+  align-self: stretch !important;
+  height: 100% !important;
 }
 
 .sidebar-logo {

@@ -261,9 +261,9 @@ export default function CareChat({ open, onOpen, onClose }) {
 }
 
 const styles = `
-.care-fab{position:fixed;right:18px;bottom:18px;z-index:80;border:0;border-radius:999px;background:#1a6b7a;color:#fff;font:inherit;font-size:14px;font-weight:800;padding:12px 16px;box-shadow:0 10px 24px rgba(20,50,70,.22);cursor:pointer}
-.care-fab-badge{margin-left:8px;display:inline-flex;min-width:18px;height:18px;align-items:center;justify-content:center;border-radius:99px;background:#c44b4b;font-size:11px}
-.care-chat{position:fixed;right:18px;bottom:18px;z-index:90;width:min(380px,calc(100vw - 24px));max-height:min(560px,calc(100vh - 24px));display:flex;flex-direction:column;background:#fff;border:1px solid #d7e6ee;border-radius:16px;box-shadow:0 16px 40px rgba(20,50,70,.2);overflow:hidden}
+.care-fab{position:fixed;right:16px;bottom:6px;z-index:80;height:28px;border:1px solid rgba(255,255,255,.75);border-radius:6px;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:12px;font-weight:700;padding:0 12px;box-shadow:none;cursor:pointer;display:inline-flex;align-items:center}
+.care-fab-badge{margin-left:8px;display:inline-flex;min-width:16px;height:16px;align-items:center;justify-content:center;border-radius:99px;background:#c44b4b;font-size:10px}
+.care-chat{position:fixed;right:16px;bottom:48px;z-index:90;width:min(380px,calc(100vw - 32px));max-height:calc(100vh - 132px);display:flex;flex-direction:column;background:#fff;border:1px solid #d7e6ee;border-radius:12px;box-shadow:0 16px 40px rgba(20,50,70,.2);overflow:hidden}
 .care-chat-head{display:flex;justify-content:space-between;gap:8px;padding:12px 14px;background:#1a6b7a;color:#fff}
 .care-chat-head p{margin:0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
 .care-chat-head h2{margin:2px 0 0;font-size:16px}
@@ -295,6 +295,7 @@ const styles = `
 .care-chat-foot a{color:#1a6b7a;font-weight:700;text-decoration:none}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
 @media (max-width:640px){
-  .care-fab,.care-chat{right:10px;bottom:10px}
+  .care-fab{right:10px;bottom:6px}
+  .care-chat{right:10px;bottom:48px;width:calc(100vw - 20px)}
 }
 `;

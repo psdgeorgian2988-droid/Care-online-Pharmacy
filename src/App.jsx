@@ -24,7 +24,7 @@ import Social from "./Social";
 import MedicineSearchTools from "./MedicineSearchTools";
 import { reviewStats } from "./reviewStore";
 import CareChat from "./CareChat";
-import { CARE_PHONE_DISPLAY, CARE_WHATSAPP } from "./careChat";
+import { CARE_WHATSAPP } from "./careChat";
 import { useFeatures } from "./featureFlags";
 import { pausedServiceTitle, routeEnabled } from "./salesReport";
 import ComingSoon from "./ComingSoon";
@@ -710,10 +710,7 @@ function App() {
               aria-expanded={careOpen}
               onClick={() => setCareOpen(true)}
             >
-              <span className="nav-care-copy">
-                <span>Customer Care</span>
-                <span className="nav-care-no">{CARE_PHONE_DISPLAY}</span>
-              </span>
+              Customer Care
             </button>
           </div>
         </div>
