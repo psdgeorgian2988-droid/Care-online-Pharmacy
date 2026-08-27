@@ -37,9 +37,15 @@
       content="Order medicines, book diagnostics, Home Care, and ambulance in Delhi NCR."
     />
     <meta name="twitter:image" content="https://medihome.in/og-image.svg" />
+    <style>
+      html, body { margin: 0; background: #eaf4fb; color: #143246; font-family: "Segoe UI", system-ui, sans-serif; }
+      .boot-screen, .page-loading { min-height: 100vh; display: grid; place-content: center; gap: 8px; text-align: center; padding: 24px; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot-screen">Loading MediHome…</div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

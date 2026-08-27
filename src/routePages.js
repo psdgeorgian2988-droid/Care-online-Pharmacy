@@ -1,0 +1,22 @@
+import { lazy } from "react";
+
+export const Medicines = lazy(() => import("./Medicines"));
+export const LabTests = lazy(() => import("./LabTests"));
+export const Profile = lazy(() => import("./Profile"));
+export const MyOrders = lazy(() => import("./MyOrders"));
+export const HomeCare = lazy(() => import("./HomeCare"));
+export const Vaccination = lazy(() => import("./Vaccination"));
+export const Psychologist = lazy(() => import("./Psychologist"));
+export const StepDownCare = lazy(() => import("./StepDownCare"));
+export const Ambulance = lazy(() => import("./Ambulance"));
+export const Reports = lazy(() => import("./Reports"));
+export const TrackPage = lazy(() => import("./LiveTracking"));
+export const HealthEducation = lazy(() => import("./HealthEducation"));
+export const About = lazy(() => import("./About"));
+export const Contact = lazy(() => import("./Contact"));
+export const Feedback = lazy(() => import("./Feedback"));
+export const Reviews = lazy(() => import("./Reviews"));
+export const Admin = lazy(() => import("./Admin"));
+export const Partner = lazy(() => import("./Partner"));
+export const ScanPage = lazy(() => import("./ScanPage"));
+export const Social = lazy(() => import("./Social"));

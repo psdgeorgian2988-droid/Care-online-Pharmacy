@@ -5828,3 +5828,50 @@ body,
 .app:not(.app-ops) .medicines-title-row > div:first-child {
   text-align: left !important;
 }
+
+/* Home and other public pages must paint and scroll in short viewports */
+html,
+body,
+#root {
+  min-height: 100% !important;
+  overflow: auto !important;
+}
+
+.sidebar {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+.app > main:has(.home-landing) > * {
+  overflow: auto !important;
+}
+
+.home-content.home-landing {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow: auto !important;
+}
+
+.page-loading,
+.page-error {
+  min-height: 100%;
+  padding: 28px 18px;
+  color: #143246;
+}
+
+.page-loading h1,
+.page-error h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.page-loading p,
+.page-error p {
+  margin: 0 0 12px;
+  color: #5d7180;
+}
+
+.page-error a {
+  color: #1a6b7a;
+  font-weight: 700;
+}

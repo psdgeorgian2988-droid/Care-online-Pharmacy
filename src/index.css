@@ -40,6 +40,18 @@ body {
   border: 0;
 }
 
+.boot-screen,
+.page-loading {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  background: #eaf4fb;
+  color: #143246;
+}
+
 h1,
 h2,
 h3 {

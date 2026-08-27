@@ -1,27 +1,29 @@
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import "./App.css";
-import Medicines from "./Medicines";
-import LabTests from "./LabTests";
-import Profile from "./Profile";
-import MyOrders from "./MyOrders";
-import HomeCare from "./HomeCare";
-import Vaccination from "./Vaccination";
-import Psychologist from "./Psychologist";
-import StepDownCare from "./StepDownCare";
-import Ambulance from "./Ambulance";
-import Reports from "./Reports";
-import TrackPage from "./LiveTracking";
-import HealthEducation from "./HealthEducation";
-import About from "./About";
-import Contact from "./Contact";
-import Feedback from "./Feedback";
-import Reviews from "./Reviews";
-import Admin from "./Admin";
-import Partner from "./Partner";
-import ScanPage from "./ScanPage";
+import {
+  About,
+  Admin,
+  Ambulance,
+  Contact,
+  Feedback,
+  HealthEducation,
+  HomeCare,
+  LabTests,
+  Medicines,
+  MyOrders,
+  Partner,
+  Profile,
+  Psychologist,
+  Reports,
+  Reviews,
+  ScanPage,
+  Social,
+  StepDownCare,
+  TrackPage,
+  Vaccination,
+} from "./routePages";
 import Seo from "./Seo";
 import SocialLinks from "./SocialLinks";
-import Social from "./Social";
 import MedicineSearchTools from "./MedicineSearchTools";
 import { reviewStats } from "./reviewStore";
 import CareChat from "./CareChat";
@@ -46,6 +48,8 @@ import { awardFamilyMemberPoints } from "./pointsStore";
 import { useFeatures } from "./featureFlags";
 import { pausedServiceTitle, routeEnabled } from "./salesReport";
 import ComingSoon from "./ComingSoon";
+import ErrorBoundary from "./ErrorBoundary";
+import { goToHash, parseAppHash } from "./hashRoute";
 
 const NAV_LINKS = [
   { href: "#home", label: "Home" },
@@ -97,34 +101,14 @@ function openWhatsAppUrl(url, event) {
   window.location.assign(url);
 }
 
-function parseAppHash(rawHash) {
-  let value = rawHash || "";
-  if (value.startsWith("#")) {
-    value = value.slice(1);
-  }
-  try {
-    value = decodeURIComponent(value);
-  } catch {
-    value = value.replace(/%3F/gi, "?").replace(/%3D/gi, "=");
-  }
-  const queryIndex = value.indexOf("?");
-  const path = (queryIndex === -1 ? value : value.slice(0, queryIndex)).trim();
-  const query = queryIndex === -1 ? "" : value.slice(queryIndex + 1);
-  let q = "";
-  let id = "";
-  let step = "";
-  try {
-    const params = new URLSearchParams(query);
-    q = (params.get("q") || "").trim();
-    id = (params.get("id") || "").trim();
-    step = (params.get("step") || "").trim();
-  } catch {
-    q = "";
-    id = "";
-    step = "";
-  }
-  const route = !path || path === "home" ? "#home" : `#${path}`;
-  return { route, q, id, step };
+function PageFallback() {
+  return (
+    <div className="page-loading" role="status">
+      <p className="home-kicker">MediHome</p>
+      <h1>Opening page…</h1>
+      <p>Please wait a moment.</p>
+    </div>
+  );
 }
 
 function hashLinkActive(linkHref, route, scanStep) {
@@ -137,13 +121,6 @@ function hashLinkActive(linkHref, route, scanStep) {
     return true;
   }
   return false;
-}
-
-function goToHash(nextHash) {
-  const hash = nextHash.startsWith("#") ? nextHash : `#${nextHash}`;
-  const url = `${window.location.pathname}${window.location.search}${hash}`;
-  window.history.pushState(null, "", url);
-  window.dispatchEvent(new HashChangeEvent("hashchange"));
 }
 
 function readStoredUser() {
@@ -627,6 +604,7 @@ function App() {
         return <Admin />;
       case "#partner":
         return <Partner />;
+      case "#home":
       default:
         return <HomePage />;
     }
@@ -654,7 +632,11 @@ function App() {
             <a href="#home">Website</a>
           </nav>
         </header>
-        <main>{renderPage()}</main>
+        <main>
+          <ErrorBoundary key={route}>
+            <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
+          </ErrorBoundary>
+        </main>
       </div>
     );
   }
@@ -738,7 +720,9 @@ function App() {
       </aside>
 
       <main>
-        {renderPage()}
+        <ErrorBoundary key={route}>
+          <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
+        </ErrorBoundary>
       </main>
 
       <footer className="app-footer">
