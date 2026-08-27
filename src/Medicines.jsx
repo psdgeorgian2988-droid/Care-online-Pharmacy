@@ -5,7 +5,7 @@ import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import { buildIndiaCombos } from "./indiaMedicineCombos";
 import PaymentBlock from "./PaymentBlock";
-import { settleCheckoutPayment } from "./paymentApi";
+import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import MedicineSearchTools from "./MedicineSearchTools";
 
 function readHomeMedicineSearch() {
@@ -3126,6 +3126,7 @@ function Medicines({ initialSearch = "" }) {
   const [confirmedOrder, setConfirmedOrder] = useState(null);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
+  const [payQuote, setPayQuote] = useState(null);
   const [pickedBrandId, setPickedBrandId] = useState(null);
   const [packsPerMonth, setPacksPerMonth] = useState(3);
 
@@ -3207,6 +3208,12 @@ function Medicines({ initialSearch = "" }) {
 
   const cartTotal = cart.reduce(
     (total, item) => total + item.price * (item.quantity || 1),
+    0
+  );
+
+  const cartMrp = cart.reduce(
+    (total, item) =>
+      total + Number(item.mrp || item.price) * (item.quantity || 1),
     0
   );
 
@@ -3300,9 +3307,10 @@ function Medicines({ initialSearch = "" }) {
     setPlacingOrder(true);
     try {
       const gps = await resolvePinLocation(pinCode);
+      const pay = paymentFromQuote(payQuote, cartTotal);
       const payment = await settleCheckoutPayment({
         method: payMethod,
-        amountRupees: cartTotal,
+        ...pay,
         kind: "medicine",
         pin: gps.pinCode,
         name: fullName.trim(),
@@ -3325,7 +3333,10 @@ function Medicines({ initialSearch = "" }) {
           prescription: requiresPrescription(item),
           quantity: item.quantity || 1,
         })),
-        total: cartTotal,
+        total: pay.amountRupees,
+        saleRupees: pay.saleRupees,
+        couponCode: pay.couponCode,
+        discountRupees: pay.discountRupees,
         status: "Order Placed",
         date: new Date().toLocaleString(),
         fullName: fullName.trim(),
@@ -3588,9 +3599,11 @@ function Medicines({ initialSearch = "" }) {
           <PaymentBlock
             kind="medicine"
             amount={cartTotal}
+            saleAmount={cartMrp}
             pin={pinCode}
             method={payMethod}
             onMethodChange={setPayMethod}
+            onQuoteChange={setPayQuote}
           />
           <div className="cart-actions">
             <button

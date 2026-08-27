@@ -71,6 +71,18 @@ function orderId(row) {
   return String(row.id || row.bookingId || row.requestId || "");
 }
 
+function splitFromOrderBody(kind, pin, body, payable) {
+  const sale = Number(
+    body.saleRupees ?? body.mrpTotal ?? body.split?.saleRupees ?? payable
+  );
+  return splitPayment(kind, payable, pin, {
+    saleRupees: sale,
+    payableRupees: payable,
+    couponCode: body.couponCode || body.split?.couponCode || "",
+    couponLabel: body.split?.couponLabel || "",
+  });
+}
+
 function enrichOrder(body) {
   if (!body || typeof body !== "object") return body;
   const kind = body.kind || body.orderType || "medicine";
@@ -78,7 +90,7 @@ function enrichOrder(body) {
   const total = Number(body.total || body.charges || 0);
   const next = { ...body, kind };
   if (!next.split && total > 0) {
-    next.split = splitPayment(kind, total, pin);
+    next.split = splitFromOrderBody(kind, pin, body, total);
   }
   if (!next.paymentMethod) next.paymentMethod = "cod";
   if (!next.paymentStatus) {
@@ -116,7 +128,11 @@ export async function handleApi(req, res) {
       }
       const kind = String(body.kind || "medicine");
       const pin = String(body.pin || "");
-      const split = splitPayment(kind, amountRupees, pin);
+      const split = splitPayment(kind, amountRupees, pin, {
+        saleRupees: body.saleRupees ?? amountRupees,
+        payableRupees: amountRupees,
+        couponCode: body.couponCode || "",
+      });
       const payment = {
         id: newPaymentId(),
         status: "created",
@@ -136,7 +152,7 @@ export async function handleApi(req, res) {
           ? [
               {
                 account: split.razorpayAccountId,
-                amount: split.partnerPaise,
+                amount: split.partnerTransferPaise ?? split.partnerPaise,
                 currency: "INR",
                 notes: { outlet: split.outletName, kind },
               },

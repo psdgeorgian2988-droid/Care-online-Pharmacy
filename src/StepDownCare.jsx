@@ -4,7 +4,7 @@ import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import PaymentBlock from "./PaymentBlock";
-import { settleCheckoutPayment } from "./paymentApi";
+import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 
 const STORAGE_KEY = "mediHomeStepDownBookings";
 const AMBULANCE_STORAGE_KEY = "mediHomeAmbulanceRequests";
@@ -167,6 +167,7 @@ function StepDownCare() {
   const [booking, setBooking] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
+  const [payQuote, setPayQuote] = useState(null);
   const stayTotal = Math.max(1, Number(form.durationDays) || 1) * STEPDOWN_DAY_RATE;
 
   const selectedCentre = CENTRES.find((item) => item.id === form.centreId) || null;
@@ -225,9 +226,10 @@ function StepDownCare() {
       const wantsAmbulance = form.needAmbulance === "yes";
       let ambulanceRequestId = "";
       const total = Math.max(1, Number(form.durationDays) || 1) * STEPDOWN_DAY_RATE;
+      const pay = paymentFromQuote(payQuote, total);
       const payment = await settleCheckoutPayment({
         method: payMethod,
-        amountRupees: total,
+        ...pay,
         kind: "stepdown",
         pin: gps.pinCode,
         name: form.patientName.trim(),
@@ -259,7 +261,10 @@ function StepDownCare() {
         durationDays: Number(form.durationDays),
         needAmbulance: wantsAmbulance,
         ambulanceRequestId,
-        total,
+        total: pay.amountRupees,
+        saleRupees: pay.saleRupees,
+        couponCode: pay.couponCode,
+        discountRupees: pay.discountRupees,
         bookedAt: new Date().toLocaleString(),
         bookedAtMs: Date.now(),
         ...payment,
@@ -780,6 +785,7 @@ function StepDownCare() {
                 pin={form.pinCode}
                 method={payMethod}
                 onMethodChange={setPayMethod}
+                onQuoteChange={setPayQuote}
               />
 
               <button type="submit" className="service-submit" disabled={submitting}>

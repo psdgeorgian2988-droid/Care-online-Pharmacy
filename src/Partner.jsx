@@ -163,7 +163,11 @@ export default function Partner() {
                       </td>
                       <td>
                         {job.split?.partnerRupees != null
-                          ? `₹${Number(job.split.partnerRupees).toLocaleString("en-IN")}`
+                          ? `₹${Number(job.split.partnerRupees).toLocaleString("en-IN")}${
+                              job.split.partnerPercent != null
+                                ? ` (${job.split.partnerPercent}% MRP)`
+                                : ""
+                            }`
                           : "—"}
                       </td>
                       <td>{job.status || job.trackStatus || "—"}</td>

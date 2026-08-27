@@ -876,6 +876,16 @@ function Admin() {
                         {order.total != null && order.total !== ""
                           ? `₹${Number(order.total).toLocaleString("en-IN")}`
                           : "—"}
+                        {order.split?.discountRupees > 0 ? (
+                          <span className="admin-outlet-area">
+                            <br />
+                            Sale ₹
+                            {Number(order.split.saleRupees || order.saleRupees || 0).toLocaleString("en-IN")}
+                            {" · Disc ₹"}
+                            {Number(order.split.discountRupees).toLocaleString("en-IN")}
+                            {order.split.couponCode ? ` · ${order.split.couponCode}` : ""}
+                          </span>
+                        ) : null}
                       </td>
                       <td>
                         {order.paymentMethod === "online" ? "Online" : "COD"}
@@ -887,6 +897,9 @@ function Admin() {
                             {" · "}
                             Partner ₹
                             {Number(order.split.partnerRupees || 0).toLocaleString("en-IN")}
+                            {order.split.partnerPercent != null
+                              ? ` (${order.split.partnerPercent}% MRP)`
+                              : ""}
                           </span>
                         ) : null}
                       </td>

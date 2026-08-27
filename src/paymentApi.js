@@ -60,9 +60,22 @@ export async function confirmTestPayment(payload) {
   );
 }
 
+export function paymentFromQuote(quote, fallbackAmount) {
+  const sale = Number(quote?.saleRupees ?? fallbackAmount) || 0;
+  const payable = Number(quote?.payableRupees ?? fallbackAmount) || 0;
+  return {
+    amountRupees: payable,
+    saleRupees: sale,
+    couponCode: quote?.couponCode || "",
+    discountRupees: Math.max(0, sale - payable),
+  };
+}
+
 export async function settleCheckoutPayment({
   method,
   amountRupees,
+  saleRupees,
+  couponCode,
   kind,
   pin,
   name,
@@ -70,7 +83,11 @@ export async function settleCheckoutPayment({
   reference,
   description,
 }) {
-  const split = splitPayment(kind, amountRupees, pin);
+  const split = splitPayment(kind, amountRupees, pin, {
+    saleRupees: saleRupees ?? amountRupees,
+    payableRupees: amountRupees,
+    couponCode,
+  });
   if (method !== "online") {
     return {
       paymentMethod: "cod",
@@ -78,11 +95,29 @@ export async function settleCheckoutPayment({
       paymentId: "",
       razorpayPaymentId: "",
       razorpayOrderId: "",
+      saleRupees: split.saleRupees,
+      couponCode: split.couponCode,
+      discountRupees: split.discountRupees,
+      split,
+    };
+  }
+  if (Number(amountRupees) <= 0) {
+    return {
+      paymentMethod: "online",
+      paymentStatus: "paid",
+      paymentId: "",
+      razorpayPaymentId: "",
+      razorpayOrderId: "",
+      saleRupees: split.saleRupees,
+      couponCode: split.couponCode,
+      discountRupees: split.discountRupees,
       split,
     };
   }
   const paid = await takeOnlinePayment({
     amountRupees,
+    saleRupees: split.saleRupees,
+    couponCode: split.couponCode,
     kind,
     pin,
     name,
@@ -96,12 +131,17 @@ export async function settleCheckoutPayment({
     paymentId: paid.paymentId || "",
     razorpayPaymentId: paid.razorpayPaymentId || "",
     razorpayOrderId: paid.razorpayOrderId || "",
+    saleRupees: (paid.split || split).saleRupees,
+    couponCode: (paid.split || split).couponCode,
+    discountRupees: (paid.split || split).discountRupees,
     split: paid.split || split,
   };
 }
 
 export async function takeOnlinePayment({
   amountRupees,
+  saleRupees,
+  couponCode,
   kind,
   pin,
   name,
@@ -111,6 +151,8 @@ export async function takeOnlinePayment({
 }) {
   const created = await createPaymentOrder({
     amountRupees,
+    saleRupees,
+    couponCode,
     kind,
     pin,
     name,

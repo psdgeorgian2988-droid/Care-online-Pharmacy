@@ -4,7 +4,7 @@ import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import PaymentBlock from "./PaymentBlock";
-import { settleCheckoutPayment } from "./paymentApi";
+import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 
 const PREP_LABEL = {
   fasting: "Fasting required",
@@ -267,6 +267,7 @@ function LabTests() {
   const [booking, setBooking] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
+  const [payQuote, setPayQuote] = useState(null);
   const [prepPopup, setPrepPopup] = useState(null);
 
   const selectedLab = useMemo(() => LABS.find((lab) => lab.id === selectedLabId), [selectedLabId]);
@@ -435,9 +436,10 @@ function LabTests() {
     try {
       const gps = await resolvePinLocation(form.pinCode);
       const kind = serviceType === "radiology" ? "radiology" : "lab";
+      const pay = paymentFromQuote(payQuote, total);
       const payment = await settleCheckoutPayment({
         method: payMethod,
-        amountRupees: total,
+        ...pay,
         kind,
         pin: gps.pinCode,
         name: form.patientName,
@@ -456,7 +458,10 @@ function LabTests() {
         serviceType,
         partner: activePartner.name,
         tests: activeTests,
-        total,
+        total: pay.amountRupees,
+        saleRupees: pay.saleRupees,
+        couponCode: pay.couponCode,
+        discountRupees: pay.discountRupees,
         ...form,
         pinCode: gps.pinCode,
         pin: gps.pin,
@@ -938,13 +943,16 @@ function LabTests() {
               pin={form.pinCode}
               method={payMethod}
               onMethodChange={setPayMethod}
+              onQuoteChange={setPayQuote}
             />
 
             <div className="lab-book-foot">
               <div>
                 <span>{activePartner ? activePartner.name : "No partner selected"}</span>
                 <strong>
-                  {activeTests.length ? `${activeTests.length} selected · ₹${total}` : `₹${total}`}
+                  {activeTests.length
+                    ? `${activeTests.length} selected · ₹${payQuote?.payableRupees ?? total}`
+                    : `₹${payQuote?.payableRupees ?? total}`}
                 </strong>
               </div>
               <button type="submit" className="lab-submit" disabled={submitting}>

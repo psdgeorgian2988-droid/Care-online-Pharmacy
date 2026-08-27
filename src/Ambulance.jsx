@@ -4,7 +4,7 @@ import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import PaymentBlock from "./PaymentBlock";
-import { settleCheckoutPayment } from "./paymentApi";
+import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 
 const STORAGE_KEY = "mediHomeAmbulanceRequests";
 const AMBULANCE_FEE = {
@@ -43,6 +43,7 @@ function Ambulance() {
   const [request, setRequest] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
+  const [payQuote, setPayQuote] = useState(null);
   const ambFee = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
 
   const handleChange = (event) => {
@@ -76,9 +77,10 @@ function Ambulance() {
       const total = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
       const method =
         form.emergencyType === "emergency" ? "cod" : payMethod;
+      const pay = paymentFromQuote(payQuote, total);
       const payment = await settleCheckoutPayment({
         method,
-        amountRupees: total,
+        ...pay,
         kind: "ambulance",
         pin: gps.pinCode,
         name: form.patientName.trim(),
@@ -100,7 +102,10 @@ function Ambulance() {
         mapsUrl: gps.mapsUrl,
         emergencyType: form.emergencyType,
         notes: form.notes.trim(),
-        total,
+        total: pay.amountRupees,
+        saleRupees: pay.saleRupees,
+        couponCode: pay.couponCode,
+        discountRupees: pay.discountRupees,
         requestedAt: new Date().toLocaleString(),
         requestedAtMs: Date.now(),
         ...payment,
@@ -343,6 +348,7 @@ function Ambulance() {
               pin={form.pinCode}
               method={payMethod}
               onMethodChange={setPayMethod}
+              onQuoteChange={setPayQuote}
             />
           )}
 
