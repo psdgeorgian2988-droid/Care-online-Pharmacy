@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchPaymentConfig } from "./paymentApi";
-import { applyCoupon } from "./offers";
+import { applyCoupon, normalizeCouponCode } from "./offers";
 import { quoteCheckout } from "./paymentSplit";
 
 function formatRupee(amount) {
@@ -22,6 +22,7 @@ export default function PaymentBlock({
   const [couponDraft, setCouponDraft] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [couponMessage, setCouponMessage] = useState("");
+  const couponInputRef = useRef(null);
 
   useEffect(() => {
     fetchPaymentConfig().then(setConfig);
@@ -43,11 +44,19 @@ export default function PaymentBlock({
     onQuoteChange?.(quote);
   }, [quote, onQuoteChange]);
 
-  const applyDraftCoupon = () => {
+  const applyDraftCoupon = (raw) => {
+    const typed =
+      raw ??
+      couponInputRef.current?.value ??
+      couponDraft;
+    const code = normalizeCouponCode(typed);
+    if (!code) {
+      setCouponMessage("Enter a coupon code.");
+      return;
+    }
     const sale = Number(saleAmount ?? amount) || 0;
-    const result = applyCoupon(couponDraft, sale);
+    const result = applyCoupon(code, sale);
     if (!result.ok) {
-      setCouponCode("");
       setCouponMessage(result.error);
       return;
     }
@@ -104,22 +113,23 @@ export default function PaymentBlock({
           <div className="pay-coupon-row">
             <input
               id={`pay-coupon-${kind}`}
+              ref={couponInputRef}
               type="text"
               value={couponDraft}
               placeholder="CARE35"
               autoComplete="off"
               onChange={(event) => {
-                setCouponDraft(event.target.value.toUpperCase());
+                setCouponDraft(normalizeCouponCode(event.target.value));
                 setCouponMessage("");
               }}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
-                  applyDraftCoupon();
+                  applyDraftCoupon(event.currentTarget.value);
                 }
               }}
             />
-            <button type="button" onClick={applyDraftCoupon}>
+            <button type="button" onClick={() => applyDraftCoupon()}>
               Apply
             </button>
             {couponCode ? (

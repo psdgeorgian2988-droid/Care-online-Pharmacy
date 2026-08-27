@@ -74,3 +74,10 @@ test("unknown coupon is rejected", () => {
   const result = applyCoupon("NOTREAL", 100);
   assert.equal(result.ok, false);
 });
+
+test("coupon codes are matched after trim and case fold", () => {
+  const result = applyCoupon("  care35 ", 100);
+  assert.equal(result.ok, true);
+  assert.equal(result.coupon.code, "CARE35");
+  assert.equal(result.discountRupees, 35);
+});
