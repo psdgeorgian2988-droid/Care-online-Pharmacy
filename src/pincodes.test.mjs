@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { lookupPin, pinDirectoryStats } from "../server/pincodes.mjs";
+import {
+  listCityDistrictMismatches,
+  lookupPin,
+  pinDirectoryStats,
+} from "../server/pincodes.mjs";
 
 test("backend directory includes all-India PIN codes", () => {
   const stats = pinDirectoryStats();
@@ -34,4 +38,35 @@ test("unknown 6-digit PIN still resolves from the 3-digit prefix", () => {
 test("short or empty PIN is not a match", () => {
   assert.equal(lookupPin("11001"), null);
   assert.equal(lookupPin(""), null);
+});
+
+test("PIN 124146 uses Jhajjar, not neighbouring Rohtak as city", () => {
+  const row = lookupPin("124146");
+  assert.equal(row.city, "Jhajjar");
+  assert.equal(row.district, "Jhajjar");
+  assert.equal(row.state, "Haryana");
+});
+
+test("PIN 124001 keeps Rohtak city with Rohtak district", () => {
+  const row = lookupPin("124001");
+  assert.equal(row.city, "Rohtak");
+  assert.equal(row.district, "Rohtak");
+});
+
+test("PIN 122001 uses Gurugram for both city and district", () => {
+  const row = lookupPin("122001");
+  assert.equal(row.city, "Gurugram");
+  assert.equal(row.district, "Gurugram");
+});
+
+test("no PIN uses another district in the same state as its city", () => {
+  const mismatches = listCityDistrictMismatches();
+  assert.equal(
+    mismatches.length,
+    0,
+    mismatches
+      .slice(0, 15)
+      .map((row) => `${row.pin} city=${row.city} district=${row.district}`)
+      .join("\n")
+  );
 });

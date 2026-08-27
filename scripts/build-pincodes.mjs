@@ -112,8 +112,45 @@ function titleCase(value) {
     .replace(/(^|[\s/&-])([a-z])/g, (_, prefix, letter) => prefix + letter.toUpperCase());
 }
 
+function normName(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+const DISTRICT_CITY = {
+  delhi: "New Delhi",
+  newdelhi: "New Delhi",
+  centraldelhi: "New Delhi",
+  eastdelhi: "New Delhi",
+  northeastdelhi: "New Delhi",
+  northdelhi: "New Delhi",
+  northwestdelhi: "New Delhi",
+  southdelhi: "New Delhi",
+  southeastdelhi: "New Delhi",
+  southwestdelhi: "New Delhi",
+  westdelhi: "New Delhi",
+  shahdara: "New Delhi",
+  mumbai: "Mumbai",
+  mumbaicity: "Mumbai",
+  mumbaisuburban: "Mumbai",
+  gurgaon: "Gurugram",
+  gurugram: "Gurugram",
+  bangalore: "Bengaluru",
+  bengaluru: "Bengaluru",
+  bangaloreurban: "Bengaluru",
+};
+
 function cityFor(pin, district) {
-  return CITY_BY_PREFIX[pin.slice(0, 3)] || district;
+  const districtKey = normName(district);
+  if (DISTRICT_CITY[districtKey]) return DISTRICT_CITY[districtKey];
+  const prefixCity = CITY_BY_PREFIX[pin.slice(0, 3)];
+  if (prefixCity && normName(prefixCity) === districtKey) return prefixCity;
+  return district;
+}
+
+function displayDistrict(district) {
+  return normName(district) === "gurgaon" ? "Gurugram" : district;
 }
 
 function majority(values) {
@@ -162,7 +199,7 @@ const pins = {};
 const prefixBuckets = new Map();
 
 for (const [pin, row] of grouped) {
-  const district = majority(row.districts);
+  const district = displayDistrict(majority(row.districts));
   const state = majority(row.states);
   const city = cityFor(pin, district);
   if (!city || !district || !state) continue;
@@ -191,9 +228,9 @@ for (const [pin, row] of grouped) {
 
 const prefix = {};
 for (const [code, bucket] of prefixBuckets) {
-  const district = majority(bucket.districts);
+  const district = displayDistrict(majority(bucket.districts));
   const state = majority(bucket.states);
-  const city = CITY_BY_PREFIX[code] || majority(bucket.cities) || district;
+  const city = cityFor(`${code}000`, district);
   prefix[code] = [
     city,
     district,
