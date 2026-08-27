@@ -18,8 +18,8 @@ export const ORDER_STORAGE = {
 
 export const TRACK_STEPS = [
   { key: "confirmed", label: "Confirmed" },
-  { key: "assigned", label: "Partner assigned" },
-  { key: "on_the_way", label: "On the way" },
+  { key: "assigned", label: "Partner Assigned" },
+  { key: "on_the_way", label: "On The Way" },
   { key: "arriving", label: "Arriving" },
   { key: "done", label: "Delivered" },
 ];

@@ -35,11 +35,11 @@ export function OrderStatusTrack({
   );
 
   return (
-    <section className="admin-panel admin-status-panel" aria-label="Order status tracker">
-      <h2>Track order status</h2>
+    <section className="admin-panel admin-status-panel" aria-label="Order Status Tracker">
+      <h2>Track Order Status</h2>
       <p>
-        Live pipeline for every service. Click a count to filter the table. Advance a card to
-        move the booking to the next step.
+        Live Pipeline For Every Service. Click A Count To Filter The Table. Advance A Card To
+        Move The Booking To The Next Step.
       </p>
 
       <div className="admin-status-kpis">
@@ -48,7 +48,7 @@ export function OrderStatusTrack({
           <strong>{matrix.open}</strong>
         </button>
         <button type="button" className={statusFilter === "progress" ? "is-on" : ""} onClick={() => onSelect("all", "progress")}>
-          <span>In progress</span>
+          <span>In Progress</span>
           <strong>{matrix.inProgress}</strong>
         </button>
         <button type="button" className={statusFilter === "done" ? "is-on" : ""} onClick={() => onSelect("all", "done")}>
@@ -74,7 +74,7 @@ export function OrderStatusTrack({
                 <th key={step.key}>{step.key === "done" ? "Done" : step.label}</th>
               ))}
               <th>Open</th>
-              <th>Need partner</th>
+              <th>Need Partner</th>
             </tr>
           </thead>
           <tbody>
@@ -146,12 +146,12 @@ export function OrderStatusTrack({
                         <p>{personName(order)}</p>
                         <p className="admin-muted">
                           PIN {order.pinCode || order.pin || "—"}
-                          {order.partnerName ? ` · ${order.partnerName}` : isUnassigned(order) ? " · No partner" : ""}
+                          {order.partnerName ? ` · ${order.partnerName}` : isUnassigned(order) ? " · No Partner" : ""}
                           {` · ${formatInr(orderAmount(order))}`}
                         </p>
                         {stepNow !== "done" ? (
                           <button type="button" onClick={() => onStatus(order, next)}>
-                            Move to {stepTitle(kind, next)}
+                            Move To {stepTitle(kind, next)}
                           </button>
                         ) : (
                           <small>Closed</small>

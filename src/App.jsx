@@ -47,8 +47,8 @@ const BOTTOM_LINKS = [
 ];
 
 const OPS_LINKS = [
-  { href: "#admin", label: "Staff orders" },
-  { href: "#partner", label: "Partner desk" },
+  { href: "#admin", label: "Staff Orders" },
+  { href: "#partner", label: "Partner Desk" },
 ];
 
 const HOME_WHATSAPP = "919654222988";

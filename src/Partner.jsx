@@ -24,7 +24,7 @@ export default function Partner() {
       const data = await fetchPartnerJobs();
       setJobs(Array.isArray(data.jobs) ? data.jobs : []);
     } catch (err) {
-      setError(err.message || "Could not load jobs.");
+      setError(err.message || "Could Not Load Jobs.");
       if (String(err.message || "").toLowerCase().includes("login")) {
         partnerLogout();
         setToken("");
@@ -48,7 +48,7 @@ export default function Partner() {
       setPartner(data.partner);
       setPin("");
     } catch (err) {
-      setError(err.message || "Login failed.");
+      setError(err.message || "Login Failed.");
     }
   };
 
@@ -58,9 +58,9 @@ export default function Partner() {
         <style>{styles}</style>
         <div className="service-page partner-page">
           <section className="service-hero">
-            <span className="service-kicker">Partner operations</span>
-            <h1>Partner login</h1>
-            <p>See only jobs assigned to you by MediHome staff.</p>
+            <span className="service-kicker">Partner Operations</span>
+            <h1>Partner Login</h1>
+            <p>See Only Jobs Assigned To You By MediHome Staff.</p>
           </section>
           <form className="service-form admin-login" onSubmit={handleLogin}>
             <div className="field">
@@ -89,7 +89,7 @@ export default function Partner() {
               ambulance, step-down).
             </p>
             <button type="submit" className="service-submit">
-              Sign in
+              Sign In
             </button>
           </form>
         </div>
@@ -105,7 +105,7 @@ export default function Partner() {
           <div>
             <span className="service-kicker">{partner.role}</span>
             <h1>{partner.name}</h1>
-            <p>Assigned jobs only. Split is visible here, not to customers.</p>
+            <p>Assigned Jobs Only. Split Is Visible Here, Not To Customers.</p>
           </div>
           <div className="admin-hero-actions">
             <button type="button" onClick={loadJobs} disabled={loading}>
@@ -120,7 +120,7 @@ export default function Partner() {
                 setJobs([]);
               }}
             >
-              Sign out
+              Sign Out
             </button>
           </div>
         </section>
@@ -131,9 +131,9 @@ export default function Partner() {
               <tr>
                 <th>Job</th>
                 <th>Type</th>
-                <th>PIN / outlet</th>
+                <th>PIN / Outlet</th>
                 <th>Pay</th>
-                <th>Your share</th>
+                <th>Your Share</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -143,7 +143,7 @@ export default function Partner() {
                   <td colSpan="6">
                     {loading
                       ? "Loading…"
-                      : "No jobs yet. Staff assign work from #admin."}
+                      : "No Jobs Yet. Staff Assign Work From #admin."}
                   </td>
                 </tr>
               ) : (

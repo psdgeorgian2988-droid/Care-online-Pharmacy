@@ -123,7 +123,7 @@ function Admin() {
       setFeatures(nextFeatures);
       cacheFeatures(nextFeatures);
     } catch (err) {
-      setError(err.message || "Could not load orders.");
+      setError(err.message || "Could Not Load Orders.");
       if (String(err.message || "").toLowerCase().includes("login")) {
         staffLogout();
         setToken("");
@@ -199,7 +199,7 @@ function Admin() {
       setToken(staffToken());
       setPassword("");
     } catch (err) {
-      setError(err.message || "Login failed.");
+      setError(err.message || "Login Failed.");
     }
   };
 
@@ -223,7 +223,7 @@ function Admin() {
       });
       await loadDesk();
     } catch (err) {
-      setError(err.message || "Could not update status.");
+      setError(err.message || "Could Not Update Status.");
     }
   };
 
@@ -235,7 +235,7 @@ function Admin() {
       persistOrder(order, data.order || { partnerId });
       await loadDesk();
     } catch (err) {
-      setError(err.message || "Could not assign partner.");
+      setError(err.message || "Could Not Assign Partner.");
     }
   };
 
@@ -258,7 +258,7 @@ function Admin() {
         rows.map((row) => (row.sessionId === id ? data.thread : row))
       );
     } catch (err) {
-      setError(err.message || "Could not send care reply.");
+      setError(err.message || "Could Not Send Care Reply.");
     }
   };
 
@@ -272,7 +272,7 @@ function Admin() {
       setFeatures(merged);
       cacheFeatures(merged);
     } catch (err) {
-      setError(err.message || "Could not save feature switch.");
+      setError(err.message || "Could Not Save Feature Switch.");
       await loadDesk();
     }
   };
@@ -331,8 +331,8 @@ function Admin() {
         <div className="service-page admin-page">
           <section className="service-hero">
             <span className="service-kicker">Operations</span>
-            <h1>Staff login</h1>
-            <p>Assign partners, update status, and see payment splits. This desk is separate from the public website.</p>
+            <h1>Staff Login</h1>
+            <p>Assign Partners, Update Status, And See Payment Splits. This Desk Is Separate From The Public Website.</p>
           </section>
           <form className="service-form admin-login" onSubmit={handleLogin}>
             <div className="field">
@@ -356,10 +356,10 @@ function Admin() {
             </div>
             {error ? <small className="admin-error">{error}</small> : null}
             <button type="submit" className="service-submit">
-              Sign in
+              Sign In
             </button>
             <p className="admin-hint">
-              Local staff user: <strong>admin</strong> · password:{" "}
+              Local Staff User: <strong>admin</strong> · Password:{" "}
               <strong>MediHome@26</strong>
             </p>
           </form>
@@ -375,9 +375,9 @@ function Admin() {
         <section className="service-hero admin-hero">
           <div>
             <span className="service-kicker">Operations</span>
-            <h1>Staff desk</h1>
+            <h1>Staff Desk</h1>
             <p>
-              Sales, feature switches, growth charts, and partner assignment.
+              Sales, Feature Switches, Growth Charts, And Partner Assignment.
             </p>
           </div>
           <div className="admin-hero-actions">
@@ -385,7 +385,7 @@ function Admin() {
               {loading ? "Refreshing…" : "Refresh"}
             </button>
             <button type="button" onClick={importBrowserOrders}>
-              Import this browser
+              Import This Browser
             </button>
             <button
               type="button"
@@ -395,18 +395,18 @@ function Admin() {
                 setOrders([]);
               }}
             >
-              Sign out
+              Sign Out
             </button>
           </div>
         </section>
 
         {error ? <p className="admin-error">{error}</p> : null}
 
-        <section className="admin-panel" aria-label="Customer care inbox">
-          <h2>Customer care inbox</h2>
-          <p>Replies from this desk show in the public chatbox.</p>
+        <section className="admin-panel" aria-label="Customer Care Inbox">
+          <h2>Customer Care Inbox</h2>
+          <p>Replies From This Desk Show In The Public Chatbox.</p>
           {chats.length === 0 ? (
-            <p className="admin-muted">No website chats yet.</p>
+            <p className="admin-muted">No Website Chats Yet.</p>
           ) : (
             <div className="admin-chat-layout">
               <ul className="admin-chat-list">
@@ -421,7 +421,7 @@ function Admin() {
                     >
                       <strong>{row.name || "Guest"}</strong>
                       <span>
-                        {row.needsStaff ? "Needs staff · " : ""}
+                        {row.needsStaff ? "Needs Staff · " : ""}
                         {row.messages?.at(-1)?.text?.slice(0, 48) || "Empty"}
                       </span>
                     </button>
@@ -441,7 +441,7 @@ function Admin() {
                   <input
                     value={chatDraft}
                     onChange={(event) => setChatDraft(event.target.value)}
-                    placeholder="Reply to this chat"
+                    placeholder="Reply To This Chat"
                   />
                   <button type="submit">Send</button>
                 </form>
@@ -450,24 +450,24 @@ function Admin() {
           )}
         </section>
 
-        <section className="admin-kpis" aria-label="Sales figures">
+        <section className="admin-kpis" aria-label="Sales Figures">
           <article>
             <span>Today</span>
             <strong>{formatInr(sales.today.amount)}</strong>
             <small>{sales.today.count} orders</small>
           </article>
           <article>
-            <span>Month to date</span>
+            <span>Month To Date</span>
             <strong>{formatInr(sales.mtd.amount)}</strong>
             <small>{sales.mtd.count} orders · AOV {formatInr(mtdAov)}</small>
           </article>
           <article>
-            <span>Year to date</span>
+            <span>Year To Date</span>
             <strong>{formatInr(sales.ytd.amount)}</strong>
             <small>{sales.ytd.count} orders</small>
           </article>
           <article>
-            <span>Same-day vs last month</span>
+            <span>Same-Day Vs Last Month</span>
             <strong className={growth.pct == null ? "is-new" : growth.pct < 0 ? "is-down" : "is-up"}>
               {formatPct(growth.pct)}
             </strong>
@@ -476,7 +476,7 @@ function Admin() {
             </small>
           </article>
           <article>
-            <span>Same-day vs last year</span>
+            <span>Same-Day Vs Last Year</span>
             <strong className={yoy.pct == null ? "is-new" : yoy.pct < 0 ? "is-down" : "is-up"}>
               {formatPct(yoy.pct)}
             </strong>
@@ -485,7 +485,7 @@ function Admin() {
             </small>
           </article>
           <article>
-            <span>Selected period</span>
+            <span>Selected Period</span>
             <strong>{formatInr(currentRows.reduce((sum, row) => sum + orderAmount(row), 0))}</strong>
             <small>
               {currentRows.length} orders · {range.label}
@@ -495,20 +495,20 @@ function Admin() {
 
         <p className="admin-growth-note">
           {serviceUp
-            ? `Service growth: ${kindLabel(serviceUp.key)} (${formatPct(serviceUp.pct)}).`
-            : "No service-level growth in this comparison yet."}{" "}
+            ? `Service Growth: ${kindLabel(serviceUp.key)} (${formatPct(serviceUp.pct)}).`
+            : "No Service-Level Growth In This Comparison Yet."}{" "}
           {serviceDown
-            ? `Service drop: ${kindLabel(serviceDown.key)} (${formatPct(serviceDown.pct)}).`
+            ? `Service Drop: ${kindLabel(serviceDown.key)} (${formatPct(serviceDown.pct)}).`
             : ""}{" "}
-          {pinUp ? `PIN growth: ${pinUp.label} (${formatPct(pinUp.pct)}).` : ""}{" "}
-          {pinDown ? `PIN drop: ${pinDown.label} (${formatPct(pinDown.pct)}).` : ""}{" "}
-          {storeUp ? `Store growth: ${storeUp.label} (${formatPct(storeUp.pct)}).` : ""}{" "}
-          {storeDown ? `Store drop: ${storeDown.label} (${formatPct(storeDown.pct)}).` : ""}
+          {pinUp ? `PIN Growth: ${pinUp.label} (${formatPct(pinUp.pct)}).` : ""}{" "}
+          {pinDown ? `PIN Drop: ${pinDown.label} (${formatPct(pinDown.pct)}).` : ""}{" "}
+          {storeUp ? `Store Growth: ${storeUp.label} (${formatPct(storeUp.pct)}).` : ""}{" "}
+          {storeDown ? `Store Drop: ${storeDown.label} (${formatPct(storeDown.pct)}).` : ""}
         </p>
 
-        <section className="admin-panel" aria-label="Feature switches">
-          <h2>Turn features on or off</h2>
-          <p>Off services hide from the public website until you turn them back on.</p>
+        <section className="admin-panel" aria-label="Feature Switches">
+          <h2>Turn Features On Or Off</h2>
+          <p>Off Services Hide From The Public Website Until You Turn Them Back On.</p>
           <div className="admin-switches">
             {FEATURE_CATALOG.map((row) => (
               <button
@@ -526,18 +526,18 @@ function Admin() {
           </div>
         </section>
 
-        <section className="admin-panel" aria-label="Chart period">
-          <h2>Growth and degrowth charts</h2>
+        <section className="admin-panel" aria-label="Chart Period">
+          <h2>Growth And Degrowth Charts</h2>
           <p>
-            Compare the selected period with the equal-length stretch before it.
-            Month grids always show the last 12 months in IST.
+            Compare The Selected Period With The Equal-Length Stretch Before It.
+            Month Grids Always Show The Last 12 Months In IST.
           </p>
           <div className="lab-tabs admin-tabs" role="tablist">
             {[
               ["today", "Today"],
-              ["mtd", "Month to date"],
-              ["ytd", "Year to date"],
-              ["last12", "Last 12 months"],
+              ["mtd", "Month To Date"],
+              ["ytd", "Year To Date"],
+              ["last12", "Last 12 Months"],
             ].map(([value, label]) => (
               <button
                 key={value}
@@ -554,34 +554,34 @@ function Admin() {
 
         <div className="admin-chart-grid">
           <BarList
-            title="Sales by service"
-            caption={`${range.label} · share of bookings.`}
+            title="Sales By Service"
+            caption={`${range.label} · Share Of Bookings.`}
             rows={byServiceBars.map((row) => ({
               ...row,
               label: kindLabel(row.key),
             }))}
           />
           <BarList
-            title="Sales by store"
-            caption="Outlet fulfilment from PIN routing."
+            title="Sales By Store"
+            caption="Outlet Fulfilment From PIN Routing."
             rows={byStore}
           />
           <BarList
-            title="Sales by PIN"
-            caption="Top delivery / visit PIN codes."
+            title="Sales By PIN"
+            caption="Top Delivery / Visit PIN Codes."
             rows={byPin}
           />
           <BarList
-            title="Payment mix"
-            caption="Online checkout vs cash on delivery."
+            title="Payment Mix"
+            caption="Online Checkout Vs Cash On Delivery."
             rows={byPay}
           />
         </div>
 
         <div className="admin-chart-grid">
           <CompareBars
-            title="Service: now vs previous"
-            caption={`${range.label} against the same number of days before.`}
+            title="Service: Now Vs Previous"
+            caption={`${range.label} Against The Same Number Of Days Before.`}
             rows={serviceCompare.map((row) => ({
               ...row,
               label: kindLabel(row.key),
@@ -590,22 +590,22 @@ function Admin() {
             previousLabel="Prev"
           />
           <CompareBars
-            title="PIN: now vs previous"
-            caption="Where demand is growing or shrinking."
+            title="PIN: Now Vs Previous"
+            caption="Where Demand Is Growing Or Shrinking."
             rows={pinCompare}
             currentLabel="Now"
             previousLabel="Prev"
           />
           <CompareBars
-            title="Store: now vs previous"
-            caption="Outlet growth and degrowth."
+            title="Store: Now Vs Previous"
+            caption="Outlet Growth And Degrowth."
             rows={storeCompare}
             currentLabel="Now"
             previousLabel="Prev"
           />
           <GrowthTable
-            title="Movers this period"
-            caption="Largest current sales, with % vs previous window."
+            title="Movers This Period"
+            caption="Largest Current Sales, With % Vs Previous Window."
             rows={serviceCompare.map((row) => ({
               ...row,
               label: kindLabel(row.key),
@@ -614,46 +614,46 @@ function Admin() {
         </div>
 
         <MonthStackChart
-          title="Month-wise sales by service"
-          caption="Last 12 months in IST. Taller stacks mean higher sales."
+          title="Month-Wise Sales By Service"
+          caption="Last 12 Months In IST. Taller Stacks Mean Higher Sales."
           months={monthly.months}
           kinds={monthly.kinds}
         />
 
         <MonthMatrix
-          title="Service × month"
-          caption="MoM is the latest month (days so far) vs the month before. Same-day % in the KPI row is the fairer in-month read."
+          title="Service × Month"
+          caption="MoM Is The Latest Month (Days So Far) Vs The Month Before. Same-Day % In The KPI Row Is The Fairer In-Month Read."
           matrix={matrixService}
           labelHeader="Service"
         />
         <MonthMatrix
-          title="PIN × month"
-          caption="PIN-code sales across the last 12 months."
+          title="PIN × Month"
+          caption="PIN-Code Sales Across The Last 12 Months."
           matrix={matrixPin}
           labelHeader="PIN"
         />
         <MonthMatrix
-          title="Store × month"
-          caption="Store / outlet sales across the last 12 months."
+          title="Store × Month"
+          caption="Store / Outlet Sales Across The Last 12 Months."
           matrix={matrixStore}
           labelHeader="Store"
         />
 
         <div className="admin-chart-grid">
           <GrowthTable
-            title="PIN growth / degrowth"
-            caption={`${range.label} vs previous window.`}
+            title="PIN Growth / Degrowth"
+            caption={`${range.label} Vs Previous Window.`}
             rows={pinCompare}
           />
           <GrowthTable
-            title="Store growth / degrowth"
+            title="Store Growth / Degrowth"
             caption={`${range.label} vs previous window.`}
             rows={storeCompare}
           />
         </div>
 
-        <section className="admin-panel" aria-label="Detailed reports">
-          <h2>Generate a detailed report</h2>
+        <section className="admin-panel" aria-label="Detailed Reports">
+          <h2>Generate A Detailed Report</h2>
           <div className="admin-report-controls">
             <label>
               Period
@@ -662,10 +662,10 @@ function Admin() {
                 onChange={(event) => setReportPeriod(event.target.value)}
               >
                 <option value="today">Today</option>
-                <option value="mtd">Month to date</option>
-                <option value="ytd">Year to date</option>
-                <option value="last12">Last 12 months</option>
-                <option value="custom">Custom dates</option>
+                <option value="mtd">Month To Date</option>
+                <option value="ytd">Year To Date</option>
+                <option value="last12">Last 12 Months</option>
+                <option value="custom">Custom Dates</option>
               </select>
             </label>
             <label>
@@ -674,7 +674,7 @@ function Admin() {
                 value={reportKind}
                 onChange={(event) => setReportKind(event.target.value)}
               >
-                <option value="all">All services</option>
+                <option value="all">All Services</option>
                 {FEATURE_CATALOG.filter((row) =>
                   ["medicine", "lab", "radiology", "homecare", "stepdown", "ambulance"].includes(
                     row.key
@@ -707,10 +707,10 @@ function Admin() {
               </>
             ) : null}
             <button type="button" onClick={generateReport}>
-              Generate report
+              Generate Report
             </button>
             <button type="button" onClick={downloadReport}>
-              Download analysis CSV
+              Download Analysis CSV
             </button>
           </div>
           {reportRows ? (
@@ -729,7 +729,7 @@ function Admin() {
                 <tbody>
                   {reportRows.length === 0 ? (
                     <tr>
-                      <td colSpan="6">No rows for this period.</td>
+                      <td colSpan="6">No Rows For This Period.</td>
                     </tr>
                   ) : (
                     reportRows.map((row) => (
@@ -793,15 +793,15 @@ function Admin() {
             </button>
           ))}
         </div>
-        <div className="lab-tabs admin-tabs" role="tablist" aria-label="Status filter">
+        <div className="lab-tabs admin-tabs" role="tablist" aria-label="Status Filter">
           {[
-            ["all", "All statuses"],
+            ["all", "All Statuses"],
             ["open", "Open"],
-            ["progress", "In progress"],
+            ["progress", "In Progress"],
             ["unassigned", "Unassigned"],
             ["confirmed", "Confirmed"],
             ["assigned", "Assigned"],
-            ["on_the_way", "On the way"],
+            ["on_the_way", "On The Way"],
             ["arriving", "Arriving"],
             ["done", "Done"],
           ].map(([value, label]) => (
@@ -827,7 +827,7 @@ function Admin() {
                 <th>Outlet</th>
                 <th>When</th>
                 <th>Amount</th>
-                <th>Pay / split</th>
+                <th>Pay / Split</th>
                 <th>Partner</th>
                 <th>Status</th>
                 <th>Track</th>
@@ -839,7 +839,7 @@ function Admin() {
                   <td colSpan="11">
                     {loading
                       ? "Loading…"
-                      : "No orders in this status. Place a booking, then Refresh, or choose All statuses."}
+                      : "No Orders In This Status. Place A Booking, Then Refresh, Or Choose All Statuses."}
                   </td>
                 </tr>
               ) : (
@@ -926,7 +926,7 @@ function Admin() {
                         </select>
                       </td>
                       <td>
-                        <a href={trackHref(id)}>Live track</a>
+                        <a href={trackHref(id)}>Live Track</a>
                       </td>
                     </tr>
                   );

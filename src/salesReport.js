@@ -2,13 +2,13 @@ export const TZ = "Asia/Kolkata";
 
 export const FEATURE_CATALOG = [
   { key: "medicine", label: "Medicines", href: "#medicine-search" },
-  { key: "lab", label: "Lab tests", href: "#labs" },
+  { key: "lab", label: "Lab Tests", href: "#labs" },
   { key: "radiology", label: "Radiology", href: "#labs" },
   { key: "homecare", label: "Home Care", href: "#homecare" },
-  { key: "stepdown", label: "Step-down care", href: "#stepdown" },
+  { key: "stepdown", label: "Step-Down Care", href: "#stepdown" },
   { key: "ambulance", label: "Ambulance", href: "#ambulance" },
   { key: "reports", label: "Reports", href: "#reports" },
-  { key: "education", label: "Health education", href: "#education" },
+  { key: "education", label: "Health Education", href: "#education" },
 ];
 
 export const DEFAULT_FEATURES = Object.fromEntries(
@@ -148,7 +148,7 @@ export function reportRange({ period, from, to } = {}, now = Date.now()) {
       const [y, m, d] = to.split("-").map(Number);
       toMs = istMidnightUtc(y, m, d) + 24 * 60 * 60 * 1000 - 1;
     }
-    return { fromMs, toMs, label: "Custom dates" };
+    return { fromMs, toMs, label: "Custom Dates" };
   }
   return analysisRange(period || "mtd", now);
 }
@@ -293,14 +293,14 @@ export function analysisRange(period, now = Date.now()) {
     return { fromMs: starts.today, toMs: now, label: "Today" };
   }
   if (period === "mtd") {
-    return { fromMs: starts.mtd, toMs: now, label: "Month to date" };
+    return { fromMs: starts.mtd, toMs: now, label: "Month To Date" };
   }
   if (period === "ytd") {
-    return { fromMs: starts.ytd, toMs: now, label: "Year to date" };
+    return { fromMs: starts.ytd, toMs: now, label: "Year To Date" };
   }
   const keys = lastMonthKeys(12, now);
   const [year, month] = keys[0].split("-").map(Number);
-  return { fromMs: istMidnightUtc(year, month, 1), toMs: now, label: "Last 12 months" };
+  return { fromMs: istMidnightUtc(year, month, 1), toMs: now, label: "Last 12 Months" };
 }
 
 export function previousRange({ fromMs, toMs }) {

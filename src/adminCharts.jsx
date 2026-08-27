@@ -28,7 +28,7 @@ export function BarList({ title, caption, rows }) {
       <h3>{title}</h3>
       {caption ? <p className="admin-chart-cap">{caption}</p> : null}
       {rows.length === 0 ? (
-        <p className="admin-muted">No sales in this view yet.</p>
+        <p className="admin-muted">No Sales In This View Yet.</p>
       ) : (
         <ul className="admin-bars">
           {rows.map((row) => (
@@ -63,7 +63,7 @@ export function CompareBars({ title, caption, rows, currentLabel, previousLabel 
       <h3>{title}</h3>
       {caption ? <p className="admin-chart-cap">{caption}</p> : null}
       {rows.length === 0 ? (
-        <p className="admin-muted">No sales in this view yet.</p>
+        <p className="admin-muted">No Sales In This View Yet.</p>
       ) : (
         <ul className="admin-bars">
           {rows.map((row) => (
@@ -162,7 +162,7 @@ export function MonthMatrix({ title, caption, matrix, labelHeader, limit = 12 })
       <h3>{title}</h3>
       {caption ? <p className="admin-chart-cap">{caption}</p> : null}
       {rows.length === 0 ? (
-        <p className="admin-muted">No sales in the last 12 months yet.</p>
+        <p className="admin-muted">No Sales In The Last 12 Months Yet.</p>
       ) : (
         <div className="admin-matrix-wrap">
           <table className="admin-matrix">
@@ -211,7 +211,7 @@ export function GrowthTable({ title, caption, rows }) {
       <h3>{title}</h3>
       {caption ? <p className="admin-chart-cap">{caption}</p> : null}
       {rows.length === 0 ? (
-        <p className="admin-muted">No rows for this period.</p>
+        <p className="admin-muted">No Rows For This Period.</p>
       ) : (
         <table className="admin-growth-table">
           <thead>
