@@ -1,6 +1,7 @@
 export const EMPTY_ADDRESS = {
   houseNo: "",
   society: "",
+  area: "",
   city: "",
   district: "",
   state: "",
@@ -25,6 +26,13 @@ export const ADDRESS_FIELDS = [
     placeholder: "6-digit PIN",
     inputMode: "numeric",
     maxLength: 6,
+  },
+  {
+    name: "area",
+    label: "Village / Sector / Mohalla",
+    placeholder: "Select for this PIN",
+    auto: true,
+    select: true,
   },
   {
     name: "city",
@@ -64,7 +72,8 @@ export function emptyAddress() {
 export function pickAddress(source = {}) {
   return {
     houseNo: clean(source.houseNo),
-    society: clean(source.society || source.locality),
+    society: clean(source.society),
+    area: clean(source.area),
     city: clean(source.city),
     district: clean(source.district),
     state: clean(source.state),
@@ -78,7 +87,13 @@ export function pickAddress(source = {}) {
 export function addressFromUnknown(source = {}) {
   const next = pickAddress(source);
   const hasStructured = Boolean(
-    next.houseNo || next.society || next.city || next.district || next.state || next.nearby
+    next.houseNo ||
+      next.society ||
+      next.area ||
+      next.city ||
+      next.district ||
+      next.state ||
+      next.nearby
   );
   if (!hasStructured) {
     next.society = clean(
@@ -90,17 +105,15 @@ export function addressFromUnknown(source = {}) {
 
 export function formatAddress(source = {}) {
   const addr = pickAddress(source);
-  return [
-    addr.houseNo,
-    addr.society,
-    addr.nearby ? `Near ${addr.nearby}` : "",
-    addr.city,
-    addr.district,
-    addr.state,
-    addr.pinCode,
-  ]
-    .filter(Boolean)
-    .join(", ");
+  const parts = [addr.houseNo, addr.society];
+  if (addr.area && addr.area !== addr.society) parts.push(addr.area);
+  if (addr.nearby) parts.push(`Near ${addr.nearby}`);
+  if (addr.city && addr.city !== addr.area) parts.push(addr.city);
+  if (addr.district && addr.district !== addr.city && addr.district !== addr.area) {
+    parts.push(addr.district);
+  }
+  parts.push(addr.state, addr.pinCode);
+  return parts.filter(Boolean).join(", ");
 }
 
 export function validateAddress(source = {}) {
@@ -110,9 +123,10 @@ export function validateAddress(source = {}) {
   if (!addr.society) errors.society = "Society / Mohalla / Gali No. is required.";
   if (!/^\d{6}$/.test(addr.pinCode)) {
     errors.pinCode = "Enter a valid 6-digit PIN Code.";
-  } else if (!addr.city || !addr.district || !addr.state) {
+  } else if (!addr.area || !addr.city || !addr.district || !addr.state) {
     errors.pinCode =
-      "This PIN Code was not recognised. Check the PIN so City, District and State can be filled.";
+      "Enter a valid PIN Code and select the Village / Sector / Mohalla attached to it.";
+    if (!addr.area) errors.area = "Select the Village / Sector / Mohalla for this PIN.";
   }
   return errors;
 }
@@ -131,6 +145,7 @@ export function withFormattedAddress(source = {}) {
 export function applyResolvedPin(source = {}, gps = {}) {
   const merged = {
     ...source,
+      area: gps.area || gps.locality || source.area,
     city: gps.city || source.city,
     district: gps.district || source.district,
     state: gps.state || source.state,
@@ -143,7 +158,7 @@ export function applyResolvedPin(source = {}, gps = {}) {
     pin: gps.pin,
     lat: gps.lat,
     lng: gps.lng,
-    locality: gps.locality,
+    locality: gps.area || gps.locality,
     mapsUrl: gps.mapsUrl,
   };
 }

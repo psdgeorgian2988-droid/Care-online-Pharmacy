@@ -390,7 +390,7 @@ function HomeCare() {
               values={form}
               errors={errors}
               onChange={handleChange}
-              pinHint="City, District and State fill from this PIN."
+              pinHint="Select the Village / Sector / Mohalla attached to this PIN."
             />
           </div>
 

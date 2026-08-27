@@ -3596,7 +3596,7 @@ function Medicines({ initialSearch = "" }) {
               setDelivery((prev) => ({ ...prev, [name]: value }));
               setDeliveryErrors((prev) => ({ ...prev, [name]: "" }));
             }}
-            pinHint="City, District and State fill from this PIN. Delivery GPS also uses it."
+            pinHint="Select the Village / Sector / Mohalla attached to this PIN."
           />
           <PaymentBlock
             kind="medicine"

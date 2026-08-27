@@ -63,24 +63,48 @@ export function alignedCity(city, district) {
   return resolvedDistrict || city || "";
 }
 
+function uniqueAreas(list, fallback = "") {
+  const seen = new Set();
+  const areas = [];
+  for (const value of [...list, fallback]) {
+    const name = String(value || "").trim();
+    const key = normName(name);
+    if (!name || !key || seen.has(key)) continue;
+    seen.add(key);
+    areas.push(name);
+  }
+  return areas;
+}
+
 function unpack(pin, row, extra = {}) {
   if (!row) return null;
-  const district = alignedDistrict(row[1]);
-  const state = row[2];
-  const lat = row[3];
-  const lng = row[4];
-  const city = alignedCity(row[0], district);
+  const newFormat = typeof row[3] === "string";
+  const areaRaw = newFormat ? row[0] : "";
+  const cityRaw = newFormat ? row[1] : row[0];
+  const districtRaw = newFormat ? row[2] : row[1];
+  const state = newFormat ? row[3] : row[2];
+  const lat = newFormat ? row[4] : row[3];
+  const lng = newFormat ? row[5] : row[4];
+  const storedAreas = newFormat && Array.isArray(row[6]) ? row[6] : [];
+  const district = alignedDistrict(districtRaw);
+  const city = alignedCity(cityRaw, district);
+  const areas = extra.approximate
+    ? uniqueAreas([city])
+    : uniqueAreas(storedAreas, areaRaw);
+  const area = areas.includes(areaRaw) ? areaRaw : areas[0] || "";
   return {
     pin,
     pinCode: pin,
+    area,
+    areas,
     city,
     district,
     state,
     lat: Number.isFinite(lat) ? lat : null,
     lng: Number.isFinite(lng) ? lng : null,
-    locality: city,
+    locality: area || city,
     mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      `${pin} ${city} ${state} India`
+      `${pin} ${area || city} ${state} India`
     )}`,
     ...extra,
   };
@@ -101,8 +125,9 @@ export function listCityDistrictMismatches() {
   const data = loadDirectory();
   const districtsByState = new Map();
   for (const row of Object.values(data.pins || {})) {
-    const district = alignedDistrict(row[1]);
-    const state = row[2];
+    const newFormat = typeof row[3] === "string";
+    const district = alignedDistrict(newFormat ? row[2] : row[1]);
+    const state = newFormat ? row[3] : row[2];
     if (!district || !state) continue;
     const set = districtsByState.get(state) || new Set();
     set.add(normName(district));
@@ -111,15 +136,18 @@ export function listCityDistrictMismatches() {
 
   const mismatches = [];
   for (const [pin, row] of Object.entries(data.pins || {})) {
-    const district = alignedDistrict(row[1]);
-    const city = alignedCity(row[0], district);
-    const state = row[2];
-    if (!city || !district) continue;
-    if (normName(city) === normName(district)) continue;
-    if (DISTRICT_CITY[normName(district)] === city) continue;
-    const otherDistricts = districtsByState.get(state);
-    if (otherDistricts?.has(normName(city))) {
-      mismatches.push({ pin, city, district, state });
+    const found = lookupPin(pin);
+    if (!found?.city || !found.district) continue;
+    if (normName(found.city) === normName(found.district)) continue;
+    if (DISTRICT_CITY[normName(found.district)] === found.city) continue;
+    const otherDistricts = districtsByState.get(found.state);
+    if (otherDistricts?.has(normName(found.city))) {
+      mismatches.push({
+        pin,
+        city: found.city,
+        district: found.district,
+        state: found.state,
+      });
     }
   }
   return mismatches;
@@ -132,4 +160,8 @@ export function pinDirectoryStats() {
     prefixCount: Object.keys(data.prefix || {}).length,
     source: data.source || "",
   };
+}
+
+export function listExactPins() {
+  return Object.keys(loadDirectory().pins || {});
 }

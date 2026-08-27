@@ -153,6 +153,76 @@ function displayDistrict(district) {
   return normName(district) === "gurgaon" ? "Gurugram" : district;
 }
 
+function cleanPlace(name) {
+  return titleCase(
+    String(name || "")
+      .replace(/\s*\(([^)]*)\)/g, " $1 ")
+      .replace(/\s+(H\.?O\.?|S\.?O\.?|B\.?O\.?|G\.?P\.?O\.?|P\.?O\.?)\.?$/i, "")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+
+function isOfficeName(name) {
+  return /\b(h\.?o\.?|g\.?p\.?o\.?|s\.?o\.?)\b/i.test(name);
+}
+
+function isBuildingName(name) {
+  return /college|university|hospital|court|bus stand|stock exchange|vidhana|rajbhavan|highcourt|school|campus|bhawan|temple|church|factory|industrial area|n\.?i\.?f\.?m|m\.?p\.?t/i.test(
+    name
+  );
+}
+
+function isLocalAreaName(name) {
+  return /sector|sec[-\s.]?\d|phase\s*\d|south city|dwarka|mohalla|colony|nagar|enclave|vihar|village|gaon|was$|heri$|hera$|patti|kunj|bagh|market|bazar|gate|road|pur$|wali$|garh$/i.test(
+    name
+  );
+}
+
+function areaScore(place, taluk) {
+  const raw = String(place.name || "");
+  const name = place.clean;
+  if (!name) return -100;
+  let score = 0;
+  if (isLocalAreaName(name)) score += 14;
+  if (isOfficeName(raw) && /s\.?o/i.test(raw) && !/h\.?o|g\.?p\.?o/i.test(raw)) {
+    score += 8;
+  }
+  if (isOfficeName(raw) && /h\.?o|g\.?p\.?o/i.test(raw)) score -= 12;
+  if (isBuildingName(name)) score -= 10;
+  if (place.acc === "3") score += 3;
+  if (taluk && normName(name) === normName(taluk)) score += 6;
+  if (name.length <= 18) score += 1;
+  return score;
+}
+
+function uniquePlaces(places) {
+  const seen = new Set();
+  const list = [];
+  for (const place of places) {
+    const key = normName(place.clean);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    list.push(place.clean);
+  }
+  return list.sort((a, b) => a.localeCompare(b));
+}
+
+function pickArea(places, taluk, city) {
+  const usable = places.filter((place) => place.clean);
+  if (!usable.length) return city;
+  let best = usable[0];
+  let bestScore = -Infinity;
+  for (const place of usable) {
+    const score = areaScore(place, taluk);
+    if (score > bestScore) {
+      best = place;
+      bestScore = score;
+    }
+  }
+  return best.clean || city;
+}
+
 function majority(values) {
   const counts = new Map();
   for (const value of values) {
@@ -185,9 +255,27 @@ for await (const line of createInterface({ input: stream, crlfDelay: Infinity })
   const district = titleCase(parts[5]);
   const lat = Number(parts[9]);
   const lng = Number(parts[10]);
-  const row = grouped.get(pin) || { districts: [], states: [], lats: [], lngs: [] };
+  const taluk = titleCase(parts[7]);
+  const acc = String(parts[11] || "").trim();
+  const placeName = String(parts[2] || "").trim();
+  const row = grouped.get(pin) || {
+    districts: [],
+    states: [],
+    taluks: [],
+    places: [],
+    lats: [],
+    lngs: [],
+  };
   if (district) row.districts.push(district);
   if (state) row.states.push(state);
+  if (taluk) row.taluks.push(taluk);
+  if (placeName) {
+    row.places.push({
+      name: placeName,
+      clean: cleanPlace(placeName),
+      acc,
+    });
+  }
   if (Number.isFinite(lat) && Number.isFinite(lng)) {
     row.lats.push(lat);
     row.lngs.push(lng);
@@ -202,6 +290,10 @@ for (const [pin, row] of grouped) {
   const district = displayDistrict(majority(row.districts));
   const state = majority(row.states);
   const city = cityFor(pin, district);
+  const taluk = majority(row.taluks.filter((value) => value && value !== "Na"));
+  const area = pickArea(row.places, taluk, city);
+  const areas = uniquePlaces(row.places);
+  if (area && !areas.includes(area)) areas.unshift(area);
   if (!city || !district || !state) continue;
   const lat = row.lats.length
     ? roundCoord(row.lats.reduce((sum, value) => sum + value, 0) / row.lats.length)
@@ -209,7 +301,7 @@ for (const [pin, row] of grouped) {
   const lng = row.lngs.length
     ? roundCoord(row.lngs.reduce((sum, value) => sum + value, 0) / row.lngs.length)
     : 0;
-  pins[pin] = [city, district, state, lat, lng];
+  pins[pin] = [area, city, district, state, lat, lng, areas];
   const prefix = pin.slice(0, 3);
   const bucket = prefixBuckets.get(prefix) || {
     cities: [],
@@ -232,6 +324,7 @@ for (const [code, bucket] of prefixBuckets) {
   const state = majority(bucket.states);
   const city = cityFor(`${code}000`, district);
   prefix[code] = [
+    city,
     city,
     district,
     state,

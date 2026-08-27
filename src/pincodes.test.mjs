@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   listCityDistrictMismatches,
+  listExactPins,
   lookupPin,
   pinDirectoryStats,
 } from "../server/pincodes.mjs";
@@ -57,6 +58,38 @@ test("PIN 122001 uses Gurugram for both city and district", () => {
   const row = lookupPin("122001");
   assert.equal(row.city, "Gurugram");
   assert.equal(row.district, "Gurugram");
+});
+
+test("PIN 124146 dropdown is only villages attached to that PIN", () => {
+  const row = lookupPin("124146");
+  assert.equal(row.district, "Jhajjar");
+  assert.equal(row.city, "Jhajjar");
+  assert.equal(row.areas.length > 1, true);
+  assert.equal(row.areas.includes(row.area), true);
+  assert.equal(row.areas.includes("Rohtak"), false);
+  for (const name of ["Sahlawas", "Ladain", "Bhurawas", "Nilaheri"]) {
+    assert.equal(row.areas.includes(name), true, name);
+  }
+});
+
+test("PIN 122018 dropdown includes the attached sector", () => {
+  const row = lookupPin("122018");
+  assert.equal(row.city, "Gurugram");
+  assert.equal(
+    row.areas.some((name) => /south city/i.test(name)),
+    true
+  );
+  assert.equal(row.areas.includes(row.area), true);
+});
+
+test("every PIN area is one of the places attached to that PIN", () => {
+  const pins = listExactPins();
+  assert.equal(pins.length > 19000, true);
+  for (const pin of pins) {
+    const row = lookupPin(pin);
+    assert.equal(Boolean(row?.area), true, pin);
+    assert.equal(row.areas.includes(row.area), true, pin);
+  }
 });
 
 test("no PIN uses another district in the same state as its city", () => {

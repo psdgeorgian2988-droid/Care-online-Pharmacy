@@ -310,7 +310,7 @@ function HomeAuthCard() {
             values={register}
             errors={errors}
             onChange={handleRegisterChange}
-            pinHint="City, District and State fill from this PIN. It is also used to sign in."
+            pinHint="Select the Village / Sector / Mohalla attached to this PIN. It is also used to sign in."
           />
           <button type="submit">Create account</button>
         </form>

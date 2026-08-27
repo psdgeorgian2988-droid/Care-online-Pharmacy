@@ -112,7 +112,7 @@ function Profile() {
             values={form}
             errors={errors}
             onChange={handleChange}
-            pinHint="City, District and State fill from this PIN. It is also used to sign in."
+            pinHint="Select the Village / Sector / Mohalla attached to this PIN. It is also used to sign in."
           />
 
           {saved && (

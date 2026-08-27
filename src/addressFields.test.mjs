@@ -32,6 +32,7 @@ test("address is valid without a landmark", () => {
   const errors = validateAddress({
     houseNo: "B-14",
     society: "Green Park Society",
+    area: "Hauz Khas",
     city: "New Delhi",
     district: "South Delhi",
     state: "Delhi",
@@ -45,13 +46,14 @@ test("complete address formats in the asked order", () => {
     formatAddress({
       houseNo: "B-14",
       society: "Green Park Society",
+      area: "Hauz Khas",
       nearby: "Metro Gate 2",
       city: "New Delhi",
       district: "South Delhi",
       state: "Delhi",
       pinCode: "110016",
     }),
-    "B-14, Green Park Society, Near Metro Gate 2, New Delhi, South Delhi, Delhi, 110016"
+    "B-14, Green Park Society, Hauz Khas, Near Metro Gate 2, New Delhi, South Delhi, Delhi, 110016"
   );
 });
 
@@ -69,12 +71,13 @@ test("format omits landmark when it is left blank", () => {
     formatAddress({
       houseNo: "B-14",
       society: "Green Park Society",
+      area: "Hauz Khas",
       city: "New Delhi",
       district: "South Delhi",
       state: "Delhi",
       pinCode: "110016",
     }),
-    "B-14, Green Park Society, New Delhi, South Delhi, Delhi, 110016"
+    "B-14, Green Park Society, Hauz Khas, New Delhi, South Delhi, Delhi, 110016"
   );
 });
 
@@ -105,6 +108,7 @@ test("resolved PIN can fill city, district and state", () => {
     },
     {
       pinCode: "400001",
+      area: "Fort",
       city: "Mumbai",
       district: "Mumbai",
       state: "Maharashtra",

@@ -221,7 +221,9 @@ export function gpsFieldsFromLocation(location) {
     city: loc.city || "",
     district: loc.district || "",
     state: loc.state || "",
-    locality: loc.locality || loc.city || "",
+    area: loc.area || "",
+    areas: Array.isArray(loc.areas) ? loc.areas : [],
+    locality: loc.locality || loc.area || loc.city || "",
     mapsUrl: loc.mapsUrl || mapsUrlForPin(pin),
   };
 }
