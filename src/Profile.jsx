@@ -112,7 +112,7 @@ function Profile() {
             values={form}
             errors={errors}
             onChange={handleChange}
-            pinHint="This PIN is also used to sign in."
+            pinHint="City, District and State fill from this PIN. It is also used to sign in."
           />
 
           {saved && (

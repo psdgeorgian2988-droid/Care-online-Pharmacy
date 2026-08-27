@@ -218,7 +218,10 @@ export function gpsFieldsFromLocation(location) {
     pinCode: pin || loc.pinCode || "",
     lat,
     lng,
-    locality: loc.locality || "",
+    city: loc.city || "",
+    district: loc.district || "",
+    state: loc.state || "",
+    locality: loc.locality || loc.city || "",
     mapsUrl: loc.mapsUrl || mapsUrlForPin(pin),
   };
 }
@@ -288,9 +291,39 @@ async function fetchNominatim(pin) {
   };
 }
 
+const pinDirectoryCache = new Map();
+
+export async function lookupPinDirectory(pin) {
+  const code = normalizePin(pin);
+  if (!/^\d{6}$/.test(code)) return null;
+  if (pinDirectoryCache.has(code)) return pinDirectoryCache.get(code);
+  try {
+    const response = await fetch(`/api/pincode/${code}`);
+    if (!response.ok) {
+      pinDirectoryCache.set(code, null);
+      return null;
+    }
+    const data = await response.json();
+    const row = data?.city ? data : null;
+    pinDirectoryCache.set(code, row);
+    return row;
+  } catch {
+    return null;
+  }
+}
+
 export async function resolvePinLocation(pin) {
   const base = locationFromPinSync(pin);
   if (!/^\d{6}$/.test(base.pin)) return base;
+
+  const directory = await lookupPinDirectory(base.pin);
+  if (directory) {
+    return gpsFieldsFromLocation({
+      ...base,
+      ...directory,
+      locality: directory.locality || directory.city || base.locality,
+    });
+  }
 
   const [postal, nominatim] = await Promise.all([
     fetchPostalLocality(base.pin),

@@ -749,7 +749,7 @@ function LabTests() {
                 values={form}
                 errors={errors}
                 onChange={handleChange}
-                pinHint="Location is taken from this PIN."
+                pinHint="City, District and State fill from this PIN."
               />
             </div>
 

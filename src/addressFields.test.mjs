@@ -11,11 +11,21 @@ test("required address lines fail when empty, landmark stays optional", () => {
   const errors = validateAddress({});
   assert.equal(errors.houseNo.includes("House"), true);
   assert.equal(errors.society.includes("Society"), true);
-  assert.equal(errors.city.includes("City"), true);
-  assert.equal(errors.district.includes("District"), true);
-  assert.equal(errors.state.includes("State"), true);
+  assert.equal(errors.city, undefined);
+  assert.equal(errors.district, undefined);
+  assert.equal(errors.state, undefined);
   assert.equal(errors.pinCode.includes("PIN"), true);
   assert.equal(errors.nearby, undefined);
+});
+
+test("city, district and state are not typed by the customer", () => {
+  const errors = validateAddress({
+    houseNo: "B-14",
+    society: "Green Park Society",
+    pinCode: "110016",
+  });
+  assert.equal(errors.pinCode.includes("PIN"), true);
+  assert.equal(errors.city, undefined);
 });
 
 test("address is valid without a landmark", () => {
@@ -84,4 +94,24 @@ test("PIN GPS locality does not replace society and landmark stays blank", () =>
   assert.equal(next.locality, "Hauz Khas");
   assert.equal(next.nearby, "");
   assert.equal(next.address.includes("Near"), false);
+});
+
+test("resolved PIN can fill city, district and state", () => {
+  const next = applyResolvedPin(
+    {
+      houseNo: "B-14",
+      society: "Green Park Society",
+      pinCode: "400001",
+    },
+    {
+      pinCode: "400001",
+      city: "Mumbai",
+      district: "Mumbai",
+      state: "Maharashtra",
+    }
+  );
+  assert.equal(next.city, "Mumbai");
+  assert.equal(next.district, "Mumbai");
+  assert.equal(next.state, "Maharashtra");
+  assert.equal(next.address.includes("Mumbai"), true);
 });

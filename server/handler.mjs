@@ -26,6 +26,7 @@ import {
   staffReply,
 } from "./chats.mjs";
 import { readSettings, writeSettings } from "./settings.mjs";
+import { lookupPin } from "./pincodes.mjs";
 
 const ADMIN_USER = process.env.MEDIHOME_ADMIN_USER || "admin";
 const ADMIN_PASSWORD = process.env.MEDIHOME_ADMIN_PASSWORD || "MediHome@26";
@@ -318,6 +319,17 @@ export async function handleApi(req, res) {
       return true;
     }
 
+    const pinMatch = pathname.match(/^\/api\/pincode\/(\d{6})$/);
+    if (pinMatch && req.method === "GET") {
+      const found = lookupPin(pinMatch[1]);
+      if (!found) {
+        send(res, 404, { error: "PIN Code was not found." });
+        return true;
+      }
+      send(res, 200, found);
+      return true;
+    }
+
     if (pathname === "/api/traffic" && req.method === "GET") {
       send(res, 200, { open: openTrafficFromOrders(await listOrders()) });
       return true;
@@ -333,6 +345,21 @@ export async function handleApi(req, res) {
       if (!requireStaff(req, res)) return true;
       const body = await readJson(req);
       send(res, 200, await writeSettings(body));
+      return true;
+    }
+
+    if (pathname === "/api/orders/lookup" && req.method === "GET") {
+      const id = decodeURIComponent(String(url.searchParams.get("id") || "")).trim();
+      if (!id) {
+        send(res, 400, { error: "Order id is required." });
+        return true;
+      }
+      const found = (await listOrders()).find((row) => orderId(row) === id);
+      if (!found) {
+        send(res, 404, { error: "Order not found." });
+        return true;
+      }
+      send(res, 200, { order: found });
       return true;
     }
 

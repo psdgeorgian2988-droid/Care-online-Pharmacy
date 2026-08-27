@@ -3596,7 +3596,7 @@ function Medicines({ initialSearch = "" }) {
               setDelivery((prev) => ({ ...prev, [name]: value }));
               setDeliveryErrors((prev) => ({ ...prev, [name]: "" }));
             }}
-            pinHint="Delivery GPS is connected from this 6-digit PIN."
+            pinHint="City, District and State fill from this PIN. Delivery GPS also uses it."
           />
           <PaymentBlock
             kind="medicine"

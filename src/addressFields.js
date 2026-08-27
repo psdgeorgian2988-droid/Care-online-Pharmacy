@@ -20,26 +20,29 @@ export const ADDRESS_FIELDS = [
     placeholder: "Society, mohalla or gali number",
   },
   {
-    name: "city",
-    label: "City",
-    placeholder: "City",
-  },
-  {
-    name: "district",
-    label: "District",
-    placeholder: "District",
-  },
-  {
-    name: "state",
-    label: "State",
-    placeholder: "State",
-  },
-  {
     name: "pinCode",
     label: "PIN Code",
     placeholder: "6-digit PIN",
     inputMode: "numeric",
     maxLength: 6,
+  },
+  {
+    name: "city",
+    label: "City",
+    placeholder: "Filled from PIN Code",
+    auto: true,
+  },
+  {
+    name: "district",
+    label: "District",
+    placeholder: "Filled from PIN Code",
+    auto: true,
+  },
+  {
+    name: "state",
+    label: "State",
+    placeholder: "Filled from PIN Code",
+    auto: true,
   },
   {
     name: "nearby",
@@ -105,10 +108,12 @@ export function validateAddress(source = {}) {
   const errors = {};
   if (!addr.houseNo) errors.houseNo = "Flat / House No. is required.";
   if (!addr.society) errors.society = "Society / Mohalla / Gali No. is required.";
-  if (!addr.city) errors.city = "City is required.";
-  if (!addr.district) errors.district = "District is required.";
-  if (!addr.state) errors.state = "State is required.";
-  if (!/^\d{6}$/.test(addr.pinCode)) errors.pinCode = "Enter a valid 6-digit PIN Code.";
+  if (!/^\d{6}$/.test(addr.pinCode)) {
+    errors.pinCode = "Enter a valid 6-digit PIN Code.";
+  } else if (!addr.city || !addr.district || !addr.state) {
+    errors.pinCode =
+      "This PIN Code was not recognised. Check the PIN so City, District and State can be filled.";
+  }
   return errors;
 }
 
@@ -124,7 +129,14 @@ export function withFormattedAddress(source = {}) {
 }
 
 export function applyResolvedPin(source = {}, gps = {}) {
-  const formatted = withFormattedAddress(source);
+  const merged = {
+    ...source,
+    city: gps.city || source.city,
+    district: gps.district || source.district,
+    state: gps.state || source.state,
+    pinCode: gps.pinCode || source.pinCode,
+  };
+  const formatted = withFormattedAddress(merged);
   return {
     ...formatted,
     pinCode: gps.pinCode || formatted.pinCode,

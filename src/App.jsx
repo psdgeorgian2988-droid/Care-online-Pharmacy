@@ -310,7 +310,7 @@ function HomeAuthCard() {
             values={register}
             errors={errors}
             onChange={handleRegisterChange}
-            pinHint="This PIN is also used to sign in."
+            pinHint="City, District and State fill from this PIN. It is also used to sign in."
           />
           <button type="submit">Create account</button>
         </form>

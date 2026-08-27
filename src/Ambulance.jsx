@@ -271,7 +271,7 @@ function Ambulance() {
               values={form}
               errors={errors}
               onChange={handleChange}
-              pinHint="Pickup GPS is connected from this PIN."
+              pinHint="City, District and State fill from this PIN."
             />
           </div>
 
