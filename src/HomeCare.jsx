@@ -161,8 +161,8 @@ function HomeCare() {
 
     setSubmitting(true);
     try {
-      const gps = await resolvePinLocation(form.pinCode);
       const queue = await holdForPartnerQueue("homecare");
+      const gps = await resolvePinLocation(form.pinCode);
       const total =
         plan.value === "nurse-other"
           ? Number(form.otherRate) || plan.price

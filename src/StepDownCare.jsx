@@ -224,8 +224,8 @@ function StepDownCare() {
 
     setSubmitting(true);
     try {
-      const gps = await resolvePinLocation(form.pinCode);
       const queue = await holdForPartnerQueue("stepdown");
+      const gps = await resolvePinLocation(form.pinCode);
       const bookingId = "MH-SD-" + Math.floor(100000 + Math.random() * 900000);
       const wantsAmbulance = form.needAmbulance === "yes";
       let ambulanceRequestId = "";

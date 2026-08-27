@@ -38,8 +38,22 @@ function kindLabel(kind) {
   }
 }
 
-function rowKind(row, fallback) {
-  return String(row?.kind || row?.orderType || row?.serviceType || fallback || "");
+export function kindFromRecord(row, fallback) {
+  const kind = String(row?.kind || row?.orderType || "").toLowerCase();
+  if (
+    kind === "medicine" ||
+    kind === "lab" ||
+    kind === "radiology" ||
+    kind === "homecare" ||
+    kind === "stepdown" ||
+    kind === "ambulance"
+  ) {
+    return kind;
+  }
+  const service = String(row?.serviceType || "").toLowerCase();
+  if (service === "radiology") return "radiology";
+  if (service === "lab") return "lab";
+  return String(fallback || "");
 }
 
 function readBrowserOrders() {
@@ -51,7 +65,7 @@ function readBrowserOrders() {
       if (!Array.isArray(parsed)) continue;
       for (const row of parsed) {
         rows.push({
-          kind: rowKind(row, fallback),
+          kind: kindFromRecord(row, fallback),
           trackStatus: row.trackStatus || row.status || "",
         });
       }
@@ -71,7 +85,7 @@ export function partnerTraffic(kind, orders, now = Date.now()) {
   const key = String(kind || "medicine");
   const list = Array.isArray(orders) ? orders : readBrowserOrders();
   const openCount = list.filter(
-    (row) => rowKind(row, "") === key && isOpenPartnerJob(row)
+    (row) => kindFromRecord(row, row.kind) === key && isOpenPartnerJob(row)
   ).length;
   const peak = PEAK_HOURS.has(istHour(now));
   const busy = openCount >= BUSY_OPEN_COUNT || peak;

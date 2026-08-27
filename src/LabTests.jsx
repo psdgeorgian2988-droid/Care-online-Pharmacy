@@ -438,9 +438,9 @@ function LabTests() {
 
     setSubmitting(true);
     try {
-      const gps = await resolvePinLocation(form.pinCode);
       const kind = serviceType === "radiology" ? "radiology" : "lab";
       const queue = await holdForPartnerQueue(kind);
+      const gps = await resolvePinLocation(form.pinCode);
       const pay = paymentFromQuote(payQuote, total);
       const payment = await settleCheckoutPayment({
         method: payMethod,

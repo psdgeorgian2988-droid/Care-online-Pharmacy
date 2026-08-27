@@ -18,7 +18,7 @@ export function useBusyOverlay(submitting, kind, urgent = false) {
     }
     const snap = partnerTraffic(kind);
     setTraffic(snap);
-    const delay = urgent ? 1400 : snap.busy ? 180 : 700;
+    const delay = urgent ? 1400 : snap.busy ? 80 : 500;
     const timer = setTimeout(() => setVisible(true), delay);
     return () => clearTimeout(timer);
   }, [submitting, kind, urgent]);

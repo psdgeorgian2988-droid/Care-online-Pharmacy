@@ -75,11 +75,11 @@ function Ambulance() {
     event.preventDefault();
     if (!validate()) return;
 
-      setSubmitting(true);
+    setSubmitting(true);
     try {
-      const gps = await resolvePinLocation(form.pinCode);
       const urgent = form.emergencyType === "emergency";
       const queue = await holdForPartnerQueue("ambulance", { urgent });
+      const gps = await resolvePinLocation(form.pinCode);
       const total = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
       const method =
         form.emergencyType === "emergency" ? "cod" : payMethod;

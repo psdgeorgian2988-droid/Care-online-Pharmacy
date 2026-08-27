@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { holdForPartnerQueue, partnerTraffic } from "./partnerQueue.js";
+import { holdForPartnerQueue, kindFromRecord, partnerTraffic } from "./partnerQueue.js";
 
 const orders = [
   { kind: "lab", trackStatus: "confirmed" },
@@ -14,14 +14,15 @@ test("two open jobs of the same kind count as high partner traffic", () => {
   assert.equal(traffic.openCount, 2);
 });
 
-test("even one open partner job counts as busy", () => {
+test("home care bookings stored with a nurse plan still count as homecare traffic", () => {
+  assert.equal(kindFromRecord({ serviceType: "nurse" }, "homecare"), "homecare");
   const traffic = partnerTraffic(
-    "lab",
-    [{ kind: "lab", trackStatus: "confirmed" }],
+    "homecare",
+    [{ kind: "homecare", trackStatus: "confirmed" }],
     Date.parse("2026-08-27T04:00:00+05:30")
   );
-  assert.equal(traffic.busy, true);
   assert.equal(traffic.openCount, 1);
+  assert.equal(traffic.busy, true);
 });
 
 test("a quiet off-peak service is not held", async () => {

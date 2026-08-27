@@ -3309,8 +3309,8 @@ function Medicines({ initialSearch = "" }) {
 
     setPlacingOrder(true);
     try {
-      const gps = await resolvePinLocation(pinCode);
       const queue = await holdForPartnerQueue("medicine");
+      const gps = await resolvePinLocation(pinCode);
       const pay = paymentFromQuote(payQuote, cartTotal);
       const payment = await settleCheckoutPayment({
         method: payMethod,
