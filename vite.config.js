@@ -8,5 +8,7 @@ export default defineConfig({
     host: true,
     port: 5173,
     strictPort: false,
+    // Allow Cursor port-forward and temporary preview tunnels.
+    allowedHosts: true,
   },
 })
