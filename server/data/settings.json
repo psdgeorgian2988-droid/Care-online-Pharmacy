@@ -1,0 +1,12 @@
+{
+  "features": {
+    "medicine": true,
+    "lab": true,
+    "radiology": true,
+    "homecare": true,
+    "stepdown": true,
+    "ambulance": true,
+    "reports": true,
+    "education": true
+  }
+}

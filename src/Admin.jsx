@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import {
   fetchStaffOrders,
   fetchStaffPartners,
+  fetchStaffSettings,
   patchStaffOrder,
+  patchStaffSettings,
   publishOrder,
   staffLogin,
   staffLogout,
   staffToken,
 } from "./adminApi";
+import { cacheFeatures } from "./featureFlags";
 import {
   TRACK_STEPS,
   doneLabel,
@@ -15,6 +18,43 @@ import {
   loadAllOrders,
   persistOrder,
 } from "./orderTracking";
+import {
+  FEATURE_CATALOG,
+  DEFAULT_FEATURES,
+  analysisRange,
+  analysisToCsv,
+  compareGroups,
+  filterReport,
+  formatInr,
+  formatPct,
+  formatWhen,
+  groupByOutlet,
+  groupByPayment,
+  groupByPin,
+  growthSnapshot,
+  kindGroup,
+  mergeFeatures,
+  monthlyMatrix,
+  monthlyServiceSeries,
+  orderAmount,
+  orderId,
+  orderOutlet,
+  ordersInRange,
+  pinGroup,
+  previousRange,
+  reportBreakdown,
+  reportRange,
+  summarizeSales,
+  topMover,
+  yoySnapshot,
+} from "./salesReport";
+import {
+  BarList,
+  CompareBars,
+  GrowthTable,
+  MonthMatrix,
+  MonthStackChart,
+} from "./adminCharts";
 
 function personName(order) {
   return (
@@ -25,6 +65,16 @@ function personName(order) {
   );
 }
 
+function downloadCsv(filename, text) {
+  const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function Admin() {
   const [token, setToken] = useState(() => staffToken());
   const [user, setUser] = useState("admin");
@@ -32,19 +82,30 @@ function Admin() {
   const [error, setError] = useState("");
   const [orders, setOrders] = useState([]);
   const [partners, setPartners] = useState([]);
+  const [features, setFeatures] = useState(DEFAULT_FEATURES);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("all");
+  const [reportPeriod, setReportPeriod] = useState("mtd");
+  const [reportKind, setReportKind] = useState("all");
+  const [reportFrom, setReportFrom] = useState("");
+  const [reportTo, setReportTo] = useState("");
+  const [reportRows, setReportRows] = useState(null);
+  const [chartPeriod, setChartPeriod] = useState("mtd");
 
-  const loadOrders = async () => {
+  const loadDesk = async () => {
     setLoading(true);
     setError("");
     try {
-      const [data, partnerData] = await Promise.all([
+      const [data, partnerData, settings] = await Promise.all([
         fetchStaffOrders(),
         fetchStaffPartners().catch(() => ({ partners: [] })),
+        fetchStaffSettings().catch(() => ({ features: DEFAULT_FEATURES })),
       ]);
       setOrders(Array.isArray(data.orders) ? data.orders : []);
       setPartners(Array.isArray(partnerData.partners) ? partnerData.partners : []);
+      const nextFeatures = mergeFeatures(settings.features);
+      setFeatures(nextFeatures);
+      cacheFeatures(nextFeatures);
     } catch (err) {
       setError(err.message || "Could not load orders.");
       if (String(err.message || "").toLowerCase().includes("login")) {
@@ -57,13 +118,60 @@ function Admin() {
   };
 
   useEffect(() => {
-    if (token) loadOrders();
+    if (token) loadDesk();
   }, [token]);
 
   const filtered = useMemo(() => {
     if (filter === "all") return orders;
     return orders.filter((order) => (order.kind || order.orderType) === filter);
   }, [orders, filter]);
+
+  const sales = useMemo(() => summarizeSales(orders), [orders]);
+  const growth = useMemo(() => growthSnapshot(orders), [orders]);
+  const yoy = useMemo(() => yoySnapshot(orders), [orders]);
+  const range = useMemo(() => analysisRange(chartPeriod), [chartPeriod]);
+  const prior = useMemo(() => previousRange(range), [range]);
+  const currentRows = useMemo(
+    () => ordersInRange(orders, range.fromMs, range.toMs),
+    [orders, range]
+  );
+  const previousRows = useMemo(
+    () => ordersInRange(orders, prior.fromMs, prior.toMs),
+    [orders, prior]
+  );
+  const byServiceBars = useMemo(() => reportBreakdown(currentRows), [currentRows]);
+  const byPin = useMemo(() => groupByPin(currentRows), [currentRows]);
+  const byStore = useMemo(() => groupByOutlet(currentRows), [currentRows]);
+  const byPay = useMemo(() => groupByPayment(currentRows), [currentRows]);
+  const serviceCompare = useMemo(
+    () => compareGroups(currentRows, previousRows, kindGroup),
+    [currentRows, previousRows]
+  );
+  const pinCompare = useMemo(
+    () => compareGroups(currentRows, previousRows, pinGroup),
+    [currentRows, previousRows]
+  );
+  const storeCompare = useMemo(
+    () => compareGroups(currentRows, previousRows, orderOutlet),
+    [currentRows, previousRows]
+  );
+  const monthly = useMemo(() => monthlyServiceSeries(orders), [orders]);
+  const matrixService = useMemo(
+    () => monthlyMatrix(orders, (row) => ({ key: row.kind || row.orderType || "medicine", label: kindLabel(row.kind || row.orderType) }), 12),
+    [orders]
+  );
+  const matrixPin = useMemo(() => monthlyMatrix(orders, pinGroup, 12), [orders]);
+  const matrixStore = useMemo(
+    () => monthlyMatrix(orders, orderOutlet, 12),
+    [orders]
+  );
+  const mtdAov = sales.mtd.count ? sales.mtd.amount / sales.mtd.count : 0;
+  const serviceUp = topMover(serviceCompare, "up");
+  const serviceDown = topMover(serviceCompare, "down");
+  const pinUp = topMover(pinCompare, "up");
+  const pinDown = topMover(pinCompare, "down");
+  const storeUp = topMover(storeCompare, "up");
+  const storeDown = topMover(storeCompare, "down");
 
   const handleLogin = async (event) => {
     event.preventDefault();
@@ -95,7 +203,7 @@ function Admin() {
         trackCompleted: done,
         status: done ? doneLabel(order.kind || order.orderType) : status,
       });
-      await loadOrders();
+      await loadDesk();
     } catch (err) {
       setError(err.message || "Could not update status.");
     }
@@ -107,7 +215,7 @@ function Admin() {
     try {
       const data = await patchStaffOrder(id, { partnerId });
       persistOrder(order, data.order || { partnerId });
-      await loadOrders();
+      await loadDesk();
     } catch (err) {
       setError(err.message || "Could not assign partner.");
     }
@@ -117,7 +225,69 @@ function Admin() {
     setError("");
     const local = loadAllOrders();
     await Promise.all(local.map((row) => publishOrder(row)));
-    await loadOrders();
+    await loadDesk();
+  };
+
+  const toggleFeature = async (key) => {
+    const next = { ...features, [key]: !features[key] };
+    setFeatures(next);
+    cacheFeatures(next);
+    try {
+      const saved = await patchStaffSettings({ features: next });
+      const merged = mergeFeatures(saved.features);
+      setFeatures(merged);
+      cacheFeatures(merged);
+    } catch (err) {
+      setError(err.message || "Could not save feature switch.");
+      await loadDesk();
+    }
+  };
+
+  const generateReport = () => {
+    const rows = filterReport(orders, {
+      period: reportPeriod,
+      kind: reportKind,
+      from: reportFrom,
+      to: reportTo,
+    });
+    setReportRows(rows);
+  };
+
+  const analysisCsvFor = (rows) => {
+    const window = reportRange({
+      period: reportPeriod,
+      from: reportFrom,
+      to: reportTo,
+    });
+    const priorWindow = previousRange(window);
+    const previous = ordersInRange(orders, priorWindow.fromMs, priorWindow.toMs).filter(
+      (row) => reportKind === "all" || (row.kind || row.orderType) === reportKind
+    );
+    return analysisToCsv({
+      periodLabel: `${window.label}${reportKind !== "all" ? ` · ${reportKind}` : ""}`,
+      currentLabel: "Now",
+      previousLabel: "Prev",
+      service: compareGroups(rows, previous, kindGroup, 50),
+      pin: compareGroups(rows, previous, pinGroup, 50),
+      store: compareGroups(rows, previous, orderOutlet, 50),
+      payment: groupByPayment(rows),
+      matrixService,
+      matrixPin,
+      matrixStore,
+      orders: rows,
+    });
+  };
+
+  const downloadReport = () => {
+    const rows =
+      reportRows ||
+      filterReport(orders, {
+        period: reportPeriod,
+        kind: reportKind,
+        from: reportFrom,
+        to: reportTo,
+      });
+    downloadCsv(`medihome-analysis-${reportPeriod}.csv`, analysisCsvFor(rows));
   };
 
   if (!token) {
@@ -171,13 +341,13 @@ function Admin() {
         <section className="service-hero admin-hero">
           <div>
             <span className="service-kicker">Operations</span>
-            <h1>Staff orders</h1>
+            <h1>Staff desk</h1>
             <p>
-              Incoming bookings, Razorpay split, and partner assignment.
+              Sales, feature switches, growth charts, and partner assignment.
             </p>
           </div>
           <div className="admin-hero-actions">
-            <button type="button" onClick={loadOrders} disabled={loading}>
+            <button type="button" onClick={loadDesk} disabled={loading}>
               {loading ? "Refreshing…" : "Refresh"}
             </button>
             <button type="button" onClick={importBrowserOrders}>
@@ -194,6 +364,316 @@ function Admin() {
               Sign out
             </button>
           </div>
+        </section>
+
+        {error ? <p className="admin-error">{error}</p> : null}
+
+        <section className="admin-kpis" aria-label="Sales figures">
+          <article>
+            <span>Today</span>
+            <strong>{formatInr(sales.today.amount)}</strong>
+            <small>{sales.today.count} orders</small>
+          </article>
+          <article>
+            <span>Month to date</span>
+            <strong>{formatInr(sales.mtd.amount)}</strong>
+            <small>{sales.mtd.count} orders · AOV {formatInr(mtdAov)}</small>
+          </article>
+          <article>
+            <span>Year to date</span>
+            <strong>{formatInr(sales.ytd.amount)}</strong>
+            <small>{sales.ytd.count} orders</small>
+          </article>
+          <article>
+            <span>Same-day vs last month</span>
+            <strong className={growth.pct == null ? "is-new" : growth.pct < 0 ? "is-down" : "is-up"}>
+              {formatPct(growth.pct)}
+            </strong>
+            <small>
+              {formatInr(growth.current)} vs {formatInr(growth.previous)}
+            </small>
+          </article>
+          <article>
+            <span>Same-day vs last year</span>
+            <strong className={yoy.pct == null ? "is-new" : yoy.pct < 0 ? "is-down" : "is-up"}>
+              {formatPct(yoy.pct)}
+            </strong>
+            <small>
+              {formatInr(yoy.current)} vs {formatInr(yoy.previous)}
+            </small>
+          </article>
+          <article>
+            <span>Selected period</span>
+            <strong>{formatInr(currentRows.reduce((sum, row) => sum + orderAmount(row), 0))}</strong>
+            <small>
+              {currentRows.length} orders · {range.label}
+            </small>
+          </article>
+        </section>
+
+        <p className="admin-growth-note">
+          {serviceUp
+            ? `Service growth: ${kindLabel(serviceUp.key)} (${formatPct(serviceUp.pct)}).`
+            : "No service-level growth in this comparison yet."}{" "}
+          {serviceDown
+            ? `Service drop: ${kindLabel(serviceDown.key)} (${formatPct(serviceDown.pct)}).`
+            : ""}{" "}
+          {pinUp ? `PIN growth: ${pinUp.label} (${formatPct(pinUp.pct)}).` : ""}{" "}
+          {pinDown ? `PIN drop: ${pinDown.label} (${formatPct(pinDown.pct)}).` : ""}{" "}
+          {storeUp ? `Store growth: ${storeUp.label} (${formatPct(storeUp.pct)}).` : ""}{" "}
+          {storeDown ? `Store drop: ${storeDown.label} (${formatPct(storeDown.pct)}).` : ""}
+        </p>
+
+        <section className="admin-panel" aria-label="Feature switches">
+          <h2>Turn features on or off</h2>
+          <p>Off services hide from the public website until you turn them back on.</p>
+          <div className="admin-switches">
+            {FEATURE_CATALOG.map((row) => (
+              <button
+                key={row.key}
+                type="button"
+                role="switch"
+                aria-checked={features[row.key] !== false}
+                className={features[row.key] !== false ? "is-on" : ""}
+                onClick={() => toggleFeature(row.key)}
+              >
+                <span>{row.label}</span>
+                <strong>{features[row.key] !== false ? "On" : "Off"}</strong>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="admin-panel" aria-label="Chart period">
+          <h2>Growth and degrowth charts</h2>
+          <p>
+            Compare the selected period with the equal-length stretch before it.
+            Month grids always show the last 12 months in IST.
+          </p>
+          <div className="lab-tabs admin-tabs" role="tablist">
+            {[
+              ["today", "Today"],
+              ["mtd", "Month to date"],
+              ["ytd", "Year to date"],
+              ["last12", "Last 12 months"],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                className={chartPeriod === value ? "is-on" : ""}
+                onClick={() => setChartPeriod(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <div className="admin-chart-grid">
+          <BarList
+            title="Sales by service"
+            caption={`${range.label} · share of bookings.`}
+            rows={byServiceBars.map((row) => ({
+              ...row,
+              label: kindLabel(row.key),
+            }))}
+          />
+          <BarList
+            title="Sales by store"
+            caption="Outlet fulfilment from PIN routing."
+            rows={byStore}
+          />
+          <BarList
+            title="Sales by PIN"
+            caption="Top delivery / visit PIN codes."
+            rows={byPin}
+          />
+          <BarList
+            title="Payment mix"
+            caption="Online checkout vs cash on delivery."
+            rows={byPay}
+          />
+        </div>
+
+        <div className="admin-chart-grid">
+          <CompareBars
+            title="Service: now vs previous"
+            caption={`${range.label} against the same number of days before.`}
+            rows={serviceCompare.map((row) => ({
+              ...row,
+              label: kindLabel(row.key),
+            }))}
+            currentLabel="Now"
+            previousLabel="Prev"
+          />
+          <CompareBars
+            title="PIN: now vs previous"
+            caption="Where demand is growing or shrinking."
+            rows={pinCompare}
+            currentLabel="Now"
+            previousLabel="Prev"
+          />
+          <CompareBars
+            title="Store: now vs previous"
+            caption="Outlet growth and degrowth."
+            rows={storeCompare}
+            currentLabel="Now"
+            previousLabel="Prev"
+          />
+          <GrowthTable
+            title="Movers this period"
+            caption="Largest current sales, with % vs previous window."
+            rows={serviceCompare.map((row) => ({
+              ...row,
+              label: kindLabel(row.key),
+            }))}
+          />
+        </div>
+
+        <MonthStackChart
+          title="Month-wise sales by service"
+          caption="Last 12 months in IST. Taller stacks mean higher sales."
+          months={monthly.months}
+          kinds={monthly.kinds}
+        />
+
+        <MonthMatrix
+          title="Service × month"
+          caption="MoM is the latest month (days so far) vs the month before. Same-day % in the KPI row is the fairer in-month read."
+          matrix={matrixService}
+          labelHeader="Service"
+        />
+        <MonthMatrix
+          title="PIN × month"
+          caption="PIN-code sales across the last 12 months."
+          matrix={matrixPin}
+          labelHeader="PIN"
+        />
+        <MonthMatrix
+          title="Store × month"
+          caption="Store / outlet sales across the last 12 months."
+          matrix={matrixStore}
+          labelHeader="Store"
+        />
+
+        <div className="admin-chart-grid">
+          <GrowthTable
+            title="PIN growth / degrowth"
+            caption={`${range.label} vs previous window.`}
+            rows={pinCompare}
+          />
+          <GrowthTable
+            title="Store growth / degrowth"
+            caption={`${range.label} vs previous window.`}
+            rows={storeCompare}
+          />
+        </div>
+
+        <section className="admin-panel" aria-label="Detailed reports">
+          <h2>Generate a detailed report</h2>
+          <div className="admin-report-controls">
+            <label>
+              Period
+              <select
+                value={reportPeriod}
+                onChange={(event) => setReportPeriod(event.target.value)}
+              >
+                <option value="today">Today</option>
+                <option value="mtd">Month to date</option>
+                <option value="ytd">Year to date</option>
+                <option value="last12">Last 12 months</option>
+                <option value="custom">Custom dates</option>
+              </select>
+            </label>
+            <label>
+              Service
+              <select
+                value={reportKind}
+                onChange={(event) => setReportKind(event.target.value)}
+              >
+                <option value="all">All services</option>
+                {FEATURE_CATALOG.filter((row) =>
+                  ["medicine", "lab", "radiology", "homecare", "stepdown", "ambulance"].includes(
+                    row.key
+                  )
+                ).map((row) => (
+                  <option key={row.key} value={row.key}>
+                    {row.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {reportPeriod === "custom" ? (
+              <>
+                <label>
+                  From
+                  <input
+                    type="date"
+                    value={reportFrom}
+                    onChange={(event) => setReportFrom(event.target.value)}
+                  />
+                </label>
+                <label>
+                  To
+                  <input
+                    type="date"
+                    value={reportTo}
+                    onChange={(event) => setReportTo(event.target.value)}
+                  />
+                </label>
+              </>
+            ) : null}
+            <button type="button" onClick={generateReport}>
+              Generate report
+            </button>
+            <button type="button" onClick={downloadReport}>
+              Download analysis CSV
+            </button>
+          </div>
+          {reportRows ? (
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Order</th>
+                    <th>Type</th>
+                    <th>When</th>
+                    <th>PIN</th>
+                    <th>Store</th>
+                    <th>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reportRows.length === 0 ? (
+                    <tr>
+                      <td colSpan="6">No rows for this period.</td>
+                    </tr>
+                  ) : (
+                    reportRows.map((row) => (
+                      <tr key={orderId(row)}>
+                        <td>#{orderId(row)}</td>
+                        <td>{kindLabel(row.kind || row.orderType)}</td>
+                        <td>{formatWhen(row)}</td>
+                        <td>{row.pinCode || row.pin || "—"}</td>
+                        <td>{row.outletName || "—"}</td>
+                        <td>{formatInr(orderAmount(row))}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+              <p className="admin-muted">
+                {reportRows.length} rows ·{" "}
+                {formatInr(reportRows.reduce((sum, row) => sum + orderAmount(row), 0))}
+                {reportBreakdown(reportRows).length
+                  ? ` · ${reportBreakdown(reportRows)
+                      .map((row) => `${kindLabel(row.key)} ${formatInr(row.amount)}`)
+                      .join(" · ")}`
+                  : ""}
+              </p>
+            </div>
+          ) : null}
         </section>
 
         <div className="lab-tabs admin-tabs" role="tablist">
@@ -217,8 +697,6 @@ function Admin() {
             </button>
           ))}
         </div>
-
-        {error ? <p className="admin-error">{error}</p> : null}
 
         <div className="admin-table-wrap">
           <table className="admin-table">
@@ -338,11 +816,11 @@ const styles = `
 .admin-tabs{margin:0 auto 12px;max-width:1240px}
 .admin-hero{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
 .admin-hero-actions{display:flex;flex-wrap:wrap;gap:6px}
-.admin-hero-actions button{border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer}
+.admin-hero-actions button,.admin-report-controls button{border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer}
 .admin-login{max-width:420px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}
-.admin-table-wrap{overflow:auto;background:#fff;border:1px solid #e4ecef;border-radius:12px}
+.admin-table-wrap{overflow:auto;background:#fff;border:1px solid #e4ecef;border-radius:12px;margin-bottom:16px}
 .admin-table{width:100%;border-collapse:collapse;font-size:13px}
 .admin-table th,.admin-table td{padding:8px 10px;border-bottom:1px solid #edf1f3;text-align:left;vertical-align:middle}
 .admin-table th{background:#f7fafc;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
@@ -358,7 +836,63 @@ const styles = `
 .lab-tabs{display:inline-flex;flex-wrap:wrap;padding:4px;border-radius:10px;background:#e8f1f6;gap:4px}
 .lab-tabs button{border:0;background:transparent;color:#3d5a6c;font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer}
 .lab-tabs button.is-on{background:#fff;color:#1a6b7a;box-shadow:0 1px 3px rgba(20,50,70,.08)}
+.admin-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 10px}
+.admin-kpis article{background:#fff;border:1px solid #e4ecef;border-radius:12px;padding:12px 14px}
+.admin-kpis span{display:block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
+.admin-kpis strong{display:block;margin:6px 0 2px;font-size:22px;color:#123b5d}
+.admin-kpis .is-up,.admin-growth-table .is-up,.admin-matrix .is-up,.admin-bars .is-up{color:#1a7a45}
+.admin-kpis .is-down,.admin-growth-table .is-down,.admin-matrix .is-down,.admin-bars .is-down{color:#c44b4b}
+.admin-kpis .is-new,.admin-growth-table .is-new,.admin-matrix .is-new,.admin-bars .is-new{color:#c47a2c}
+.admin-kpis small{color:#5d7180}
+.admin-growth-note{margin:0 0 14px;font-size:13px;color:#34546b}
+.admin-panel{background:#fff;border:1px solid #e4ecef;border-radius:12px;padding:14px;margin-bottom:14px}
+.admin-panel h2{margin:0 0 6px;font-size:16px}
+.admin-panel p{margin:0 0 10px;color:#5d7180;font-size:13px}
+.admin-switches{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.admin-switches button{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid #d7e2e9;border-radius:10px;background:#f7fafc;padding:10px 12px;font:inherit;cursor:pointer}
+.admin-switches button.is-on{background:#e7f6ef;border-color:#b7e0c8}
+.admin-switches strong{font-size:12px;color:#5d7180}
+.admin-switches button.is-on strong{color:#1a7a45}
+.admin-chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.admin-chart{background:#fff;border:1px solid #e4ecef;border-radius:12px;padding:14px}
+.admin-chart-wide{margin-bottom:14px}
+.admin-chart h3{margin:0 0 4px;font-size:15px}
+.admin-chart-cap,.admin-muted{margin:0 0 10px;color:#5d7180;font-size:12px}
+.admin-bars{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.admin-bar-meta{display:flex;justify-content:space-between;gap:8px;font-size:12px}
+.admin-bar-track{height:8px;background:#eef3f6;border-radius:99px;overflow:hidden}
+.admin-bar-fill{height:100%;border-radius:99px}
+.admin-bar-fill.is-prev{background:#9bb7c4}
+.admin-compare-tracks{display:flex;flex-direction:column;gap:3px}
+.admin-compare-cap{display:block;margin-top:4px;color:#5d7180;font-size:11px}
+.admin-stack-chart{display:flex;align-items:flex-end;gap:8px;height:170px;padding-top:8px}
+.admin-stack-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.admin-stack-bars{display:flex;flex-direction:column-reverse;justify-content:flex-start;width:100%;max-width:28px;min-height:8px}
+.admin-stack-col span{font-size:10px;color:#5d7180}
+.admin-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:12px;color:#34546b}
+.admin-legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+.admin-matrix-wrap{overflow:auto}
+.admin-matrix{width:100%;border-collapse:collapse;font-size:11px}
+.admin-matrix th,.admin-matrix td{padding:6px 8px;border-bottom:1px solid #edf1f3;text-align:right;white-space:nowrap}
+.admin-matrix th:first-child,.admin-matrix td:first-child,.admin-matrix tbody th{text-align:left;font-weight:700}
+.admin-matrix thead th{background:#f7fafc;font-size:10px;letter-spacing:.03em;text-transform:uppercase;color:#5d7180}
+.admin-matrix .is-total th,.admin-matrix .is-total td{font-weight:800;background:#f4fbf8}
+.admin-growth-table{width:100%;border-collapse:collapse;font-size:12px}
+.admin-growth-table th,.admin-growth-table td{padding:6px 8px;border-bottom:1px solid #edf1f3;text-align:left}
+.admin-growth-table th{font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
+.admin-report-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:12px}
+.admin-report-controls label{display:flex;flex-direction:column;gap:4px;font-size:12px}
+.admin-report-controls select,.admin-report-controls input[type=date]{min-height:34px;border:1px solid #d7e2e9;border-radius:8px;padding:4px 8px;font:inherit}
+@media (max-width:900px){
+  .admin-kpis,.admin-chart-grid,.admin-switches{grid-template-columns:1fr 1fr}
+}
+@media (max-width:900px){
+  .admin-kpis,.admin-chart-grid,.admin-switches{grid-template-columns:1fr 1fr}
+}
 @media (max-width:800px){.admin-hero{flex-direction:column}}
+@media (max-width:640px){
+  .admin-kpis,.admin-chart-grid,.admin-switches{grid-template-columns:1fr}
+}
 `;
 
 export default Admin;

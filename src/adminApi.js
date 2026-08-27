@@ -69,6 +69,31 @@ export async function fetchStaffPartners() {
   );
 }
 
+export async function fetchPublicFeatures() {
+  return parseResponse(await fetch("/api/features"));
+}
+
+export async function fetchStaffSettings() {
+  return parseResponse(
+    await fetch("/api/admin/settings", {
+      headers: { Authorization: `Bearer ${staffToken()}` },
+    })
+  );
+}
+
+export async function patchStaffSettings(patch) {
+  return parseResponse(
+    await fetch("/api/admin/settings", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${staffToken()}`,
+      },
+      body: JSON.stringify(patch),
+    })
+  );
+}
+
 export async function patchStaffOrder(id, patch) {
   return parseResponse(
     await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {

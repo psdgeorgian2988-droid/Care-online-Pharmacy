@@ -21,6 +21,8 @@ import SocialLinks from "./SocialLinks";
 import Social from "./Social";
 import MedicineSearchTools from "./MedicineSearchTools";
 import { reviewStats } from "./reviewStore";
+import { useFeatures } from "./featureFlags";
+import { routeEnabled } from "./salesReport";
 
 const NAV_LINKS = [
   { href: "#home", label: "Home", icon: "🏠" },
@@ -452,6 +454,7 @@ function HomeReviewsTeaser() {
 }
 
 function HomePage() {
+  const features = useFeatures();
   const [query, setQuery] = useState("");
 
   const applyMedicineQuery = (value) => {
@@ -491,17 +494,21 @@ function HomePage() {
               </p>
             </section>
 
-            <form className="home-search-form" onSubmit={goToMedicines}>
-              <input
-                type="search"
-                placeholder="Search by brand, name or salt (e.g. Dolo, Crocin)"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                aria-label="Search medicines"
-              />
-              <button type="submit">Search</button>
-            </form>
-            <MedicineSearchTools onQuery={applyMedicineQuery} />
+            {features.medicine !== false ? (
+              <>
+                <form className="home-search-form" onSubmit={goToMedicines}>
+                  <input
+                    type="search"
+                    placeholder="Search by brand, name or salt (e.g. Dolo, Crocin)"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    aria-label="Search medicines"
+                  />
+                  <button type="submit">Search</button>
+                </form>
+                <MedicineSearchTools onQuery={applyMedicineQuery} />
+              </>
+            ) : null}
 
             <p className="home-whatsapp-line">
               Prefer to talk?{" "}
@@ -520,41 +527,55 @@ function HomePage() {
         </div>
 
         <section className="home-services" aria-label="Services">
-          <a className="home-service-card" href="#medicine-search">
-            <h2>Medicines</h2>
-            <p>Doorstep delivery, cash on delivery.</p>
-            <span>View medicines</span>
-          </a>
-          <a className="home-service-card" href="#labs">
-            <h2>Lab Tests</h2>
-            <p>Home sample collection.</p>
-            <span>Book a test</span>
-          </a>
-          <a className="home-service-card" href="#labs">
-            <h2>Radiology</h2>
-            <p>Scans at partner centres.</p>
-            <span>Book a scan</span>
-          </a>
-          <a className="home-service-card" href="#homecare">
-            <h2>Home Care</h2>
-            <p>Nurse, Caregiver or Physiotherapy at Home.</p>
-            <span>Book a visit</span>
-          </a>
-          <a className="home-service-card" href="#stepdown">
-            <h2>Step-Down Care</h2>
-            <p>Find a recovery centre near you.</p>
-            <span>Find a centre</span>
-          </a>
-          <a className="home-service-card" href="#ambulance">
-            <h2>Ambulance</h2>
-            <p>Emergency or planned pickup.</p>
-            <span>Request now</span>
-          </a>
-          <a className="home-service-card" href="#reports">
-            <h2>Reports</h2>
-            <p>Save lab PDFs on this device.</p>
-            <span>Save a report</span>
-          </a>
+          {features.medicine !== false ? (
+            <a className="home-service-card" href="#medicine-search">
+              <h2>Medicines</h2>
+              <p>Doorstep delivery, cash on delivery.</p>
+              <span>View medicines</span>
+            </a>
+          ) : null}
+          {features.lab !== false ? (
+            <a className="home-service-card" href="#labs">
+              <h2>Lab Tests</h2>
+              <p>Home sample collection.</p>
+              <span>Book a test</span>
+            </a>
+          ) : null}
+          {features.radiology !== false ? (
+            <a className="home-service-card" href="#labs">
+              <h2>Radiology</h2>
+              <p>Scans at partner centres.</p>
+              <span>Book a scan</span>
+            </a>
+          ) : null}
+          {features.homecare !== false ? (
+            <a className="home-service-card" href="#homecare">
+              <h2>Home Care</h2>
+              <p>Nurse, Caregiver or Physiotherapy at Home.</p>
+              <span>Book a visit</span>
+            </a>
+          ) : null}
+          {features.stepdown !== false ? (
+            <a className="home-service-card" href="#stepdown">
+              <h2>Step-Down Care</h2>
+              <p>Find a recovery centre near you.</p>
+              <span>Find a centre</span>
+            </a>
+          ) : null}
+          {features.ambulance !== false ? (
+            <a className="home-service-card" href="#ambulance">
+              <h2>Ambulance</h2>
+              <p>Emergency or planned pickup.</p>
+              <span>Request now</span>
+            </a>
+          ) : null}
+          {features.reports !== false ? (
+            <a className="home-service-card" href="#reports">
+              <h2>Reports</h2>
+              <p>Save lab PDFs on this device.</p>
+              <span>Save a report</span>
+            </a>
+          ) : null}
         </section>
 
         <p className="home-trust">
@@ -562,6 +583,24 @@ function HomePage() {
         </p>
         <HomeReviewsTeaser />
       </div>
+    </div>
+  );
+}
+
+function PausedService() {
+  return (
+    <div className="service-page">
+      <section className="service-hero">
+        <span className="service-kicker">Unavailable</span>
+        <h1>This service is paused</h1>
+        <p>
+          MediHome has turned this booking off for now. Please choose another
+          service or WhatsApp customer care.
+        </p>
+        <p>
+          <a href="#home">Back to home</a>
+        </p>
+      </section>
     </div>
   );
 }
@@ -586,8 +625,10 @@ function App() {
 
   const { route, q: medicineQuery, id: trackId } = parseAppHash(hash);
   const isOps = route === "#admin" || route === "#partner";
+  const features = useFeatures();
 
   const renderPage = () => {
+    if (!routeEnabled(route, features)) return <PausedService />;
     switch (route) {
       case "#medicine-search":
         return <Medicines initialSearch={medicineQuery} />;
@@ -683,7 +724,7 @@ function App() {
 
         <div className="sidebar-links">
         <nav className="sidebar-nav" aria-label="Main">
-          {NAV_LINKS.map((link) => (
+          {NAV_LINKS.filter((link) => routeEnabled(link.href, features)).map((link) => (
             <a
               key={link.href}
               href={link.href}

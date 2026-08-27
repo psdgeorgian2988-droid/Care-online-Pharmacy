@@ -17,6 +17,7 @@ import {
   partnerIdFromToken,
   partnerLogin,
 } from "./partners.mjs";
+import { readSettings, writeSettings } from "./settings.mjs";
 
 const ADMIN_USER = process.env.MEDIHOME_ADMIN_USER || "admin";
 const ADMIN_PASSWORD = process.env.MEDIHOME_ADMIN_PASSWORD || "MediHome@26";
@@ -245,6 +246,24 @@ export async function handleApi(req, res) {
     if (pathname === "/api/admin/partners" && req.method === "GET") {
       if (!requireStaff(req, res)) return true;
       send(res, 200, { partners: await listPartners() });
+      return true;
+    }
+
+    if (pathname === "/api/features" && req.method === "GET") {
+      send(res, 200, await readSettings());
+      return true;
+    }
+
+    if (pathname === "/api/admin/settings" && req.method === "GET") {
+      if (!requireStaff(req, res)) return true;
+      send(res, 200, await readSettings());
+      return true;
+    }
+
+    if (pathname === "/api/admin/settings" && req.method === "PATCH") {
+      if (!requireStaff(req, res)) return true;
+      const body = await readJson(req);
+      send(res, 200, await writeSettings(body));
       return true;
     }
 
