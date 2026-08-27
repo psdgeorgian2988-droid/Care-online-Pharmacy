@@ -121,6 +121,43 @@ export function lookupPin(value) {
   return null;
 }
 
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const toRad = (value) => (value * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+export function nearestPin(lat, lng) {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null;
+
+  const data = loadDirectory();
+  let best = null;
+  let bestKm = Infinity;
+  for (const pin of Object.keys(data.pins || {})) {
+    const row = unpack(pin, data.pins[pin]);
+    if (!Number.isFinite(row.lat) || !Number.isFinite(row.lng)) continue;
+    if (row.lat === 0 && row.lng === 0) continue;
+    const km = haversineKm(latitude, longitude, row.lat, row.lng);
+    if (km < bestKm) {
+      bestKm = km;
+      best = row;
+    }
+  }
+  if (!best) return null;
+  return {
+    ...best,
+    distanceKm: Math.round(bestKm * 1000) / 1000,
+    fromLocation: true,
+  };
+}
+
 export function listCityDistrictMismatches() {
   const data = loadDirectory();
   const districtsByState = new Map();

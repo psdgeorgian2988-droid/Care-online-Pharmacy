@@ -26,7 +26,7 @@ import {
   staffReply,
 } from "./chats.mjs";
 import { readSettings, writeSettings } from "./settings.mjs";
-import { lookupPin } from "./pincodes.mjs";
+import { lookupPin, nearestPin } from "./pincodes.mjs";
 
 const ADMIN_USER = process.env.MEDIHOME_ADMIN_USER || "admin";
 const ADMIN_PASSWORD = process.env.MEDIHOME_ADMIN_PASSWORD || "MediHome@26";
@@ -316,6 +316,16 @@ export async function handleApi(req, res) {
 
     if (pathname === "/api/features" && req.method === "GET") {
       send(res, 200, await readSettings());
+      return true;
+    }
+
+    if (pathname === "/api/pincode/near" && req.method === "GET") {
+      const found = nearestPin(url.searchParams.get("lat"), url.searchParams.get("lng"));
+      if (!found) {
+        send(res, 404, { error: "No PIN Code was found for this location." });
+        return true;
+      }
+      send(res, 200, found);
       return true;
     }
 
