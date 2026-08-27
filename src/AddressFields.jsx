@@ -128,11 +128,4 @@ const styles = `
 .addr-field.addr-auto input{background:#f3f7fa;color:#3a5568;border-color:#d3e0e8;cursor:default}
 .addr-error{margin-top:4px;color:#d84b4b;font-size:11px}
 .addr-hint{margin-top:4px;color:#5d7180;font-size:11px}
-@media (min-width:640px){
-  .addr-fields{grid-template-columns:1fr 1fr 1fr}
-  .addr-field:nth-child(1),
-  .addr-field:nth-child(2),
-  .addr-field:nth-child(3),
-  .addr-field:nth-child(7){grid-column:1/-1}
-}
 `;
