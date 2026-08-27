@@ -5600,3 +5600,37 @@ a.order-details-btn {
   background: rgba(255, 255, 255, 0.14);
   color: #fff;
 }
+
+/* Square the shell: no rounded ends on ticker, sidebar, or footer */
+html,
+body,
+#root,
+.app,
+.top-ticker,
+.app > footer.app-footer,
+.sidebar,
+.app > main {
+  border-radius: 0 !important;
+}
+
+.app > footer.app-footer {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
+.sidebar {
+  border-bottom: 0 !important;
+  border-top: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  height: 100% !important;
+  min-height: 100% !important;
+}
+
+.app > footer.app-footer .logo-house-svg rect {
+  rx: 0;
+  ry: 0;
+}

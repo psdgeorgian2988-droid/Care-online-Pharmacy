@@ -261,7 +261,7 @@ export default function CareChat({ open, onOpen, onClose }) {
 }
 
 const styles = `
-.care-fab{position:fixed;right:16px;bottom:6px;z-index:80;height:28px;border:1px solid rgba(255,255,255,.75);border-radius:6px;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:12px;font-weight:700;padding:0 12px;box-shadow:none;cursor:pointer;display:inline-flex;align-items:center}
+.care-fab{position:fixed;right:16px;bottom:6px;z-index:80;height:28px;border:1px solid rgba(255,255,255,.75);border-radius:0;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:12px;font-weight:700;padding:0 12px;box-shadow:none;cursor:pointer;display:inline-flex;align-items:center}
 .care-fab-badge{margin-left:8px;display:inline-flex;min-width:16px;height:16px;align-items:center;justify-content:center;border-radius:99px;background:#c44b4b;font-size:10px}
 .care-chat{position:fixed;right:16px;bottom:48px;z-index:90;width:min(380px,calc(100vw - 32px));max-height:calc(100vh - 132px);display:flex;flex-direction:column;background:#fff;border:1px solid #d7e6ee;border-radius:12px;box-shadow:0 16px 40px rgba(20,50,70,.2);overflow:hidden}
 .care-chat-head{display:flex;justify-content:space-between;gap:8px;padding:12px 14px;background:#1a6b7a;color:#fff}
