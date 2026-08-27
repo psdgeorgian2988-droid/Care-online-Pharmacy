@@ -10,6 +10,8 @@ export const DEFAULT_FEATURES = {
   lab: true,
   radiology: true,
   homecare: true,
+  vaccination: true,
+  psychologist: true,
   stepdown: true,
   ambulance: true,
   reports: true,

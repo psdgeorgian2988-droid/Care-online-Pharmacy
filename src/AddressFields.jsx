@@ -4,7 +4,7 @@ import {
   addressConfirmRows,
   isAddressConfirmed,
 } from "./addressFields";
-import { lookupPinDirectory } from "./pinLocation";
+import { lookupPinDirectory, detectPinFromLocation } from "./pinLocation";
 
 function pinAreas(values) {
   return Array.isArray(values.areas) ? values.areas.filter(Boolean) : [];
@@ -12,6 +12,29 @@ function pinAreas(values) {
 
 function digitsPin(value) {
   return String(value || "").replace(/\D/g, "").slice(0, 6);
+}
+
+function matchAreaName(areas, hint) {
+  const wanted = String(hint || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+  if (!wanted) return "";
+  const exact = areas.find(
+    (name) =>
+      String(name)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "") === wanted
+  );
+  if (exact) return exact;
+  if (wanted.length < 5) return "";
+  return (
+    areas.find((name) => {
+      const key = String(name)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "");
+      return key.includes(wanted) || (key.length >= 5 && wanted.includes(key));
+    }) || ""
+  );
 }
 
 export default function AddressFields({
@@ -22,7 +45,9 @@ export default function AddressFields({
   pinHint = "Enter the PIN Code to choose Village / Sector / Mohalla.",
 }) {
   const [pinStatus, setPinStatus] = useState("");
+  const [locating, setLocating] = useState(false);
   const pinRequest = useRef(0);
+  const suggestedArea = useRef("");
 
   const patch = (name, value) => {
     onChange?.({ target: { name, value } });
@@ -61,11 +86,12 @@ export default function AddressFields({
           : ""
       );
       patch("areas", areas);
+      const hint = suggestedArea.current;
+      suggestedArea.current = "";
+      const matched = matchAreaName(areas, hint);
       const nextArea = areas.includes(values.area)
         ? values.area
-        : areas.length === 1
-          ? areas[0]
-          : "";
+        : matched || (areas.length === 1 ? areas[0] : "");
       if (values.area !== nextArea) patch("area", nextArea);
       if (values.city !== row.city) patch("city", row.city);
       if (values.district !== row.district) patch("district", row.district);
@@ -76,6 +102,31 @@ export default function AddressFields({
     // Only re-run when the PIN changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [values.pinCode]);
+
+  const handleUseLocation = async (event) => {
+    event.preventDefault();
+    if (locating) return;
+    setLocating(true);
+    setPinStatus("Detecting PIN from your location…");
+    try {
+      const found = await detectPinFromLocation();
+      suggestedArea.current = found.suggestedArea || "";
+      if (digitsPin(values.pinCode) === found.pin) {
+        const matched = matchAreaName(pinAreas(values), found.suggestedArea);
+        if (matched && values.area !== matched) patch("area", matched);
+        setPinStatus("PIN filled from your location. Recheck Village / Sector / Mohalla.");
+      } else {
+        patch("pinCode", found.pin);
+        setPinStatus("PIN filled from your location. Recheck Village / Sector / Mohalla.");
+      }
+    } catch (error) {
+      setPinStatus(
+        error?.message || "Could not detect a PIN Code. Please enter it."
+      );
+    } finally {
+      setLocating(false);
+    }
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -141,6 +192,28 @@ export default function AddressFields({
                     </option>
                   ))}
                 </select>
+              ) : field.name === "pinCode" ? (
+                <div className="addr-pin-row">
+                  <input
+                    id={id}
+                    name={field.name}
+                    value={values[field.name] || ""}
+                    onChange={handleChange}
+                    placeholder={field.placeholder}
+                    inputMode={field.inputMode}
+                    maxLength={field.maxLength}
+                    autoComplete="off"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="addr-locate-btn"
+                    onClick={handleUseLocation}
+                    disabled={locating}
+                  >
+                    {locating ? "Detecting…" : "Use My Location"}
+                  </button>
+                </div>
               ) : (
                 <input
                   id={id}
@@ -159,8 +232,15 @@ export default function AddressFields({
               {errors[field.name] ? (
                 <small className="addr-error">{errors[field.name]}</small>
               ) : field.name === "pinCode" ? (
-                <small className={pinMissing ? "addr-error" : "addr-hint"}>
-                  {pinStatus || pinHint}
+                <small
+                  className={
+                    pinMissing || /allow location|could not|not available/i.test(pinStatus)
+                      ? "addr-error"
+                      : "addr-hint"
+                  }
+                >
+                  {pinStatus ||
+                    "Enter the PIN Code, or tap Use My Location to fill it from GPS."}
                 </small>
               ) : selectable ? (
                 <small className="addr-hint">
@@ -230,6 +310,10 @@ const styles = `
 .addr-field.addr-auto input{background:#f3f7fa;color:#3a5568;border-color:#d3e0e8;cursor:default}
 .addr-field.addr-select select{background:#fff;cursor:pointer}
 .addr-field.addr-select select:disabled{background:#f3f7fa;color:#7a8a92;cursor:default}
+.addr-pin-row{display:flex;gap:8px;align-items:stretch}
+.addr-pin-row input{flex:1;min-width:0}
+.addr-locate-btn{flex:0 0 auto;padding:8px 10px;border:1px solid #1e8a73;border-radius:8px;background:#1e8a73;color:#fff;font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.addr-locate-btn:disabled{opacity:.7;cursor:wait}
 .addr-error{margin-top:4px;color:#d84b4b;font-size:11px}
 .addr-hint{margin-top:4px;color:#5d7180;font-size:11px}
 .addr-confirm{padding:12px;border:1px solid #d7e2e9;border-radius:10px;background:#f7fbfc}

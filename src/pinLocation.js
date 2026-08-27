@@ -314,6 +314,127 @@ export async function lookupPinDirectory(pin) {
   }
 }
 
+export function suggestedAreaFromAddress(address = {}, areas = []) {
+  const candidates = [
+    address.suburb,
+    address.neighbourhood,
+    address.village,
+    address.hamlet,
+    address.residential,
+    address.city_district,
+    address.quarter,
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  const keys = areas.map((name) => ({
+    name,
+    key: String(name).toLowerCase().replace(/[^a-z0-9]+/g, ""),
+  }));
+  for (const candidate of candidates) {
+    const key = candidate.toLowerCase().replace(/[^a-z0-9]+/g, "");
+    const hit = keys.find(
+      (row) => row.key === key || row.key.includes(key) || key.includes(row.key)
+    );
+    if (hit) return hit.name;
+  }
+  return candidates[0] || "";
+}
+
+export function chooseDetectedPin({ postcode, nearest } = {}) {
+  const code = normalizePin(postcode);
+  if (/^\d{6}$/.test(code)) {
+    return { pin: code, source: "postcode" };
+  }
+  const nearPin = normalizePin(nearest?.pin || nearest?.pinCode);
+  if (/^\d{6}$/.test(nearPin)) {
+    return { pin: nearPin, source: "nearest" };
+  }
+  return null;
+}
+
+function readBrowserLocation() {
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      reject(new Error("Location is not available on this device."));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      (error) => {
+        if (error?.code === 1) {
+          reject(new Error("Allow location access to fill the PIN Code."));
+          return;
+        }
+        reject(new Error("Could not read your location. Please enter the PIN Code."));
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
+    );
+  });
+}
+
+async function fetchNearestPin(lat, lng) {
+  try {
+    const response = await fetch(
+      `/api/pincode/near?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.pin || data?.pinCode ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchReverseAddress(lat, lng) {
+  const data = await fetchJson(
+    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(
+      lat
+    )}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`
+  );
+  return data?.address || null;
+}
+
+export async function detectPinFromLocation() {
+  const coords = await readBrowserLocation();
+  const [nearest, address] = await Promise.all([
+    fetchNearestPin(coords.lat, coords.lng),
+    fetchReverseAddress(coords.lat, coords.lng),
+  ]);
+  const chosenPostcode = chooseDetectedPin({
+    postcode: address?.postcode,
+    nearest: null,
+  });
+  const chosenNearest = chooseDetectedPin({ nearest });
+  let chosen = chosenPostcode;
+  let directory = chosen ? await lookupPinDirectory(chosen.pin) : null;
+  if (!directory) {
+    chosen = chosenNearest;
+    directory = chosen ? await lookupPinDirectory(chosen.pin) : nearest;
+  }
+  if (!chosen) {
+    throw new Error("Could not detect a PIN Code from this location.");
+  }
+  return {
+    pin: chosen.pin,
+    pinCode: chosen.pin,
+    source: chosen.source,
+    lat: coords.lat,
+    lng: coords.lng,
+    suggestedArea: suggestedAreaFromAddress(
+      address,
+      directory?.areas || nearest?.areas || []
+    ),
+    city: directory?.city || nearest?.city || "",
+    district: directory?.district || nearest?.district || "",
+    state: directory?.state || nearest?.state || "",
+  };
+}
+
 export async function resolvePinLocation(pin) {
   const base = locationFromPinSync(pin);
   if (!/^\d{6}$/.test(base.pin)) return base;

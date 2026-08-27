@@ -10,13 +10,20 @@ import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
 import { DIAGNOSTIC_LABS, IMAGING_CENTRES } from "./diagnosticPartners";
 import AddressFields from "./AddressFields";
+import BookingForFields from "./BookingForFields";
 import {
   addressFromUnknown,
   applyResolvedPin,
   emptyAddress,
   pickAddress,
+  readUserProfile,
   validateAddress,
 } from "./addressFields";
+import {
+  bookingForPatch,
+  initialBookingFor,
+  validateBookingFor,
+} from "./bookingFor";
 
 const PREP_LABEL = {
   fasting: "Fasting required",
@@ -176,6 +183,7 @@ function getRegisteredProfile() {
 
 function LabTests() {
   const registeredProfile = useMemo(() => getRegisteredProfile(), []);
+  const profile = useMemo(() => readUserProfile(), []);
   const [serviceType, setServiceType] = useState("lab");
   const [selectedLabId, setSelectedLabId] = useState("");
   const [selectedTestId, setSelectedTestId] = useState("");
@@ -185,6 +193,7 @@ function LabTests() {
   const [selectedImagingTests, setSelectedImagingTests] = useState([]);
   const [form, setForm] = useState(() => ({
     ...EMPTY_FORM,
+    ...initialBookingFor(profile),
     ...(registeredProfile
       ? {
           patientName: registeredProfile.name,
@@ -352,6 +361,7 @@ function LabTests() {
     if (!form.patientName.trim()) newErrors.patientName = "Patient name is required.";
     if (!/^[6-9]\d{9}$/.test(form.mobile)) newErrors.mobile = "Enter a valid 10-digit mobile number.";
     Object.assign(newErrors, validateAddress(form));
+    Object.assign(newErrors, validateBookingFor(form, profile));
     if (!form.date) newErrors.date = "Please select a date.";
     if (!form.timeSlot) newErrors.timeSlot = "Please select a time slot.";
 
@@ -712,6 +722,18 @@ function LabTests() {
               </p>
             </div>
             <div className="lab-fields">
+            <div className="lab-field lab-field-full">
+              <BookingForFields
+                idPrefix="lab"
+                profile={profile}
+                selectedId={form.bookedFor}
+                error={errors.bookedFor}
+                onSelect={(option) => {
+                  setForm((prev) => ({ ...prev, ...bookingForPatch(option) }));
+                  setErrors((prev) => ({ ...prev, bookedFor: "" }));
+                }}
+              />
+            </div>
             <div className="lab-field">
               <label htmlFor="patientName">
                 Patient name <em>*</em>

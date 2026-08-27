@@ -9,12 +9,18 @@ import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
 import AddressFields from "./AddressFields";
+import BookingForFields from "./BookingForFields";
 import {
   applyResolvedPin,
   pickAddress,
   readUserProfile,
   validateAddress,
 } from "./addressFields";
+import {
+  bookingForPatch,
+  initialBookingFor,
+  validateBookingFor,
+} from "./bookingFor";
 
 const LEGACY_STORAGE_KEY = "mediHomeHomeCareBookings";
 const SERVICE_TYPES = [
@@ -76,6 +82,7 @@ function HomeCare() {
     patientName: profile.name,
     mobile: profile.mobile,
     ...pickAddress(profile),
+    ...initialBookingFor(profile),
     serviceType: "caregiver",
     carePlan: "visit",
     date: "",
@@ -121,6 +128,7 @@ function HomeCare() {
       next.mobile = "Enter a valid 10-digit mobile number.";
     }
     Object.assign(next, validateAddress(form));
+    Object.assign(next, validateBookingFor(form, profile));
     if (!form.serviceType) next.serviceType = "Select a service type.";
     if (!form.carePlan) next.carePlan = "Select a care plan.";
     if (form.carePlan === "nurse-other") {
@@ -353,6 +361,18 @@ function HomeCare() {
         </section>
 
         <form className="service-form" onSubmit={handleSubmit}>
+          <div className="field full">
+            <BookingForFields
+              idPrefix="hc"
+              profile={profile}
+              selectedId={form.bookedFor}
+              error={errors.bookedFor}
+              onSelect={(option) => {
+                setForm((prev) => ({ ...prev, ...bookingForPatch(option) }));
+                setErrors((prev) => ({ ...prev, bookedFor: "" }));
+              }}
+            />
+          </div>
           <div className="field">
             <label htmlFor="hc-name">
               Patient name <span>*</span>

@@ -100,7 +100,9 @@ function MyOrders() {
                 ? "Imaging Studies"
                 : selectedOrder.kind === "homecare"
                   ? "Home Care"
-                  : selectedOrder.kind === "psychologist"
+                  : selectedOrder.kind === "vaccination"
+                    ? "Vaccination"
+                    : selectedOrder.kind === "psychologist"
                     ? "Psychologist Consultation"
                     : selectedOrder.kind === "stepdown"
                       ? "Step-Down Care"
@@ -365,13 +367,14 @@ function MyOrders() {
           <div className="orders-empty">
             <p>No orders found yet.</p>
             <p>
-              Place a medicine order, book diagnostics, home care, a psychologist
-              session, or step-down care, or request an ambulance to track it here.
+              Place a medicine order, book diagnostics, home care, vaccination,
+              a psychologist session, or step-down care, or request an ambulance to track it here.
             </p>
             <div className="orders-empty-actions">
               <a href="#medicine-search">Order medicines</a>
               <a href="#labs">Book diagnostics</a>
               <a href="#homecare">Book home care</a>
+              <a href="#vaccination">Vaccination record</a>
               <a href="#psychologist">Book a psychologist</a>
               <a href="#stepdown">Find a step-down centre</a>
               <a href="#ambulance">Request ambulance</a>

@@ -3,6 +3,8 @@ export const SERVICE_ORDER_KINDS = [
   "lab",
   "radiology",
   "homecare",
+  "vaccination",
+  "psychologist",
   "stepdown",
   "ambulance",
 ];
@@ -10,6 +12,7 @@ export const SERVICE_ORDER_KINDS = [
 export const TRACK_STATUS_STEPS = [
   { key: "confirmed", label: "Confirmed" },
   { key: "assigned", label: "Partner Assigned" },
+  { key: "packed", label: "Packed" },
   { key: "on_the_way", label: "On The Way" },
   { key: "arriving", label: "Arriving" },
   { key: "done", label: "Done" },

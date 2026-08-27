@@ -6,12 +6,15 @@ import {
 } from "./pinLocation";
 import { publishOrder } from "./adminApi";
 import { withDeliveryOutlet } from "./deliveryOutlets";
+import { checkpointState, ensureOrderCodes, gatedTrackStatus } from "./orderQr";
 
 export const ORDER_STORAGE = {
   medicine: "mediHomeOrders",
   lab: "mediHomeDiagnosticsBookings",
   radiology: "mediHomeDiagnosticsBookings",
   homecare: "mediHomeHomeCareBookings",
+  vaccination: "mediHomeVaccinationBookings",
+  psychologist: "mediHomePsychologistBookings",
   stepdown: "mediHomeStepDownBookings",
   ambulance: "mediHomeAmbulanceRequests",
 };
@@ -19,6 +22,7 @@ export const ORDER_STORAGE = {
 export const TRACK_STEPS = [
   { key: "confirmed", label: "Confirmed" },
   { key: "assigned", label: "Partner Assigned" },
+  { key: "packed", label: "Packed" },
   { key: "on_the_way", label: "On The Way" },
   { key: "arriving", label: "Arriving" },
   { key: "done", label: "Delivered" },
@@ -29,6 +33,8 @@ const DURATION_MS = {
   lab: 160000,
   radiology: 160000,
   homecare: 170000,
+  vaccination: 170000,
+  psychologist: 170000,
   stepdown: 180000,
   ambulance: 90000,
 };
@@ -72,6 +78,10 @@ export function kindLabel(kind) {
       return "Radiology & Imaging";
     case "homecare":
       return "Home Care";
+    case "vaccination":
+      return "Vaccination";
+    case "psychologist":
+      return "Psychologist Consultation";
     case "stepdown":
       return "Step-Down Care";
     case "ambulance":
@@ -87,6 +97,10 @@ export function partnerRole(kind) {
       return "Ambulance driver";
     case "homecare":
       return "Home Care professional";
+    case "vaccination":
+      return "Vaccination nurse";
+    case "psychologist":
+      return "Psychologist";
     case "stepdown":
       return "Admission coordinator";
     case "lab":
@@ -116,6 +130,18 @@ const AGENT_ROSTER = {
     { name: "Nurse Ankit Sharma", mobile: "9876511044" },
     { name: "Caregiver Kavita Rai", mobile: "9999467812" },
     { name: "Physio Rohan Malhotra", mobile: "9818890234" },
+  ],
+  vaccination: [
+    { name: "Nurse Meena Joshi", mobile: "9812234098" },
+    { name: "Nurse Ankit Sharma", mobile: "9876511044" },
+    { name: "ANM Kavita Rai", mobile: "9999467812" },
+    { name: "Nurse Rohan Malhotra", mobile: "9818890234" },
+  ],
+  psychologist: [
+    { name: "Dr. Ananya Mehra", mobile: "9813346720" },
+    { name: "Dr. Kabir Sen", mobile: "9876612045" },
+    { name: "Dr. Rhea Kapoor", mobile: "9999183340" },
+    { name: "Dr. Imran Qureshi", mobile: "9818894412" },
   ],
   lab: [
     { name: "Phlebotomist Kiran Das", mobile: "9815567023" },
@@ -163,6 +189,12 @@ export function partnerCopy(kind) {
         toward: "toward your visit PIN",
         emoji: "🩺",
       };
+    case "vaccination":
+      return {
+        title: "Vaccination nurse",
+        toward: "toward your visit PIN",
+        emoji: "💉",
+      };
     case "stepdown":
       return {
         title: "Recovery centre",
@@ -192,6 +224,7 @@ export function partnerCopy(kind) {
 
 export function stepLabel(kind, key) {
   if (key === "done") return doneLabel(kind);
+  if (key === "packed") return "Packed";
   return TRACK_STEPS.find((step) => step.key === key)?.label || "Confirmed";
 }
 
@@ -204,6 +237,15 @@ export function recordKind(record, fallback = "medicine") {
   if (record?.orderType === "homecare" || record?.bookingId?.startsWith("MH-HC-")) {
     return "homecare";
   }
+  if (record?.orderType === "vaccination" || record?.bookingId?.startsWith("MH-VAC-")) {
+    return "vaccination";
+  }
+  if (
+    record?.orderType === "psychologist" ||
+    record?.bookingId?.startsWith("MH-PSY-")
+  ) {
+    return "psychologist";
+  }
   if (record?.orderType === "stepdown" || record?.bookingId?.startsWith("MH-SD-")) {
     return "stepdown";
   }
@@ -212,9 +254,20 @@ export function recordKind(record, fallback = "medicine") {
   return fallback;
 }
 
+function usesBookingId(kind) {
+  return (
+    kind === "homecare" ||
+    kind === "vaccination" ||
+    kind === "psychologist" ||
+    kind === "stepdown" ||
+    kind === "lab" ||
+    kind === "radiology"
+  );
+}
+
 export function recordId(record, kind = recordKind(record)) {
   if (kind === "ambulance") return String(record.requestId || record.id || "");
-  if (kind === "homecare" || kind === "stepdown" || kind === "lab" || kind === "radiology") {
+  if (usesBookingId(kind)) {
     return String(record.bookingId || record.id || "");
   }
   return String(record.id || "");
@@ -224,7 +277,7 @@ function sameRecord(row, unified) {
   const kind = unified.kind;
   const id = String(unified.id);
   if (kind === "ambulance") return String(row.requestId || row.id) === id;
-  if (kind === "homecare" || kind === "stepdown" || kind === "lab" || kind === "radiology") {
+  if (usesBookingId(kind)) {
     return String(row.bookingId || row.id) === id;
   }
   return String(row.id) === id;
@@ -323,15 +376,22 @@ export function withTracking(record, kind = recordKind(record)) {
     : destLat != null
       ? seedPartnerStart(destLat, destLng, id, kind)
       : { lat: null, lng: null };
-  const startedAt = Number(record.trackStartedAt) || Date.now();
-  const completed = Boolean(record.trackCompleted);
-  const progress = completed ? 1 : trackingProgress({ ...record, trackStartedAt: startedAt, kind }, Date.now());
+  const checks = checkpointState(record);
+  const startedAt = Number(record.trackStartedAt) || 0;
+  const completed = Boolean(record.trackCompleted) || checks.deliver;
+  const progress = completed
+    ? 1
+    : checks.pickup && startedAt
+      ? trackingProgress({ ...record, trackStartedAt: startedAt, kind }, Date.now())
+      : 0;
   const live =
     destLat != null && start.lat != null
       ? lerpPath(start, { lat: destLat, lng: destLng }, progress, id)
       : { lat: start.lat, lng: start.lng };
-  const statusKey = completed ? "done" : statusFromProgress(progress);
+  const progressKey = completed ? "done" : statusFromProgress(progress);
+  const statusKey = gatedTrackStatus({ ...record, trackCompleted: completed }, progressKey);
   const assigned = withAssignedAgent({ ...record, kind }, kind);
+  const freezeAtStart = !checks.pickup && !completed;
   return {
     ...assigned,
     kind,
@@ -345,13 +405,16 @@ export function withTracking(record, kind = recordKind(record)) {
     mapsUrl: record.mapsUrl || dest.mapsUrl || "",
     startLat: start.lat,
     startLng: start.lng,
-    partnerLat: completed && destLat != null ? destLat : live.lat,
-    partnerLng: completed && destLng != null ? destLng : live.lng,
-    trackStartedAt: startedAt,
+    partnerLat: completed && destLat != null ? destLat : freezeAtStart ? start.lat : live.lat,
+    partnerLng: completed && destLng != null ? destLng : freezeAtStart ? start.lng : live.lng,
+    trackStartedAt: startedAt || record.trackStartedAt || null,
     trackLastAt: Date.now(),
     trackStatus: statusKey,
-    trackCompleted: completed || progress >= 1,
-    status: stepLabel(kind, statusKey),
+    trackCompleted: completed,
+    status:
+      record.status && String(record.status).startsWith("Redelivery") && !checks.pack
+        ? record.status
+        : stepLabel(kind, statusKey),
   };
 }
 
@@ -360,35 +423,48 @@ export function tickTracking(record, now = Date.now()) {
   if (!Number.isFinite(Number(record?.destLat)) || !Number.isFinite(Number(record?.destLng))) {
     return record;
   }
-  if (record.trackCompleted) {
+  const checks = checkpointState(record);
+  if (record.trackCompleted || checks.deliver) {
     return {
       ...record,
       partnerLat: record.destLat,
       partnerLng: record.destLng,
       trackStatus: "done",
+      trackCompleted: true,
       status: stepLabel(kind, "done"),
     };
   }
   const next = withTracking({ ...record, trackCompleted: false }, kind);
+  if (!checks.pickup) {
+    return {
+      ...next,
+      partnerLat: next.startLat,
+      partnerLng: next.startLng,
+      trackLastAt: now,
+      trackStatus: checks.pack ? "packed" : gatedTrackStatus(next, "confirmed"),
+      trackCompleted: false,
+      status:
+        next.status && String(next.status).startsWith("Redelivery") && !checks.pack
+          ? next.status
+          : stepLabel(kind, checks.pack ? "packed" : gatedTrackStatus(next, "confirmed")),
+    };
+  }
   const progress = trackingProgress(next, now);
-  const statusKey = statusFromProgress(progress);
-  const done = progress >= 1;
-  const point = done
-    ? { lat: next.destLat, lng: next.destLng }
-    : lerpPath(
-        { lat: next.startLat, lng: next.startLng },
-        { lat: next.destLat, lng: next.destLng },
-        progress,
-        recordId(next, kind)
-      );
+  const statusKey = gatedTrackStatus(next, statusFromProgress(Math.min(progress, 0.93)));
+  const point = lerpPath(
+    { lat: next.startLat, lng: next.startLng },
+    { lat: next.destLat, lng: next.destLng },
+    Math.min(progress, 0.93),
+    recordId(next, kind)
+  );
   return {
     ...next,
     partnerLat: point.lat,
     partnerLng: point.lng,
     trackLastAt: now,
-    trackStatus: done ? "done" : statusKey,
-    trackCompleted: done,
-    status: stepLabel(kind, done ? "done" : statusKey),
+    trackStatus: statusKey,
+    trackCompleted: false,
+    status: stepLabel(kind, statusKey),
   };
 }
 
@@ -449,9 +525,15 @@ export function loadAllOrders() {
     unifyOrder(row, row.serviceType === "radiology" ? "radiology" : "lab")
   );
   const homeCare = readList(ORDER_STORAGE.homecare).map((row) => unifyOrder(row, "homecare"));
+  const vaccination = readList(ORDER_STORAGE.vaccination).map((row) =>
+    unifyOrder(row, "vaccination")
+  );
+  const psychologist = readList(ORDER_STORAGE.psychologist).map((row) =>
+    unifyOrder(row, "psychologist")
+  );
   const stepDown = readList(ORDER_STORAGE.stepdown).map((row) => unifyOrder(row, "stepdown"));
   const ambulance = readList(ORDER_STORAGE.ambulance).map((row) => unifyOrder(row, "ambulance"));
-  return [...diagnostics, ...homeCare, ...stepDown, ...ambulance, ...medicines].sort(
+  return [...diagnostics, ...homeCare, ...vaccination, ...psychologist, ...stepDown, ...ambulance, ...medicines].sort(
     (a, b) => (b.sortKey || 0) - (a.sortKey || 0)
   );
 }
@@ -462,9 +544,26 @@ export function findOrderById(id) {
   return loadAllOrders().find((order) => String(order.id) === wanted) || null;
 }
 
+export async function resolveOrderById(id) {
+  const local = findOrderById(id);
+  if (local) return local;
+  const wanted = decodeURIComponent(String(id || "")).trim();
+  if (!wanted) return null;
+  try {
+    const res = await fetch(`/api/orders/lookup?id=${encodeURIComponent(wanted)}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.order) return null;
+    const kind = data.order.kind || data.order.orderType || "medicine";
+    return persistOrder(withTracking(data.order, kind));
+  } catch {
+    return null;
+  }
+}
+
 export function persistOrder(unified, patch = {}) {
   const kind = unified.kind || recordKind(unified);
-  const next = { ...unified, ...patch, kind };
+  const merged = { ...unified, ...patch, kind };
+  const next = { ...merged, ...ensureOrderCodes(merged) };
   const key = ORDER_STORAGE[kind] || ORDER_STORAGE.medicine;
   const list = readList(key);
   const updated = list.some((row) => sameRecord(row, next));
@@ -509,10 +608,16 @@ export function ensureTracking(record) {
   const kind = recordKind(record);
   const pin = normalizePin(record?.pin || record?.pinCode);
   if (!/^\d{6}$/.test(pin)) return unifyOrder(record, kind);
-  if (record.trackStartedAt && Number.isFinite(Number(record.destLat))) {
-    return unifyOrder(tickTracking(withTracking(record, kind)), kind);
-  }
   const dest = destFromRecord(record);
   const seeded = dest.lat == null ? { ...record, ...locationFromPinSync(pin) } : record;
+  const checks = checkpointState(seeded);
+  if (checks.pickup && !seeded.trackStartedAt) {
+    return persistOrder(
+      withTracking({ ...seeded, trackStartedAt: Date.now() }, kind)
+    );
+  }
+  if (seeded.trackStartedAt && Number.isFinite(Number(seeded.destLat))) {
+    return unifyOrder(tickTracking(withTracking(seeded, kind)), kind);
+  }
   return persistOrder(withTracking(seeded, kind));
 }

@@ -8,8 +8,8 @@ function About() {
             <span className="service-kicker">About MediHome</span>
             <h1>Trusted Chronic Care At Your Doorstep</h1>
             <p>
-              Affordable medicines, diagnostics, Home Care, and ambulance
-              support for patients across Delhi NCR.
+              Affordable medicines, diagnostics, Home Care, psychologist
+              consultation, and ambulance support for patients across Delhi NCR.
             </p>
           </div>
         </section>
@@ -38,6 +38,8 @@ function About() {
               <li>Generic and MediHome-brand medicines with cash on delivery.</li>
               <li>Home sample collection and partner-centre radiology slots.</li>
               <li>Nurse, Caregiver, and Physiotherapy visits at Home.</li>
+              <li>Vaccination on the Government of India schedule, with a saved record and due-date reminders.</li>
+              <li>Psychologist consultation on video or as a home visit.</li>
               <li>Step-down recovery centres for post-ICU and post-surgery care.</li>
               <li>Emergency and planned ambulance pickup.</li>
               <li>A simple place to keep lab PDFs on this device.</li>

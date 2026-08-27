@@ -10,6 +10,8 @@ const KIND_COLORS = {
   lab: "#2a7de1",
   radiology: "#6b5b95",
   homecare: "#3d8b6e",
+  vaccination: "#2a8f6f",
+  psychologist: "#7a5ea8",
   stepdown: "#c47a2c",
   ambulance: "#c44b4b",
 };

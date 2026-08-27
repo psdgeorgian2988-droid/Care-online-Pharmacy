@@ -13,6 +13,7 @@ export const QUICK_PROMPTS = [
   { label: "Medicines", text: "I need medicines delivered" },
   { label: "Lab test", text: "I want to book a lab test" },
   { label: "Ambulance", text: "I need an ambulance" },
+  { label: "Psychologist", text: "I want a psychologist consultation" },
   { label: "Talk to a person", text: "Please connect me to a care executive" },
 ];
 
@@ -47,6 +48,17 @@ export function replyTo(rawText) {
     };
   }
 
+  if (/\b(qr|scan|pickup|received|barcode)\b/.test(q)) {
+    return {
+      text: "Every order has a QR. Partners scan it at pickup. Customers scan the same code to receive and to open live tracking.",
+      needsStaff: false,
+      links: [
+        { href: "#scan", label: "Scan QR" },
+        { href: "#myorders", label: "My Orders" },
+      ],
+    };
+  }
+
   if (/\b(track|where is|status|otp|delivery boy|agent)\b/.test(q)) {
     return {
       text: "Open My Orders, pick the booking, then Live track. Share the order id here if you want a care executive to check it.",
@@ -76,6 +88,22 @@ export function replyTo(rawText) {
       text: "Radiology is booked at partner centres. Open Lab Tests and switch to Radiology to pick a scan.",
       needsStaff: false,
       links: [{ href: "#labs", label: "Book a scan" }],
+    };
+  }
+
+  if (/\b(psychologist|psychiatrist|counsellor|counselor|mental health|anxiety|depression)\b/.test(q)) {
+    return {
+      text: "You can book a confidential psychologist session on video or as a home visit. Choose a slot on the Psychologist page.",
+      needsStaff: false,
+      links: [{ href: "#psychologist", label: "Book a psychologist" }],
+    };
+  }
+
+  if (/\b(vaccin|immunis|immuniz|bcg|polio|pentavalent)\b/.test(q)) {
+    return {
+      text: "Vaccination suggestions follow the Government of India Universal Immunisation Programme. You can keep a record and save the date each due vaccine should be given.",
+      needsStaff: false,
+      links: [{ href: "#vaccination", label: "Vaccination Schedule" }],
     };
   }
 
@@ -116,7 +144,7 @@ export function replyTo(rawText) {
 
   if (/\b(hello|hi|hey|namaste|help)\b/.test(q) || q.length < 12) {
     return {
-      text: "Namaste. I am MediHome care. I can help with medicines, lab tests, Home Care, ambulance, or tracking an order.",
+      text: "Namaste. I am MediHome care. I can help with medicines, lab tests, Home Care, vaccination, psychologist consultation, ambulance, or tracking an order.",
       needsStaff: false,
       links: [],
     };

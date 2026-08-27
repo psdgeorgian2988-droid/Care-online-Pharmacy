@@ -1,12 +1,20 @@
 import { useState } from "react";
 import ReferFamily from "./ReferFamily";
-import { POINT_VALUES, useWallet } from "./pointsStore";
+import { POINT_VALUES, awardFamilyMemberPoints, useWallet } from "./pointsStore";
 import AddressFields from "./AddressFields";
+import PersonFields from "./PersonFields";
+import FamilyMembersFields from "./FamilyMembersFields";
 import {
   readUserProfile,
   validateAddress,
   withFormattedAddress,
 } from "./addressFields";
+import {
+  pickFamilyMembers,
+  pickPerson,
+  validateFamilyMembers,
+  validatePerson,
+} from "./personFields";
 
 const PROFILE_KEY = "mediHomeUser";
 
@@ -23,9 +31,11 @@ function Profile() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     const nextValue =
-      name === "mobile" || name === "pinCode"
-        ? value.replace(/\D/g, "")
-        : value;
+      name === "familyMembers"
+        ? value
+        : name === "mobile" || name === "pinCode" || name === "age"
+          ? String(value || "").replace(/\D/g, "")
+          : value;
 
     setForm((prev) => ({ ...prev, [name]: nextValue }));
     setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -38,7 +48,9 @@ function Profile() {
     if (!/^[6-9]\d{9}$/.test(form.mobile)) {
       newErrors.mobile = "Enter a valid 10-digit mobile number.";
     }
+    Object.assign(newErrors, validatePerson(form));
     Object.assign(newErrors, validateAddress(form));
+    Object.assign(newErrors, validateFamilyMembers(form));
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -50,12 +62,19 @@ function Profile() {
     const profile = {
       name: form.name.trim(),
       mobile: form.mobile.trim(),
+      ...pickPerson(form),
+      familyMembers: pickFamilyMembers(form),
       ...withFormattedAddress(form),
     };
 
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    const points = awardFamilyMemberPoints(profile.familyMembers);
     setForm(profile);
-    setSaved(true);
+    setSaved(
+      points.count
+        ? `Profile saved. +${points.awarded} credit points for ${points.count} family member${points.count === 1 ? "" : "s"}.`
+        : true
+    );
   };
 
   return (
@@ -107,6 +126,13 @@ function Profile() {
             )}
           </div>
 
+          <PersonFields
+            idPrefix="profile"
+            values={form}
+            errors={errors}
+            onChange={handleChange}
+          />
+
           <AddressFields
             idPrefix="profile"
             values={form}
@@ -115,12 +141,20 @@ function Profile() {
             pinHint="Select the Village / Sector / Mohalla attached to this PIN. It is also used to sign in."
           />
 
-          {saved && (
+          <FamilyMembersFields
+            idPrefix="profile-family"
+            members={form.familyMembers}
+            errors={errors}
+            onChange={handleChange}
+          />
+
+          {saved ? (
             <p className="profile-success">
-              Profile saved. These details will auto-fill medicine checkout and
-              laboratory/radiology bookings for yourself.
+              {typeof saved === "string"
+                ? saved
+                : "Profile saved. These details will auto-fill medicine checkout and laboratory/radiology bookings for yourself."}
             </p>
-          )}
+          ) : null}
 
           <button type="submit" className="profile-save-btn">
             Save Profile
@@ -130,8 +164,9 @@ function Profile() {
         <section className="profile-points-card">
           <h2>Your MediHome points</h2>
           <p>
-            Webinar +{POINT_VALUES.webinar} · Quiz +{POINT_VALUES.quiz} · Referral
-            uses {POINT_VALUES.referral} points for family and friends.
+            Webinar +{POINT_VALUES.webinar} · Quiz +{POINT_VALUES.quiz} · Family
+            member +{POINT_VALUES.familyMember} · Referral uses {POINT_VALUES.referral}{" "}
+            points for family and friends.
           </p>
           {wallet.ledger.length ? (
             <ul className="profile-ledger">

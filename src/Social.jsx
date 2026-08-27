@@ -43,6 +43,28 @@ ${SITE.url}/#homecare
 ${HASHTAGS}`,
   },
   {
+    id: "vaccination",
+    title: "Government Vaccination Schedule",
+    href: "#vaccination",
+    platforms: "Facebook · Instagram · WhatsApp",
+    caption: `Keep a child's or elder's vaccination record. Reminders use Government of India due dates.
+
+${SITE.url}/#vaccination
+${HASHTAGS} #UIP`,
+  },
+  {
+    id: "psychologist",
+    title: "Psychologist Consultation",
+    href: "#psychologist",
+    platforms: "Instagram · LinkedIn · Facebook",
+    caption: `Talk to a MediHome psychologist in a confidential video session or a home visit.
+
+Book 30, 45, or 60 minute slots, including child/teen and couple sessions.
+
+${SITE.url}/#psychologist
+${HASHTAGS} #MentalHealth`,
+  },
+  {
     id: "ambulance",
     title: "Emergency Or Planned Transfer",
     href: "#ambulance",
@@ -69,7 +91,7 @@ ${HASHTAGS} #HealthEducation`,
     title: "Why MediHome",
     href: "#about",
     platforms: "LinkedIn · Facebook · X",
-    caption: `MediHome is your complete health partner at your doorstep — medicines, diagnostics, Home Care, step-down recovery, and ambulance in Delhi NCR.
+    caption: `MediHome is your complete health partner at your doorstep — medicines, diagnostics, Home Care, psychologist consultation, step-down recovery, and ambulance in Delhi NCR.
 
 ${SITE.url}/#about
 ${HASHTAGS}`,

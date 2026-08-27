@@ -11,6 +11,7 @@ import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import MedicineSearchTools from "./MedicineSearchTools";
 import AddressFields from "./AddressFields";
+import BookingForFields from "./BookingForFields";
 import {
   addressFromUnknown,
   applyResolvedPin,
@@ -18,6 +19,11 @@ import {
   pickAddress,
   validateAddress,
 } from "./addressFields";
+import {
+  bookingForPatch,
+  initialBookingFor,
+  validateBookingFor,
+} from "./bookingFor";
 
 function readHomeMedicineSearch() {
   const hash = window.location.hash || "";
@@ -49,6 +55,9 @@ function readSavedProfile() {
     return {
       name: String(parsed.name || parsed.fullName || "").trim(),
       mobile: String(parsed.mobile || parsed.mobileNumber || "").trim(),
+      gender: parsed.gender || "",
+      age: parsed.age || "",
+      familyMembers: Array.isArray(parsed.familyMembers) ? parsed.familyMembers : [],
       ...addressFromUnknown(parsed),
     };
   } catch {
@@ -3127,6 +3136,7 @@ function Medicines({ initialSearch = "" }) {
   const [showCheckout, setShowCheckout] = useState(false);
   const [prescriptionFile, setPrescriptionFile] = useState(null);
   const savedProfile = readSavedProfile();
+  const [whoFor, setWhoFor] = useState(() => initialBookingFor(savedProfile || {}));
   const [fullName, setFullName] = useState(savedProfile?.name || "");
   const [mobileNumber, setMobileNumber] = useState(savedProfile?.mobile || "");
   const [delivery, setDelivery] = useState(() => ({
@@ -3296,6 +3306,12 @@ function Medicines({ initialSearch = "" }) {
       return;
     }
 
+    const bookedForError = validateBookingFor(whoFor, savedProfile || {});
+    if (bookedForError.bookedFor) {
+      alert(bookedForError.bookedFor);
+      return;
+    }
+
     if (!mobileNumber.trim()) {
       alert("Please enter your Mobile Number.");
       return;
@@ -3353,6 +3369,7 @@ function Medicines({ initialSearch = "" }) {
         status: "Order Placed",
         date: new Date().toLocaleString(),
         fullName: fullName.trim(),
+        ...whoFor,
         mobileNumber: mobileNumber.trim(),
         prescription: prescriptionFile ? prescriptionFile.name : "",
         ...addr,
@@ -3557,6 +3574,17 @@ function Medicines({ initialSearch = "" }) {
       {showCheckout && (
         <div className="checkout-panel">
           <h2>Checkout</h2>
+
+          <BookingForFields
+            idPrefix="med-who"
+            profile={savedProfile || {}}
+            selectedId={whoFor.bookedFor}
+            onSelect={(option) => {
+              const patch = bookingForPatch(option);
+              setWhoFor(patch);
+              if (patch.patientName) setFullName(patch.patientName);
+            }}
+          />
 
           <input
             type="text"

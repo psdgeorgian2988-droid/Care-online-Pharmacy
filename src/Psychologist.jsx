@@ -22,34 +22,50 @@ import {
   validateBookingFor,
 } from "./bookingFor";
 
-const STORAGE_KEY = "mediHomeAmbulanceRequests";
-const AMBULANCE_FEE = {
-  emergency: 3999,
-  "non-emergency": 2499,
-};
+const PLANS = [
+  { value: "video-45", label: "Video 45 min", price: 999, mode: "video" },
+  { value: "video-60", label: "Video 60 min", price: 1499, mode: "video" },
+  { value: "followup-30", label: "Follow-up 30 min", price: 699, mode: "video" },
+  { value: "child-45", label: "Child / teen 45 min", price: 1299, mode: "video" },
+  { value: "couple-60", label: "Couple / family 60 min", price: 2499, mode: "video" },
+  { value: "home-60", label: "Home visit 60 min", price: 1999, mode: "home" },
+];
+
+const TIME_SLOTS = [
+  "08:00 AM – 10:00 AM",
+  "10:00 AM – 12:00 PM",
+  "12:00 PM – 02:00 PM",
+  "02:00 PM – 04:00 PM",
+  "04:00 PM – 06:00 PM",
+  "06:00 PM – 08:00 PM",
+];
+
+const formatRupee = (amount) => `₹${Number(amount || 0).toLocaleString("en-IN")}`;
 
 function readProfile() {
   return readUserProfile();
 }
 
-function Ambulance() {
+function Psychologist() {
   const profile = useMemo(() => readProfile(), []);
+  const today = new Date().toISOString().split("T")[0];
   const [form, setForm] = useState({
     patientName: profile.name,
     mobile: profile.mobile,
     ...pickAddress(profile),
     ...initialBookingFor(profile),
-    emergencyType: "emergency",
-    notes: "",
+    carePlan: "video-45",
+    date: "",
+    timeSlot: "",
+    concern: "",
   });
   const [errors, setErrors] = useState({});
-  const [request, setRequest] = useState(null);
+  const [booking, setBooking] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
-  const urgentRide = form.emergencyType === "emergency";
-  const busyWait = useBusyOverlay(submitting, "ambulance", urgentRide);
-  const ambFee = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
+  const busyWait = useBusyOverlay(submitting, "psychologist");
+  const plan = PLANS.find((item) => item.value === form.carePlan) || PLANS[0];
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -67,7 +83,9 @@ function Ambulance() {
     }
     Object.assign(next, validateAddress(form));
     Object.assign(next, validateBookingFor(form, profile));
-    if (!form.emergencyType) next.emergencyType = "Select emergency type.";
+    if (!form.carePlan) next.carePlan = "Select a session.";
+    if (!form.date) next.date = "Please select a session date.";
+    if (!form.timeSlot) next.timeSlot = "Please select a time slot.";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -78,148 +96,168 @@ function Ambulance() {
 
     setSubmitting(true);
     try {
-      const urgent = form.emergencyType === "emergency";
-      const queue = await holdForPartnerQueue("ambulance", { urgent });
+      const queue = await holdForPartnerQueue("psychologist");
       const gps = await resolvePinLocation(form.pinCode);
       const addr = applyResolvedPin(form, gps);
-      const total = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
-      const method =
-        form.emergencyType === "emergency" ? "cod" : payMethod;
-      const pay = paymentFromQuote(payQuote, total);
+      const pay = paymentFromQuote(payQuote, plan.price);
       const payment = await settleCheckoutPayment({
-        method,
+        method: payMethod,
         ...pay,
-        kind: "ambulance",
+        kind: "psychologist",
         pin: gps.pinCode,
         name: form.patientName.trim(),
         mobile: form.mobile,
-        reference: `amb-${Date.now()}`,
-        description: "MediHome ambulance",
+        reference: `psy-${Date.now()}`,
+        description: "MediHome Psychologist Consultation",
       });
 
-      const requestDetails = {
-        requestId: "MH-AMB-" + Math.floor(100000 + Math.random() * 900000),
+      const bookingDetails = {
+        bookingId: "MH-PSY-" + Math.floor(100000 + Math.random() * 900000),
         patientName: form.patientName.trim(),
         mobile: form.mobile,
         ...addr,
-        emergencyType: form.emergencyType,
-        notes: form.notes.trim(),
+        pin: gps.pin,
+        lat: gps.lat,
+        lng: gps.lng,
+        locality: gps.locality,
+        mapsUrl: gps.mapsUrl,
+        carePlan: plan.value,
+        carePlanLabel: plan.label,
+        sessionMode: plan.mode,
+        serviceLabel: "Psychologist Consultation",
+        concern: form.concern.trim(),
+        date: form.date,
+        timeSlot: form.timeSlot,
         total: pay.amountRupees,
         saleRupees: pay.saleRupees,
         couponCode: pay.couponCode,
         discountRupees: pay.discountRupees,
         highTrafficWait: queue.busy || queue.waited,
-        requestedAt: new Date().toLocaleString(),
-        requestedAtMs: Date.now(),
+        bookedAt: new Date().toLocaleString(),
+        bookedAtMs: Date.now(),
         ...payment,
       };
 
-      const trackedRequest = persistOrder(withTracking(requestDetails, "ambulance"));
-      setRequest(trackedRequest);
+      const trackedBooking = persistOrder(
+        withTracking(
+          {
+            ...bookingDetails,
+            items: [
+              {
+                name: `${bookingDetails.serviceLabel} · ${plan.label}`,
+                price: bookingDetails.total,
+              },
+            ],
+          },
+          "psychologist"
+        )
+      );
+      setBooking(trackedBooking);
     } catch (error) {
-      alert(error.message || "Ambulance request could not be completed.");
+      alert(error.message || "Payment or booking could not be completed.");
     } finally {
       setSubmitting(false);
     }
   };
 
   const startNew = () => {
-    setRequest(null);
+    setBooking(null);
     setForm({
       patientName: profile.name,
       mobile: profile.mobile,
       ...pickAddress(profile),
-      emergencyType: "emergency",
-      notes: "",
+      carePlan: "video-45",
+      date: "",
+      timeSlot: "",
+      concern: "",
     });
     setPayMethod("cod");
     setErrors({});
   };
 
-  if (request) {
+  if (booking) {
     return (
       <>
         <style>{styles}</style>
         <div className="service-page">
           <section className="service-confirm">
             <div className="success-icon">✓</div>
-            <h1>Ambulance Requested</h1>
-            <PatienceNote kind="ambulance" shown={request.highTrafficWait} />
-            <p>Share this request ID if our team calls you to confirm pickup.</p>
+            <h1>Consultation Booked</h1>
+            <PatienceNote kind="psychologist" shown={booking.highTrafficWait} />
+            <p>Your psychologist session is saved. Share this ID if care calls you.</p>
             <div className="confirm-card">
               <div className="confirm-head">
-                <h2>Request Details</h2>
-                <span>{request.requestId}</span>
+                <h2>Booking Details</h2>
+                <span>{booking.bookingId}</span>
               </div>
               <div className="confirm-row">
-                <span>Type</span>
-                <strong>
-                  {request.emergencyType === "emergency"
-                    ? "Emergency"
-                    : "Non-emergency"}
-                </strong>
+                <span>Service</span>
+                <strong>{booking.serviceLabel}</strong>
+              </div>
+              <div className="confirm-row">
+                <span>Session</span>
+                <strong>{booking.carePlanLabel}</strong>
+              </div>
+              <div className="confirm-row">
+                <span>Mode</span>
+                <strong>{booking.sessionMode === "home" ? "Home visit" : "Video"}</strong>
               </div>
               <div className="confirm-row">
                 <span>Charges</span>
-                <strong>
-                  ₹{Number(request.total || 0).toLocaleString("en-IN")}
-                </strong>
+                <strong>{formatRupee(booking.total)}</strong>
               </div>
               <div className="confirm-row">
                 <span>Payment</span>
                 <strong>
-                  {request.paymentMethod === "online"
-                    ? "Paid online"
-                    : "Cash on arrival"}
+                  {booking.paymentMethod === "online" ? "Paid online" : "Pay at session"}
                 </strong>
               </div>
               <div className="confirm-row">
                 <span>Patient</span>
-                <strong>{request.patientName}</strong>
+                <strong>{booking.patientName}</strong>
               </div>
               <div className="confirm-row">
                 <span>Mobile</span>
-                <strong>{request.mobile}</strong>
+                <strong>{booking.mobile}</strong>
               </div>
               <div className="confirm-row">
-                <span>Pickup</span>
-                <strong>{request.pickupAddress}</strong>
+                <span>Address</span>
+                <strong>{booking.address}</strong>
               </div>
-              {request.destinationName ? (
-                <div className="confirm-row">
-                  <span>Drop at</span>
-                  <strong>{request.destinationName}</strong>
-                </div>
-              ) : null}
               <div className="confirm-row">
                 <span>PIN</span>
-                <strong>{request.pinCode}</strong>
+                <strong>{booking.pinCode}</strong>
               </div>
-              <PinGpsBlock record={request} />
-              {request.notes ? (
+              <PinGpsBlock record={booking} />
+              <div className="confirm-row">
+                <span>Session date</span>
+                <strong>{booking.date}</strong>
+              </div>
+              <div className="confirm-row">
+                <span>Time slot</span>
+                <strong>{booking.timeSlot}</strong>
+              </div>
+              {booking.concern ? (
                 <div className="confirm-row">
-                  <span>Notes</span>
-                  <strong>{request.notes}</strong>
+                  <span>Note</span>
+                  <strong>{booking.concern}</strong>
                 </div>
               ) : null}
             </div>
-            <AssignedAgent record={request} />
-            <p className="confirm-note">
-              Live tracking follows the assigned ambulance toward your pickup PIN.
-            </p>
+            <AssignedAgent record={booking} />
             <div className="confirm-actions">
-              <BillButton order={request} />
+              <BillButton order={booking} />
               <button
                 type="button"
                 className="service-submit"
                 onClick={() => {
-                  window.location.hash = trackHref(request.requestId);
+                  window.location.hash = trackHref(booking.bookingId);
                 }}
               >
                 Track live
               </button>
               <button type="button" className="service-submit" onClick={startNew}>
-                Request another ambulance
+                Book another session
               </button>
             </div>
           </section>
@@ -231,20 +269,23 @@ function Ambulance() {
   return (
     <>
       <style>{styles}</style>
-      {busyWait ? <BusyWait kind="ambulance" traffic={busyWait} /> : null}
+      {busyWait ? <BusyWait kind="psychologist" traffic={busyWait} /> : null}
       <div className="service-page">
         <section className="service-hero">
           <div>
-            <span className="service-kicker">MediHome Ambulance</span>
-            <h1>Request An Ambulance</h1>
-            <p>Emergency or Planned Transfer in Delhi NCR.</p>
+            <span className="service-kicker">MediHome Psychologist</span>
+            <h1>Psychologist Consultation At Home Or On Video</h1>
+            <p>
+              Confidential sessions with a MediHome psychologist. Video from
+              anywhere in Delhi NCR, or a home visit at your PIN.
+            </p>
           </div>
         </section>
 
         <form className="service-form" onSubmit={handleSubmit}>
           <div className="field full">
             <BookingForFields
-              idPrefix="amb"
+              idPrefix="psy"
               profile={profile}
               selectedId={form.bookedFor}
               error={errors.bookedFor}
@@ -255,11 +296,11 @@ function Ambulance() {
             />
           </div>
           <div className="field">
-            <label htmlFor="amb-name">
+            <label htmlFor="psy-name">
               Patient name <span>*</span>
             </label>
             <input
-              id="amb-name"
+              id="psy-name"
               name="patientName"
               value={form.patientName}
               onChange={handleChange}
@@ -269,11 +310,11 @@ function Ambulance() {
           </div>
 
           <div className="field">
-            <label htmlFor="amb-mobile">
+            <label htmlFor="psy-mobile">
               Mobile <span>*</span>
             </label>
             <input
-              id="amb-mobile"
+              id="psy-mobile"
               name="mobile"
               type="tel"
               inputMode="numeric"
@@ -287,59 +328,99 @@ function Ambulance() {
 
           <div className="field full">
             <AddressFields
-              idPrefix="amb"
+              idPrefix="psy"
               values={form}
               errors={errors}
               onChange={handleChange}
-              pinHint="Select the Village / Sector / Mohalla attached to this PIN."
+              pinHint="City, District and State fill from this PIN."
             />
-          </div>
-
-          <div className="field">
-            <label htmlFor="amb-type">
-              Emergency type <span>*</span>
-            </label>
-            <select
-              id="amb-type"
-              name="emergencyType"
-              value={form.emergencyType}
-              onChange={handleChange}
-            >
-              <option value="emergency">Emergency</option>
-              <option value="non-emergency">Non-emergency</option>
-            </select>
-            {errors.emergencyType && <small>{errors.emergencyType}</small>}
           </div>
 
           <div className="field full">
-            <label htmlFor="amb-notes">Notes (optional)</label>
-            <textarea
-              id="amb-notes"
-              name="notes"
-              rows="2"
-              value={form.notes}
+            <span className="plan-label">
+              Select session <span>*</span>
+            </span>
+            <div className="care-plans" role="radiogroup" aria-label="Session">
+              {PLANS.map((item) => (
+                <label
+                  key={item.value}
+                  className={form.carePlan === item.value ? "is-on" : undefined}
+                >
+                  <input
+                    type="radio"
+                    name="carePlan"
+                    value={item.value}
+                    checked={form.carePlan === item.value}
+                    onChange={handleChange}
+                  />
+                  <strong>{item.label}</strong>
+                  <em>{formatRupee(item.price)}</em>
+                </label>
+              ))}
+            </div>
+            {errors.carePlan ? <small>{errors.carePlan}</small> : null}
+          </div>
+
+          <div className="field">
+            <label htmlFor="psy-date">
+              Session date <span>*</span>
+            </label>
+            <input
+              id="psy-date"
+              name="date"
+              type="date"
+              min={today}
+              value={form.date}
               onChange={handleChange}
-              placeholder="Symptoms, hospital preference, floor, etc."
+            />
+            {errors.date && <small>{errors.date}</small>}
+          </div>
+
+          <div className="field">
+            <label htmlFor="psy-slot">
+              Time slot <span>*</span>
+            </label>
+            <select
+              id="psy-slot"
+              name="timeSlot"
+              value={form.timeSlot}
+              onChange={handleChange}
+            >
+              <option value="">Select a slot</option>
+              {TIME_SLOTS.map((slot) => (
+                <option key={slot} value={slot}>
+                  {slot}
+                </option>
+              ))}
+            </select>
+            {errors.timeSlot && <small>{errors.timeSlot}</small>}
+          </div>
+
+          <div className="field full">
+            <label htmlFor="psy-concern">What would you like help with?</label>
+            <textarea
+              id="psy-concern"
+              name="concern"
+              rows="2"
+              value={form.concern}
+              onChange={handleChange}
+              placeholder="Optional. Kept private with your psychologist."
             />
           </div>
 
-          {form.emergencyType === "emergency" ? (
-            <p className="pin-gps-hint">
-              Emergency rides are cash on arrival.
-            </p>
-          ) : (
-            <PaymentBlock
-              kind="ambulance"
-              amount={ambFee}
-              pin={form.pinCode}
-              method={payMethod}
-              onMethodChange={setPayMethod}
-              onQuoteChange={setPayQuote}
-            />
-          )}
+          <PaymentBlock
+            kind="psychologist"
+            amount={plan.price}
+            pin={form.pinCode}
+            method={payMethod}
+            onMethodChange={setPayMethod}
+            onQuoteChange={setPayQuote}
+          />
 
           <button type="submit" className="service-submit" disabled={submitting}>
-            {submitting ? "Connecting PIN to map…" : "Submit ambulance request"}
+            {submitting
+              ? "Holding your place…"
+              : `Confirm session · ${formatRupee(plan.price)}`}
           </button>
         </form>
       </div>
@@ -349,7 +430,7 @@ function Ambulance() {
 
 const styles = `
 .service-page{padding:16px 20px 24px 14px;box-sizing:border-box;color:#143246}
-.service-hero{max-width:760px;margin:0 auto 12px;padding:14px 16px;border-radius:12px;background:linear-gradient(135deg,#eaf7ff,#f4fbf8)}
+.service-hero{max-width:760px;margin:0 auto 12px;padding:14px 16px;border-radius:12px;background:linear-gradient(135deg,#f3eefc,#f4fbf8)}
 .service-kicker{display:block;margin-bottom:4px;font-size:11px;font-weight:800;letter-spacing:.6px;color:#1a6b7a}
 .service-hero h1{margin:0 0 4px;font-size:22px}
 .service-hero p{margin:0;color:#5d7180;font-size:13px;line-height:1.4}
@@ -358,6 +439,14 @@ const styles = `
 .service-form .field.full{grid-column:1/-1}
 .service-form label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .service-form label span{color:#d84b4b}
+.plan-label{display:block;margin-bottom:8px;font-size:12px;font-weight:700;color:#34546b}
+.plan-label span{color:#d84b4b}
+.care-plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.care-plans label{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:12px 8px;border:1px solid #d7e2e9;border-radius:10px;background:#fff;cursor:pointer;text-align:center;min-height:64px}
+.care-plans label.is-on{border-color:#1a6b7a;background:#e8f4f6}
+.care-plans input{position:absolute;opacity:0;pointer-events:none}
+.care-plans strong{font-size:11px;font-weight:700;color:#5d7180}
+.care-plans em{font-style:normal;font-size:18px;font-weight:800;color:#1a6b7a;line-height:1.2}
 .service-form input,.service-form select,.service-form textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;min-height:38px;background:#fff}
 .service-form textarea{min-height:56px;resize:vertical}
 .service-form input:focus,.service-form select:focus,.service-form textarea:focus{border-color:#1a6b7a}
@@ -378,8 +467,7 @@ const styles = `
 .confirm-row span{color:#5d7180}
 .confirm-row strong{text-align:right}
 .confirm-row:last-child{border-bottom:none}
-.confirm-note{margin:0 0 12px;font-size:13px;color:#7c7059}
-@media (max-width:800px){.service-page{padding:14px}.service-form{grid-template-columns:1fr}}
+@media (max-width:800px){.service-page{padding:14px}.service-form{grid-template-columns:1fr}.care-plans{grid-template-columns:1fr 1fr}}
 `;
 
-export default Ambulance;
+export default Psychologist;

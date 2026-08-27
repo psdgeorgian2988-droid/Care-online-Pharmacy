@@ -9,12 +9,18 @@ import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
 import AddressFields from "./AddressFields";
+import BookingForFields from "./BookingForFields";
 import {
   applyResolvedPin,
   pickAddress,
   readUserProfile,
   validateAddress,
 } from "./addressFields";
+import {
+  bookingForPatch,
+  initialBookingFor,
+  validateBookingFor,
+} from "./bookingFor";
 
 const STORAGE_KEY = "mediHomeStepDownBookings";
 const AMBULANCE_STORAGE_KEY = "mediHomeAmbulanceRequests";
@@ -153,6 +159,7 @@ function StepDownCare() {
     patientName: profile.name,
     mobile: profile.mobile,
     ...pickAddress(profile),
+    ...initialBookingFor(profile),
     serviceType: "post-icu",
     date: "",
     timeSlot: "",
@@ -194,6 +201,7 @@ function StepDownCare() {
       next.mobile = "Enter a valid 10-digit mobile number.";
     }
     Object.assign(next, validateAddress(form));
+    Object.assign(next, validateBookingFor(form, profile));
     if (!form.serviceType) next.serviceType = "Select a care type.";
     if (!form.date) next.date = "Please select a date.";
     if (!form.timeSlot) next.timeSlot = "Please select a time slot.";
@@ -598,6 +606,18 @@ function StepDownCare() {
               </div>
 
               <div className="sd-form-grid">
+                <div className="lab-field" style={{ gridColumn: "1 / -1" }}>
+                  <BookingForFields
+                    idPrefix="sd"
+                    profile={profile}
+                    selectedId={form.bookedFor}
+                    error={errors.bookedFor}
+                    onSelect={(option) => {
+                      setForm((prev) => ({ ...prev, ...bookingForPatch(option) }));
+                      setErrors((prev) => ({ ...prev, bookedFor: "" }));
+                    }}
+                  />
+                </div>
                 <div className="lab-field">
                   <label htmlFor="sd-name">
                     Patient name <em>*</em>

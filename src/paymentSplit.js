@@ -11,6 +11,8 @@ export const SPLIT_PLATFORM_PERCENT = {
   lab: 15,
   radiology: 15,
   homecare: 20,
+  vaccination: 20,
+  psychologist: 20,
   stepdown: 10,
   ambulance: 15,
 };
@@ -20,6 +22,8 @@ export const PARTNER_SHARE_LABEL = {
   lab: "Lab partner",
   radiology: "Imaging centre",
   homecare: "Home Care professional",
+  vaccination: "Vaccination nurse",
+  psychologist: "Psychologist",
   stepdown: "Step-down centre",
   ambulance: "Ambulance operator",
 };

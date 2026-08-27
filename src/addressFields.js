@@ -1,3 +1,9 @@
+import {
+  emptyPerson,
+  pickFamilyMembers,
+  pickPerson,
+} from "./personFields.js";
+
 export const EMPTY_ADDRESS = {
   houseNo: "",
   society: "",
@@ -202,14 +208,16 @@ export function readUserProfile() {
   try {
     const parsed = JSON.parse(localStorage.getItem("mediHomeUser") || "null");
     if (!parsed || typeof parsed !== "object") {
-      return { name: "", mobile: "", ...emptyAddress() };
+      return { name: "", mobile: "", ...emptyPerson(), familyMembers: [], ...emptyAddress() };
     }
     return {
       name: String(parsed.name || parsed.fullName || "").trim(),
       mobile: String(parsed.mobile || parsed.mobileNumber || "").trim(),
+      ...pickPerson(parsed),
+      familyMembers: pickFamilyMembers(parsed),
       ...addressFromUnknown(parsed),
     };
   } catch {
-    return { name: "", mobile: "", ...emptyAddress() };
+    return { name: "", mobile: "", ...emptyPerson(), familyMembers: [], ...emptyAddress() };
   }
 }

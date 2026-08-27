@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { pickFamilyMembers } from "./personFields.js";
 
 const STORAGE_KEY = "mediHomePointsWallet";
 export const POINTS_EVENT = "medihome-points";
@@ -7,7 +8,17 @@ export const POINT_VALUES = {
   webinar: 10,
   quiz: 20,
   referral: 50,
+  providerReferral: 100,
+  familyMember: 10,
 };
+
+export const PROVIDER_SERVICES = [
+  { value: "nurse", label: "Nurse" },
+  { value: "caregiver", label: "Home Care / Caregiver" },
+  { value: "physiotherapy", label: "Physiotherapist" },
+  { value: "ambulance", label: "Ambulance" },
+  { value: "psychologist", label: "Psychologist Consultant" },
+];
 
 function emptyWallet() {
   return {
@@ -16,6 +27,7 @@ function emptyWallet() {
     ledger: [],
     earned: {},
     referrals: [],
+    providerReferrals: [],
   };
 }
 
@@ -29,6 +41,9 @@ export function loadWallet() {
       earned: parsed.earned && typeof parsed.earned === "object" ? parsed.earned : {},
       ledger: Array.isArray(parsed.ledger) ? parsed.ledger : [],
       referrals: Array.isArray(parsed.referrals) ? parsed.referrals : [],
+      providerReferrals: Array.isArray(parsed.providerReferrals)
+        ? parsed.providerReferrals
+        : [],
       balance: Number(parsed.balance) || 0,
       lifetime: Number(parsed.lifetime) || 0,
     };
@@ -85,6 +100,26 @@ export function awardOnce(key, amount, label) {
   return { ok: true, already: false, awarded: amount, wallet };
 }
 
+export function awardFamilyMemberPoints(members = []) {
+  const complete = pickFamilyMembers({ familyMembers: members }).filter(
+    (row) => row.id && row.name && row.gender && row.age
+  );
+  let awarded = 0;
+  let count = 0;
+  for (const member of complete) {
+    const result = awardOnce(
+      `family:${member.id}`,
+      POINT_VALUES.familyMember,
+      `Family member added: ${member.name}`
+    );
+    if (!result.already && result.awarded) {
+      awarded += result.awarded;
+      count += 1;
+    }
+  }
+  return { awarded, count, wallet: loadWallet() };
+}
+
 export function spendForReferral({ name, mobile, relation }) {
   const amount = POINT_VALUES.referral;
   const wallet = loadWallet();
@@ -115,6 +150,58 @@ export function spendForReferral({ name, mobile, relation }) {
   });
   persist(wallet);
   return { ok: true, referral, wallet };
+}
+
+export function providerServiceLabel(kind) {
+  return PROVIDER_SERVICES.find((row) => row.value === kind)?.label || "Service provider";
+}
+
+export function referServiceProvider({ name, mobile, serviceKind, city = "", pinCode = "" }) {
+  const kind = String(serviceKind || "").trim();
+  const allowed = PROVIDER_SERVICES.some((row) => row.value === kind);
+  if (!allowed) return { ok: false, reason: "kind" };
+  const wallet = loadWallet();
+  const key = `provider:${kind}:${mobile}`;
+  const already = (wallet.providerReferrals || []).find(
+    (row) => row.mobile === mobile && row.serviceKind === kind
+  );
+  if (already || wallet.earned[key]) {
+    return { ok: false, reason: "duplicate", referral: already || null, wallet };
+  }
+  const now = new Date();
+  const amount = POINT_VALUES.providerReferral;
+  const referral = {
+    id: "MH-REF-" + Math.floor(1000 + Math.random() * 9000),
+    name,
+    mobile,
+    serviceKind: kind,
+    serviceLabel: providerServiceLabel(kind),
+    city: String(city || "").trim(),
+    pinCode: String(pinCode || "").replace(/\D/g, "").slice(0, 6),
+    pointsAwarded: amount,
+    at: now.toLocaleString(),
+    atMs: now.getTime(),
+  };
+  wallet.earned[key] = true;
+  wallet.balance += amount;
+  wallet.lifetime += amount;
+  wallet.providerReferrals.unshift(referral);
+  wallet.ledger.unshift({
+    id: "MH-PT-" + now.getTime(),
+    type: "earn",
+    amount,
+    label: `Provider referral: ${name} (${referral.serviceLabel})`,
+    key,
+    at: referral.at,
+    atMs: referral.atMs,
+  });
+  persist(wallet);
+  return { ok: true, referral, wallet };
+}
+
+export function providerReferralShareText(referral, fromName) {
+  const who = fromName ? `${fromName} (MediHome customer)` : "a MediHome customer";
+  return `Hi ${referral.name}, ${who} referred you to MediHome as a ${referral.serviceLabel}. Join as a partner to take Home Care, ambulance, or psychologist jobs in Delhi NCR. Quote referral ${referral.id} when you call +91 72920 94000.`;
 }
 
 export function referralShareText(referral, fromName) {

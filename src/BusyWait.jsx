@@ -119,6 +119,10 @@ function serviceLabel(kind) {
       return "Radiology & Imaging";
     case "homecare":
       return "Home Care";
+    case "vaccination":
+      return "Vaccination";
+    case "psychologist":
+      return "Psychologist Consultation";
     case "stepdown":
       return "Step-Down Care";
     case "ambulance":

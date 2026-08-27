@@ -381,6 +381,9 @@ function Admin() {
             </p>
           </div>
           <div className="admin-hero-actions">
+            <a className="admin-scan-link" href="#scan?step=pack">
+              Scan Packing
+            </a>
             <button type="button" onClick={loadDesk} disabled={loading}>
               {loading ? "Refreshing…" : "Refresh"}
             </button>
@@ -675,10 +678,8 @@ function Admin() {
                 onChange={(event) => setReportKind(event.target.value)}
               >
                 <option value="all">All Services</option>
-                {FEATURE_CATALOG.filter((row) =>
-                  ["medicine", "lab", "radiology", "homecare", "stepdown", "ambulance"].includes(
-                    row.key
-                  )
+                {FEATURE_CATALOG.filter(
+                  (row) => !["reports", "education"].includes(row.key)
                 ).map((row) => (
                   <option key={row.key} value={row.key}>
                     {row.label}
@@ -779,6 +780,8 @@ function Admin() {
             ["lab", "Lab"],
             ["radiology", "Radiology"],
             ["homecare", "Home Care"],
+            ["vaccination", "Vaccination"],
+            ["psychologist", "Psychologist"],
             ["stepdown", "Step-Down"],
             ["ambulance", "Ambulance"],
           ].map(([value, label]) => (
@@ -940,6 +943,8 @@ function Admin() {
                       </td>
                       <td>
                         <a href={trackHref(id)}>Live Track</a>
+                        {" · "}
+                        <a href={`#scan?id=${encodeURIComponent(id)}&step=pack`}>Scan Packing</a>
                       </td>
                     </tr>
                   );
@@ -958,7 +963,7 @@ const styles = `
 .admin-tabs{margin:0 auto 12px;max-width:1240px}
 .admin-hero{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
 .admin-hero-actions{display:flex;flex-wrap:wrap;gap:6px}
-.admin-hero-actions button,.admin-report-controls button{border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer}
+.admin-hero-actions button,.admin-report-controls button,.admin-scan-link{border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
 .admin-login{max-width:420px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}

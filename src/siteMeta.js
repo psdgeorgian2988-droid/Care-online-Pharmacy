@@ -2,7 +2,7 @@ export const SITE = {
   name: "MediHome",
   tagline: "Your complete health partner at your doorstep",
   description:
-    "Order generic medicines, book lab tests and radiology, Home Care, step-down recovery, and ambulance in Delhi NCR. Cash on delivery and live PIN tracking.",
+    "Order generic medicines, book lab tests and radiology, Home Care, psychologist consultation, step-down recovery, and ambulance in Delhi NCR. Cash on delivery and live PIN tracking.",
   url: "https://medihome.in",
   locale: "en_IN",
   phoneDisplay: "+91 72920 94000",
@@ -75,6 +75,16 @@ const PAGE_META = {
     description:
       "Book nurse visits, caregiver duty, and physiotherapy at home in Delhi NCR.",
   },
+  vaccination: {
+    title: "Vaccination Schedule, Record And Reminders | MediHome",
+    description:
+      "Government of India UIP schedule for children and older persons, with a saved record and due-date reminders.",
+  },
+  psychologist: {
+    title: "Psychologist Consultation | MediHome",
+    description:
+      "Book a confidential psychologist session on video or as a home visit in Delhi NCR.",
+  },
   stepdown: {
     title: "Step-Down Care Centres | MediHome",
     description:
@@ -95,11 +105,16 @@ const PAGE_META = {
   },
   myorders: {
     title: "My Orders | MediHome",
-    description: "Track medicines, diagnostics, Home Care, and ambulance bookings.",
+    description: "Track medicines, diagnostics, Home Care, psychologist, and ambulance bookings.",
   },
   track: {
     title: "Track Live | MediHome",
     description: "Follow your MediHome order or visit on the live PIN map.",
+  },
+  scan: {
+    title: "Scan Order QR | MediHome",
+    description:
+      "Scan a MediHome order QR to pick up, receive, or open live tracking.",
   },
   education: {
     title: "Health Education | MediHome",
@@ -118,7 +133,7 @@ const PAGE_META = {
   },
   feedback: {
     title: "Share Feedback | MediHome",
-    description: "Rate medicines, diagnostics, Home Care, or ambulance with MediHome.",
+    description: "Rate medicines, diagnostics, Home Care, psychologist, or ambulance with MediHome.",
   },
   reviews: {
     title: "Patient Reviews | MediHome",
@@ -130,7 +145,7 @@ const PAGE_META = {
   },
   partner: {
     title: "Partner Desk | MediHome",
-    description: "Assigned jobs for MediHome delivery, lab, Home Care, and ambulance partners.",
+    description: "Assigned jobs for MediHome delivery, lab, Home Care, psychologist, and ambulance partners.",
   },
 };
 

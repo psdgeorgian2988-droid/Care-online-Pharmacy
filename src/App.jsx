@@ -5,6 +5,7 @@ import LabTests from "./LabTests";
 import Profile from "./Profile";
 import MyOrders from "./MyOrders";
 import HomeCare from "./HomeCare";
+import Vaccination from "./Vaccination";
 import Psychologist from "./Psychologist";
 import StepDownCare from "./StepDownCare";
 import Ambulance from "./Ambulance";
@@ -26,12 +27,22 @@ import { reviewStats } from "./reviewStore";
 import CareChat from "./CareChat";
 import { CARE_WHATSAPP } from "./careChat";
 import AddressFields from "./AddressFields";
+import PersonFields from "./PersonFields";
+import FamilyMembersFields from "./FamilyMembersFields";
 import {
   emptyAddress,
   readUserProfile,
   validateAddress,
   withFormattedAddress,
 } from "./addressFields";
+import {
+  emptyPerson,
+  pickFamilyMembers,
+  pickPerson,
+  validateFamilyMembers,
+  validatePerson,
+} from "./personFields";
+import { awardFamilyMemberPoints } from "./pointsStore";
 import { useFeatures } from "./featureFlags";
 import { pausedServiceTitle, routeEnabled } from "./salesReport";
 import ComingSoon from "./ComingSoon";
@@ -41,6 +52,7 @@ const NAV_LINKS = [
   { href: "#medicine-search", label: "Medicines" },
   { href: "#labs", label: "Lab Tests" },
   { href: "#homecare", label: "Home Care" },
+  { href: "#vaccination", label: "Vaccination" },
   { href: "#psychologist", label: "Psychologist" },
   { href: "#stepdown", label: "Step-Down" },
   { href: "#ambulance", label: "Ambulance" },
@@ -144,6 +156,8 @@ function HomeAuthCard() {
   const [register, setRegister] = useState({
     name: "",
     mobile: "",
+    ...emptyPerson(),
+    familyMembers: [],
     ...emptyAddress(),
   });
   const [errors, setErrors] = useState({});
@@ -159,8 +173,16 @@ function HomeAuthCard() {
 
   const handleRegisterChange = (event) => {
     const { name, value } = event.target;
+    if (name === "familyMembers") {
+      setRegister((prev) => ({ ...prev, familyMembers: value }));
+      setErrors((prev) => ({ ...prev, familyMembers: "" }));
+      setStatus({ type: "", text: "" });
+      return;
+    }
     const nextValue =
-      name === "mobile" || name === "pinCode" ? digitsOnly(value) : value;
+      name === "mobile" || name === "pinCode" || name === "age"
+        ? digitsOnly(String(value || ""))
+        : value;
     setRegister((prev) => ({ ...prev, [name]: nextValue }));
     setErrors((prev) => ({ ...prev, [name]: "" }));
     setStatus({ type: "", text: "" });
@@ -215,19 +237,26 @@ function HomeAuthCard() {
     if (!/^[6-9]\d{9}$/.test(register.mobile)) {
       nextErrors.mobile = "Enter a valid 10-digit mobile number.";
     }
+    Object.assign(nextErrors, validatePerson(register));
     Object.assign(nextErrors, validateAddress(register));
+    Object.assign(nextErrors, validateFamilyMembers(register));
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
     const profile = {
       name: register.name.trim(),
       mobile: register.mobile.trim(),
+      ...pickPerson(register),
+      familyMembers: pickFamilyMembers(register),
       ...withFormattedAddress(register),
     };
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    const points = awardFamilyMemberPoints(profile.familyMembers);
     setStatus({
       type: "success",
-      text: "Account saved. Profile can now use these details.",
+      text: points.count
+        ? `Account saved. +${points.awarded} credit points for ${points.count} family member${points.count === 1 ? "" : "s"}.`
+        : "Account saved. Profile can now use these details.",
     });
   };
 
@@ -305,12 +334,24 @@ function HomeAuthCard() {
           {errors.mobile && (
             <small className="home-auth-error">{errors.mobile}</small>
           )}
+          <PersonFields
+            idPrefix="home-register"
+            values={register}
+            errors={errors}
+            onChange={handleRegisterChange}
+          />
           <AddressFields
             idPrefix="home-register"
             values={register}
             errors={errors}
             onChange={handleRegisterChange}
             pinHint="Select the Village / Sector / Mohalla attached to this PIN. It is also used to sign in."
+          />
+          <FamilyMembersFields
+            idPrefix="home-register-family"
+            members={register.familyMembers}
+            errors={errors}
+            onChange={handleRegisterChange}
           />
           <button type="submit">Create account</button>
         </form>
@@ -459,6 +500,13 @@ function HomePage() {
               <span>Book a visit</span>
             </a>
           ) : null}
+          {features.vaccination !== false ? (
+            <a className="home-service-card" href="#vaccination">
+              <h2>Vaccination</h2>
+              <p>Government of India schedule, record and due-date reminders.</p>
+              <span>View schedule</span>
+            </a>
+          ) : null}
           {features.psychologist !== false ? (
             <a className="home-service-card" href="#psychologist">
               <h2>Psychologist Consultation</h2>
@@ -545,6 +593,8 @@ function App() {
         return <LabTests />;
       case "#homecare":
         return <HomeCare />;
+      case "#vaccination":
+        return <Vaccination />;
       case "#psychologist":
         return <Psychologist />;
       case "#stepdown":
