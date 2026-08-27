@@ -55,7 +55,7 @@ export function replyTo(rawText) {
     };
   }
 
-  if (/\b(medicine|tablet|syrup|strip|dolo|crocin|order medicine)\b/.test(q)) {
+  if (/\b(medicines?|tablet|syrup|strip|dolo|crocin|order medicine)\b/.test(q)) {
     return {
       text: "Search by brand, salt, or a strip photo. We deliver across Delhi NCR with cash on delivery.",
       needsStaff: false,
