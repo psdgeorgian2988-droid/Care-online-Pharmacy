@@ -5335,12 +5335,12 @@ a.order-details-btn {
   }
 }
 
-/* Left panel: light-blue boxed menu, separate from the main page */
+/* Left panel: deep teal boxed menu against a white main page */
 .sidebar {
-  background: #e8f4fb !important;
+  background: #165564 !important;
   padding: 10px 0 8px 0 !important;
   margin: 8px 8px 8px 8px !important;
-  border: 3px solid #143246 !important;
+  border: 3px solid #0c323b !important;
   border-radius: 4px !important;
   overflow: hidden !important;
   box-shadow: none !important;
@@ -5362,7 +5362,7 @@ a.order-details-btn {
   font-size: 15px !important;
   font-weight: 700 !important;
   letter-spacing: 0.02em;
-  color: #143246 !important;
+  color: #f4fbfc !important;
 }
 
 .sidebar-links {
@@ -5412,7 +5412,7 @@ a.order-details-btn {
   border: none !important;
   border-radius: 0 !important;
   background: transparent !important;
-  color: #143246 !important;
+  color: #f4fbfc !important;
   font-size: 13px !important;
   font-weight: 700 !important;
   letter-spacing: 0.01em;
@@ -5429,8 +5429,8 @@ a.order-details-btn {
 .sidebar-account a.active,
 .sidebar-bottom a.active,
 .sidebar-bottom button.active {
-  background: #cfe6f4 !important;
-  color: #0f3a4a !important;
+  background: #0f3f4a !important;
+  color: #ffffff !important;
   font-weight: 700 !important;
   margin-right: 0 !important;
   border: none !important;
@@ -5442,8 +5442,8 @@ a.order-details-btn {
 .sidebar-bottom a:hover,
 .sidebar-bottom button:hover {
   border: none !important;
-  background: #d9edf7 !important;
-  color: #0f3a4a !important;
+  background: #1c6d7c !important;
+  color: #ffffff !important;
   transform: none !important;
   filter: none !important;
   opacity: 1 !important;
@@ -5454,8 +5454,8 @@ a.order-details-btn {
 .sidebar-account a.active:hover,
 .sidebar-bottom a.active:hover,
 .sidebar-bottom button.active:hover {
-  background: #cfe6f4 !important;
-  color: #0f3a4a !important;
+  background: #0f3f4a !important;
+  color: #ffffff !important;
   box-shadow: none !important;
 }
 
@@ -5463,7 +5463,7 @@ a.order-details-btn {
 .sidebar-account a:focus-visible,
 .sidebar-bottom a:focus-visible,
 .sidebar-bottom button:focus-visible {
-  outline: 1px solid #7eb8d4;
+  outline: 1px solid #9ed4dc;
   outline-offset: -1px;
 }
 
@@ -5480,7 +5480,7 @@ a.order-details-btn {
 .nav-care-no {
   font-size: 11px;
   font-weight: 700;
-  color: #1a6b7a;
+  color: #c5e8ee;
   letter-spacing: 0.01em;
 }
 
