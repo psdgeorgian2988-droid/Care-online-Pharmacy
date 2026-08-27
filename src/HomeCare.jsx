@@ -7,6 +7,7 @@ import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
+import { BillButton } from "./OrderBill";
 
 const LEGACY_STORAGE_KEY = "mediHomeHomeCareBookings";
 const SERVICE_TYPES = [
@@ -328,6 +329,7 @@ function HomeCare() {
             </div>
             <AssignedAgent record={booking} />
             <div className="confirm-actions">
+              <BillButton order={booking} />
               <button
                 type="button"
                 className="service-submit"
@@ -339,15 +341,6 @@ function HomeCare() {
               </button>
               <button type="button" className="service-submit" onClick={startNew}>
                 Book another visit
-              </button>
-              <button
-                type="button"
-                className="service-submit"
-                onClick={() => {
-                  window.location.hash = "#feedback";
-                }}
-              >
-                Share feedback
               </button>
             </div>
           </section>

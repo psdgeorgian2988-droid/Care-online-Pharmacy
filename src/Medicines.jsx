@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
+import { BillButton } from "./OrderBill";
 import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import { buildIndiaCombos } from "./indiaMedicineCombos";
@@ -3664,9 +3665,20 @@ function Medicines({ initialSearch = "" }) {
               {confirmedOrder.outletArea ? ` · ${confirmedOrder.outletArea}` : ""}
             </p>
           ) : null}
+          {confirmedOrder.outletGstin ? (
+            <p>
+              <strong>Outlet GSTIN:</strong> {confirmedOrder.outletGstin}
+            </p>
+          ) : null}
+          {confirmedOrder.outletDlNo ? (
+            <p>
+              <strong>Outlet DL No.:</strong> {confirmedOrder.outletDlNo}
+            </p>
+          ) : null}
           <PinGpsBlock record={confirmedOrder} />
           <AssignedAgent record={confirmedOrder} />
           <div className="cart-actions">
+            <BillButton order={confirmedOrder} className="cart-btn cart-btn-primary" />
             <button
               type="button"
               className="cart-btn cart-btn-secondary"
@@ -3692,15 +3704,6 @@ function Medicines({ initialSearch = "" }) {
               }}
             >
               View my orders
-            </button>
-            <button
-              type="button"
-              className="cart-btn cart-btn-secondary"
-              onClick={() => {
-                window.location.hash = "#feedback";
-              }}
-            >
-              Share feedback
             </button>
           </div>
         </div>

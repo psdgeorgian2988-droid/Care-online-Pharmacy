@@ -7,6 +7,7 @@ import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
+import { BillButton } from "./OrderBill";
 
 const STORAGE_KEY = "mediHomeStepDownBookings";
 const AMBULANCE_STORAGE_KEY = "mediHomeAmbulanceRequests";
@@ -425,6 +426,7 @@ function StepDownCare() {
             </div>
             <AssignedAgent record={booking} />
             <div className="confirm-actions">
+              <BillButton order={booking} />
               <button
                 type="button"
                 className="service-submit"
@@ -447,15 +449,6 @@ function StepDownCare() {
               ) : null}
               <button type="button" className="service-submit" onClick={startNew}>
                 Find another centre
-              </button>
-              <button
-                type="button"
-                className="service-submit"
-                onClick={() => {
-                  window.location.hash = "#feedback";
-                }}
-              >
-                Share feedback
               </button>
             </div>
           </section>

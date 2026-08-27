@@ -5,6 +5,7 @@ import LabTests from "./LabTests";
 import Profile from "./Profile";
 import MyOrders from "./MyOrders";
 import HomeCare from "./HomeCare";
+import Psychologist from "./Psychologist";
 import StepDownCare from "./StepDownCare";
 import Ambulance from "./Ambulance";
 import Reports from "./Reports";
@@ -16,6 +17,7 @@ import Feedback from "./Feedback";
 import Reviews from "./Reviews";
 import Admin from "./Admin";
 import Partner from "./Partner";
+import ScanPage from "./ScanPage";
 import Seo from "./Seo";
 import SocialLinks from "./SocialLinks";
 import Social from "./Social";
@@ -32,17 +34,17 @@ const NAV_LINKS = [
   { href: "#medicine-search", label: "Search Medicine", icon: "🔍" },
   { href: "#labs", label: "Lab Tests", icon: "🧪" },
   { href: "#homecare", label: "Home Care", icon: "🩺" },
+  { href: "#psychologist", label: "Psychologist", icon: "🧠" },
   { href: "#stepdown", label: "Step-Down Care", icon: "🏥" },
   { href: "#ambulance", label: "Ambulance", icon: "🚑" },
   { href: "#reports", label: "Reports", icon: "📄" },
   { href: "#education", label: "Health Education", icon: "📚" },
   { href: "#myorders", label: "My Orders", icon: "📦" },
+  { href: "#scan?step=deliver", label: "Scan Delivery", icon: "▦" },
   { href: "#profile", label: "Profile", icon: "👤" },
 ];
 
 const BOTTOM_LINKS = [
-  { href: "#reviews", label: "Reviews", icon: "⭐" },
-  { href: "#feedback", label: "Feedback", icon: "📝" },
   { href: "#about", label: "About Us", icon: "ℹ️" },
   { href: "#contact", label: "Contact Us", icon: "📞" },
   { href: "#social", label: "Social Media", icon: "📣" },
@@ -51,6 +53,8 @@ const BOTTOM_LINKS = [
 const OPS_LINKS = [
   { href: "#admin", label: "Staff Orders" },
   { href: "#partner", label: "Partner Desk" },
+  { href: "#scan?step=pack", label: "Scan Packing" },
+  { href: "#scan?step=pickup", label: "Scan Pickup" },
 ];
 
 const HOME_WHATSAPP_URL = `https://wa.me/${CARE_WHATSAPP}?text=${encodeURIComponent(
@@ -86,19 +90,32 @@ function parseAppHash(rawHash) {
   const query = queryIndex === -1 ? "" : value.slice(queryIndex + 1);
   let q = "";
   let id = "";
+  let step = "";
   try {
     const params = new URLSearchParams(query);
     q = (params.get("q") || "").trim();
     id = (params.get("id") || "").trim();
+    step = (params.get("step") || "").trim();
   } catch {
     q = "";
     id = "";
+    step = "";
   }
   const route = !path || path === "home" ? "#home" : `#${path}`;
-  return { route, q, id };
+  return { route, q, id, step };
 }
 
-function goToHash(nextHash) {
+function hashLinkActive(linkHref, route, scanStep) {
+  if (route === linkHref) return true;
+  if (linkHref === "#myorders" && route === "#track") return true;
+  if (linkHref.startsWith("#scan") && route === "#scan") {
+    if (linkHref.includes("step=pack")) return scanStep === "pack";
+    if (linkHref.includes("step=pickup")) return scanStep === "pickup";
+    if (linkHref.includes("step=deliver")) return scanStep === "deliver" || !scanStep;
+    return true;
+  }
+  return false;
+}
   const hash = nextHash.startsWith("#") ? nextHash : `#${nextHash}`;
   const url = `${window.location.pathname}${window.location.search}${hash}`;
   window.history.pushState(null, "", url);
@@ -359,7 +376,6 @@ function HomeReviewsTeaser() {
       </p>
       <div>
         <a href="#reviews">Read reviews</a>
-        <a href="#feedback">Share feedback</a>
       </div>
     </section>
   );
@@ -467,6 +483,13 @@ function HomePage() {
               <span>Book a visit</span>
             </a>
           ) : null}
+          {features.psychologist !== false ? (
+            <a className="home-service-card" href="#psychologist">
+              <h2>Psychologist Consultation</h2>
+              <p>Video or home visit sessions.</p>
+              <span>Book a session</span>
+            </a>
+          ) : null}
           {features.stepdown !== false ? (
             <a className="home-service-card" href="#stepdown">
               <h2>Step-Down Care</h2>
@@ -481,6 +504,11 @@ function HomePage() {
               <span>Request now</span>
             </a>
           ) : null}
+          <a className="home-service-card" href="#scan?step=deliver">
+            <h2>Scan Delivery</h2>
+            <p>Scan the order QR when medicines or a visit arrive.</p>
+            <span>Open scanner</span>
+          </a>
           {features.reports !== false ? (
             <a className="home-service-card" href="#reports">
               <h2>Reports</h2>
@@ -526,7 +554,7 @@ function App() {
     };
   }, []);
 
-  const { route, q: medicineQuery, id: trackId } = parseAppHash(hash);
+  const { route, q: medicineQuery, id: trackId, step: scanStep } = parseAppHash(hash);
   const isOps = route === "#admin" || route === "#partner";
   const features = useFeatures();
 
@@ -541,6 +569,8 @@ function App() {
         return <LabTests />;
       case "#homecare":
         return <HomeCare />;
+      case "#psychologist":
+        return <Psychologist />;
       case "#stepdown":
         return <StepDownCare />;
       case "#ambulance":
@@ -551,6 +581,8 @@ function App() {
         return <Profile />;
       case "#myorders":
         return <MyOrders />;
+      case "#scan":
+        return <ScanPage scanId={trackId} scanStep={scanStep} />;
       case "#track":
         return <TrackPage trackId={trackId} />;
       case "#education":
@@ -588,7 +620,7 @@ function App() {
               <a
                 key={link.href}
                 href={link.href}
-                className={route === link.href ? "active" : undefined}
+                className={hashLinkActive(link.href, route, scanStep) ? "active" : undefined}
               >
                 {link.label}
               </a>
@@ -634,9 +666,7 @@ function App() {
               key={link.href}
               href={link.href}
               className={
-                route === link.href || (link.href === "#myorders" && route === "#track")
-                  ? "active"
-                  : undefined
+                hashLinkActive(link.href, route, scanStep) ? "active" : undefined
               }
             >
               <span className="nav-icon" aria-hidden="true">

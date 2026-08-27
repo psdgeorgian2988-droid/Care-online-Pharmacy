@@ -63,8 +63,9 @@ function Contact() {
             <span className="service-kicker">Support</span>
             <h1>Contact MediHome</h1>
             <p>
-              Help with orders, lab bookings, Home Care, and ambulance
-              requests. Hours: 8:00 AM – 10:00 PM IST, all days.
+              Help with orders, lab bookings, Home Care, psychologist
+              consultation, and ambulance requests. Hours: 8:00 AM – 10:00 PM
+              IST, all days.
             </p>
           </div>
         </section>
@@ -157,7 +158,7 @@ function Contact() {
             </button>
           </form>
           <p className="info-footnote">
-            Want to rate a visit or delivery? Use the{" "}
+            After an order or visit is complete, use the{" "}
             <a href="#feedback">feedback form</a> or read{" "}
             <a href="#reviews">reviews</a>.
           </p>

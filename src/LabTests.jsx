@@ -7,6 +7,8 @@ import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
+import { BillButton } from "./OrderBill";
+import { DIAGNOSTIC_LABS, IMAGING_CENTRES } from "./diagnosticPartners";
 
 const PREP_LABEL = {
   fasting: "Fasting required",
@@ -72,95 +74,8 @@ function withPrep(partners) {
   }));
 }
 
-const LABS = withPrep([
-  {
-    id: "metropolis",
-    name: "Metropolis",
-    tests: [
-      { id: "cbc", name: "Complete Blood Count (CBC)", price: 499 },
-      { id: "hba1c", name: "HbA1c - Diabetes Test", price: 599 },
-      { id: "lipid", name: "Lipid Profile", price: 699 },
-      { id: "lft", name: "Liver Function Test (LFT)", price: 799 },
-      { id: "kft", name: "Kidney Function Test (KFT)", price: 799 },
-      { id: "fbs", name: "Fasting Blood Sugar", price: 199 },
-      { id: "stool-occult", name: "Stool Occult Blood", price: 349 },
-    ],
-  },
-  {
-    id: "max-healthcare",
-    name: "Max Healthcare",
-    tests: [
-      { id: "cbc", name: "Complete Blood Count (CBC)", price: 449 },
-      { id: "hba1c", name: "HbA1c - Diabetes Test", price: 549 },
-      { id: "thyroid", name: "Thyroid Profile", price: 699 },
-      { id: "vitd", name: "Vitamin D Test", price: 799 },
-      { id: "lipid", name: "Lipid Profile", price: 649 },
-      { id: "insulin", name: "Insulin (Fasting)", price: 899 },
-      { id: "urine-pregnancy", name: "Urine Pregnancy Test", price: 249 },
-    ],
-  },
-  {
-    id: "lal-pathlabs",
-    name: "Lal PathLabs",
-    tests: [
-      { id: "cbc", name: "Complete Blood Count (CBC)", price: 399 },
-      { id: "hba1c", name: "HbA1c - Diabetes Test", price: 499 },
-      { id: "lipid", name: "Lipid Profile", price: 599 },
-      { id: "thyroid", name: "Thyroid Profile", price: 649 },
-      { id: "urine", name: "Complete Urine Examination", price: 299 },
-      { id: "urine-culture", name: "Urine Culture", price: 549 },
-      { id: "stool-routine", name: "Stool Routine Examination", price: 299 },
-    ],
-  },
-  {
-    id: "agilus",
-    name: "Agilus Diagnostics",
-    tests: [
-      { id: "cbc", name: "Complete Blood Count (CBC)", price: 429 },
-      { id: "hba1c", name: "HbA1c - Diabetes Test", price: 529 },
-      { id: "lipid", name: "Lipid Profile", price: 629 },
-      { id: "lft", name: "Liver Function Test (LFT)", price: 749 },
-      { id: "vitd", name: "Vitamin D Test", price: 749 },
-      { id: "stool-occult", name: "Stool Occult Blood", price: 329 },
-    ],
-  },
-]);
-
-const RADIOLOGY_PARTNERS = withPrep([
-  {
-    id: "rad1",
-    name: "MediHome Imaging Centre - Gurgaon",
-    tests: [
-      { id: "mri-brain", name: "MRI Brain", price: 3500 },
-      { id: "ct-chest", name: "CT Scan Chest", price: 2500 },
-      { id: "usg-abdomen", name: "Ultrasound Abdomen", price: 900 },
-      { id: "xray-chest", name: "X-Ray Chest", price: 450 },
-      { id: "doppler-leg", name: "Doppler Lower Limb", price: 1800 },
-    ],
-  },
-  {
-    id: "rad2",
-    name: "MediHome Imaging Centre - Noida",
-    tests: [
-      { id: "mri-brain", name: "MRI Brain", price: 3200 },
-      { id: "ct-chest", name: "CT Scan Chest", price: 2300 },
-      { id: "usg-abdomen", name: "Ultrasound Abdomen", price: 850 },
-      { id: "xray-chest", name: "X-Ray Chest", price: 400 },
-      { id: "mammography", name: "Mammography", price: 1400 },
-    ],
-  },
-  {
-    id: "rad3",
-    name: "MediHome Imaging Centre - Delhi",
-    tests: [
-      { id: "mri-brain", name: "MRI Brain", price: 3000 },
-      { id: "ct-chest", name: "CT Scan Chest", price: 2200 },
-      { id: "usg-abdomen", name: "Ultrasound Abdomen", price: 800 },
-      { id: "xray-chest", name: "X-Ray Chest", price: 350 },
-      { id: "mammography", name: "Mammography", price: 1300 },
-    ],
-  },
-]);
+const LABS = withPrep(DIAGNOSTIC_LABS);
+const RADIOLOGY_PARTNERS = withPrep(IMAGING_CENTRES);
 
 const EMPTY_FORM = {
   patientName: "",
@@ -462,6 +377,11 @@ function LabTests() {
           Math.floor(100000 + Math.random() * 900000),
         serviceType,
         partner: activePartner.name,
+        partnerId: activePartner.id,
+        partnerGstin: activePartner.gstin,
+        partnerDlNo: activePartner.dlNo,
+        partnerArea: activePartner.area,
+        partnerAddress: activePartner.address,
         tests: activeTests,
         total: pay.amountRupees,
         saleRupees: pay.saleRupees,
@@ -600,6 +520,7 @@ function LabTests() {
               Save this booking ID. Track the assigned partner live toward your PIN.
             </p>
             <div className="confirm-actions">
+              <BillButton order={booking} />
               <button
                 type="button"
                 className="service-submit"
@@ -611,15 +532,6 @@ function LabTests() {
               </button>
               <button type="button" className="service-submit" onClick={startNewBooking}>
                 Book another test
-              </button>
-              <button
-                type="button"
-                className="service-submit"
-                onClick={() => {
-                  window.location.hash = "#feedback";
-                }}
-              >
-                Share feedback
               </button>
             </div>
           </section>

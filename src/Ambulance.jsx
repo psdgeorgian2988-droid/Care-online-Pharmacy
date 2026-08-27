@@ -7,6 +7,7 @@ import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
+import { BillButton } from "./OrderBill";
 
 const STORAGE_KEY = "mediHomeAmbulanceRequests";
 const AMBULANCE_FEE = {
@@ -213,6 +214,7 @@ function Ambulance() {
               Live tracking follows the assigned ambulance toward your pickup PIN.
             </p>
             <div className="confirm-actions">
+              <BillButton order={request} />
               <button
                 type="button"
                 className="service-submit"
@@ -224,15 +226,6 @@ function Ambulance() {
               </button>
               <button type="button" className="service-submit" onClick={startNew}>
                 Request another ambulance
-              </button>
-              <button
-                type="button"
-                className="service-submit"
-                onClick={() => {
-                  window.location.hash = "#feedback";
-                }}
-              >
-                Share feedback
               </button>
             </div>
           </section>

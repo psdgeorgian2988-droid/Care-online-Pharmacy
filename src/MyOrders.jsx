@@ -7,6 +7,8 @@ import {
   trackHref,
 } from "./orderTracking";
 import PinGpsBlock from "./PinGpsBlock";
+import { BillButton } from "./OrderBill";
+import OrderFeedbackCta from "./OrderFeedbackCta";
 
 function typeLabel(order) {
   return kindLabel(order?.kind || order?.orderType);
@@ -46,8 +48,8 @@ function MyOrders() {
           <span className="orders-eyebrow">ACCOUNT</span>
           <h1>My Orders</h1>
           <p className="orders-subtitle">
-            Medicines, diagnostics, Home Care, and ambulance — all with live PIN
-            tracking.
+            Medicines, diagnostics, Home Care, psychologist, and ambulance — all
+            with live PIN tracking.
           </p>
         </div>
         <div className="orders-header-actions">
@@ -98,11 +100,13 @@ function MyOrders() {
                 ? "Imaging Studies"
                 : selectedOrder.kind === "homecare"
                   ? "Home Care"
-                  : selectedOrder.kind === "stepdown"
-                    ? "Step-Down Care"
-                    : selectedOrder.kind === "ambulance"
-                      ? "Request"
-                      : "Medicines"}
+                  : selectedOrder.kind === "psychologist"
+                    ? "Psychologist Consultation"
+                    : selectedOrder.kind === "stepdown"
+                      ? "Step-Down Care"
+                      : selectedOrder.kind === "ambulance"
+                        ? "Request"
+                        : "Medicines"}
           </h3>
 
           <ul>
@@ -162,6 +166,38 @@ function MyOrders() {
                 <p>
                   <strong>Plan:</strong> {selectedOrder.carePlanLabel || "Not provided"}
                 </p>
+                <p>
+                  <strong>Charges:</strong>{" "}
+                  {selectedOrder.total != null
+                    ? `₹${Number(selectedOrder.total).toLocaleString("en-IN")}`
+                    : "Not provided"}
+                </p>
+              </>
+            )}
+            {selectedOrder.kind === "psychologist" && (
+              <>
+                <p>
+                  <strong>Patient:</strong>{" "}
+                  {selectedOrder.patientName || "Not provided"}
+                </p>
+                <p>
+                  <strong>Session:</strong> {selectedOrder.carePlanLabel || "Not provided"}
+                </p>
+                <p>
+                  <strong>Mode:</strong>{" "}
+                  {selectedOrder.sessionMode === "home" ? "Home visit" : "Video"}
+                </p>
+                <p>
+                  <strong>Session date:</strong> {selectedOrder.date || "Not provided"}
+                </p>
+                <p>
+                  <strong>Time slot:</strong> {selectedOrder.timeSlot || "Not provided"}
+                </p>
+                {selectedOrder.concern ? (
+                  <p>
+                    <strong>Note:</strong> {selectedOrder.concern}
+                  </p>
+                ) : null}
                 <p>
                   <strong>Charges:</strong>{" "}
                   {selectedOrder.total != null
@@ -235,6 +271,38 @@ function MyOrders() {
                 {selectedOrder.outletArea ? ` · ${selectedOrder.outletArea}` : ""}
               </p>
             ) : null}
+            {selectedOrder.kind === "medicine" && (selectedOrder.outletGstin || selectedOrder.outletDlNo) ? (
+              <>
+                {selectedOrder.outletGstin ? (
+                  <p>
+                    <strong>Outlet GSTIN:</strong> {selectedOrder.outletGstin}
+                  </p>
+                ) : null}
+                {selectedOrder.outletDlNo ? (
+                  <p>
+                    <strong>Outlet DL No.:</strong> {selectedOrder.outletDlNo}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+            {(selectedOrder.kind === "lab" || selectedOrder.kind === "radiology") &&
+            (selectedOrder.partnerGstin || selectedOrder.partnerDlNo) ? (
+              <>
+                {selectedOrder.partnerGstin ? (
+                  <p>
+                    <strong>Partner GSTIN:</strong> {selectedOrder.partnerGstin}
+                  </p>
+                ) : null}
+                {selectedOrder.partnerDlNo ? (
+                  <p>
+                    <strong>
+                      {selectedOrder.kind === "lab" ? "Lab licence:" : "Centre licence:"}
+                    </strong>{" "}
+                    {selectedOrder.partnerDlNo}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
             {selectedOrder.paymentMethod ? (
               <p>
                 <strong>Payment:</strong>{" "}
@@ -257,8 +325,15 @@ function MyOrders() {
             </p>
           )}
           <div className="order-action-buttons">
+            <BillButton order={selectedOrder} className="order-details-btn" />
             <a className="order-details-btn" href={trackHref(selectedOrder.id)}>
               Open full live track
+            </a>
+            <a
+              className="order-details-btn"
+              href={`#scan?id=${encodeURIComponent(selectedOrder.id)}`}
+            >
+              Scan QR
             </a>
             {selectedOrder.ambulanceRequestId ? (
               <a
@@ -268,9 +343,7 @@ function MyOrders() {
                 Track ambulance
               </a>
             ) : null}
-            <a className="order-details-btn" href="#feedback">
-              Share feedback
-            </a>
+            <OrderFeedbackCta order={selectedOrder} />
             {!selectedOrder.trackCompleted && selectedOrder.destLat != null && (
               <button className="order-details-btn" type="button" onClick={markDone}>
                 Mark {selectedOrder.kind === "medicine" ? "delivered" : "completed"}
@@ -292,13 +365,14 @@ function MyOrders() {
           <div className="orders-empty">
             <p>No orders found yet.</p>
             <p>
-              Place a medicine order, book diagnostics, home care or step-down
-              care, or request an ambulance to track it here.
+              Place a medicine order, book diagnostics, home care, a psychologist
+              session, or step-down care, or request an ambulance to track it here.
             </p>
             <div className="orders-empty-actions">
               <a href="#medicine-search">Order medicines</a>
               <a href="#labs">Book diagnostics</a>
               <a href="#homecare">Book home care</a>
+              <a href="#psychologist">Book a psychologist</a>
               <a href="#stepdown">Find a step-down centre</a>
               <a href="#ambulance">Request ambulance</a>
             </div>
@@ -355,9 +429,19 @@ function MyOrders() {
                     >
                       View Details
                     </button>
+                    <BillButton order={order} className="order-details-btn" />
                     <a className="order-track-btn" href={trackHref(order.id)}>
                       Track live
                     </a>
+                    <a
+                      className="order-track-btn"
+                      href={`#scan?id=${encodeURIComponent(order.id)}`}
+                    >
+                      Scan QR
+                    </a>
+                    {order.trackCompleted ? (
+                      <OrderFeedbackCta order={order} />
+                    ) : null}
                   </div>
                 </div>
               </div>

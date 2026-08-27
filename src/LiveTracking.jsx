@@ -3,12 +3,12 @@ import {
   attachPinAndTracking,
   ensureTracking,
   etaLabel,
-  findOrderById,
   haversineKm,
   kindLabel,
   loadAllOrders,
   partnerCopy,
   persistOrder,
+  resolveOrderById,
   stepLabel,
   tickTracking,
   TRACK_STEPS,
@@ -16,6 +16,8 @@ import {
 } from "./orderTracking";
 import { mapsUrlForPin, normalizePin, osmEmbedUrl } from "./pinLocation";
 import AssignedAgent from "./AssignedAgent";
+import ScanActions from "./ScanActions";
+import OrderFeedbackCta from "./OrderFeedbackCta";
 
 function mercatorY(lat) {
   const rad = (lat * Math.PI) / 180;
@@ -173,7 +175,7 @@ function PinCapture({ order, onSaved }) {
   );
 }
 
-export function LiveTrackingPanel({ order, onOrderChange, compact = false }) {
+export function LiveTrackingPanel({ order, onOrderChange, compact = false, showScan = true }) {
   const [live, setLive] = useState(order);
   const liveRef = useRef(order);
 
@@ -239,6 +241,7 @@ export function LiveTrackingPanel({ order, onOrderChange, compact = false }) {
   return (
     <section className={`live-track${compact ? " is-compact" : ""}`}>
       <AssignedAgent record={live} compact={compact} />
+      {showScan ? <ScanActions order={live} app="customer" /> : null}
       <div className="live-track-head">
         <div>
           <span className="live-kicker">Live tracking</span>
@@ -298,6 +301,7 @@ export function LiveTrackingPanel({ order, onOrderChange, compact = false }) {
           </div>
         </>
       )}
+      <OrderFeedbackCta order={live} />
     </section>
   );
 }
@@ -308,18 +312,25 @@ export default function TrackPage({ trackId }) {
   const [others, setOthers] = useState([]);
 
   useEffect(() => {
-    const found = findOrderById(trackId);
-    if (found) {
-      const ready = /^\d{6}$/.test(normalizePin(found.pinCode || found.pin))
-        ? ensureTracking(found)
-        : found;
-      setOrder(ready);
-      setMissing(false);
-    } else {
-      setOrder(null);
-      setMissing(Boolean(trackId));
-      setOthers(loadAllOrders());
-    }
+    let cancelled = false;
+    (async () => {
+      const found = await resolveOrderById(trackId);
+      if (cancelled) return;
+      if (found) {
+        const ready = /^\d{6}$/.test(normalizePin(found.pinCode || found.pin))
+          ? ensureTracking(found)
+          : found;
+        setOrder(ready);
+        setMissing(false);
+      } else {
+        setOrder(null);
+        setMissing(Boolean(trackId));
+        setOthers(loadAllOrders());
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [trackId]);
 
   return (
