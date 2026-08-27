@@ -5465,3 +5465,68 @@ a.order-details-btn {
   max-width: 100%;
   margin-top: 10px;
 }
+
+/* Dedicated staff / partner shell — not the public website chrome */
+.app.app-ops {
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: 52px minmax(0, 1fr) !important;
+  grid-template-areas:
+    "opsbar"
+    "main" !important;
+  background: #eef3f6 !important;
+}
+
+.app.app-ops > header.ops-bar {
+  display: flex !important;
+  grid-area: opsbar;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 18px;
+  background: #0b3d4a;
+  color: #fff;
+  z-index: 30;
+}
+
+.app.app-ops > main {
+  grid-area: main;
+  background: #eef3f6;
+  padding: 16px 18px 24px !important;
+}
+
+.ops-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.ops-brand .logo-mark,
+.ops-brand .logo-house-svg {
+  width: 28px;
+  height: 28px;
+}
+
+.ops-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ops-nav a {
+  color: #d7eef2;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 7px 12px;
+  border-radius: 8px;
+}
+
+.ops-nav a:hover,
+.ops-nav a.active {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}

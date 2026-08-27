@@ -43,6 +43,11 @@ const BOTTOM_LINKS = [
   { href: "#social", label: "Social Media", icon: "📣" },
 ];
 
+const OPS_LINKS = [
+  { href: "#admin", label: "Staff orders" },
+  { href: "#partner", label: "Partner desk" },
+];
+
 const HOME_WHATSAPP = "919654222988";
 const HOME_WHATSAPP_URL = `https://wa.me/${HOME_WHATSAPP}?text=${encodeURIComponent(
   "Hi MediHome, I would like to order medicines."
@@ -580,6 +585,7 @@ function App() {
   }, []);
 
   const { route, q: medicineQuery, id: trackId } = parseAppHash(hash);
+  const isOps = route === "#admin" || route === "#partner";
 
   const renderPage = () => {
     switch (route) {
@@ -621,6 +627,33 @@ function App() {
         return <HomePage />;
     }
   };
+
+  if (isOps) {
+    return (
+      <div className="app app-ops">
+        <Seo route={route} />
+        <header className="ops-bar">
+          <a className="ops-brand" href="#admin" aria-label="MediHome operations">
+            <LogoMark />
+            <span>MediHome Operations</span>
+          </a>
+          <nav className="ops-nav" aria-label="Operations">
+            {OPS_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className={route === link.href ? "active" : undefined}
+              >
+                {link.label}
+              </a>
+            ))}
+            <a href="#home">Website</a>
+          </nav>
+        </header>
+        <main>{renderPage()}</main>
+      </div>
+    );
+  }
 
   return (
     <div className="app">

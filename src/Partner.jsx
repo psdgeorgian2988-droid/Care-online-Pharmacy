@@ -58,7 +58,7 @@ export default function Partner() {
         <style>{styles}</style>
         <div className="service-page partner-page">
           <section className="service-hero">
-            <span className="service-kicker">Partner desk</span>
+            <span className="service-kicker">Partner operations</span>
             <h1>Partner login</h1>
             <p>See only jobs assigned to you by MediHome staff.</p>
           </section>

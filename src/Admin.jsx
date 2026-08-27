@@ -126,9 +126,9 @@ function Admin() {
         <style>{styles}</style>
         <div className="service-page admin-page">
           <section className="service-hero">
-            <span className="service-kicker">MediHome Staff</span>
-            <h1>Staff Login</h1>
-            <p>Operations desk for incoming orders and bookings.</p>
+            <span className="service-kicker">Operations</span>
+            <h1>Staff login</h1>
+            <p>Assign partners, update status, and see payment splits. This desk is separate from the public website.</p>
           </section>
           <form className="service-form admin-login" onSubmit={handleLogin}>
             <div className="field">
@@ -170,11 +170,10 @@ function Admin() {
       <div className="service-page admin-page">
         <section className="service-hero admin-hero">
           <div>
-            <span className="service-kicker">MediHome Staff</span>
-            <h1>Orders</h1>
+            <span className="service-kicker">Operations</span>
+            <h1>Staff orders</h1>
             <p>
-              Incoming orders, Razorpay split, and partner assignment. Partner desk:{" "}
-              <a href="#partner">#partner</a>
+              Incoming bookings, Razorpay split, and partner assignment.
             </p>
           </div>
           <div className="admin-hero-actions">
