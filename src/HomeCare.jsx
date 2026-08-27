@@ -5,6 +5,8 @@ import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
+import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
+import { holdForPartnerQueue } from "./partnerQueue";
 
 const LEGACY_STORAGE_KEY = "mediHomeHomeCareBookings";
 const SERVICE_TYPES = [
@@ -92,6 +94,7 @@ function HomeCare() {
   const [submitting, setSubmitting] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
+  const busyWait = useBusyOverlay(submitting, "homecare");
 
   const activePlans = plansFor(form.serviceType);
 
@@ -159,6 +162,7 @@ function HomeCare() {
     setSubmitting(true);
     try {
       const gps = await resolvePinLocation(form.pinCode);
+      const queue = await holdForPartnerQueue("homecare");
       const total =
         plan.value === "nurse-other"
           ? Number(form.otherRate) || plan.price
@@ -196,6 +200,7 @@ function HomeCare() {
         saleRupees: pay.saleRupees,
         couponCode: pay.couponCode,
         discountRupees: pay.discountRupees,
+        highTrafficWait: queue.busy || queue.waited,
         bookedAt: new Date().toLocaleString(),
         bookedAtMs: Date.now(),
         ...payment,
@@ -255,6 +260,7 @@ function HomeCare() {
           <section className="service-confirm">
             <div className="success-icon">✓</div>
             <h1>Home Care Booked</h1>
+            <PatienceNote kind="homecare" shown={booking.highTrafficWait} />
             <p>
               Your {booking.serviceLabel || "Home Care"} request has been saved
               locally.
@@ -353,6 +359,7 @@ function HomeCare() {
   return (
     <>
       <style>{styles}</style>
+      {busyWait ? <BusyWait kind="homecare" traffic={busyWait} /> : null}
       <div className="service-page">
         <section className="service-hero">
           <div>

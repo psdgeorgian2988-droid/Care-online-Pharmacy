@@ -5,6 +5,8 @@ import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
+import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
+import { holdForPartnerQueue } from "./partnerQueue";
 
 const STORAGE_KEY = "mediHomeStepDownBookings";
 const AMBULANCE_STORAGE_KEY = "mediHomeAmbulanceRequests";
@@ -168,6 +170,7 @@ function StepDownCare() {
   const [submitting, setSubmitting] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
+  const busyWait = useBusyOverlay(submitting, "stepdown");
   const stayTotal = Math.max(1, Number(form.durationDays) || 1) * STEPDOWN_DAY_RATE;
 
   const selectedCentre = CENTRES.find((item) => item.id === form.centreId) || null;
@@ -222,6 +225,7 @@ function StepDownCare() {
     setSubmitting(true);
     try {
       const gps = await resolvePinLocation(form.pinCode);
+      const queue = await holdForPartnerQueue("stepdown");
       const bookingId = "MH-SD-" + Math.floor(100000 + Math.random() * 900000);
       const wantsAmbulance = form.needAmbulance === "yes";
       let ambulanceRequestId = "";
@@ -265,6 +269,7 @@ function StepDownCare() {
         saleRupees: pay.saleRupees,
         couponCode: pay.couponCode,
         discountRupees: pay.discountRupees,
+        highTrafficWait: queue.busy || queue.waited,
         bookedAt: new Date().toLocaleString(),
         bookedAtMs: Date.now(),
         ...payment,
@@ -345,6 +350,7 @@ function StepDownCare() {
           <section className="service-confirm">
             <div className="success-icon">✓</div>
             <h1>Step-Down Care Booked</h1>
+            <PatienceNote kind="stepdown" shown={booking.highTrafficWait} />
             <p>
               {booking.needAmbulance
                 ? "Step-down care is booked and an ambulance has been requested to the centre."
@@ -461,6 +467,7 @@ function StepDownCare() {
   return (
     <>
       <style>{styles}</style>
+      {busyWait ? <BusyWait kind="stepdown" traffic={busyWait} /> : null}
       <div className="lab-page">
         <header className="lab-head">
           <div>

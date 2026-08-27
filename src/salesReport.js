@@ -40,6 +40,18 @@ export function routeEnabled(route, features) {
   return keys.some((key) => featureEnabled(features, key));
 }
 
+export function pausedServiceTitle(route, features) {
+  const keys = ROUTE_FEATURES[route];
+  if (!keys) return "This Service";
+  const paused = FEATURE_CATALOG.filter(
+    (row) => keys.includes(row.key) && !featureEnabled(features, row.key)
+  );
+  if (paused.length === 0) {
+    return FEATURE_CATALOG.find((row) => keys.includes(row.key))?.label || "This Service";
+  }
+  return paused.map((row) => row.label).join(" And ");
+}
+
 export function orderId(order) {
   return String(order?.id || order?.bookingId || order?.requestId || "");
 }

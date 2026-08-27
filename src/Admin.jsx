@@ -508,7 +508,7 @@ function Admin() {
 
         <section className="admin-panel" aria-label="Feature Switches">
           <h2>Turn Features On Or Off</h2>
-          <p>Off Services Hide From The Public Website Until You Turn Them Back On.</p>
+          <p>Off Services Stay On The Menu And Show Coming Soon Until You Turn Them Back On.</p>
           <div className="admin-switches">
             {FEATURE_CATALOG.map((row) => (
               <button

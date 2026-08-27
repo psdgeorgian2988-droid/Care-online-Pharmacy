@@ -6,6 +6,8 @@ import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import { buildIndiaCombos } from "./indiaMedicineCombos";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
+import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
+import { holdForPartnerQueue } from "./partnerQueue";
 import MedicineSearchTools from "./MedicineSearchTools";
 
 function readHomeMedicineSearch() {
@@ -3127,6 +3129,7 @@ function Medicines({ initialSearch = "" }) {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
+  const busyWait = useBusyOverlay(placingOrder, "medicine");
   const [pickedBrandId, setPickedBrandId] = useState(null);
   const [packsPerMonth, setPacksPerMonth] = useState(3);
 
@@ -3307,6 +3310,7 @@ function Medicines({ initialSearch = "" }) {
     setPlacingOrder(true);
     try {
       const gps = await resolvePinLocation(pinCode);
+      const queue = await holdForPartnerQueue("medicine");
       const pay = paymentFromQuote(payQuote, cartTotal);
       const payment = await settleCheckoutPayment({
         method: payMethod,
@@ -3337,6 +3341,7 @@ function Medicines({ initialSearch = "" }) {
         saleRupees: pay.saleRupees,
         couponCode: pay.couponCode,
         discountRupees: pay.discountRupees,
+        highTrafficWait: queue.busy || queue.waited,
         status: "Order Placed",
         date: new Date().toLocaleString(),
         fullName: fullName.trim(),
@@ -3368,6 +3373,7 @@ function Medicines({ initialSearch = "" }) {
 
   return (
     <section id="medicines" className="medicines-page">
+      {busyWait ? <BusyWait kind="medicine" traffic={busyWait} /> : null}
       <div className="medicines-header">
         <div className="medicines-title-row">
           <div>
@@ -3631,6 +3637,7 @@ function Medicines({ initialSearch = "" }) {
       {confirmedOrder && (
         <div className="checkout-panel">
           <h2>Order Confirmed</h2>
+          <PatienceNote kind="medicine" shown={confirmedOrder.highTrafficWait} />
           <p>
             Thank you, {confirmedOrder.fullName}. Your order has been placed
             successfully.

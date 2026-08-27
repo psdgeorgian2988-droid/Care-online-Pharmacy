@@ -24,7 +24,8 @@ import { reviewStats } from "./reviewStore";
 import CareChat from "./CareChat";
 import { CARE_PHONE_DISPLAY, CARE_WHATSAPP } from "./careChat";
 import { useFeatures } from "./featureFlags";
-import { routeEnabled } from "./salesReport";
+import { pausedServiceTitle, routeEnabled } from "./salesReport";
+import ComingSoon from "./ComingSoon";
 
 const NAV_LINKS = [
   { href: "#home", label: "Home", icon: "🏠" },
@@ -498,20 +499,11 @@ function HomePage() {
   );
 }
 
-function PausedService() {
+function PausedService({ route, features }) {
+  const name = pausedServiceTitle(route, features);
   return (
     <div className="service-page">
-      <section className="service-hero">
-        <span className="service-kicker">Unavailable</span>
-        <h1>This service is paused</h1>
-        <p>
-          MediHome has turned this booking off for now. Please choose another
-          service or WhatsApp customer care.
-        </p>
-        <p>
-          <a href="#home">Back to home</a>
-        </p>
-      </section>
+      <ComingSoon name={name} />
     </div>
   );
 }
@@ -539,7 +531,9 @@ function App() {
   const features = useFeatures();
 
   const renderPage = () => {
-    if (!routeEnabled(route, features)) return <PausedService />;
+    if (!routeEnabled(route, features)) {
+      return <PausedService route={route} features={features} />;
+    }
     switch (route) {
       case "#medicine-search":
         return <Medicines initialSearch={medicineQuery} />;
@@ -635,7 +629,7 @@ function App() {
 
         <div className="sidebar-links">
         <nav className="sidebar-nav" aria-label="Main">
-          {NAV_LINKS.filter((link) => routeEnabled(link.href, features)).map((link) => (
+          {NAV_LINKS.map((link) => (
             <a
               key={link.href}
               href={link.href}

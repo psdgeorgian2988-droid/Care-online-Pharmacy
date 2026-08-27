@@ -5,6 +5,8 @@ import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
+import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
+import { holdForPartnerQueue } from "./partnerQueue";
 
 const STORAGE_KEY = "mediHomeAmbulanceRequests";
 const AMBULANCE_FEE = {
@@ -44,6 +46,8 @@ function Ambulance() {
   const [submitting, setSubmitting] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
+  const urgentRide = form.emergencyType === "emergency";
+  const busyWait = useBusyOverlay(submitting, "ambulance", urgentRide);
   const ambFee = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
 
   const handleChange = (event) => {
@@ -71,9 +75,11 @@ function Ambulance() {
     event.preventDefault();
     if (!validate()) return;
 
-    setSubmitting(true);
+      setSubmitting(true);
     try {
       const gps = await resolvePinLocation(form.pinCode);
+      const urgent = form.emergencyType === "emergency";
+      const queue = await holdForPartnerQueue("ambulance", { urgent });
       const total = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
       const method =
         form.emergencyType === "emergency" ? "cod" : payMethod;
@@ -106,6 +112,7 @@ function Ambulance() {
         saleRupees: pay.saleRupees,
         couponCode: pay.couponCode,
         discountRupees: pay.discountRupees,
+        highTrafficWait: queue.busy || queue.waited,
         requestedAt: new Date().toLocaleString(),
         requestedAtMs: Date.now(),
         ...payment,
@@ -142,6 +149,7 @@ function Ambulance() {
           <section className="service-confirm">
             <div className="success-icon">✓</div>
             <h1>Ambulance Requested</h1>
+            <PatienceNote kind="ambulance" shown={request.highTrafficWait} />
             <p>Share this request ID if our team calls you to confirm pickup.</p>
             <div className="confirm-card">
               <div className="confirm-head">
@@ -236,6 +244,7 @@ function Ambulance() {
   return (
     <>
       <style>{styles}</style>
+      {busyWait ? <BusyWait kind="ambulance" traffic={busyWait} /> : null}
       <div className="service-page">
         <section className="service-hero">
           <div>

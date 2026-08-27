@@ -5,6 +5,8 @@ import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
+import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
+import { holdForPartnerQueue } from "./partnerQueue";
 
 const PREP_LABEL = {
   fasting: "Fasting required",
@@ -268,6 +270,8 @@ function LabTests() {
   const [submitting, setSubmitting] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
+  const busyKind = serviceType === "radiology" ? "radiology" : "lab";
+  const busyWait = useBusyOverlay(submitting, busyKind);
   const [prepPopup, setPrepPopup] = useState(null);
 
   const selectedLab = useMemo(() => LABS.find((lab) => lab.id === selectedLabId), [selectedLabId]);
@@ -436,6 +440,7 @@ function LabTests() {
     try {
       const gps = await resolvePinLocation(form.pinCode);
       const kind = serviceType === "radiology" ? "radiology" : "lab";
+      const queue = await holdForPartnerQueue(kind);
       const pay = paymentFromQuote(payQuote, total);
       const payment = await settleCheckoutPayment({
         method: payMethod,
@@ -462,6 +467,7 @@ function LabTests() {
         saleRupees: pay.saleRupees,
         couponCode: pay.couponCode,
         discountRupees: pay.discountRupees,
+        highTrafficWait: queue.busy || queue.waited,
         ...form,
         pinCode: gps.pinCode,
         pin: gps.pin,
@@ -523,6 +529,7 @@ function LabTests() {
           <section className="service-confirm">
             <div className="success-icon">✓</div>
             <h1>Booking Confirmed</h1>
+            <PatienceNote kind={booking.kind || booking.serviceType} shown={booking.highTrafficWait} />
             <p>
               {booking.serviceType === "lab"
                 ? "Your laboratory test booking has been successfully submitted to MediHome."
@@ -630,6 +637,7 @@ function LabTests() {
   return (
     <>
       <style>{styles}</style>
+      {busyWait ? <BusyWait kind={busyKind} traffic={busyWait} /> : null}
       <div className="lab-page">
         <header className="lab-head">
           <div>
