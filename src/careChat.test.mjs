@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { replyTo } from "./careChat.js";
 
 test("care replies route medicine, track, ambulance, and human handoff", () => {
-  const medicine = replyTo("I need Dolo 650");
+  const medicine = replyTo("I need medicines delivered");
   assert.match(medicine.text, /Search by brand/);
   assert.equal(medicine.links[0].href, "#medicine-search");
   assert.match(replyTo("track my order").text, /My Orders/);
