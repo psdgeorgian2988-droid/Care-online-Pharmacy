@@ -42,7 +42,7 @@ export function replyTo(rawText) {
       needsStaff: true,
       links: [
         { href: CARE_WHATSAPP_URL, label: "WhatsApp care" },
-        { href: `tel:${CARE_PHONE_TEL}`, label: "Call care" },
+        { href: `tel:${CARE_PHONE_TEL}`, label: `Call ${CARE_PHONE_DISPLAY}` },
       ],
     };
   }
@@ -101,7 +101,7 @@ export function replyTo(rawText) {
       needsStaff: false,
       links: [
         { href: "#ambulance", label: "Request ambulance" },
-        { href: `tel:${CARE_PHONE_TEL}`, label: "Call care" },
+        { href: `tel:${CARE_PHONE_TEL}`, label: `Call ${CARE_PHONE_DISPLAY}` },
       ],
     };
   }
@@ -127,6 +127,7 @@ export function replyTo(rawText) {
     needsStaff: true,
     links: [
       { href: CARE_WHATSAPP_URL, label: "WhatsApp care" },
+      { href: `tel:${CARE_PHONE_TEL}`, label: `Call ${CARE_PHONE_DISPLAY}` },
       { href: "#contact", label: "Contact page" },
     ],
   };
@@ -136,8 +137,11 @@ export function welcomeMessage() {
   return {
     id: "welcome",
     from: "bot",
-    text: "Namaste. MediHome customer care here. Ask about an order, a booking, or tap a topic below.",
+    text: `Namaste. MediHome customer care here. Ask about an order, a booking, or tap a topic below. You can also call the same number as Contact Us: ${CARE_PHONE_DISPLAY}.`,
     at: Date.now(),
-    links: [],
+    links: [
+      { href: `tel:${CARE_PHONE_TEL}`, label: `Call ${CARE_PHONE_DISPLAY}` },
+      { href: CARE_WHATSAPP_URL, label: "WhatsApp" },
+    ],
   };
 }

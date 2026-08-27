@@ -22,7 +22,7 @@ import Social from "./Social";
 import MedicineSearchTools from "./MedicineSearchTools";
 import { reviewStats } from "./reviewStore";
 import CareChat from "./CareChat";
-import { CARE_WHATSAPP } from "./careChat";
+import { CARE_PHONE_DISPLAY, CARE_WHATSAPP } from "./careChat";
 import { useFeatures } from "./featureFlags";
 import { routeEnabled } from "./salesReport";
 
@@ -676,7 +676,10 @@ function App() {
             <span className="nav-icon" aria-hidden="true">
               💬
             </span>
-            <span className="nav-label">Customer Care</span>
+            <span className="nav-care-copy">
+              <span className="nav-label">Customer Care</span>
+              <span className="nav-care-no">{CARE_PHONE_DISPLAY}</span>
+            </span>
           </button>
         </div>
         </div>

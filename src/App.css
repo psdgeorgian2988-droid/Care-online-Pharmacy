@@ -1795,6 +1795,20 @@ max-width: none;
   gap: 5px;
 }
 
+.nav-care-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.nav-care-no {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a6b7a;
+  letter-spacing: 0.01em;
+}
+
 /* Grid places main beside the sidebar — do not offset it again */
 .app > main {
   margin-left: 0;

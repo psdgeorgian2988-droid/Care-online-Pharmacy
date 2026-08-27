@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { replyTo } from "./careChat.js";
+import { replyTo, welcomeMessage } from "./careChat.js";
 
 test("care replies route medicine, track, ambulance, and human handoff", () => {
   const medicine = replyTo("I need medicines delivered");
@@ -16,4 +16,7 @@ test("care replies route medicine, track, ambulance, and human handoff", () => {
     human.links.some((link) => link.href === "tel:+917292094000"),
     true
   );
+  const welcome = welcomeMessage();
+  assert.match(welcome.text, /72920 94000/);
+  assert.equal(welcome.links[0].href, "tel:+917292094000");
 });

@@ -92,7 +92,7 @@ function Contact() {
                   rel="noopener noreferrer"
                   onClick={(event) => openWhatsAppUrl(careUrl, event)}
                 >
-                  Chat with customer care
+                  {CARE_PHONE_DISPLAY}
                 </a>
               </p>
             </div>

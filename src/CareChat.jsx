@@ -177,6 +177,25 @@ export default function CareChat({ open, onOpen, onClose }) {
             </button>
           </header>
           <p className="care-chat-hours">{CARE_HOURS}</p>
+          <div className="care-phone-row">
+            <span>Customer Care No</span>
+            <strong>
+              <a href={`tel:${CARE_PHONE_TEL}`}>{CARE_PHONE_DISPLAY}</a>
+            </strong>
+            <div>
+              <a className="care-phone-btn" href={`tel:${CARE_PHONE_TEL}`}>
+                Call
+              </a>
+              <a
+                className="care-phone-btn is-wa"
+                href={CARE_WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                WhatsApp
+              </a>
+            </div>
+          </div>
           <div className="care-chat-log" ref={scroller}>
             {(thread.messages || []).map((row) => (
               <article key={row.id} className={`care-bubble is-${row.from}`}>
@@ -200,6 +219,9 @@ export default function CareChat({ open, onOpen, onClose }) {
             ))}
           </div>
           <div className="care-quick">
+            <a className="care-quick-call" href={`tel:${CARE_PHONE_TEL}`}>
+              Call {CARE_PHONE_DISPLAY}
+            </a>
             {QUICK_PROMPTS.map((row) => (
               <button key={row.label} type="button" onClick={() => sendText(row.text)}>
                 {row.label}
@@ -223,6 +245,7 @@ export default function CareChat({ open, onOpen, onClose }) {
             </button>
           </form>
           <p className="care-chat-foot">
+            Same number as Contact Us:{" "}
             <a href={`tel:${CARE_PHONE_TEL}`}>{CARE_PHONE_DISPLAY}</a>
             {" · "}
             <a href={`mailto:${CARE_EMAIL}`}>{CARE_EMAIL}</a>
@@ -246,6 +269,14 @@ const styles = `
 .care-chat-head h2{margin:2px 0 0;font-size:16px}
 .care-chat-head button{border:0;background:transparent;color:#fff;font-size:22px;line-height:1;cursor:pointer}
 .care-chat-hours{margin:0;padding:6px 14px;background:#eaf7ff;color:#34546b;font-size:11px;font-weight:700}
+.care-phone-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:8px 14px;border-bottom:1px solid #d7e6ee;background:#fff}
+.care-phone-row span{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
+.care-phone-row strong{font-size:14px}
+.care-phone-row strong a{color:#143246;text-decoration:none}
+.care-phone-row div{display:flex;gap:6px;margin-left:auto}
+.care-phone-btn{border-radius:99px;background:#0639b8;color:#fff;text-decoration:none;font-size:12px;font-weight:800;padding:5px 10px}
+.care-phone-btn.is-wa{background:#128c7e}
+.care-quick-call{border:1px solid #0639b8;border-radius:99px;background:#eaf0ff;color:#0639b8;text-decoration:none;font-size:11px;font-weight:800;padding:5px 8px}
 .care-chat-log{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#f6fafc;min-height:220px}
 .care-bubble{max-width:86%;padding:8px 10px;border-radius:12px;font-size:13px;line-height:1.4}
 .care-bubble p{margin:0}
