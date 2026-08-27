@@ -11,4 +11,9 @@ test("care replies route medicine, track, ambulance, and human handoff", () => {
   const human = replyTo("Please connect me to a care executive");
   assert.equal(human.needsStaff, true);
   assert.match(human.text, /executive/);
+  assert.match(human.text, /72920 94000/);
+  assert.equal(
+    human.links.some((link) => link.href === "tel:+917292094000"),
+    true
+  );
 });

@@ -22,6 +22,7 @@ import Social from "./Social";
 import MedicineSearchTools from "./MedicineSearchTools";
 import { reviewStats } from "./reviewStore";
 import CareChat from "./CareChat";
+import { CARE_WHATSAPP } from "./careChat";
 import { useFeatures } from "./featureFlags";
 import { routeEnabled } from "./salesReport";
 
@@ -51,8 +52,7 @@ const OPS_LINKS = [
   { href: "#partner", label: "Partner Desk" },
 ];
 
-const HOME_WHATSAPP = "919654222988";
-const HOME_WHATSAPP_URL = `https://wa.me/${HOME_WHATSAPP}?text=${encodeURIComponent(
+const HOME_WHATSAPP_URL = `https://wa.me/${CARE_WHATSAPP}?text=${encodeURIComponent(
   "Hi MediHome, I would like to order medicines."
 )}`;
 const PROFILE_KEY = "mediHomeUser";

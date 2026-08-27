@@ -7,7 +7,7 @@ export const DELIVERY_OUTLETS = [
     id: "MH-OUT-CD",
     name: "Central Delhi Outlet",
     area: "Connaught Place",
-    phone: "9654222988",
+    phone: "7292094000",
     pins: [
       "110001",
       "110002",
@@ -24,7 +24,7 @@ export const DELIVERY_OUTLETS = [
     id: "MH-OUT-SD",
     name: "South Delhi Outlet",
     area: "Green Park",
-    phone: "9654222988",
+    phone: "7292094000",
     pins: [
       "110016",
       "110017",
@@ -46,7 +46,7 @@ export const DELIVERY_OUTLETS = [
     id: "MH-OUT-ND",
     name: "North Delhi Outlet",
     area: "Model Town",
-    phone: "9654222988",
+    phone: "7292094000",
     pins: [
       "110007",
       "110009",
@@ -63,7 +63,7 @@ export const DELIVERY_OUTLETS = [
     id: "MH-OUT-ED",
     name: "East Delhi Outlet",
     area: "Laxmi Nagar",
-    phone: "9654222988",
+    phone: "7292094000",
     pins: [
       "110031",
       "110032",
@@ -80,7 +80,7 @@ export const DELIVERY_OUTLETS = [
     id: "MH-OUT-WD",
     name: "West Delhi Outlet",
     area: "Janakpuri",
-    phone: "9654222988",
+    phone: "7292094000",
     pins: [
       "110015",
       "110018",
@@ -97,35 +97,35 @@ export const DELIVERY_OUTLETS = [
     id: "MH-OUT-DWK",
     name: "Dwarka Outlet",
     area: "Dwarka",
-    phone: "9654222988",
+    phone: "7292094000",
     pins: ["110075", "110077", "110078"],
   },
   {
     id: "MH-OUT-GGN",
     name: "Gurugram Outlet",
     area: "Sector 29, Gurugram",
-    phone: "9654222988",
+    phone: "7292094000",
     prefix3: ["122"],
   },
   {
     id: "MH-OUT-FBD",
     name: "Faridabad Outlet",
     area: "NIT Faridabad",
-    phone: "9654222988",
+    phone: "7292094000",
     prefix3: ["121"],
   },
   {
     id: "MH-OUT-NOIDA",
     name: "Noida Outlet",
     area: "Sector 18, Noida",
-    phone: "9654222988",
+    phone: "7292094000",
     prefix4: ["2013"],
   },
   {
     id: "MH-OUT-GZB",
     name: "Ghaziabad Outlet",
     area: "Vaishali, Ghaziabad",
-    phone: "9654222988",
+    phone: "7292094000",
     prefix3: ["201"],
   },
 ];
@@ -134,7 +134,7 @@ export const DEFAULT_OUTLET = {
   id: "MH-OUT-HQ",
   name: "MediHome Central Fulfilment",
   area: "Delhi NCR hub",
-  phone: "9654222988",
+  phone: "7292094000",
 };
 
 export function outletForPin(pinValue) {

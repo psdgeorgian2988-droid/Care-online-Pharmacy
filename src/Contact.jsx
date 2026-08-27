@@ -1,10 +1,11 @@
 import { useState } from "react";
 import SocialLinks from "./SocialLinks";
-
-const CARE_WHATSAPP = "919654222988";
-const CARE_PHONE_DISPLAY = "+91 96542 22988";
-const CARE_PHONE_TEL = "+919654222988";
-const CARE_EMAIL = "care@medihome.in";
+import {
+  CARE_EMAIL,
+  CARE_PHONE_DISPLAY,
+  CARE_PHONE_TEL,
+  CARE_WHATSAPP,
+} from "./careChat";
 
 function openWhatsAppUrl(url, event) {
   if (event) {

@@ -1,7 +1,7 @@
-export const CARE_PHONE_DISPLAY = "+91 96542 22988";
-export const CARE_PHONE_TEL = "+919654222988";
+export const CARE_PHONE_DISPLAY = "+91 72920 94000";
+export const CARE_PHONE_TEL = "+917292094000";
 export const CARE_EMAIL = "care@medihome.in";
-export const CARE_WHATSAPP = "919654222988";
+export const CARE_WHATSAPP = "917292094000";
 export const CARE_HOURS = "8:00 AM – 10:00 PM IST, all days";
 
 export const CARE_WHATSAPP_URL = `https://wa.me/${CARE_WHATSAPP}?text=${encodeURIComponent(
