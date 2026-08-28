@@ -807,34 +807,21 @@ function LabTests() {
 
             <div className="lab-field lab-span">
               {isLab ? (
-                <div className="visit-options">
-                  <label className={`visit-card ${form.visitType === "home" ? "selected" : ""}`}>
-                    <input
-                      type="radio"
-                      name="visitType"
-                      value="home"
-                      checked={form.visitType === "home"}
-                      onChange={handleChange}
-                    />
-                    <span>
-                      <strong>Home collection</strong>
-                      <small>Sample at your address</small>
-                    </span>
+                <>
+                  <label htmlFor="visitType">
+                    Visit type <em>*</em>
                   </label>
-                  <label className={`visit-card ${form.visitType === "centre" ? "selected" : ""}`}>
-                    <input
-                      type="radio"
-                      name="visitType"
-                      value="centre"
-                      checked={form.visitType === "centre"}
-                      onChange={handleChange}
-                    />
-                    <span>
-                      <strong>Centre visit</strong>
-                      <small>Visit the selected lab</small>
-                    </span>
-                  </label>
-                </div>
+                  <select
+                    id="visitType"
+                    name="visitType"
+                    value={form.visitType}
+                    onChange={handleChange}
+                    aria-label="Visit type"
+                  >
+                    <option value="home">Home collection</option>
+                    <option value="centre">Centre visit</option>
+                  </select>
+                </>
               ) : (
                 <p className="centre-note">
                   Imaging is a centre appointment at the selected partner.
@@ -976,12 +963,6 @@ const styles = `
 .lab-field{display:flex;flex-direction:column;min-width:0}
 .lab-field.lab-span,.lab-field.lab-field-full,.lab-field:has(.book-for),.lab-field:has(.addr-fields){grid-column:1/-1}
 .lab-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
-.visit-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.visit-card{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border:1px solid #e4ecef;border-radius:8px;background:#f7fbfe;cursor:pointer}
-.visit-card.selected{border-color:#1a6b7a;background:#eef7fb}
-.visit-card input{accent-color:#1a6b7a;margin-top:2px}
-.visit-card strong{display:block;font-size:13px;color:#143246}
-.visit-card small{display:block;margin-top:2px;font-size:12px;color:#5d7180}
 .centre-note{margin:0;padding:10px 12px;border-radius:8px;background:#f7fbfe;border:1px solid #e4ecef;font-size:13px;line-height:1.45;color:#5d7180}
 .lab-book-foot{margin-top:14px;padding-top:14px;border-top:1px solid #eef3f6;display:flex;flex-direction:column;gap:10px}
 .lab-book-foot>div{display:flex;flex-direction:column;gap:2px}
@@ -1028,7 +1009,7 @@ const styles = `
 .prep-dialog-actions .service-submit,.prep-dialog-actions .lab-submit{width:auto;min-width:112px}
 @media (max-width:900px){
   .lab-page{padding:14px}
-  .lab-shell,.lab-fields,.visit-options{grid-template-columns:1fr}
+  .lab-shell,.lab-fields{grid-template-columns:1fr}
   .lab-book{position:static}
 }
 `;
