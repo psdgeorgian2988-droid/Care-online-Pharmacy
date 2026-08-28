@@ -69,6 +69,15 @@ function Vaccination() {
   const isSomeoneElse = selectedPerson?.id === OTHER_BOOKING_ID;
   const showGuestDetails = !isRegistered || isSomeoneElse;
   const showGender = !isRegistered || isSomeoneElse;
+  const recordReady = isRegistered
+    ? Boolean(recordForm.bookedFor) &&
+      (!isSomeoneElse ||
+        Boolean(
+          recordForm.name.trim() && recordForm.gender && recordForm.dob
+        ))
+    : Boolean(recordForm.name.trim() && recordForm.gender && recordForm.dob);
+  const waitingForName = isRegistered && !recordForm.bookedFor;
+  const waitingForDetails = showGuestDetails && !recordReady && !waitingForName;
   const bookHref = nurseBookingHref(carePlanForGroup(booking.group));
 
   useEffect(() => {
@@ -191,9 +200,11 @@ function Vaccination() {
             >
               View Schedule
             </button>
-            <a className="vac-schedule-btn is-fill" href={bookHref}>
-              Book Nurse Visit
-            </a>
+            {recordReady ? (
+              <a className="vac-schedule-btn is-fill" href={bookHref}>
+                Book Nurse Visit
+              </a>
+            ) : null}
           </div>
         </section>
 
@@ -237,6 +248,9 @@ function Vaccination() {
                 {recordErrors.name ? <small>{recordErrors.name}</small> : null}
               </div>
             )}
+            {waitingForName ? (
+              <p className="booking-flow-hint">Select A Name To Continue.</p>
+            ) : null}
             {showGuestDetails ? (
               <>
                 {isRegistered ? (
@@ -282,11 +296,19 @@ function Vaccination() {
                 </div>
               </>
             ) : null}
+            {waitingForDetails ? (
+              <p className="booking-flow-hint">
+                Enter Name, Male / Female And Date Of Birth To Continue.
+              </p>
+            ) : null}
+            {recordReady ? (
             <button type="submit" className="service-submit">
               Save Record And Due Dates
             </button>
+            ) : null}
           </form>
 
+          {recordReady ? (
           <div className="vac-book-card">
             <p className="vac-section-title">Select Vaccines</p>
             <div className="vac-group" role="group" aria-label="Vaccination group">
@@ -310,6 +332,7 @@ function Vaccination() {
               Continue To Nurse Booking
             </a>
           </div>
+          ) : null}
 
           <div className="vac-saved">
             <p className="vac-section-title">Due Dates</p>
@@ -560,6 +583,7 @@ const styles = `
 .vac-reminder-list span{font-size:13px;color:#143246}
 .vac-reminder-list em{font-style:normal;font-size:12px;color:#1a6b7a}
 .vac-remove{grid-column:1/-1;border:1px solid #d7e2e9;background:#fff;border-radius:8px;min-height:36px;cursor:pointer;font:inherit;font-size:12px}
+.booking-flow-hint{grid-column:1/-1;margin:0;padding:2px 0 8px;color:#5d7180;font-size:13px;font-weight:700}
 @media (max-width:800px){.service-page{padding:14px}.vac-record-form{grid-template-columns:1fr 1fr 1fr}.vac-given,.vac-book-card,.vac-group{grid-template-columns:1fr 1fr}}
 `;
 

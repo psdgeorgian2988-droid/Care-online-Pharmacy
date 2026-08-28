@@ -8,8 +8,7 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
-import BookingContactFields from "./BookingContactFields";
-import BookingForFields from "./BookingForFields";
+import BookingFlow from "./BookingFlow";
 import {
   applyResolvedPin,
   pickAddress,
@@ -39,7 +38,7 @@ function Ambulance() {
     mobile: profile.mobile,
     ...pickAddress(profile),
     ...initialBookingFor(profile),
-    emergencyType: "emergency",
+    emergencyType: "",
     notes: "",
   });
   const [errors, setErrors] = useState({});
@@ -125,7 +124,7 @@ function Ambulance() {
       mobile: profile.mobile,
       ...pickAddress(profile),
       ...initialBookingFor(profile),
-      emergencyType: "emergency",
+      emergencyType: "",
       notes: "",
     });
     setPayMethod("cod");
@@ -238,27 +237,18 @@ function Ambulance() {
         </section>
 
         <form className="service-form" onSubmit={handleSubmit}>
-          <div className="field full">
-            <BookingForFields
-              idPrefix="amb"
-              profile={profile}
-              selectedId={form.bookedFor}
-              error={errors.bookedFor}
-              onSelect={(option) => {
-                setForm((prev) => ({ ...prev, ...bookingForPatch(option, profile) }));
-                setErrors((prev) => ({ ...prev, bookedFor: "" }));
-              }}
-            />
-          </div>
-          <BookingContactFields
+          <BookingFlow
             idPrefix="amb"
             profile={profile}
             values={form}
             errors={errors}
+            onSelect={(option) => {
+              setForm((prev) => ({ ...prev, ...bookingForPatch(option, profile) }));
+              setErrors((prev) => ({ ...prev, bookedFor: "" }));
+            }}
             onChange={handleChange}
             pinHint="Select the Village / Sector / Mohalla attached to this PIN."
-          />
-
+          >
           <div className="field">
             <label htmlFor="amb-type">
               Emergency type <span>*</span>
@@ -269,12 +259,15 @@ function Ambulance() {
               value={form.emergencyType}
               onChange={handleChange}
             >
+              <option value="">Select a service</option>
               <option value="emergency">Emergency</option>
               <option value="non-emergency">Non-emergency</option>
             </select>
             {errors.emergencyType && <small>{errors.emergencyType}</small>}
           </div>
 
+          {form.emergencyType ? (
+          <>
           <div className="field full">
             <label htmlFor="amb-notes">Notes (optional)</label>
             <textarea
@@ -308,6 +301,9 @@ function Ambulance() {
           <button type="submit" className="service-submit" disabled={submitting}>
             {submitting ? "Connecting PIN to map…" : "Submit ambulance request"}
           </button>
+          </>
+          ) : null}
+          </BookingFlow>
         </form>
       </div>
     </>

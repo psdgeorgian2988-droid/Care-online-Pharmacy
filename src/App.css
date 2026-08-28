@@ -390,6 +390,26 @@ footer p {
   background: white;
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px 12px;
+  align-items: start;
+}
+
+.checkout-panel h2,
+.checkout-panel .cart-actions,
+.checkout-panel .pay-block,
+.checkout-panel .checkout-rx,
+.checkout-panel .booking-contact-address {
+  grid-column: 1 / -1;
+}
+
+.checkout-rx label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #34546b;
 }
 
 .checkout-panel h2 {
@@ -5689,7 +5709,8 @@ body,
 .app:not(.app-ops) .confirm-card,
 .app:not(.app-ops) .info-panel,
 .app:not(.app-ops) .report-list li,
-.app:not(.app-ops) .pay-block {
+.app:not(.app-ops) .pay-block,
+.app:not(.app-ops) .checkout-panel {
   background: #f7fbfe !important;
   border: 1px solid #d3e6f3 !important;
   border-radius: 12px !important;

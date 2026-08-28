@@ -8,8 +8,7 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
-import BookingContactFields from "./BookingContactFields";
-import BookingForFields from "./BookingForFields";
+import BookingFlow from "./BookingFlow";
 import {
   applyResolvedPin,
   pickAddress,
@@ -54,7 +53,7 @@ function Psychologist() {
     mobile: profile.mobile,
     ...pickAddress(profile),
     ...initialBookingFor(profile),
-    carePlan: "video-45",
+    carePlan: "",
     date: "",
     timeSlot: "",
     concern: "",
@@ -65,7 +64,12 @@ function Psychologist() {
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
   const busyWait = useBusyOverlay(submitting, "psychologist");
-  const plan = PLANS.find((item) => item.value === form.carePlan) || PLANS[0];
+  const plan = PLANS.find((item) => item.value === form.carePlan) || {
+    value: "",
+    label: "Select a session",
+    price: 0,
+    mode: "video",
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -279,27 +283,18 @@ function Psychologist() {
         </section>
 
         <form className="service-form" onSubmit={handleSubmit}>
-          <div className="field full">
-            <BookingForFields
-              idPrefix="psy"
-              profile={profile}
-              selectedId={form.bookedFor}
-              error={errors.bookedFor}
-              onSelect={(option) => {
-                setForm((prev) => ({ ...prev, ...bookingForPatch(option, profile) }));
-                setErrors((prev) => ({ ...prev, bookedFor: "" }));
-              }}
-            />
-          </div>
-          <BookingContactFields
+          <BookingFlow
             idPrefix="psy"
             profile={profile}
             values={form}
             errors={errors}
+            onSelect={(option) => {
+              setForm((prev) => ({ ...prev, ...bookingForPatch(option, profile) }));
+              setErrors((prev) => ({ ...prev, bookedFor: "" }));
+            }}
             onChange={handleChange}
             pinHint="City, District and State fill from this PIN."
-          />
-
+          >
           <div className="field full">
             <label htmlFor="psy-plan">
               Session <span>*</span>
@@ -310,6 +305,7 @@ function Psychologist() {
               value={form.carePlan}
               onChange={handleChange}
             >
+              <option value="">Select a session</option>
               {PLANS.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label} · {formatRupee(item.price)}
@@ -319,6 +315,8 @@ function Psychologist() {
             {errors.carePlan ? <small>{errors.carePlan}</small> : null}
           </div>
 
+          {form.carePlan ? (
+          <>
           <div className="field">
             <label htmlFor="psy-date">
               Session date <span>*</span>
@@ -383,6 +381,9 @@ function Psychologist() {
               ? "Holding your place…"
               : `Confirm session · ${formatRupee(plan.price)}`}
           </button>
+          </>
+          ) : null}
+          </BookingFlow>
         </form>
       </div>
     </>
@@ -391,7 +392,7 @@ function Psychologist() {
 
 const styles = `
 .service-page{padding:16px 20px 24px 14px;box-sizing:border-box;color:#143246}
-.service-hero{max-width:760px;margin:0 auto 12px;padding:14px 16px;border-radius:12px;background:linear-gradient(135deg,#f3eefc,#f4fbf8)}
+.service-hero{max-width:760px;margin:0 auto 12px;padding:14px 16px;border-radius:12px;background:linear-gradient(135deg,#eaf7ff,#f4fbf8)}
 .service-kicker{display:block;margin-bottom:4px;font-size:11px;font-weight:800;letter-spacing:.6px;color:#1a6b7a}
 .service-hero h1{margin:0 0 4px;font-size:22px}
 .service-hero p{margin:0;color:#5d7180;font-size:13px;line-height:1.4}

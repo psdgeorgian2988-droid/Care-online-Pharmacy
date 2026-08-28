@@ -8,8 +8,7 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
-import BookingContactFields from "./BookingContactFields";
-import BookingForFields from "./BookingForFields";
+import BookingFlow from "./BookingFlow";
 import {
   applyResolvedPin,
   pickAddress,
@@ -70,7 +69,8 @@ const formatRupee = (amount) => `₹${Number(amount || 0).toLocaleString("en-IN"
 function plansFor(serviceType) {
   if (serviceType === "caregiver") return CAREGIVER_PLANS;
   if (serviceType === "physiotherapy") return PHYSIO_PLANS;
-  return NURSING_PLANS;
+  if (serviceType === "nurse") return NURSING_PLANS;
+  return [];
 }
 function isLongDuty(carePlan) {
   return LONG_DUTY_PLANS.includes(carePlan);
@@ -104,14 +104,19 @@ function homeCareFromHash(profile) {
     service = "";
     plan = "";
   }
+  const fromLink = Boolean(service || plan);
   const serviceType =
     service === "nurse" || service === "caregiver" || service === "physiotherapy"
       ? service
       : isVaccinationPlan(plan)
         ? "nurse"
-        : "caregiver";
+        : fromLink
+          ? "caregiver"
+          : "";
   const plans = plansFor(serviceType);
-  const carePlan = plans.some((row) => row.value === plan) ? plan : plans[0].value;
+  const carePlan = plans.some((row) => row.value === plan)
+    ? plan
+    : plans[0]?.value || "";
   return {
     patientName: profile.name,
     mobile: profile.mobile,
@@ -174,11 +179,10 @@ function HomeCare() {
         ? value.replace(/\D/g, "")
         : value;
     if (name === "serviceType") {
-      const firstPlan = plansFor(next)[0]?.value || "";
       setForm((prev) => ({
         ...prev,
         serviceType: next,
-        carePlan: firstPlan,
+        carePlan: "",
         otherNote: "",
         otherRate: "999",
       }));
@@ -315,8 +319,8 @@ function HomeCare() {
       mobile: profile.mobile,
       ...pickAddress(profile),
       ...initialBookingFor(profile),
-      serviceType: "caregiver",
-      carePlan: "visit",
+      serviceType: "",
+      carePlan: "",
       date: "",
       timeSlot: "",
       otherNote: "",
@@ -446,27 +450,18 @@ function HomeCare() {
         </section>
 
         <form className="service-form" onSubmit={handleSubmit}>
-          <div className="field full">
-            <BookingForFields
-              idPrefix="hc"
-              profile={profile}
-              selectedId={form.bookedFor}
-              error={errors.bookedFor}
-              onSelect={(option) => {
-                setForm((prev) => ({ ...prev, ...bookingForPatch(option, profile) }));
-                setErrors((prev) => ({ ...prev, bookedFor: "" }));
-              }}
-            />
-          </div>
-          <BookingContactFields
+          <BookingFlow
             idPrefix="hc"
             profile={profile}
             values={form}
             errors={errors}
+            onSelect={(option) => {
+              setForm((prev) => ({ ...prev, ...bookingForPatch(option, profile) }));
+              setErrors((prev) => ({ ...prev, bookedFor: "" }));
+            }}
             onChange={handleChange}
             pinHint="Select the Village / Sector / Mohalla attached to this PIN."
-          />
-
+          >
           <div className="field">
             <label htmlFor="hc-service">
               Service type <span>*</span>
@@ -477,6 +472,7 @@ function HomeCare() {
               value={form.serviceType}
               onChange={handleChange}
             >
+              <option value="">Select a service</option>
               {SERVICE_TYPES.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
@@ -486,6 +482,7 @@ function HomeCare() {
             {errors.serviceType && <small>{errors.serviceType}</small>}
           </div>
 
+          {form.serviceType ? (
           <div className="field">
             <label htmlFor="hc-plan">
               Rate <span>*</span>
@@ -496,6 +493,7 @@ function HomeCare() {
               value={form.carePlan}
               onChange={handleChange}
             >
+              <option value="">Select a rate</option>
               {activePlans.map((plan) => (
                 <option key={plan.value} value={plan.value}>
                   {plan.label} · {formatRupee(plan.price)}
@@ -504,7 +502,10 @@ function HomeCare() {
             </select>
             {errors.carePlan ? <small>{errors.carePlan}</small> : null}
           </div>
+          ) : null}
 
+          {form.carePlan ? (
+          <>
           {isVaccinationPlan(form.carePlan) ? (
             <div className="field full">
               <SelectedVaccinesFields
@@ -621,6 +622,9 @@ function HomeCare() {
                           ?.price || 0
                 )}`}
           </button>
+          </>
+          ) : null}
+          </BookingFlow>
         </form>
       </div>
     </>

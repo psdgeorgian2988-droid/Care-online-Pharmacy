@@ -8,8 +8,7 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
-import BookingContactFields from "./BookingContactFields";
-import BookingForFields from "./BookingForFields";
+import BookingFlow from "./BookingFlow";
 import {
   applyResolvedPin,
   pickAddress,
@@ -160,7 +159,7 @@ function StepDownCare() {
     mobile: profile.mobile,
     ...pickAddress(profile),
     ...initialBookingFor(profile),
-    serviceType: "post-icu",
+    serviceType: "",
     date: "",
     timeSlot: "",
     durationDays: "7",
@@ -330,7 +329,7 @@ function StepDownCare() {
       mobile: profile.mobile,
       ...pickAddress(profile),
       ...initialBookingFor(profile),
-      serviceType: "post-icu",
+      serviceType: "",
       date: "",
       timeSlot: "",
       durationDays: "7",
@@ -567,7 +566,21 @@ function StepDownCare() {
                 <h2>Book Recovery Care</h2>
                 <p>We will confirm the centre slot over a call.</p>
               </div>
-              <div className="lab-field">
+              <div className="sd-form-grid">
+                <BookingFlow
+                  idPrefix="sd"
+                  layout="lab"
+                  profile={profile}
+                  values={form}
+                  errors={errors}
+                  onSelect={(option) => {
+                    setForm((prev) => ({ ...prev, ...bookingForPatch(option, profile) }));
+                    setErrors((prev) => ({ ...prev, bookedFor: "" }));
+                  }}
+                  onChange={handleChange}
+                  pinHint="Select the Village / Sector / Mohalla attached to this PIN."
+                >
+                <div className="lab-field sd-full">
                 <label htmlFor="sd-centre">
                   Step-down centre <em>*</em>
                 </label>
@@ -602,29 +615,6 @@ function StepDownCare() {
                   </p>
                 )}
               </div>
-
-              <div className="sd-form-grid">
-                <div className="lab-field" style={{ gridColumn: "1 / -1" }}>
-                  <BookingForFields
-                    idPrefix="sd"
-                    profile={profile}
-                    selectedId={form.bookedFor}
-                    error={errors.bookedFor}
-                    onSelect={(option) => {
-                      setForm((prev) => ({ ...prev, ...bookingForPatch(option, profile) }));
-                      setErrors((prev) => ({ ...prev, bookedFor: "" }));
-                    }}
-                  />
-                </div>
-                <BookingContactFields
-                  idPrefix="sd"
-                  layout="lab"
-                  profile={profile}
-                  values={form}
-                  errors={errors}
-                  onChange={handleChange}
-                  pinHint="Select the Village / Sector / Mohalla attached to this PIN."
-                />
                 <div className="lab-field">
                   <label htmlFor="sd-type">
                     Care type <em>*</em>
@@ -635,6 +625,7 @@ function StepDownCare() {
                     value={form.serviceType}
                     onChange={handleChange}
                   >
+                    <option value="">Select a service</option>
                     {CARE_TYPES.map((item) => (
                       <option key={item.value} value={item.value}>
                         {item.label}
@@ -643,6 +634,8 @@ function StepDownCare() {
                   </select>
                   {errors.serviceType ? <small className="lab-error">{errors.serviceType}</small> : null}
                 </div>
+                {form.centreId && form.serviceType ? (
+                <>
                 <div className="lab-field">
                   <label htmlFor="sd-date">
                     Start date <em>*</em>
@@ -737,9 +730,7 @@ function StepDownCare() {
                     </p>
                   ) : null}
                 </div>
-              </div>
-
-              <div className="field full">
+              <div className="field full sd-full">
                 <PaymentBlock
                   kind="stepdown"
                   amount={stayTotal}
@@ -758,6 +749,10 @@ function StepDownCare() {
                     ? "Confirm booking and ambulance"
                     : "Confirm step-down booking"}
               </button>
+                </>
+                ) : null}
+                </BookingFlow>
+              </div>
             </section>
           </form>
         )}

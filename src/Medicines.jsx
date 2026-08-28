@@ -10,8 +10,7 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import MedicineSearchTools from "./MedicineSearchTools";
-import BookingContactFields from "./BookingContactFields";
-import BookingForFields from "./BookingForFields";
+import BookingFlow from "./BookingFlow";
 import {
   addressFromUnknown,
   applyResolvedPin,
@@ -3594,25 +3593,8 @@ function Medicines({ initialSearch = "" }) {
         <div className="checkout-panel">
           <h2>Checkout</h2>
 
-          <BookingForFields
-            idPrefix="med-who"
-            profile={savedProfile || {}}
-            selectedId={whoFor.bookedFor}
-            error=""
-            onSelect={(option) => {
-              const patch = bookingForPatch(option, savedProfile || {});
-              setWhoFor(patch);
-              setFullName(patch.patientName || "");
-              setMobileNumber(patch.mobile || "");
-              setDelivery({
-                ...emptyAddress(),
-                ...pickAddress(patch),
-              });
-            }}
-          />
-
-          <BookingContactFields
-            idPrefix="med-checkout"
+          <BookingFlow
+            idPrefix="med"
             layout="checkout"
             profile={savedProfile || {}}
             values={{
@@ -3627,6 +3609,17 @@ function Medicines({ initialSearch = "" }) {
               age: deliveryErrors.age,
               mobile: deliveryErrors.mobile,
               ...deliveryErrors,
+            }}
+            onSelect={(option) => {
+              const patch = bookingForPatch(option, savedProfile || {});
+              setWhoFor(patch);
+              setFullName(patch.patientName || "");
+              setMobileNumber(patch.mobile || "");
+              setDelivery({
+                ...emptyAddress(),
+                ...pickAddress(patch),
+              });
+              setDeliveryErrors({});
             }}
             onChange={(event) => {
               const { name, value } = event.target;
@@ -3648,10 +3641,9 @@ function Medicines({ initialSearch = "" }) {
               setDeliveryErrors((prev) => ({ ...prev, [name]: "" }));
             }}
             pinHint="Select the Village / Sector / Mohalla attached to this PIN."
-          />
-
+          >
           {cartNeedsPrescription && (
-            <div>
+            <div className="checkout-rx">
               <label>Prescription</label>
 
               <input
@@ -3685,6 +3677,17 @@ function Medicines({ initialSearch = "" }) {
           <div className="cart-actions">
             <button
               type="button"
+              className="cart-btn cart-btn-primary"
+              onClick={placeOrder}
+              disabled={placingOrder}
+            >
+              {placingOrder ? "Connecting PIN to map…" : "Place order"}
+            </button>
+          </div>
+          </BookingFlow>
+          <div className="cart-actions">
+            <button
+              type="button"
               className="cart-btn cart-btn-secondary"
               onClick={() => {
                 setShowCheckout(false);
@@ -3692,14 +3695,6 @@ function Medicines({ initialSearch = "" }) {
               }}
             >
               Continue shopping
-            </button>
-            <button
-              type="button"
-              className="cart-btn cart-btn-primary"
-              onClick={placeOrder}
-              disabled={placingOrder}
-            >
-              {placingOrder ? "Connecting PIN to map…" : "Place order"}
             </button>
           </div>
         </div>
