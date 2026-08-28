@@ -119,7 +119,7 @@ const styles = `
 .dmy-label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .dmy-label span{color:#d84b4b}
 .dmy-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
-.dmy-row select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px}
+.dmy-row select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px}
 .dmy-row select:focus{outline:none;border-color:#1a6b7a}
 .dmy-error{margin-top:4px;color:#d84b4b;font-size:12px}
 `;

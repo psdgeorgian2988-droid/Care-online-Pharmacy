@@ -124,6 +124,6 @@ const styles = `
 .family-card-top strong{font-size:12px;color:#29455a}
 .family-card label{font-size:12px;font-weight:700;color:#34546b}
 .family-card label span{color:#e34d4d}
-.family-card input,.family-card select{width:100%;box-sizing:border-box;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#29455a;font:inherit;font-size:13px}
+.family-card input,.family-card select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px}
 .family-error{color:#d84b4b;font-size:11px}
 `;

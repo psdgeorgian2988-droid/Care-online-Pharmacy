@@ -343,8 +343,8 @@ const styles = `
 .batch-field.batch-span{grid-column:1/-1}
 .batch-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .batch-field em{color:#d84b4b;font-style:normal}
-.batch-field input,.batch-field select,.batch-field textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;min-height:38px;background:#fff}
-.batch-field textarea{min-height:56px;resize:vertical}
+.batch-field input,.batch-field select,.batch-field textarea{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;height:38px;min-height:38px;background:#fff}
+.batch-field textarea{height:auto;min-height:56px;resize:vertical}
 .batch-field input:focus,.batch-field select:focus,.batch-field textarea:focus{border-color:#1a6b7a}
 .batch-field small{margin-top:4px;color:#d84b4b;font-size:12px}
 .batch-file-meta{margin:6px 0 0;color:#5d7180;font-size:12px}
@@ -352,7 +352,7 @@ const styles = `
 .batch-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:42px;cursor:pointer;font-family:inherit}
 .batch-list-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:16px 0 8px;flex-wrap:wrap}
 .batch-list-head h3{margin:0;font-size:15px}
-.batch-list-head select{min-width:220px;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px}
+.batch-list-head select{min-width:220px;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;background:#fff}
 .batch-empty{margin:0;color:#7a8b96;font-size:13px}
 .batch-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .batch-list li{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:12px;border:1px solid #e4ecef;border-radius:10px;background:#f7fbfd}

@@ -185,8 +185,8 @@ const styles = `
 .service-form .field.full{grid-column:1/-1}
 .service-form label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .service-form label span{color:#d84b4b}
-.service-form input,.service-form select,.service-form textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;min-height:38px;background:#fff}
-.service-form textarea{min-height:72px;resize:vertical}
+.service-form input,.service-form select,.service-form textarea{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;height:38px;min-height:38px;background:#fff}
+.service-form textarea{height:auto;min-height:72px;resize:vertical}
 .service-form input:focus,.service-form select:focus,.service-form textarea:focus{border-color:#1a6b7a}
 .service-form small{margin-top:4px;color:#d84b4b;font-size:12px}
 .service-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:40px;cursor:pointer;font-family:inherit}

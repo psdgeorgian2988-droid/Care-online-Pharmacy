@@ -230,8 +230,8 @@ const styles = `
 .auth-form label{margin:0 0 5px;color:#34546b;font-size:12px;font-weight:700}
 .auth-form label span{color:#e34d4d}
 .auth-form input:not([type=radio]):not([type=checkbox]),
-.auth-form select,
-.auth-form textarea{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:13px;outline:none}
+.auth-form select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px;outline:none}
+.auth-form textarea{width:100%;box-sizing:border-box;height:auto;min-height:64px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px;outline:none;resize:vertical}
 .auth-form input:focus,.auth-form select:focus,.auth-form textarea:focus{border-color:#1a6b7a}
 .auth-form .person-fields,.auth-form .addr-fields,.auth-form button[type=submit]{grid-column:1/-1}
 .auth-form button[type=submit]{margin-top:6px;height:40px;max-width:220px;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:800;cursor:pointer}

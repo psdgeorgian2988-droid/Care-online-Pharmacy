@@ -167,7 +167,7 @@ const referStyles = `
 .points-balance-line strong{font-size:20px}
 .points-refer-form{display:grid;gap:10px}
 .points-refer-form label{display:grid;gap:4px;font-size:12px;font-weight:700;color:#1a6b7a}
-.points-refer-form input,.points-refer-form select{min-height:40px;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;font-weight:500;color:#143246;background:#fff}
+.points-refer-form input,.points-refer-form select{height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;font-weight:500;color:#143246;background:#fff}
 .points-refer-form span,.points-error{color:#b42318;font-weight:700;font-size:12px}
 .points-share-btn{appearance:none;display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:8px 16px;border:2px solid #0639b8;border-radius:10px;background:#0639b8;color:#fff;font:inherit;font-size:14px;font-weight:800;text-decoration:none;cursor:pointer}
 .points-share-btn:disabled{opacity:.45;cursor:not-allowed}

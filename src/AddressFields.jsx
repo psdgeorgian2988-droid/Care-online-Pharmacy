@@ -286,7 +286,7 @@ const styles = `
 .addr-field label span{color:#e34d4d}
 .addr-field label em{font-style:normal;font-weight:600;color:#7a8a92}
 .addr-field input,
-.addr-field select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#29455a;font:inherit;font-size:13px}
+.addr-field select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px}
 .addr-field input:focus,
 .addr-field select:focus{outline:none;border-color:#1a6b7a;box-shadow:none}
 .addr-field.addr-auto input{background:#f3f7fa;color:#3a5568;border-color:#d3e0e8;cursor:default}

@@ -359,8 +359,8 @@ const styles = `
 .service-form .field.full{grid-column:1/-1}
 .service-form label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .service-form label span{color:#d84b4b}
-.service-form input,.service-form select,.service-form textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;min-height:38px;background:#fff}
-.service-form textarea{min-height:56px;resize:vertical}
+.service-form input,.service-form select,.service-form textarea{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;height:38px;min-height:38px;background:#fff}
+.service-form textarea{height:auto;min-height:56px;resize:vertical}
 .service-form input:focus,.service-form select:focus,.service-form textarea:focus{border-color:#1a6b7a}
 .service-form small{margin-top:4px;color:#d84b4b;font-size:12px}
 .file-meta{margin:6px 0 0;color:#5d7180;font-size:12px}
@@ -371,7 +371,7 @@ const styles = `
 .report-list h2{margin:0;font-size:16px}
 .report-list .filter-field{min-width:220px;flex:1;max-width:320px}
 .report-list .filter-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
-.report-list .filter-field select{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;min-height:38px;background:#fff}
+.report-list .filter-field select{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;height:38px;min-height:38px;background:#fff}
 .report-list .filter-field select:focus{border-color:#1a6b7a}
 .report-list .empty{margin:0;color:#7a8b96;font-size:14px}
 .report-list ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}

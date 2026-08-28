@@ -744,7 +744,7 @@ const styles = `
 .edu-points-earned{margin:0 0 12px;padding:12px 14px;border-radius:10px;background:#0639b8;color:#fff;font-size:15px;font-weight:800;line-height:1.35}
 .edu-form{display:grid;gap:10px}
 .edu-form label{display:grid;gap:4px;font-size:12px;font-weight:700;color:#1a6b7a}
-.edu-form input{min-height:40px;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;font-weight:500;color:#143246}
+.edu-form input{height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;font-weight:500;color:#143246;background:#fff}
 .edu-form span{color:#b42318;font-weight:700}
 .edu-form-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 .edu-btn{appearance:none;min-height:40px;padding:8px 16px;border-radius:10px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}

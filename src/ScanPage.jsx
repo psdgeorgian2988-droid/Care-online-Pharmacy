@@ -368,7 +368,7 @@ const styles = `
 .scan-manual{margin-top:12px;text-align:left}
 .scan-manual label{display:block;margin-bottom:6px;font-size:12px;font-weight:700;color:#34546b}
 .scan-manual div{display:flex;gap:8px}
-.scan-manual input{flex:1;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit}
+.scan-manual input{flex:1;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;background:#fff}
 .scan-manual button,.scan-again{border:none;border-radius:8px;background:#1a6b7a;color:#fff;font:inherit;font-weight:700;padding:8px 12px;cursor:pointer}
 .scan-result{margin:0 0 8px;padding:10px 12px;border-radius:10px;font-weight:800}
 .scan-result.is-pack{background:#e8f4f6;color:#1a6b7a}

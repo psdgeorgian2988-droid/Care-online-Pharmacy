@@ -69,7 +69,7 @@ const styles = `
 .person-field{display:flex;flex-direction:column;min-width:0}
 .person-label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .person-label span{color:#e34d4d}
-.person-field input,.person-field select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#29455a;font:inherit;font-size:13px}
+.person-field input,.person-field select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px}
 .person-field input:focus,.person-field select:focus{outline:none;border-color:#1a6b7a;box-shadow:none}
 .person-error{margin-top:4px;color:#d84b4b;font-size:11px}
 .person-age{margin-top:4px;color:#34546b;font-size:12px;font-weight:700}

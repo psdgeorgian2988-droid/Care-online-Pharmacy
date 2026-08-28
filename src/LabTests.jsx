@@ -903,9 +903,9 @@ const styles = `
 .lab-label{display:block;margin:0 0 6px;font-size:12px;font-weight:700;color:#34546b}
 .lab-label em,.lab-field label em{color:#d84b4b;font-style:normal}
 .lab-card>select,.lab-field input,.lab-field select,.lab-field textarea{
-  width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;min-height:40px;background:#fff
+  width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;height:38px;min-height:38px;background:#fff
 }
-.lab-field textarea{min-height:64px;resize:vertical}
+.lab-field textarea{height:auto;min-height:64px;resize:vertical}
 .lab-card>select:focus,.lab-field input:focus,.lab-field select:focus,.lab-field textarea:focus{border-color:#1a6b7a}
 .lab-error{display:block;margin-top:6px;color:#d84b4b;font-size:12px}
 .lab-hint{display:block;margin-top:6px;color:#5d7180;font-size:12px}

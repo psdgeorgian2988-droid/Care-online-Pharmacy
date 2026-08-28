@@ -783,8 +783,8 @@ const styles = `
 .lab-card-head p{margin:4px 0 0;font-size:13px;color:#5d7180;line-height:1.4}
 .lab-label,.lab-field label{display:block;margin:0 0 6px;font-size:12px;font-weight:700;color:#34546b}
 .lab-label em,.lab-field label em{color:#d84b4b;font-style:normal}
-.lab-card>input,.lab-field input,.lab-field select,.lab-field textarea{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;min-height:40px;background:#fff}
-.lab-field textarea{min-height:64px;resize:vertical}
+.lab-card>input,.lab-field input,.lab-field select,.lab-field textarea{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;height:38px;min-height:38px;background:#fff}
+.lab-field textarea{height:auto;min-height:64px;resize:vertical}
 .lab-field{margin-top:12px}
 .lab-error{display:block;margin-top:6px;color:#d84b4b;font-size:12px}
 .sd-filters{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}

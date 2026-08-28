@@ -401,15 +401,20 @@ footer p {
 .checkout-panel select,
 .checkout-panel textarea {
   width: 100%;
-  padding: 12px;
+  padding: 8px 11px;
   margin-bottom: 15px;
   box-sizing: border-box;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 16px;
+  height: 38px;
+  min-height: 38px;
+  border: 1px solid #d7e2e9;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #143246;
+  background: #fff;
 }
 
 .checkout-panel textarea {
+  height: auto;
   min-height: 100px;
   resize: vertical;
 }
@@ -420,7 +425,7 @@ footer p {
 
 .checkout-panel .addr-field input {
   margin-bottom: 0;
-  font-size: 13px;
+  font-size: 14px;
   padding: 8px 11px;
 }
 
@@ -4619,11 +4624,15 @@ a.order-details-btn {
 
 .live-pin-row input {
   flex: 1;
+  height: 38px;
   min-height: 38px;
-  padding: 8px 10px;
+  padding: 8px 11px;
   border: 1px solid #d7e2e9;
   border-radius: 8px;
   font: inherit;
+  font-size: 14px;
+  color: #143246;
+  background: #fff;
 }
 
 .live-pin-row button {
@@ -4917,8 +4926,9 @@ a.order-details-btn {
 .savings-packs input,
 .savings-packs select {
   min-width: 180px;
+  height: 38px;
   min-height: 38px;
-  padding: 6px 10px;
+  padding: 8px 11px;
   border: 1px solid #d7e2e9;
   border-radius: 8px;
   font: inherit;
@@ -5712,6 +5722,74 @@ body,
   color: #143246 !important;
 }
 
+.app:not(.app-ops) input[type="text"],
+.app:not(.app-ops) input[type="tel"],
+.app:not(.app-ops) input[type="email"],
+.app:not(.app-ops) input[type="password"],
+.app:not(.app-ops) input[type="number"],
+.app:not(.app-ops) input[type="date"],
+.app:not(.app-ops) input:not([type]),
+.app:not(.app-ops) select {
+  box-sizing: border-box !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 8px 11px !important;
+  border: 1px solid #d7e2e9 !important;
+  border-radius: 8px !important;
+  background-color: #ffffff !important;
+  color: #143246 !important;
+  font: inherit !important;
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+  box-shadow: none !important;
+}
+
+.app:not(.app-ops) .medicine-search-box input[type="text"],
+.app:not(.app-ops) .medicine-controls input[type="text"] {
+  height: 46px !important;
+  min-height: 46px !important;
+  padding: 0 16px !important;
+  border: 1px solid #d6dce5 !important;
+  border-radius: 10px !important;
+  font-size: 15px !important;
+  line-height: 46px !important;
+}
+
+.app:not(.app-ops) .care-compose input {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 10px !important;
+  border-radius: 10px !important;
+  font-size: 14px !important;
+  line-height: 38px !important;
+}
+
+.app:not(.app-ops) select {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  cursor: pointer !important;
+  padding-right: 32px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%23143246' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1.5 1.8 6 6.2 10.5 1.8'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 12px 8px !important;
+}
+
+.app:not(.app-ops) textarea {
+  box-sizing: border-box !important;
+  height: auto !important;
+  min-height: 64px !important;
+  padding: 8px 11px !important;
+  border: 1px solid #d7e2e9 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  color: #143246 !important;
+  font: inherit !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+  box-shadow: none !important;
+}
+
 .app:not(.app-ops) .service-form input:focus,
 .app:not(.app-ops) .service-form select:focus,
 .app:not(.app-ops) .service-form textarea:focus,
@@ -5719,7 +5797,17 @@ body,
 .app:not(.app-ops) .profile-field textarea:focus,
 .app:not(.app-ops) .lab-field input:focus,
 .app:not(.app-ops) .lab-field select:focus,
-.app:not(.app-ops) .lab-field textarea:focus {
+.app:not(.app-ops) .lab-field textarea:focus,
+.app:not(.app-ops) input[type="text"]:focus,
+.app:not(.app-ops) input[type="tel"]:focus,
+.app:not(.app-ops) input[type="email"]:focus,
+.app:not(.app-ops) input[type="password"]:focus,
+.app:not(.app-ops) input[type="number"]:focus,
+.app:not(.app-ops) input[type="date"]:focus,
+.app:not(.app-ops) input:not([type]):focus,
+.app:not(.app-ops) select:focus,
+.app:not(.app-ops) textarea:focus {
+  outline: none !important;
   border-color: #1a6b7a !important;
   box-shadow: none !important;
 }

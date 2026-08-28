@@ -242,7 +242,7 @@ const styles = `
 .pay-coupon{margin:10px 0 0;padding:8px 10px;border:1px dashed #c5d6e0;border-radius:8px;background:#fff;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 8px;align-items:center}
 .pay-coupon > label{margin:0;font-size:12px;font-weight:700;color:#34546b}
 .pay-coupon-row{display:flex;gap:6px;min-width:0}
-.pay-coupon-row input{flex:1;min-width:0;border:1px solid #d7e2e9;border-radius:6px;padding:7px 8px;font:inherit;font-size:13px;text-transform:uppercase}
+.pay-coupon-row input{flex:1;min-width:0;height:38px;min-height:38px;border:1px solid #d7e2e9;border-radius:8px;padding:8px 11px;font:inherit;font-size:14px;color:#143246;background:#fff;text-transform:uppercase}
 .pay-coupon-row button{border:1px solid #1a6b7a;border-radius:6px;background:#1a6b7a;color:#fff;font:inherit;font-size:12px;font-weight:700;padding:7px 10px;cursor:pointer;white-space:nowrap}
 .pay-coupon-row button.is-clear{background:#fff;color:#1a6b7a;border-color:#d7e2e9}
 .pay-coupon-hint,.pay-coupon-ok,.pay-coupon-err{grid-column:1/-1;margin:0;font-size:12px;line-height:1.4}
