@@ -5798,7 +5798,7 @@ body,
 
 .app:not(.app-ops) .care-plans label.is-on,
 .app:not(.app-ops) .vac-suggest label.is-on,
-.app:not(.app-ops) .pay-block > label.is-on {
+.app:not(.app-ops) .pay-methods label.is-on {
   border-color: #1a6b7a !important;
   background: #e8f4f6 !important;
 }
@@ -6080,16 +6080,22 @@ body,
   box-sizing: border-box;
 }
 
-.app:not(.app-ops) .pay-block > label {
+.app:not(.app-ops) .pay-methods {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+}
+
+.app:not(.app-ops) .pay-methods label {
   display: flex !important;
   flex-direction: row !important;
   justify-content: flex-start !important;
-  align-items: flex-start !important;
-  gap: 10px !important;
+  align-items: center !important;
+  gap: 8px !important;
   text-align: left !important;
 }
 
-.app:not(.app-ops) .pay-block > label input[type="radio"] {
+.app:not(.app-ops) .pay-methods input[type="radio"] {
   width: 16px !important;
   min-width: 16px !important;
   max-width: 16px !important;
@@ -6097,7 +6103,7 @@ body,
   min-height: 16px !important;
   padding: 0 !important;
   flex: 0 0 16px !important;
-  margin: 3px 0 0 !important;
+  margin: 0 !important;
 }
 
 @media (max-width: 800px) {
