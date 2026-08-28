@@ -218,8 +218,9 @@ const styles = `
   .profile-field{display:flex;flex-direction:column}
   .profile-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
   .profile-field label span{color:#e34d4d}
-  .profile-field input,.profile-field textarea{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#29455a;font-size:13px;outline:none;font-family:inherit}
-  .profile-field input:focus,.profile-field textarea:focus{border-color:#35a8d2;box-shadow:0 0 0 2px rgba(53,168,210,.1)}
+  .profile-field input,.profile-field select,.profile-field textarea{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#29455a;font-size:13px;outline:none;font-family:inherit;height:38px;min-height:38px}
+  .profile-field textarea{height:auto;min-height:56px}
+  .profile-field input:focus,.profile-field select:focus,.profile-field textarea:focus{border-color:#1a6b7a;box-shadow:none}
   .profile-error{margin-top:4px;color:#d84b4b;font-size:11px}
   .profile-success{margin:0;padding:10px 12px;border-radius:8px;background:#e5f8ee;color:#1c9b61;font-size:13px;font-weight:600}
   .profile-save-btn{border:none;border-radius:8px;padding:11px 16px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:800;cursor:pointer}

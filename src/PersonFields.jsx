@@ -14,31 +14,26 @@ export default function PersonFields({
       <style>{styles}</style>
       <div className="person-fields">
         <div className="person-field">
-          <span id={genderId} className="person-label">
+          <label htmlFor={genderId} className="person-label">
             Gender <span>*</span>
-          </span>
-          <div className="person-gender" role="radiogroup" aria-labelledby={genderId}>
-            {GENDER_OPTIONS.map((option) => {
-              const id = `${idPrefix}-gender-${option.value}`;
-              return (
-                <label key={option.value} htmlFor={id} className="person-gender-option">
-                  <input
-                    id={id}
-                    type="radio"
-                    name={`${idPrefix}-gender`}
-                    value={option.value}
-                    checked={values.gender === option.value}
-                    onChange={() =>
-                      onChange?.({ target: { name: "gender", value: option.value } })
-                    }
-                  />
-                  <span>
-                    {option.label} ({option.value})
-                  </span>
-                </label>
-              );
-            })}
-          </div>
+          </label>
+          <select
+            id={genderId}
+            name="gender"
+            value={values.gender || ""}
+            onChange={(event) =>
+              onChange?.({ target: { name: "gender", value: event.target.value } })
+            }
+            required
+            aria-label="Gender"
+          >
+            <option value="">Select</option>
+            {GENDER_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
           {errors.gender ? <small className="person-error">{errors.gender}</small> : null}
         </div>
 
@@ -51,7 +46,7 @@ export default function PersonFields({
             name="age"
             inputMode="numeric"
             maxLength={3}
-            placeholder="Age in years"
+            placeholder="Years"
             value={values.age || ""}
             onChange={(event) =>
               onChange?.({
@@ -63,11 +58,7 @@ export default function PersonFields({
             }
             required
           />
-          {errors.age ? (
-            <small className="person-error">{errors.age}</small>
-          ) : (
-            <small className="person-hint">Enter completed age in years.</small>
-          )}
+          {errors.age ? <small className="person-error">{errors.age}</small> : null}
         </div>
       </div>
     </>
@@ -79,13 +70,8 @@ const styles = `
 .person-field{display:flex;flex-direction:column;min-width:0}
 .person-label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .person-label span{color:#e34d4d}
-.person-gender{display:flex;gap:8px;flex-wrap:wrap}
-.person-gender-option{display:flex;align-items:center;gap:6px;min-height:38px;padding:0 12px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#29455a;font-size:13px;font-weight:700;cursor:pointer}
-.person-gender-option:has(input:checked){border-color:#1e8a73;background:#eef8f5}
-.person-gender-option input{accent-color:#1e8a73}
-.person-field input{width:100%;box-sizing:border-box;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#29455a;font:inherit;font-size:13px}
-.person-field input:focus{outline:none;border-color:#35a8d2;box-shadow:0 0 0 2px rgba(53,168,210,.1)}
+.person-field input,.person-field select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#29455a;font:inherit;font-size:13px}
+.person-field input:focus,.person-field select:focus{outline:none;border-color:#1a6b7a;box-shadow:none}
 .person-error{margin-top:4px;color:#d84b4b;font-size:11px}
-.person-hint{margin-top:4px;color:#5d7180;font-size:11px}
 @media (max-width:800px){.person-fields{grid-template-columns:1fr}}
 `;

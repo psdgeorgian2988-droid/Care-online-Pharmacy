@@ -37,8 +37,7 @@ export default function FamilyMembersFields({
           <div>
             <p className="family-title">Family Members</p>
             <p className="family-copy">
-              Optional. Add family members with Male / Female and age for later
-              bookings. Each complete member adds 10 credit points once.
+              Optional. Each complete member adds 10 credit points once.
             </p>
           </div>
           <button type="button" className="family-add" onClick={addMember}>
@@ -125,7 +124,8 @@ const styles = `
 .family-add{padding:8px 10px;border:1px solid #1e8a73;background:#1e8a73;color:#fff;white-space:nowrap}
 .family-remove{padding:6px 8px;border:1px solid #d7e2e9;background:#fff;color:#b64b4b}
 .family-empty{margin:0;padding:10px 12px;border:1px dashed #d7e2e9;border-radius:8px;background:#f7fbfc;color:#5d7180;font-size:12px}
-.family-card{display:grid;gap:6px;padding:12px;border:1px solid #d7e2e9;border-radius:10px;background:#fff}
+.family-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 12px;padding:12px;border:1px solid #d7e2e9;border-radius:10px;background:#fff}
+.family-card-top,.family-card .person-fields{grid-column:1/-1}
 .family-card-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .family-card-top strong{font-size:12px;color:#29455a}
 .family-card label{font-size:12px;font-weight:700;color:#34546b}

@@ -262,55 +262,63 @@ function HomeAuthCard() {
 
       {tab === "login" ? (
         <form className="home-auth-form" onSubmit={handleLogin}>
-          <label htmlFor="home-login-mobile">Mobile number</label>
-          <input
-            id="home-login-mobile"
-            name="mobile"
-            type="tel"
-            inputMode="numeric"
-            maxLength="10"
-            placeholder="10-digit mobile"
-            value={login.mobile}
-            onChange={handleLoginChange}
-          />
-          <label htmlFor="home-login-pin">PIN</label>
-          <input
-            id="home-login-pin"
-            name="pinCode"
-            type="password"
-            inputMode="numeric"
-            maxLength="6"
-            placeholder="6-digit PIN"
-            value={login.pinCode}
-            onChange={handleLoginChange}
-          />
+          <div className="home-auth-field">
+            <label htmlFor="home-login-mobile">Mobile number</label>
+            <input
+              id="home-login-mobile"
+              name="mobile"
+              type="tel"
+              inputMode="numeric"
+              maxLength="10"
+              placeholder="10-digit mobile"
+              value={login.mobile}
+              onChange={handleLoginChange}
+            />
+          </div>
+          <div className="home-auth-field">
+            <label htmlFor="home-login-pin">PIN</label>
+            <input
+              id="home-login-pin"
+              name="pinCode"
+              type="password"
+              inputMode="numeric"
+              maxLength="6"
+              placeholder="6-digit PIN"
+              value={login.pinCode}
+              onChange={handleLoginChange}
+            />
+          </div>
           <button type="submit">Login</button>
         </form>
       ) : (
         <form className="home-auth-form" onSubmit={handleRegister}>
-          <label htmlFor="home-register-name">Full name</label>
-          <input
-            id="home-register-name"
-            name="name"
-            placeholder="Your full name"
-            value={register.name}
-            onChange={handleRegisterChange}
-          />
-          {errors.name && <small className="home-auth-error">{errors.name}</small>}
-          <label htmlFor="home-register-mobile">Mobile number</label>
-          <input
-            id="home-register-mobile"
-            name="mobile"
-            type="tel"
-            inputMode="numeric"
-            maxLength="10"
-            placeholder="10-digit mobile"
-            value={register.mobile}
-            onChange={handleRegisterChange}
-          />
-          {errors.mobile && (
-            <small className="home-auth-error">{errors.mobile}</small>
-          )}
+          <div className="home-auth-field">
+            <label htmlFor="home-register-name">Full name</label>
+            <input
+              id="home-register-name"
+              name="name"
+              placeholder="Your full name"
+              value={register.name}
+              onChange={handleRegisterChange}
+            />
+            {errors.name && <small className="home-auth-error">{errors.name}</small>}
+          </div>
+          <div className="home-auth-field">
+            <label htmlFor="home-register-mobile">Mobile number</label>
+            <input
+              id="home-register-mobile"
+              name="mobile"
+              type="tel"
+              inputMode="numeric"
+              maxLength="10"
+              placeholder="10-digit mobile"
+              value={register.mobile}
+              onChange={handleRegisterChange}
+            />
+            {errors.mobile && (
+              <small className="home-auth-error">{errors.mobile}</small>
+            )}
+          </div>
           <PersonFields
             idPrefix="home-register"
             values={register}
@@ -322,7 +330,7 @@ function HomeAuthCard() {
             values={register}
             errors={errors}
             onChange={handleRegisterChange}
-            pinHint="Select the Village / Sector / Mohalla attached to this PIN. It is also used to sign in."
+            pinHint="Or tap Use My Location."
           />
           <FamilyMembersFields
             idPrefix="home-register-family"

@@ -3703,20 +3703,31 @@ body,
 
 .home-landing .home-auth-form {
   display: grid;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px 12px;
+  align-items: start;
+}
+
+.home-landing .home-auth-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .home-landing .home-auth-form label {
-  margin-top: 4px;
+  margin: 0 0 5px;
   color: #34546b;
   font-size: 12px;
   font-weight: 700;
 }
 
-.home-landing .home-auth-form input,
+.home-landing .home-auth-form input:not([type="radio"]):not([type="checkbox"]),
+.home-landing .home-auth-form select,
 .home-landing .home-auth-form textarea {
   width: 100%;
   box-sizing: border-box;
+  height: 38px;
+  min-height: 38px;
   padding: 8px 10px;
   border: 1px solid #d7e2e9;
   border-radius: 8px;
@@ -3728,9 +3739,22 @@ body,
   resize: vertical;
 }
 
+.home-landing .home-auth-form textarea {
+  height: auto;
+  min-height: 56px;
+}
+
 .home-landing .home-auth-form input:focus,
+.home-landing .home-auth-form select:focus,
 .home-landing .home-auth-form textarea:focus {
   border-color: #1a6b7a;
+}
+
+.home-landing .home-auth-form .person-fields,
+.home-landing .home-auth-form .addr-fields,
+.home-landing .home-auth-form .family-fields,
+.home-landing .home-auth-form button[type="submit"] {
+  grid-column: 1 / -1;
 }
 
 .home-landing .home-auth-form button[type="submit"] {
@@ -3743,6 +3767,12 @@ body,
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
+}
+
+@media (max-width: 800px) {
+  .home-landing .home-auth-form {
+    grid-template-columns: 1fr;
+  }
 }
 
 .home-landing .home-auth-error {
