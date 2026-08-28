@@ -11,6 +11,7 @@ import {
   withFormattedAddress,
 } from "./addressFields";
 import {
+  accountCreatorMobile,
   genderLabel,
   pickFamilyMembers,
   pickPerson,
@@ -34,6 +35,7 @@ function Profile() {
   const [errors, setErrors] = useState({});
   const [saved, setSaved] = useState(false);
   const [editDetails, setEditDetails] = useState(false);
+  const [memberFormTick, setMemberFormTick] = useState(0);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -52,7 +54,7 @@ function Profile() {
   const validate = () => {
     const newErrors = {};
     if (!form.name.trim()) newErrors.name = "Full name is required.";
-    if (!/^[6-9]\d{9}$/.test(form.mobile)) {
+    if (!/^[6-9]\d{9}$/.test(accountCreatorMobile(form))) {
       newErrors.mobile = "Enter a valid 10-digit mobile number.";
     }
     Object.assign(newErrors, validatePerson(form));
@@ -66,11 +68,18 @@ function Profile() {
     e.preventDefault();
     if (!validate()) return;
 
+    const previous = readUserProfile();
+    const creatorMobile = accountCreatorMobile(form, previous);
     const profile = {
       name: form.name.trim(),
-      mobile: form.mobile.trim(),
+      mobile: creatorMobile,
+      creatorMobile,
       ...pickPerson(form),
-      familyMembers: pickFamilyMembers(form),
+      familyMembers: pickFamilyMembers({
+        ...form,
+        mobile: creatorMobile,
+        creatorMobile,
+      }),
       ...withFormattedAddress(form),
     };
 
@@ -79,6 +88,7 @@ function Profile() {
     const points = awardFamilyMemberPoints(profile.familyMembers);
     setForm(profile);
     setEditDetails(false);
+    setMemberFormTick((tick) => tick + 1);
     setSaved(
       points.count
         ? `Profile saved. +${points.awarded} credit points for ${points.count} family member${points.count === 1 ? "" : "s"}.`
@@ -149,8 +159,9 @@ function Profile() {
               idPrefix="profile-family"
               members={form.familyMembers}
               errors={errors}
-              accountMobile={form.mobile}
+              accountMobile={accountCreatorMobile(form)}
               savedAs="hidden"
+              collapseTick={memberFormTick}
               onChange={handleChange}
             />
           </section>
@@ -174,20 +185,21 @@ function Profile() {
 
               <div className="profile-field">
                 <label htmlFor="profile-account-mobile">
-                  Mobile Number <span>*</span>
+                  Account Mobile <span>*</span>
                 </label>
                 <input
                   id="profile-account-mobile"
                   name="mobile"
                   maxLength="10"
                   placeholder="10-digit mobile number"
-                  value={form.mobile}
-                  onChange={handleChange}
+                  value={accountCreatorMobile(form)}
+                  readOnly
                   {...noContactMobileProps}
                 />
-                {errors.mobile && (
-                  <small className="profile-error">{errors.mobile}</small>
-                )}
+                <small className="profile-hint">
+                  This is the mobile used when the account was created. Family
+                  members without their own number use it.
+                </small>
               </div>
 
               <PersonFields
@@ -286,9 +298,11 @@ const styles = `
   .profile-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
   .profile-field label span{color:#e34d4d}
   .profile-field input,.profile-field select,.profile-field textarea{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font-size:14px;outline:none;font-family:inherit;height:38px;min-height:38px}
+  .profile-field input:read-only{background:#f7fbfd;color:#5d7180}
   .profile-field textarea{height:auto;min-height:64px}
   .profile-field input:focus,.profile-field select:focus,.profile-field textarea:focus{border-color:#1a6b7a;box-shadow:none}
   .profile-error{margin-top:4px;color:#d84b4b;font-size:11px}
+  .profile-hint{margin-top:4px;color:#5d7180;font-size:11px}
   .profile-success{margin:0;padding:10px 12px;border-radius:8px;background:#e5f8ee;color:#1c9b61;font-size:13px;font-weight:600}
   .profile-actions{display:flex;flex-wrap:wrap;gap:8px;max-width:760px;margin:0 auto 14px}
   .profile-save-btn,.profile-edit-btn{border:none;border-radius:8px;padding:11px 16px;font-size:14px;font-weight:800;cursor:pointer}

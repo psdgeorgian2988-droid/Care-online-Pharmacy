@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PersonFields from "./PersonFields";
 import {
   RELATION_OPTIONS,
@@ -14,11 +14,16 @@ export default function FamilyMembersFields({
   errors = {},
   accountMobile = "",
   savedAs = "summary",
+  collapseTick = 0,
   onChange,
 }) {
   const list = Array.isArray(members) ? members : [];
   const [openIds, setOpenIds] = useState(() => new Set());
   const account = normalizeMobile(accountMobile);
+
+  useEffect(() => {
+    setOpenIds(new Set());
+  }, [collapseTick]);
 
   const emit = (next) => {
     onChange?.({ target: { name: "familyMembers", value: next } });
@@ -202,7 +207,7 @@ export default function FamilyMembersFields({
                         });
                       }}
                     />
-                    Use account holder&apos;s mobile
+                    Use Account Creator&apos;s Mobile
                     {account ? ` (${account})` : " — enter the account mobile first"}
                   </label>
                   {errors[`familyMembers.${index}.mobile`] ? (

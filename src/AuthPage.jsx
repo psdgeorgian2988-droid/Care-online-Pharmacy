@@ -15,6 +15,7 @@ import {
   pickPerson,
   validateFamilyMembers,
   validatePerson,
+  accountCreatorMobile,
 } from "./personFields";
 import {
   PROFILE_KEY,
@@ -47,6 +48,7 @@ export default function AuthPage({ mode = "login" }) {
   });
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState({ type: "", text: "" });
+  const [memberFormTick, setMemberFormTick] = useState(0);
   const session = readLoginSession();
   const editingAccount = isRegister && Boolean(session);
   const holderEditing =
@@ -69,7 +71,8 @@ export default function AuthPage({ mode = "login" }) {
     if (!saved.name && !saved.mobile) return;
     setRegister({
       name: saved.name || "",
-      mobile: saved.mobile || "",
+      mobile: saved.creatorMobile || saved.mobile || "",
+      creatorMobile: saved.creatorMobile || saved.mobile || "",
       ...emptyPerson(),
       ...pickPerson(saved),
       familyMembers: pickFamilyMembers(saved),
@@ -145,15 +148,23 @@ export default function AuthPage({ mode = "login" }) {
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
+    const previous = readUserProfile();
+    const creatorMobile = accountCreatorMobile(register, previous);
     const profile = {
       name: register.name.trim(),
-      mobile: register.mobile.trim(),
+      mobile: creatorMobile,
+      creatorMobile,
       ...pickPerson(register),
-      familyMembers: pickFamilyMembers(register),
+      familyMembers: pickFamilyMembers({
+        ...register,
+        mobile: creatorMobile,
+        creatorMobile,
+      }),
       ...withFormattedAddress(register),
     };
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     writeLoginSession(profile, holderActor(profile));
+    setMemberFormTick((tick) => tick + 1);
     const next = editingAccount ? "#profile" : consumeReturnHash();
     goToHash(next === "#home" ? "#profile" : next);
   };
@@ -219,8 +230,9 @@ export default function AuthPage({ mode = "login" }) {
                 idPrefix="auth-family"
                 members={register.familyMembers}
                 errors={errors}
-                accountMobile={register.mobile}
+                accountMobile={accountCreatorMobile(register)}
                 savedAs={holderEditing ? "hidden" : "summary"}
+                collapseTick={memberFormTick}
                 onChange={handleRegisterChange}
               />
               <button type="submit">

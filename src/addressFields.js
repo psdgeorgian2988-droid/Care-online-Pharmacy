@@ -1,4 +1,5 @@
 import {
+  accountCreatorMobile,
   emptyPerson,
   pickFamilyMembers,
   pickPerson,
@@ -207,16 +208,33 @@ export function readUserProfile() {
   try {
     const parsed = JSON.parse(localStorage.getItem("mediHomeUser") || "null");
     if (!parsed || typeof parsed !== "object") {
-      return { name: "", mobile: "", ...emptyPerson(), familyMembers: [], ...emptyAddress() };
+      return {
+        name: "",
+        mobile: "",
+        creatorMobile: "",
+        ...emptyPerson(),
+        familyMembers: [],
+        ...emptyAddress(),
+      };
     }
+    const mobile = String(parsed.mobile || parsed.mobileNumber || "").trim();
+    const creatorMobile = accountCreatorMobile(parsed, parsed);
     return {
       name: String(parsed.name || parsed.fullName || "").trim(),
-      mobile: String(parsed.mobile || parsed.mobileNumber || "").trim(),
+      mobile: creatorMobile || mobile,
+      creatorMobile: creatorMobile || mobile,
       ...pickPerson(parsed),
-      familyMembers: pickFamilyMembers(parsed),
+      familyMembers: pickFamilyMembers({ ...parsed, mobile, creatorMobile }),
       ...addressFromUnknown(parsed),
     };
   } catch {
-    return { name: "", mobile: "", ...emptyPerson(), familyMembers: [], ...emptyAddress() };
+    return {
+      name: "",
+      mobile: "",
+      creatorMobile: "",
+      ...emptyPerson(),
+      familyMembers: [],
+      ...emptyAddress(),
+    };
   }
 }

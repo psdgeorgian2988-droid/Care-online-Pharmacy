@@ -69,6 +69,9 @@ test("a family member with their own mobile opens only their details", () => {
 test("a member using the account holder's mobile stays on the holder login", () => {
   const actor = findAccountActor(profile, "9876543210");
   assert.equal(actor.role, "holder");
+  const [grandfather] = familyTreeLayout(profile).grandparents;
+  assert.equal(grandfather.name, "Hari Sharma");
+  assert.equal(grandfather.mobile, "9876543210");
 });
 
 test("family tree groups grandparents as Grand Father and Grand Mother", () => {

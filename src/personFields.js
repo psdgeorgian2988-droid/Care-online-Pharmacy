@@ -144,11 +144,20 @@ export function emptyFamilyMember() {
     name: "",
     relation: "",
     mobile: "",
-    useAccountMobile: false,
+    useAccountMobile: true,
     gender: "",
     dob: "",
     age: "",
   };
+}
+
+/** Mobile of the person who created the account. Once set, later edits do not replace it. */
+export function accountCreatorMobile(source = {}, previous = {}) {
+  const kept = normalizeMobile(
+    previous.creatorMobile || source.creatorMobile || previous.mobile
+  );
+  if (isValidMobile(kept)) return kept;
+  return normalizeMobile(source.mobile);
 }
 
 export function normalizeMobile(value) {
@@ -207,9 +216,9 @@ export function validatePerson(source = {}) {
 }
 
 export function pickFamilyMember(source = {}, index = 0, accountMobile = "") {
-  const useAccount = Boolean(source.useAccountMobile);
   const account = normalizeMobile(accountMobile);
   const own = normalizeMobile(source.mobile);
+  const useAccount = Boolean(source.useAccountMobile) || !own;
   return {
     id: String(source.id || `fam-${index}`),
     name: String(source.name || "").trim(),
@@ -222,13 +231,13 @@ export function pickFamilyMember(source = {}, index = 0, accountMobile = "") {
 
 export function pickFamilyMembers(source = {}) {
   const list = Array.isArray(source.familyMembers) ? source.familyMembers : [];
-  const account = normalizeMobile(source.mobile);
+  const account = accountCreatorMobile(source);
   return list.map((row, index) => pickFamilyMember(row, index, account));
 }
 
 export function validateFamilyMembers(source = {}) {
   const members = pickFamilyMembers(source);
-  const account = normalizeMobile(source.mobile);
+  const account = accountCreatorMobile(source);
   const errors = {};
   members.forEach((member, index) => {
     if (!member.name) {

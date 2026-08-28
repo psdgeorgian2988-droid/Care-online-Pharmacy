@@ -6,7 +6,7 @@ import {
   writeLoginSession,
 } from "./authSession";
 import { readUserProfile, withFormattedAddress } from "./addressFields";
-import { pickFamilyMembers, pickPerson, validatePerson } from "./personFields";
+import { pickFamilyMembers, pickPerson, validatePerson, accountCreatorMobile } from "./personFields";
 import {
   GUEST_REGISTER_BENEFITS,
   GUEST_REGISTER_HEADLINE,
@@ -16,11 +16,15 @@ import {
 function saveAccount(draft) {
   const existing = readUserProfile();
   const sameAccount = existing.mobile === draft.mobile;
+  const creatorMobile = accountCreatorMobile(draft, existing);
   const profile = {
     name: draft.name.trim(),
-    mobile: draft.mobile.trim(),
+    mobile: creatorMobile,
+    creatorMobile,
     ...pickPerson(draft),
-    familyMembers: sameAccount ? pickFamilyMembers(existing) : [],
+    familyMembers: sameAccount
+      ? pickFamilyMembers({ ...existing, mobile: creatorMobile, creatorMobile })
+      : [],
     ...withFormattedAddress({
       ...draft,
       addressConfirmed: "yes",

@@ -3,17 +3,19 @@ import {
   normalizeMobile,
   pickFamilyMembers,
   relationLabel,
+  accountCreatorMobile,
 } from "./personFields.js";
 
 export const HOLDER_ROLE = "holder";
 export const MEMBER_ROLE = "member";
 
 export function holderActor(profile = {}) {
+  const mobile = accountCreatorMobile(profile);
   return {
     role: HOLDER_ROLE,
     memberId: "",
     name: String(profile.name || "").trim(),
-    mobile: normalizeMobile(profile.mobile),
+    mobile,
   };
 }
 
@@ -24,7 +26,9 @@ export function isHolderActor(actor) {
 export function findAccountActor(profile = {}, mobile) {
   const wanted = normalizeMobile(mobile);
   if (!wanted) return null;
-  if (normalizeMobile(profile.mobile) === wanted) return holderActor(profile);
+  if (normalizeMobile(profile.mobile) === wanted || accountCreatorMobile(profile) === wanted) {
+    return holderActor(profile);
+  }
   const hit = pickFamilyMembers(profile).find(
     (row) =>
       normalizeMobile(row.mobile) === wanted && !row.useAccountMobile
@@ -64,7 +68,7 @@ export function profileForActor(profile = {}, actor = null) {
     accountMemberId: member.id,
     accountRelation: member.relation,
     accountHolderName: String(profile.name || "").trim(),
-    accountHolderMobile: normalizeMobile(profile.mobile),
+    accountHolderMobile: accountCreatorMobile(profile),
   };
 }
 
@@ -94,7 +98,7 @@ export function familyTreeLayout(profile = {}) {
         relation: "holder",
         gender: profile.gender || "",
         age: profile.age || "",
-        mobile: profile.mobile,
+        mobile: accountCreatorMobile(profile),
       },
       { isHolder: true, relationLabel: "Account Holder" }
     ),

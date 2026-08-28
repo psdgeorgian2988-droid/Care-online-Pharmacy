@@ -1,12 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  accountCreatorMobile,
   ageFromDob,
   daysInMonth,
   joinIsoDate,
   RELATION_OPTIONS,
   normalizeRelation,
   relationLabel,
+  pickFamilyMember,
+  pickFamilyMembers,
   pickPerson,
   splitIsoDate,
   validateFamilyMembers,
@@ -84,14 +87,18 @@ test("family members can be added with male/female and date of birth", () => {
   );
 });
 
-test("family members must have a mobile or use the account holder's number", () => {
-  const missing = validateFamilyMembers({
+test("family members without a mobile use the account creator's number", () => {
+  const account = {
     mobile: "9876543210",
+    creatorMobile: "9876543210",
     familyMembers: [
       { name: "Aarav", relation: "son", gender: "M", dob: yearsAgoIso(8) },
     ],
-  });
-  assert.match(missing["familyMembers.0.mobile"], /mobile/i);
+  };
+  assert.deepEqual(validateFamilyMembers(account), {});
+  const [aarav] = pickFamilyMembers(account);
+  assert.equal(aarav.mobile, "9876543210");
+  assert.equal(aarav.useAccountMobile, true);
   assert.deepEqual(
     validateFamilyMembers({
       mobile: "9876543210",
@@ -107,6 +114,24 @@ test("family members must have a mobile or use the account holder's number", () 
     }),
     {}
   );
+});
+
+test("account creator mobile stays the original number", () => {
+  assert.equal(
+    accountCreatorMobile({ mobile: "9876500000" }, { creatorMobile: "9876543210" }),
+    "9876543210"
+  );
+  assert.equal(
+    accountCreatorMobile({ mobile: "9876500000" }, { mobile: "9876543210" }),
+    "9876543210"
+  );
+  const own = pickFamilyMember(
+    { name: "Aarav", mobile: "9876501234", useAccountMobile: false },
+    0,
+    "9876543210"
+  );
+  assert.equal(own.mobile, "9876501234");
+  assert.equal(own.useAccountMobile, false);
 });
 
 test("family relation options are spouse, children, parents and grandparents", () => {
