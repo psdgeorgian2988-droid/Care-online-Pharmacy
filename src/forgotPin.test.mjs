@@ -82,3 +82,20 @@ test("OTP on mobile and email can set a new login PIN without changing delivery 
   assert.equal(profile.pinCode, "110001");
   assert.equal(profileLoginPin(profile), "998877");
 });
+
+test("email-only OTP can also set a new login PIN", () => {
+  localStorage.clear();
+  clearAccountEditUnlock();
+  seedAccount();
+
+  const found = lookupResetAccount({ email: "asha@medihome.in" });
+  const sent = sendResetOtp(
+    { profile: found.profile, actor: found.actor, channels: ["email"] },
+    { code: "5566" }
+  );
+  assert.equal(sent.ok, true);
+  assert.deepEqual(sent.channels, ["email"]);
+  assert.equal(confirmResetOtp("5566").ok, true);
+  assert.equal(saveResetLoginPin("445566", "445566").ok, true);
+  assert.equal(readUserProfile().loginPin, "445566");
+});

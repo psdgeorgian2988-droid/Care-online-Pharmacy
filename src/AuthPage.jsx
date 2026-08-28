@@ -626,7 +626,7 @@ const styles = `
 .auth-login-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
 .auth-login-actions button[type=submit],.auth-login-actions button[type=button],.auth-login-actions .auth-register-btn,.auth-form > .auth-register-btn{margin:0;max-width:none;width:100%;height:40px;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:800;cursor:pointer}
 .auth-login-actions .auth-register-btn,.auth-form > .auth-register-btn{display:flex;align-items:center;justify-content:center;box-sizing:border-box;text-decoration:none}
-.auth-login-actions .auth-secondary-btn{background:#fff;color:#1a6b7a;border:1px solid #d7e2e9}
+.auth-login-actions button.auth-secondary-btn{background:#fff;color:#1a6b7a;border:1px solid #d7e2e9}
 .auth-forgot-btn{margin-top:4px;height:36px;border:none;background:transparent;color:#1a6b7a;font:inherit;font-size:13px;font-weight:800;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .auth-channel{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .auth-channel button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin:0;padding:10px 12px;border:1px solid #d7e2e9;border-radius:10px;background:#fff;color:#143246;font:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left}
@@ -644,6 +644,7 @@ const styles = `
 .auth-switch a{color:#1a6b7a;font-weight:800;text-decoration:none}
 .auth-switch:empty{display:none}
 .auth-card > .auth-hint{margin:-4px 0 14px}
+.auth-page.is-login .auth-form button[type=submit],.auth-page.is-login .auth-form > .auth-register-btn{max-width:none}
 @media (max-width:800px){
   .auth-page{padding:14px 10px 24px}
   .auth-form{grid-template-columns:1fr}
