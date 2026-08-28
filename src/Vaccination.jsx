@@ -680,31 +680,16 @@ function Vaccination() {
             </div>
 
             <div className="field">
-              <span className="plan-label">Schedule</span>
-              <div className="care-plans vac-groups" role="radiogroup">
-                <label className={group === "child" ? "is-on" : undefined}>
-                  <input
-                    type="radio"
-                    name="group"
-                    value="child"
-                    checked={form.group === "child"}
-                    onChange={handleChange}
-                  />
-                  <strong>Children</strong>
-                  <em>UIP / NIS</em>
-                </label>
-                <label className={group === "senior" ? "is-on" : undefined}>
-                  <input
-                    type="radio"
-                    name="group"
-                    value="senior"
-                    checked={form.group === "senior"}
-                    onChange={handleChange}
-                  />
-                  <strong>Older Persons</strong>
-                  <em>MoHFW / NCDC</em>
-                </label>
-              </div>
+              <label htmlFor="vac-group">Schedule</label>
+              <select
+                id="vac-group"
+                name="group"
+                value={group}
+                onChange={handleChange}
+              >
+                <option value="child">Children · UIP / NIS</option>
+                <option value="senior">Older Persons · MoHFW / NCDC</option>
+              </select>
             </div>
 
             <div className="field">
@@ -853,14 +838,16 @@ function Vaccination() {
               {errors.timeSlot ? <small>{errors.timeSlot}</small> : null}
             </div>
 
-            <PaymentBlock
-              kind="vaccination"
-              amount={total}
-              pin={form.pinCode}
-              method={payMethod}
-              onMethodChange={setPayMethod}
-              onQuoteChange={setPayQuote}
-            />
+            <div className="field full">
+              <PaymentBlock
+                kind="vaccination"
+                amount={total}
+                pin={form.pinCode}
+                method={payMethod}
+                onMethodChange={setPayMethod}
+                onQuoteChange={setPayQuote}
+              />
+            </div>
 
             <p className="vac-disclaimer">{UIP_DISCLAIMER}</p>
             <button type="submit" className="service-submit" disabled={submitting}>
@@ -892,13 +879,7 @@ const styles = `
 .service-form .field.full,.service-form .full{grid-column:1/-1}
 .service-form label,.plan-label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .service-form label span,.plan-label span{color:#d84b4b}
-.care-plans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.care-plans label{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:12px 8px;border:1px solid #d7e2e9;border-radius:10px;background:#fff;cursor:pointer;text-align:center}
-.care-plans label.is-on{border-color:#1a6b7a;background:#e8f4f6}
-.care-plans input{position:absolute;opacity:0;pointer-events:none}
-.care-plans strong{font-size:13px;color:#143246}
-.care-plans em{font-style:normal;font-size:11px;color:#5d7180}
-.service-form input,.service-form select,.service-form textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;min-height:38px;background:#fff}
+.service-form input:not([type="radio"]):not([type="checkbox"]),.service-form select,.service-form textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;min-height:38px;background:#fff}
 .service-form input:focus,.service-form select:focus{border-color:#1a6b7a}
 .service-form small{margin-top:4px;color:#d84b4b;font-size:12px}
 .service-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:40px;cursor:pointer;font-family:inherit}

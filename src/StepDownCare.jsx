@@ -770,14 +770,16 @@ function StepDownCare() {
                 </div>
               </div>
 
-              <PaymentBlock
-                kind="stepdown"
-                amount={stayTotal}
-                pin={form.pinCode}
-                method={payMethod}
-                onMethodChange={setPayMethod}
-                onQuoteChange={setPayQuote}
-              />
+              <div className="field full">
+                <PaymentBlock
+                  kind="stepdown"
+                  amount={stayTotal}
+                  pin={form.pinCode}
+                  method={payMethod}
+                  onMethodChange={setPayMethod}
+                  onQuoteChange={setPayQuote}
+                />
+              </div>
 
               <button type="submit" className="service-submit" disabled={submitting}>
                 {submitting

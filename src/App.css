@@ -5745,7 +5745,7 @@ body,
   margin-right: 0 !important;
 }
 
-.app:not(.app-ops) .service-form input,
+.app:not(.app-ops) .service-form input:not([type="radio"]):not([type="checkbox"]),
 .app:not(.app-ops) .service-form select,
 .app:not(.app-ops) .service-form textarea,
 .app:not(.app-ops) .profile-field input,
@@ -6078,6 +6078,26 @@ body,
 .app:not(.app-ops) .pay-block {
   width: 100% !important;
   box-sizing: border-box;
+}
+
+.app:not(.app-ops) .pay-block > label {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: flex-start !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+  text-align: left !important;
+}
+
+.app:not(.app-ops) .pay-block > label input[type="radio"] {
+  width: 16px !important;
+  min-width: 16px !important;
+  max-width: 16px !important;
+  height: 16px !important;
+  min-height: 16px !important;
+  padding: 0 !important;
+  flex: 0 0 16px !important;
+  margin: 3px 0 0 !important;
 }
 
 @media (max-width: 800px) {

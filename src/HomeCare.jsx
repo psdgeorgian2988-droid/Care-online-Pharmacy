@@ -433,28 +433,22 @@ function HomeCare() {
             {errors.serviceType && <small>{errors.serviceType}</small>}
           </div>
 
-          <div className="field full">
-            <span className="plan-label">
-              Select rate <span>*</span>
-            </span>
-            <div className="care-plans" role="radiogroup" aria-label="Rate">
+          <div className="field">
+            <label htmlFor="hc-plan">
+              Rate <span>*</span>
+            </label>
+            <select
+              id="hc-plan"
+              name="carePlan"
+              value={form.carePlan}
+              onChange={handleChange}
+            >
               {activePlans.map((plan) => (
-                <label
-                  key={plan.value}
-                  className={form.carePlan === plan.value ? "is-on" : undefined}
-                >
-                  <input
-                    type="radio"
-                    name="carePlan"
-                    value={plan.value}
-                    checked={form.carePlan === plan.value}
-                    onChange={handleChange}
-                  />
-                  <strong>{plan.label}</strong>
-                  <em>{formatRupee(plan.price)}</em>
-                </label>
+                <option key={plan.value} value={plan.value}>
+                  {plan.label} · {formatRupee(plan.price)}
+                </option>
               ))}
-            </div>
+            </select>
             {errors.carePlan ? <small>{errors.carePlan}</small> : null}
           </div>
 
@@ -531,18 +525,20 @@ function HomeCare() {
             </div>
           ) : null}
 
-          <PaymentBlock
-            kind="homecare"
-            amount={
-              form.carePlan === "nurse-other"
-                ? Number(form.otherRate) || 999
-                : activePlans.find((item) => item.value === form.carePlan)?.price || 0
-            }
-            pin={form.pinCode}
-            method={payMethod}
-            onMethodChange={setPayMethod}
-            onQuoteChange={setPayQuote}
-          />
+          <div className="field full">
+            <PaymentBlock
+              kind="homecare"
+              amount={
+                form.carePlan === "nurse-other"
+                  ? Number(form.otherRate) || 999
+                  : activePlans.find((item) => item.value === form.carePlan)?.price || 0
+              }
+              pin={form.pinCode}
+              method={payMethod}
+              onMethodChange={setPayMethod}
+              onQuoteChange={setPayQuote}
+            />
+          </div>
 
           <button type="submit" className="service-submit" disabled={submitting}>
             {submitting
@@ -571,15 +567,7 @@ const styles = `
 .service-form .field.full{grid-column:1/-1}
 .service-form label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .service-form label span{color:#d84b4b}
-.plan-label{display:block;margin-bottom:8px;font-size:12px;font-weight:700;color:#34546b}
-.plan-label span{color:#d84b4b}
-.care-plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.care-plans label{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:12px 8px;border:1px solid #d7e2e9;border-radius:10px;background:#fff;cursor:pointer;text-align:center;min-height:64px}
-.care-plans label.is-on{border-color:#1a6b7a;background:#e8f4f6}
-.care-plans input{position:absolute;opacity:0;pointer-events:none}
-.care-plans strong{font-size:11px;font-weight:700;color:#5d7180}
-.care-plans em{font-style:normal;font-size:18px;font-weight:800;color:#1a6b7a;line-height:1.2}
-.service-form input,.service-form select,.service-form textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;min-height:38px;background:#fff}
+.service-form input:not([type="radio"]):not([type="checkbox"]),.service-form select,.service-form textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;min-height:38px;background:#fff}
 .service-form textarea{min-height:56px;resize:vertical}
 .service-form input:focus,.service-form select:focus,.service-form textarea:focus{border-color:#1a6b7a}
 .service-form small{margin-top:4px;color:#d84b4b;font-size:12px}
@@ -599,7 +587,7 @@ const styles = `
 .confirm-row span{color:#5d7180}
 .confirm-row strong{text-align:right}
 .confirm-row:last-child{border-bottom:none}
-@media (max-width:800px){.service-page{padding:14px}.service-form{grid-template-columns:1fr}.care-plans{grid-template-columns:1fr 1fr}}
+@media (max-width:800px){.service-page{padding:14px}.service-form{grid-template-columns:1fr}}
 `;
 
 export default HomeCare;
