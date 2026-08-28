@@ -19,6 +19,7 @@ import {
   isValidEmail,
   pickEmail,
   validateEmail,
+  isoDateDaysAhead,
 } from "./personFields.js";
 
 test("mail ID is required and stored in lowercase", () => {
@@ -50,6 +51,12 @@ test("date, month and year join into an ISO date of birth", () => {
   assert.equal(joinIsoDate("31", "2", "2026"), "");
   assert.equal(daysInMonth("2", "2024"), 29);
   assert.equal(daysInMonth("2", "2025"), 28);
+});
+
+test("days ahead stays on the calendar date", () => {
+  const day = new Date(2026, 7, 28);
+  assert.equal(isoDateDaysAhead(0, day), "2026-08-28");
+  assert.equal(isoDateDaysAhead(7, day), "2026-09-04");
 });
 
 test("gender and date of birth are required on register", () => {

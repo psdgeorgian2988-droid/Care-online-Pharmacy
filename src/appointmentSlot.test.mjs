@@ -25,6 +25,12 @@ test("lab appointment date must be today or later", () => {
   assert.match(appointmentDateError("2026-08-27", now), /today or a later date/);
 });
 
+test("lab appointment date cannot be more than one week ahead", () => {
+  assert.equal(isAppointmentDateAllowed("2026-09-04", now), true);
+  assert.equal(isAppointmentDateAllowed("2026-09-05", now), false);
+  assert.match(appointmentDateError("2026-09-05", now), /next 7 days/);
+});
+
 test("today only keeps time slots that start after now", () => {
   const open = openAppointmentSlots(LAB_TIME_SLOTS, "2026-08-28", now);
   assert.deepEqual(open, [

@@ -26,12 +26,13 @@ import {
   withBookingIdentity,
 } from "./bookingFor";
 import DateMonthYearFields from "./DateMonthYearFields";
-import { isoDateToday, isoDateYearsAhead } from "./personFields";
+import { isoDateToday } from "./personFields";
 import {
   LAB_TIME_SLOTS,
   appointmentDateError,
   appointmentSlotError,
   isOpenAppointmentSlot,
+  labBookingMaxDate,
   openAppointmentSlots,
 } from "./appointmentSlot";
 
@@ -232,7 +233,7 @@ function LabTests() {
   const radTotal = selectedImagingTests.reduce((sum, test) => sum + test.price, 0);
   const total = activeTests.reduce((sum, test) => sum + test.price, 0);
   const today = isoDateToday();
-  const maxVisit = isoDateYearsAhead(1);
+  const maxVisit = labBookingMaxDate();
   const openSlots = useMemo(
     () => openAppointmentSlots(LAB_TIME_SLOTS, form.date),
     [form.date]

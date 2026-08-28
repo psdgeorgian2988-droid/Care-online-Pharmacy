@@ -117,6 +117,12 @@ export function isoDateYearsAhead(years, today = new Date()) {
   return isoDateYearsAgo(-Number(years || 0), today);
 }
 
+export function isoDateDaysAhead(days, today = new Date()) {
+  const date = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  date.setDate(date.getDate() + Number(days || 0));
+  return toIsoDate(date);
+}
+
 export function normalizeDob(value) {
   return parseIsoDate(value) ? String(value).trim() : "";
 }
