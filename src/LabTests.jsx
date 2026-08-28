@@ -776,6 +776,7 @@ function LabTests() {
                 label="Date"
                 onChange={handleChange}
               />
+              <small className="lab-hint">Today or up to 7 days ahead.</small>
             </div>
 
             <div className="lab-field">
