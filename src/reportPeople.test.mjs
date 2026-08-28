@@ -46,4 +46,6 @@ test("saved reports filter by the selected member", () => {
   assert.equal(reportBelongsTo(anita, "fam-1"), false);
   assert.equal(reportBelongsTo(legacy, "self"), true);
   assert.equal(reportBelongsTo(legacy, "fam-1"), false);
+  assert.equal(reportBelongsTo(aarav, ""), true);
+  assert.equal(reportBelongsTo(anita, ""), true);
 });

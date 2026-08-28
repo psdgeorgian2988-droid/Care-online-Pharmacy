@@ -5,7 +5,6 @@ import { readUserProfile } from "./addressFields";
 import { useLoginSession } from "./authSession";
 import {
   householdReportPeople,
-  personLabel,
   reportBelongsTo,
 } from "./reportPeople";
 import {
@@ -78,7 +77,7 @@ function Reports() {
   const [reports, setReports] = useState(() => loadReports());
   const [customTests, setCustomTests] = useState(() => loadCustomReportTests());
   const [form, setForm] = useState({
-    memberId: people[0]?.id || "",
+    memberId: "",
     testName: "",
     name: "",
     date: today,
@@ -87,7 +86,7 @@ function Reports() {
     fileType: "",
     fileData: "",
   });
-  const [filterMember, setFilterMember] = useState(people[0]?.id || "");
+  const [filterMember, setFilterMember] = useState("");
   const [filterTest, setFilterTest] = useState("");
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("");
@@ -95,12 +94,11 @@ function Reports() {
   const [draftTest, setDraftTest] = useState("");
 
   useEffect(() => {
-    if (!people.length) return;
-    if (!people.some((row) => row.id === form.memberId)) {
-      setForm((prev) => ({ ...prev, memberId: people[0].id }));
+    if (form.memberId && !people.some((row) => row.id === form.memberId)) {
+      setForm((prev) => ({ ...prev, memberId: "" }));
     }
-    if (!people.some((row) => row.id === filterMember)) {
-      setFilterMember(people[0].id);
+    if (filterMember && !people.some((row) => row.id === filterMember)) {
+      setFilterMember("");
     }
   }, [people, form.memberId, filterMember]);
 
@@ -115,9 +113,7 @@ function Reports() {
     );
   }, [reports, filterTest, filterMember]);
 
-  const selectedPerson =
-    people.find((row) => row.id === (form.memberId || filterMember)) || people[0];
-  const filterPerson = people.find((row) => row.id === filterMember) || people[0];
+  const filterPerson = people.find((row) => row.id === filterMember) || null;
 
   const persist = (next) => {
     setReports(next);
@@ -252,7 +248,7 @@ function Reports() {
     if (!validate()) return;
 
     const testName = form.testName.trim();
-    const person = people.find((row) => row.id === form.memberId) || selectedPerson;
+    const person = people.find((row) => row.id === form.memberId);
     const record = {
       id: "MH-RPT-" + Date.now(),
       memberId: person?.id || form.memberId,
@@ -268,9 +264,9 @@ function Reports() {
     };
 
     persist([record, ...reports]);
-    setFilterMember(record.memberId);
+    setFilterMember("");
     setForm({
-      memberId: record.memberId,
+      memberId: "",
       testName: "",
       name: "",
       date: today,
@@ -296,7 +292,7 @@ function Reports() {
           <div>
             <span className="service-kicker">MediHome Reports</span>
             <h1>Save Health Reports</h1>
-            <p>Keep Lab PDFs or Images on this device, by family member. Nothing is Uploaded to a Server.</p>
+            <p>Keep Lab PDFs or Images on this device. Nothing is Uploaded to a Server.</p>
           </div>
         </section>
 
@@ -309,15 +305,12 @@ function Reports() {
               id="rpt-member"
               name="memberId"
               value={form.memberId}
-              onChange={(event) => {
-                handleChange(event);
-                setFilterMember(event.target.value);
-              }}
+              onChange={handleChange}
             >
               <option value="">Select name</option>
               {people.map((person) => (
                 <option key={person.id} value={person.id}>
-                  {personLabel(person)}
+                  {person.name}
                 </option>
               ))}
             </select>
@@ -453,9 +446,10 @@ function Reports() {
                   value={filterMember}
                   onChange={(event) => setFilterMember(event.target.value)}
                 >
+                  <option value="">All people</option>
                   {people.map((person) => (
                     <option key={person.id} value={person.id}>
-                      {personLabel(person)}
+                      {person.name}
                     </option>
                   ))}
                 </select>
@@ -479,7 +473,9 @@ function Reports() {
           {sorted.length === 0 ? (
             <p className="empty">
               {reports.filter((item) => reportBelongsTo(item, filterMember)).length === 0
-                ? `No reports saved yet for ${filterPerson?.name || "this person"}.`
+                ? filterPerson
+                  ? `No reports saved yet for ${filterPerson.name}.`
+                  : "No reports saved yet."
                 : "No reports match this test name."}
             </p>
           ) : (
