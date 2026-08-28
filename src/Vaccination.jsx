@@ -64,16 +64,8 @@ function Vaccination() {
   const selectedPerson = isSignedIn
     ? findBookingFor(profile, recordForm.bookedFor)
     : null;
-  const hasStoredDetails = Boolean(
-    selectedPerson &&
-      selectedPerson.id !== OTHER_BOOKING_ID &&
-      selectedPerson.gender &&
-      (selectedPerson.dob || selectedPerson.age)
-  );
-  const askGuestDetails =
-    !isSignedIn ||
-    selectedPerson?.id === OTHER_BOOKING_ID ||
-    (Boolean(selectedPerson) && !hasStoredDetails);
+  const isGuestBooking =
+    !isSignedIn || selectedPerson?.id === OTHER_BOOKING_ID;
   const bookHref = nurseBookingHref(carePlanForGroup(booking.group));
 
   useEffect(() => {
@@ -104,19 +96,22 @@ function Vaccination() {
   const saveRecordPerson = (event) => {
     event.preventDefault();
     const next = {};
-    if (isSignedIn && !hasStoredDetails && !recordForm.bookedFor) {
+    if (isSignedIn && !recordForm.bookedFor) {
       next.bookedFor = "Select a name.";
     }
-    if (!recordForm.name.trim()) next.name = "Name is required.";
-    if (askGuestDetails) {
+    if (isGuestBooking) {
+      if (!recordForm.name.trim()) next.name = "Name is required.";
       if (!recordForm.gender) next.gender = "Select Male or Female.";
       if (!recordForm.dob) next.dob = "Select Date Of Birth.";
     }
     setRecordErrors(next);
     if (Object.keys(next).length) return;
-    const name = (hasStoredDetails ? selectedPerson.name : recordForm.name).trim();
-    const gender = hasStoredDetails ? selectedPerson.gender : recordForm.gender;
-    const dob = booking.dob || recordForm.dob;
+    const household = isSignedIn && selectedPerson && selectedPerson.id !== OTHER_BOOKING_ID;
+    const name = (household ? selectedPerson.name : recordForm.name).trim();
+    const gender = household ? selectedPerson.gender : recordForm.gender;
+    const dob = household
+      ? selectedPerson.dob || booking.dob
+      : recordForm.dob || booking.dob;
     upsertVaccinationPerson({
       name,
       gender,
@@ -239,9 +234,9 @@ function Vaccination() {
                 {recordErrors.name ? <small>{recordErrors.name}</small> : null}
               </div>
             )}
-            {askGuestDetails ? (
+            {isGuestBooking ? (
               <>
-                {!isSignedIn ? null : (
+                {isSignedIn ? (
                   <div className="field">
                     <label htmlFor="vac-rec-name">
                       Name <span>*</span>
@@ -253,7 +248,7 @@ function Vaccination() {
                     />
                     {recordErrors.name ? <small>{recordErrors.name}</small> : null}
                   </div>
-                )}
+                ) : null}
                 <div className="field">
                   <label htmlFor="vac-rec-gender">
                     Male / Female <span>*</span>
@@ -539,7 +534,7 @@ const styles = `
 .vac-guide .service-submit,.vac-guide .vac-schedule-btn{margin-top:12px;width:100%;box-sizing:border-box}
 .vac-guide-book{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
 .vac-group{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
-.vac-group button{border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#34546b;font:inherit;font-size:13px;font-weight:700;min-height:40px;cursor:pointer}
+.vac-group button{border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#34546b;font:inherit;font-size:13px;font-weight:700;min-height:38px;height:38px;cursor:pointer}
 .vac-group button.is-on{background:#1a6b7a;border-color:#1a6b7a;color:#fff}
 .vac-picked{margin:0 0 12px;padding:0;list-style:none;display:grid;gap:6px;grid-column:1/-1}
 .vac-picked li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e4ecef;border-radius:8px;background:#fff;font-size:13px}
@@ -549,7 +544,8 @@ const styles = `
 .vac-copy{margin:0;color:#5d7180;font-size:13px;line-height:1.45}
 .vac-section-title{margin:0 0 6px;font-size:14px;font-weight:800;color:#29455a;grid-column:1/-1}
 .vac-record{display:grid;gap:16px}
-.vac-book-card,.vac-record-form,.vac-given{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.vac-book-card,.vac-given{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.vac-record-form{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 8px}
 .vac-book-card,.vac-saved,.vac-given{padding:12px;border:1px solid #e4ecef;border-radius:10px;background:#f7fbfe}
 .vac-record-form .field.full{grid-column:1/-1}
 .vac-record-form .field,.vac-book-card .field{display:flex;flex-direction:column;min-width:0}
@@ -559,7 +555,7 @@ const styles = `
 .vac-reminder-list span{font-size:13px;color:#143246}
 .vac-reminder-list em{font-style:normal;font-size:12px;color:#1a6b7a}
 .vac-remove{grid-column:1/-1;border:1px solid #d7e2e9;background:#fff;border-radius:8px;min-height:36px;cursor:pointer;font:inherit;font-size:12px}
-@media (max-width:800px){.service-page{padding:14px}.vac-record-form,.vac-given,.vac-book-card,.vac-group{grid-template-columns:1fr}}
+@media (max-width:800px){.service-page{padding:14px}.vac-record-form{grid-template-columns:1fr 1fr 1fr}.vac-given,.vac-book-card,.vac-group{grid-template-columns:1fr 1fr}}
 `;
 
 export default Vaccination;

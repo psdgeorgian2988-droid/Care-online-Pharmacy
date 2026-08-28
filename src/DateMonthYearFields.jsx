@@ -118,9 +118,8 @@ const styles = `
 .dmy-fields{display:flex;flex-direction:column;min-width:0;width:100%}
 .dmy-label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .dmy-label span{color:#d84b4b}
-.dmy-row{display:grid;grid-template-columns:minmax(72px,0.7fr) minmax(0,1.2fr) minmax(88px,0.9fr);gap:8px}
-.dmy-row select{width:100%;box-sizing:border-box;min-height:38px;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px}
+.dmy-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.dmy-row select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px}
 .dmy-row select:focus{outline:none;border-color:#1a6b7a}
 .dmy-error{margin-top:4px;color:#d84b4b;font-size:12px}
-@media (max-width:800px){.dmy-row{grid-template-columns:1fr}}
 `;
