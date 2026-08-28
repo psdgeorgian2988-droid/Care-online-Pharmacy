@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  OTHER_BOOKING_ID,
   SELF_BOOKING_ID,
   bookingForOptions,
   bookingForPatch,
   bookingForSelectLabel,
   findBookingFor,
+  shouldAskBookingContact,
 } from "./bookingFor.js";
 
 const profile = {
@@ -26,13 +28,14 @@ const profile = {
   ],
 };
 
-test("dropdown lists Self then each family member name only", () => {
+test("dropdown lists Self, each family member, then Someone Else", () => {
   const options = bookingForOptions(profile);
   assert.deepEqual(
     options.map((row) => bookingForSelectLabel(row)),
-    ["Self", "Aarav Sharma", "Riya Sharma"]
+    ["Self", "Aarav Sharma", "Riya Sharma", "Someone Else"]
   );
   assert.equal(options[0].id, SELF_BOOKING_ID);
+  assert.equal(options.at(-1).id, OTHER_BOOKING_ID);
 });
 
 test("selecting Self fills registered name, gender, age, mobile and address", () => {
@@ -56,4 +59,16 @@ test("selecting a family member fills that person's name, gender and age, and th
   assert.equal(patch.mobile, "9876543210");
   assert.equal(patch.pinCode, "122006");
   assert.equal(patch.society, "Green Park");
+});
+
+test("Someone Else clears contact so address and mobile are asked again", () => {
+  const option = findBookingFor(profile, OTHER_BOOKING_ID);
+  const patch = bookingForPatch(option, profile);
+  assert.equal(patch.bookedFor, OTHER_BOOKING_ID);
+  assert.equal(patch.patientName, "");
+  assert.equal(patch.mobile, "");
+  assert.equal(patch.pinCode, "");
+  assert.equal(shouldAskBookingContact(patch, profile), true);
+  assert.equal(shouldAskBookingContact({ bookedFor: "self" }, profile), false);
+  assert.equal(shouldAskBookingContact({ bookedFor: "fam-1" }, profile), false);
 });

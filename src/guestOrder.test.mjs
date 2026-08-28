@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { guestDraftFromOrder, missingGuestRegisterFields } from "./guestOrder.js";
+import {
+  guestDraftFromOrder,
+  guestRegisterPlan,
+  missingGuestRegisterFields,
+} from "./guestOrder.js";
 
 test("guest draft reuses order name, mobile and address", () => {
   const draft = guestDraftFromOrder({
@@ -51,4 +55,41 @@ test("name mobile and address are not missing when already on the order", () => 
     state: "Haryana",
   });
   assert.deepEqual(missing, []);
+});
+
+test("guest register plan reuses order contact and only asks gender or date of birth if missing", () => {
+  const ready = guestRegisterPlan({
+    name: "Anita Sharma",
+    mobile: "9876543210",
+    gender: "F",
+    dob: "1990-01-15",
+    houseNo: "12",
+    society: "Green Park",
+    pinCode: "122006",
+    area: "Sector 14",
+    city: "Gurugram",
+    district: "Gurugram",
+    state: "Haryana",
+  });
+  assert.equal(ready.canSaveNow, true);
+  assert.equal(ready.needsOrderContact, false);
+  assert.equal(ready.needsPerson, false);
+
+  const needsDob = guestRegisterPlan({
+    patientName: "Anita Sharma",
+    mobile: "9876543210",
+    houseNo: "12",
+    society: "Green Park",
+    pinCode: "122006",
+    area: "Sector 14",
+    city: "Gurugram",
+    district: "Gurugram",
+    state: "Haryana",
+  });
+  assert.equal(needsDob.canSaveNow, false);
+  assert.equal(needsDob.needsOrderContact, false);
+  assert.equal(needsDob.needsPerson, true);
+  assert.equal(needsDob.draft.name, "Anita Sharma");
+  assert.equal(needsDob.draft.mobile, "9876543210");
+  assert.equal(needsDob.draft.pinCode, "122006");
 });

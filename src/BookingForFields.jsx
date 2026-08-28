@@ -1,4 +1,8 @@
-import { bookingForOptions, findBookingFor, SELF_BOOKING_ID } from "./bookingFor";
+import {
+  bookingForOptions,
+  bookingForSelectLabel,
+  findBookingFor,
+} from "./bookingFor";
 
 export default function BookingForFields({
   idPrefix = "booked-for",
@@ -27,7 +31,7 @@ export default function BookingForFields({
           <option value="">Select name</option>
           {options.map((option) => (
             <option key={option.id} value={option.id}>
-              {option.id === SELF_BOOKING_ID ? "Self" : option.name}
+              {bookingForSelectLabel(option)}
             </option>
           ))}
         </select>

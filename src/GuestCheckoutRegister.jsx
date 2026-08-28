@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PersonFields from "./PersonFields";
 import {
   PROFILE_KEY,
@@ -7,7 +7,11 @@ import {
 } from "./authSession";
 import { readUserProfile, withFormattedAddress } from "./addressFields";
 import { pickFamilyMembers, pickPerson, validatePerson } from "./personFields";
-import { missingGuestRegisterFields } from "./guestOrder";
+import {
+  GUEST_REGISTER_BENEFITS,
+  GUEST_REGISTER_HEADLINE,
+  guestRegisterPlan,
+} from "./guestOrder";
 
 function saveAccount(draft) {
   const existing = readUserProfile();
@@ -26,14 +30,39 @@ function saveAccount(draft) {
   writeLoginSession(profile);
 }
 
-export default function GuestCheckoutRegister({ details = {} }) {
+export default function GuestCheckoutRegister({
+  details = {},
+  open = false,
+  onSkip,
+  onRegistered,
+  onNeedContact,
+}) {
   const user = useLoginSession();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState(() => missingGuestRegisterFields(details).draft);
+  const [step, setStep] = useState("prompt");
+  const [form, setForm] = useState(() => guestRegisterPlan(details).draft);
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("");
 
-  if (user) return null;
+  useEffect(() => {
+    if (!open) return undefined;
+    const plan = guestRegisterPlan(details);
+    setStep("prompt");
+    setForm(plan.draft);
+    setErrors({});
+    setStatus("");
+    const onKey = (event) => {
+      if (event.key === "Escape") onSkip?.();
+    };
+    window.addEventListener("keydown", onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
+
+  if (user || !open) return null;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -43,68 +72,126 @@ export default function GuestCheckoutRegister({ details = {} }) {
   };
 
   const startRegister = () => {
-    const next = missingGuestRegisterFields(details);
-    setForm(next.draft);
+    const plan = guestRegisterPlan({ ...details, ...form });
+    setForm(plan.draft);
     setErrors({});
-    const orderGaps = next.missing.filter(
-      (key) => key === "name" || key === "mobile" || key === "address"
-    );
-    if (orderGaps.length) {
-      setOpen(false);
-      setStatus("Complete name, mobile and address above first.");
+    if (plan.needsOrderContact) {
+      onNeedContact?.();
       return;
     }
-    if (!next.missing.includes("gender") && !next.missing.includes("dob")) {
-      saveAccount(next.draft);
+    if (plan.canSaveNow) {
+      saveAccount(plan.draft);
+      onRegistered?.();
       return;
     }
     setStatus("");
-    setOpen(true);
+    setStep("register");
   };
 
   const handleCreate = (event) => {
     event.preventDefault();
-    const merged = { ...missingGuestRegisterFields(details).draft, ...form };
+    const plan = guestRegisterPlan(details);
+    const merged = { ...plan.draft, ...form };
+    if (plan.needsOrderContact) {
+      onNeedContact?.();
+      return;
+    }
     const nextErrors = validatePerson(merged);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
     saveAccount(merged);
+    onRegistered?.();
   };
 
   return (
     <>
       <style>{styles}</style>
-      <div className="guest-order-reg">
-        <p className="guest-order-title">
-          Register for year-round discounts, offers and MediHome points.
-        </p>
-        {!open ? (
-          <button type="button" className="guest-order-btn" onClick={startRegister}>
-            Register
-          </button>
-        ) : (
-          <form className="guest-order-form" onSubmit={handleCreate}>
-            <PersonFields
-              idPrefix="guest-order"
-              values={form}
-              errors={errors}
-              onChange={handleChange}
-            />
-            <button type="submit" className="guest-order-btn">
-              Create account
-            </button>
-          </form>
-        )}
-        {status ? <small className="guest-order-error">{status}</small> : null}
+      <div className="guest-pay-overlay" role="presentation" onClick={onSkip}>
+        <div
+          className="guest-pay-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="guest-pay-title"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {step === "prompt" ? (
+            <>
+              <p id="guest-pay-title" className="guest-pay-headline">
+                {GUEST_REGISTER_HEADLINE}
+              </p>
+              <div className="guest-pay-actions">
+                <button type="button" className="guest-pay-btn" onClick={() => setStep("benefits")}>
+                  Know More
+                </button>
+                <button type="button" className="guest-pay-btn is-ghost" onClick={onSkip}>
+                  Not Now
+                </button>
+              </div>
+            </>
+          ) : null}
+
+          {step === "benefits" ? (
+            <>
+              <p className="guest-pay-kicker">MediHome Members</p>
+              <h2 id="guest-pay-title">Member Benefits</h2>
+              <ul className="guest-pay-benefits">
+                {GUEST_REGISTER_BENEFITS.map((row) => (
+                  <li key={row}>{row}</li>
+                ))}
+              </ul>
+              <div className="guest-pay-actions">
+                <button type="button" className="guest-pay-btn" onClick={startRegister}>
+                  Register
+                </button>
+                <button type="button" className="guest-pay-btn is-ghost" onClick={onSkip}>
+                  Not Now
+                </button>
+              </div>
+            </>
+          ) : null}
+
+          {step === "register" ? (
+            <div className="guest-pay-form">
+              <p className="guest-pay-kicker">MediHome Members</p>
+              <h2 id="guest-pay-title">Create Account</h2>
+              <p className="guest-pay-reuse">
+                Name, mobile and address from this order will be saved to your
+                account.
+              </p>
+              <PersonFields
+                idPrefix="guest-order"
+                values={form}
+                errors={errors}
+                onChange={handleChange}
+              />
+              {status ? <small className="guest-pay-error">{status}</small> : null}
+              <div className="guest-pay-actions">
+                <button type="button" className="guest-pay-btn" onClick={handleCreate}>
+                  Create Account
+                </button>
+                <button type="button" className="guest-pay-btn is-ghost" onClick={onSkip}>
+                  Not Now
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
     </>
   );
 }
 
 const styles = `
-.guest-order-reg{margin:0 0 12px;padding:10px 12px;border:1px solid #c5e0d4;border-radius:10px;background:#f3fbf6;display:grid;gap:8px}
-.guest-order-title{margin:0;font-size:13px;font-weight:800;color:#0f5c45;line-height:1.35}
-.guest-order-form{display:grid;gap:8px}
-.guest-order-btn{height:36px;max-width:180px;border:none;border-radius:8px;background:#1e8a73;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
-.guest-order-error{color:#b64b4b;font-size:12px}
+.guest-pay-overlay{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(20,50,70,.5)}
+.guest-pay-dialog{width:min(440px,100%);padding:22px 20px 18px;border-radius:14px;background:#fff;border:1px solid #e4ecef;box-shadow:0 18px 48px rgba(20,50,70,.28);color:#143246}
+.guest-pay-headline{margin:0 0 16px;font-size:20px;font-weight:800;line-height:1.35;color:#0f5c45;text-align:center}
+.guest-pay-kicker{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#1a6b7a}
+.guest-pay-dialog h2{margin:0 0 10px;font-size:20px;font-weight:800;color:#143246}
+.guest-pay-benefits{margin:0 0 16px;padding:0 0 0 18px;display:grid;gap:8px;color:#143246;font-size:14px;font-weight:700;line-height:1.4}
+.guest-pay-reuse{margin:0 0 12px;font-size:13px;font-weight:700;color:#34546b;line-height:1.4}
+.guest-pay-form{display:grid;gap:8px}
+.guest-pay-actions{display:flex;flex-wrap:wrap;gap:8px}
+.guest-pay-btn{flex:1;min-height:42px;border:none;border-radius:8px;background:#1e8a73;color:#fff;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+.guest-pay-btn.is-ghost{background:#fff;color:#1a6b7a;border:1px solid #d7e2e9}
+.guest-pay-error{color:#b64b4b;font-size:12px}
 `;

@@ -32,6 +32,17 @@ export function addressReadyForAccount(source = {}) {
   );
 }
 
+export const GUEST_REGISTER_HEADLINE =
+  "Register for year-round discounts, offers and MediHome points.";
+
+export const GUEST_REGISTER_BENEFITS = [
+  "Year-round discounts on medicines and home services",
+  "Member offers on your orders",
+  "MediHome points for family members, referrals, webinars and quizzes",
+  "Saved name, mobile and address for faster checkout",
+  "Book for family members from your account",
+];
+
 export function missingGuestRegisterFields(source = {}) {
   const draft = guestDraftFromOrder(source);
   const missing = [];
@@ -41,4 +52,19 @@ export function missingGuestRegisterFields(source = {}) {
   if (!draft.dob) missing.push("dob");
   if (!addressReadyForAccount(draft)) missing.push("address");
   return { draft, missing };
+}
+
+export function guestRegisterPlan(source = {}) {
+  const { draft, missing } = missingGuestRegisterFields(source);
+  const needsOrderContact = missing.some(
+    (key) => key === "name" || key === "mobile" || key === "address"
+  );
+  const needsPerson = missing.includes("gender") || missing.includes("dob");
+  return {
+    draft,
+    missing,
+    needsOrderContact,
+    needsPerson,
+    canSaveNow: !needsOrderContact && !needsPerson,
+  };
 }

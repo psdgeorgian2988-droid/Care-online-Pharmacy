@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { applyCoupon, normalizeCouponCode } from "./offers";
 import { quoteCheckout } from "./paymentSplit";
+import { useLoginSession } from "./authSession";
 import GuestCheckoutRegister from "./GuestCheckoutRegister";
 
 function formatRupee(amount) {
@@ -19,10 +20,32 @@ export default function PaymentBlock({
   onQuoteChange,
   guestDetails,
 }) {
+  const user = useLoginSession();
   const [couponDraft, setCouponDraft] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [couponMessage, setCouponMessage] = useState("");
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [pendingMethod, setPendingMethod] = useState("");
+  const [guestSkipped, setGuestSkipped] = useState(false);
+  const [guestNote, setGuestNote] = useState("");
   const couponInputRef = useRef(null);
+
+  const finishGuestPrompt = (nextMethod) => {
+    const chosen = nextMethod || pendingMethod;
+    setPromptOpen(false);
+    setPendingMethod("");
+    if (chosen) onMethodChange(chosen);
+  };
+
+  const pickMethod = (next) => {
+    if (user || guestSkipped) {
+      onMethodChange(next);
+      return;
+    }
+    setGuestNote("");
+    setPendingMethod(next);
+    setPromptOpen(true);
+  };
 
   const quote = useMemo(
     () =>
@@ -76,28 +99,38 @@ export default function PaymentBlock({
     <>
       <style>{styles}</style>
       <div className="pay-block">
-        <GuestCheckoutRegister details={guestDetails} />
         <p className="pay-kicker">Payment</p>
         <div className="pay-methods" role="radiogroup" aria-label="Payment method">
-          <label className={method === "cod" ? "is-on" : ""}>
+          <label
+            className={method === "cod" ? "is-on" : ""}
+            onClick={() => {
+              if (method === "cod") pickMethod("cod");
+            }}
+          >
             <input
               type="radio"
               name={`pay-method-${kind}`}
               checked={method === "cod"}
-              onChange={() => onMethodChange("cod")}
+              onChange={() => pickMethod("cod")}
             />
-            <span>Cash on visit</span>
+            <span>Cash On Visit</span>
           </label>
-          <label className={method === "online" ? "is-on" : ""}>
+          <label
+            className={method === "online" ? "is-on" : ""}
+            onClick={() => {
+              if (method === "online") pickMethod("online");
+            }}
+          >
             <input
               type="radio"
               name={`pay-method-${kind}`}
               checked={method === "online"}
-              onChange={() => onMethodChange("online")}
+              onChange={() => pickMethod("online")}
             />
-            <span>Pay online</span>
+            <span>Pay Online</span>
           </label>
         </div>
+        {guestNote ? <p className="pay-guest-note">{guestNote}</p> : null}
 
         <ul className="pay-split">
           <li>
@@ -172,6 +205,23 @@ export default function PaymentBlock({
           )}
         </div>
       </div>
+      <GuestCheckoutRegister
+        details={guestDetails}
+        open={promptOpen}
+        onSkip={() => {
+          setGuestSkipped(true);
+          finishGuestPrompt();
+        }}
+        onRegistered={() => {
+          setGuestSkipped(true);
+          finishGuestPrompt();
+        }}
+        onNeedContact={() => {
+          setGuestSkipped(true);
+          setGuestNote("Complete name, mobile and address above first.");
+          finishGuestPrompt();
+        }}
+      />
     </>
   );
 }
@@ -199,5 +249,6 @@ const styles = `
 .pay-coupon-hint{color:#5d7180}
 .pay-coupon-ok{color:#0f7a4a}
 .pay-coupon-err{color:#c0392b}
+.pay-guest-note{margin:8px 0 0;font-size:12px;font-weight:700;color:#b64b4b;line-height:1.4}
 @media (max-width:420px){.pay-methods{grid-template-columns:1fr 1fr}.pay-coupon{grid-template-columns:1fr}.pay-coupon-row{grid-column:1/-1}}
 `;
