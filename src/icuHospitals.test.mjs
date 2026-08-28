@@ -4,6 +4,7 @@ import {
   ICU_VENTILATOR_HOSPITALS,
   hospitalDestination,
   nearestIcuHospitals,
+  persistHospitalDestination,
   typedHospitalDestination,
 } from "./icuHospitals.js";
 
@@ -68,4 +69,30 @@ test("customer can type any hospital name and address as the drop", () => {
   assert.equal(dest.destinationName, "Holy Family Hospital");
   assert.equal(dest.destinationAddress, "Okhla Road, New Delhi 110025");
   assert.equal(dest.destinationFacilities, "");
+});
+
+test("hospital name keeps spaces between words while typing", () => {
+  const dest = typedHospitalDestination({
+    name: "Holy Family ",
+    address: "Okhla Road, ",
+  });
+  assert.equal(dest.destinationName, "Holy Family ");
+  assert.equal(dest.destinationAddress, "Okhla Road, ");
+});
+
+test("hospital name is not cut off by length", () => {
+  const name =
+    "All India Institute of Medical Sciences New Delhi Cardiothoracic Centre";
+  const dest = typedHospitalDestination({ name, address: "Ansari Nagar" });
+  assert.equal(dest.destinationName, name);
+  assert.equal(dest.destinationName.length > 40, true);
+});
+
+test("saving a hospital name trims edges but keeps the full wording", () => {
+  const saved = persistHospitalDestination({
+    name: "  Holy Family Hospital Okhla  ",
+    address: "  Okhla Road, New Delhi 110025  ",
+  });
+  assert.equal(saved.destinationName, "Holy Family Hospital Okhla");
+  assert.equal(saved.destinationAddress, "Okhla Road, New Delhi 110025");
 });

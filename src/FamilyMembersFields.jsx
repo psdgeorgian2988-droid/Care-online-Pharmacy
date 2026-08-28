@@ -7,6 +7,7 @@ import {
   normalizeMobile,
 } from "./personFields";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
+import AutofillTrap from "./AutofillTrap";
 
 export default function FamilyMembersFields({
   idPrefix = "family",
@@ -76,6 +77,7 @@ export default function FamilyMembersFields({
     <>
       <style>{styles}</style>
       <div className="family-fields">
+        <AutofillTrap />
         <div className="family-head">
           <p className="family-title">Family Members</p>
           <button type="button" className="family-add" onClick={addMember}>

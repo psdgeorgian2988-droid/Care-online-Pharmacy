@@ -24,6 +24,7 @@ import {
   writeLoginSession,
 } from "./authSession";
 import { goToHash } from "./hashRoute";
+import AutofillTrap from "./AutofillTrap";
 import { noContactEmailProps, noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import {
   MEMBER_ROLE,
@@ -201,6 +202,7 @@ function LoginRegisterPage({ mode }) {
 
           {isRegister ? (
             <form className="auth-form" onSubmit={handleRegister} autoComplete="off">
+              <AutofillTrap />
               <div className="auth-field">
                 <label htmlFor="auth-register-name">
                   Full name <span>*</span>
@@ -272,6 +274,7 @@ function LoginRegisterPage({ mode }) {
             </form>
           ) : (
             <form className="auth-form auth-form-login" onSubmit={handleLogin} autoComplete="off">
+              <AutofillTrap />
               <div className="auth-field">
                 <label htmlFor="auth-login-mobile">
                   Mobile number <span>*</span>
@@ -445,6 +448,7 @@ function ForgotPinPage() {
 
           {step === "find" ? (
             <form className="auth-form auth-form-login" onSubmit={findAccount} autoComplete="off">
+              <AutofillTrap />
               <div className="auth-field">
                 <label htmlFor="auth-forgot-mobile">Mobile number</label>
                 <input

@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { lookupPinDirectory, resolvePinLocation } from "./pinLocation";
+import AutofillTrap from "./AutofillTrap";
 import {
   formatHospitalDistance,
   hospitalDestination,
   nearestIcuHospitals,
+  persistHospitalDestination,
   typedHospitalDestination,
 } from "./icuHospitals";
+import { noContactFieldProps } from "./noContactAutofill";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
@@ -165,7 +168,7 @@ function Ambulance() {
           const picked = icuHospitals.find((row) => row.id === form.destinationId);
           return picked
             ? hospitalDestination(picked)
-            : typedHospitalDestination({
+            : persistHospitalDestination({
                 name: form.destinationName,
                 address: form.destinationAddress,
                 pin: form.destinationPin,
@@ -333,7 +336,8 @@ function Ambulance() {
           </div>
         </section>
 
-        <form className="service-form" onSubmit={handleSubmit}>
+        <form className="service-form" onSubmit={handleSubmit} autoComplete="off">
+          <AutofillTrap />
           <BookingFlow
             idPrefix="amb"
             profile={profile}
@@ -364,12 +368,15 @@ function Ambulance() {
             <label htmlFor="amb-hospital-name">
               Hospital Name <span>*</span>
             </label>
-            <input
+            <textarea
               id="amb-hospital-name"
               name="destinationName"
+              rows="2"
               value={form.destinationName}
               onChange={handleChange}
               placeholder="Hospital where the patient should be taken"
+              wrap="soft"
+              {...noContactFieldProps}
             />
             {errors.destinationName ? (
               <small>{errors.destinationName}</small>
@@ -386,6 +393,8 @@ function Ambulance() {
               value={form.destinationAddress}
               onChange={handleChange}
               placeholder="Full hospital address, area and PIN"
+              wrap="soft"
+              {...noContactFieldProps}
             />
             {errors.destinationAddress ? (
               <small>{errors.destinationAddress}</small>
@@ -513,9 +522,10 @@ const styles = `
 .confirm-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-bottom:8px;margin-bottom:4px;border-bottom:1px solid #e5edf1}
 .confirm-head h2{margin:0;font-size:16px}
 .confirm-head span{padding:5px 9px;border-radius:6px;background:#e8f4f6;color:#1a6b7a;font-size:12px;font-weight:800}
-.confirm-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #edf1f3;font-size:14px}
-.confirm-row span{color:#5d7180}
-.confirm-row strong{text-align:right}
+.confirm-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:9px 0;border-bottom:1px solid #edf1f3;font-size:14px}
+.confirm-row span{color:#5d7180;flex-shrink:0}
+.confirm-row strong{text-align:right;min-width:0;flex:1;overflow-wrap:anywhere;white-space:pre-wrap;word-break:break-word}
+.service-form textarea#amb-hospital-name,.service-form textarea#amb-hospital-address{min-height:56px;overflow-wrap:anywhere;white-space:pre-wrap;word-break:break-word}
 .confirm-row:last-child{border-bottom:none}
 .confirm-note{margin:0 0 12px;font-size:13px;color:#7c7059}
 @media (max-width:800px){.service-page{padding:14px}.service-form{grid-template-columns:1fr}}

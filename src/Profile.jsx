@@ -23,6 +23,7 @@ import {
   validateEmail,
 } from "./personFields";
 import { noContactEmailProps, noContactMobileProps, noContactNameProps } from "./noContactAutofill";
+import AutofillTrap from "./AutofillTrap";
 import { PROFILE_KEY, useLoginSession, writeLoginSession } from "./authSession";
 import { MEMBER_ROLE, holderActor } from "./familyAccount";
 import { pickLoginPin } from "./loginPin";
@@ -167,6 +168,7 @@ function Profile() {
         </section>
 
         <form className="profile-form" onSubmit={handleSave} autoComplete="off">
+          <AutofillTrap />
           <section className="profile-card" aria-label="Add family members">
             <FamilyMembersFields
               idPrefix="profile-family"

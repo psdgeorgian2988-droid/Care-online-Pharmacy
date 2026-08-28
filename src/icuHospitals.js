@@ -287,16 +287,34 @@ export function hospitalDestination(hospital) {
   };
 }
 
+function keepHospitalText(value) {
+  return String(value || "");
+}
+
+function persistHospitalText(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+/** Keep spaces while typing so a hospital name can be several words, with no length cap. */
 export function typedHospitalDestination({ name, address, pin } = {}) {
   return {
     destinationId: "",
-    destinationName: String(name || "").trim(),
-    destinationAddress: String(address || "").trim(),
+    destinationName: keepHospitalText(name),
+    destinationAddress: keepHospitalText(address),
     destinationPin: String(pin || "").replace(/\D/g, "").slice(0, 6),
     destinationPhone: "",
     destinationKm: "",
     destinationFacilities: "",
   };
+}
+
+/** Trim only when saving the request, still without cutting the hospital name. */
+export function persistHospitalDestination({ name, address, pin } = {}) {
+  return typedHospitalDestination({
+    name: persistHospitalText(name),
+    address: persistHospitalText(address),
+    pin,
+  });
 }
 
 export function nearestIcuHospitals({ lat, lng, pin, limit = 3 } = {}) {

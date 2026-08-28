@@ -1,4 +1,5 @@
 import AddressFields from "./AddressFields";
+import AutofillTrap from "./AutofillTrap";
 import { isOtherBooking, shouldAskBookingDetails } from "./bookingFor";
 import { GENDER_OPTIONS, normalizeAge } from "./personFields";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
@@ -53,6 +54,7 @@ export default function BookingContactFields({
   return (
     <>
       <style>{styles}</style>
+      <AutofillTrap />
       <div className={skin.nameClass}>
         <label htmlFor={nameId}>
           {nameLabel} <Star>*</Star>
