@@ -268,7 +268,12 @@ export default function AuthPage({ mode = "login" }) {
                   onChange={handleLoginChange}
                 />
               </div>
-              <button type="submit">Login</button>
+              <div className="auth-login-actions">
+                <button type="submit">Login</button>
+                <a className="auth-register-btn" href="#register">
+                  Register
+                </a>
+              </div>
             </form>
           )}
 
@@ -285,15 +290,8 @@ export default function AuthPage({ mode = "login" }) {
               <>
                 Already registered? <a href="#login">Login</a>
               </>
-            ) : (
-              "New here?"
-            )}
+            ) : null}
           </p>
-          {isRegister || editingAccount ? null : (
-            <a className="auth-create-btn" href="#register">
-              Create account
-            </a>
-          )}
         </section>
       </div>
     </>
@@ -314,17 +312,19 @@ const styles = `
 .auth-form select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px;outline:none}
 .auth-form textarea{width:100%;box-sizing:border-box;height:auto;min-height:64px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px;outline:none;resize:vertical}
 .auth-form input:focus,.auth-form select:focus,.auth-form textarea:focus{border-color:#1a6b7a}
-.auth-form .person-fields,.auth-form .addr-fields,.auth-form .auth-hint,.auth-form button[type=submit]{grid-column:1/-1}
+.auth-form .person-fields,.auth-form .addr-fields,.auth-form .auth-hint,.auth-form button[type=submit],.auth-form .auth-login-actions{grid-column:1/-1}
 .auth-hint{margin:0;color:#5d7180;font-size:13px;line-height:1.4}
 .auth-form button[type=submit]{margin-top:6px;height:40px;max-width:220px;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:800;cursor:pointer}
-.auth-form-login button[type=submit]{max-width:none}
+.auth-login-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.auth-login-actions button[type=submit],.auth-login-actions .auth-register-btn{margin:0;max-width:none;width:100%;height:40px;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:800;cursor:pointer}
+.auth-login-actions .auth-register-btn{display:flex;align-items:center;justify-content:center;box-sizing:border-box;text-decoration:none}
 .auth-error{margin-top:4px;color:#d84b4b;font-size:11px}
 .auth-status{margin:10px 0 0;font-size:12px;font-weight:600}
 .auth-status.error{color:#d84b4b}
 .auth-status.success{color:#1c9b61}
 .auth-switch{margin:14px 0 0;color:#5d7180;font-size:13px}
 .auth-switch a{color:#1a6b7a;font-weight:800;text-decoration:none}
-.auth-create-btn{display:flex;align-items:center;justify-content:center;margin:10px 0 0;width:100%;height:40px;box-sizing:border-box;border:1px solid #1a6b7a;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:800;text-decoration:none}
+.auth-switch:empty{display:none}
 @media (max-width:800px){
   .auth-page{padding:14px 10px 24px}
   .auth-form{grid-template-columns:1fr}
