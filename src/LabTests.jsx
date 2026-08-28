@@ -866,14 +866,11 @@ function LabTests() {
             />
 
             <div className="lab-book-foot">
-              <div>
-                <span>{activePartner ? activePartner.name : "No partner selected"}</span>
-                <strong>
-                  {activeTests.length
-                    ? `${activeTests.length} selected · ₹${payQuote?.payableRupees ?? total}`
-                    : `₹${payQuote?.payableRupees ?? total}`}
-                </strong>
-              </div>
+              <strong>
+                {activeTests.length
+                  ? `${activeTests.length} selected · ₹${payQuote?.payableRupees ?? total}`
+                  : `₹${payQuote?.payableRupees ?? total}`}
+              </strong>
               <button type="submit" className="lab-submit" disabled={submitting}>
                 {submitting ? "Connecting PIN to map…" : "Confirm booking"}
               </button>
@@ -965,8 +962,6 @@ const styles = `
 .lab-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .centre-note{margin:0;padding:10px 12px;border-radius:8px;background:#f7fbfe;border:1px solid #e4ecef;font-size:13px;line-height:1.45;color:#5d7180}
 .lab-book-foot{margin-top:14px;padding-top:14px;border-top:1px solid #eef3f6;display:flex;flex-direction:column;gap:10px}
-.lab-book-foot>div{display:flex;flex-direction:column;gap:2px}
-.lab-book-foot span{font-size:13px;color:#5d7180}
 .lab-book-foot strong{font-size:15px;color:#143246}
 .lab-submit,.service-submit{border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:42px;cursor:pointer;font-family:inherit;width:100%}
 .lab-submit:disabled{opacity:.7;cursor:wait}
