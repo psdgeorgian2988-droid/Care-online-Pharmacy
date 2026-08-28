@@ -811,7 +811,7 @@ const styles = `
 .lab-card-head p{margin:4px 0 0;font-size:13px;color:#5d7180;line-height:1.4}
 .lab-label,.lab-field label{display:block;margin:0 0 6px;font-size:12px;font-weight:700;color:#34546b}
 .lab-label em,.lab-field label em{color:#d84b4b;font-style:normal}
-.lab-card>input,.lab-field input,.lab-field select,.lab-field textarea{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;height:38px;min-height:38px;background:#fff}
+.lab-card>input:not([type="radio"]):not([type="checkbox"]),.lab-field input:not([type="radio"]):not([type="checkbox"]),.lab-field select,.lab-field textarea{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;height:38px;min-height:38px;background:#fff}
 .lab-field textarea{height:auto;min-height:64px;resize:vertical}
 .lab-field{margin-top:12px}
 .lab-error{display:block;margin-top:6px;color:#d84b4b;font-size:12px}
@@ -834,10 +834,10 @@ const styles = `
 .sd-full{grid-column:1/-1}
 .sd-picked{margin:8px 0 0;color:#5d7180;font-size:13px}
 .sd-link{border:0;background:none;padding:0;color:#1a6b7a;font:inherit;font-weight:700;cursor:pointer}
-.sd-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.sd-choice label{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:1px solid #d7e2e9;border-radius:10px;background:#fff;font-size:15px;font-weight:800;color:#143246;cursor:pointer}
+.sd-choice{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.sd-choice label{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:auto;min-width:0;min-height:28px;padding:3px 10px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;font-size:12px;font-weight:700;color:#143246;cursor:pointer}
 .sd-choice label.is-on{border-color:#1a6b7a;background:#e8f4f6;color:#1a6b7a}
-.sd-choice input{accent-color:#1a6b7a}
+.sd-choice input{width:14px;min-width:14px;max-width:14px;height:14px;min-height:0;margin:0;padding:0;border:none;background:transparent;accent-color:#1a6b7a}
 .service-submit{margin-top:16px;width:100%;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:42px;cursor:pointer;font-family:inherit}
 .service-page{padding:16px 20px 24px 14px;box-sizing:border-box;color:#143246}
 .service-confirm{max-width:640px;margin:12px auto;text-align:center}

@@ -6320,6 +6320,37 @@ body,
   margin: 0 !important;
 }
 
+.app:not(.app-ops) .sd-choice {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+.app:not(.app-ops) .sd-choice label {
+  display: inline-flex !important;
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 28px !important;
+  padding: 3px 10px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.app:not(.app-ops) .sd-choice input[type="radio"] {
+  width: 14px !important;
+  min-width: 14px !important;
+  max-width: 14px !important;
+  height: 14px !important;
+  min-height: 14px !important;
+  padding: 0 !important;
+  flex: 0 0 14px !important;
+  margin: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
 @media (max-width: 800px) {
   .app:not(.app-ops) .service-form,
   .app:not(.app-ops) .profile-card,
