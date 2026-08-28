@@ -20,6 +20,8 @@ import {
   validateBookingDetails,
   withBookingIdentity,
 } from "./bookingFor";
+import DateMonthYearFields from "./DateMonthYearFields";
+import { isoDateToday, isoDateYearsAhead } from "./personFields";
 
 const PLANS = [
   { value: "video-45", label: "Video 45 min", price: 999, mode: "video" },
@@ -47,7 +49,8 @@ function readProfile() {
 
 function Psychologist() {
   const profile = useMemo(() => readProfile(), []);
-  const today = new Date().toISOString().split("T")[0];
+  const today = isoDateToday();
+  const maxVisit = isoDateYearsAhead(1);
   const [form, setForm] = useState({
     patientName: profile.name,
     mobile: profile.mobile,
@@ -310,19 +313,18 @@ function Psychologist() {
             {errors.carePlan ? <small>{errors.carePlan}</small> : null}
           </div>
 
-          <div className="field">
-            <label htmlFor="psy-date">
-              Session date <span>*</span>
-            </label>
-            <input
-              id="psy-date"
+          <div className="field full">
+            <DateMonthYearFields
+              idPrefix="psy-date"
               name="date"
-              type="date"
-              min={today}
               value={form.date}
+              min={today}
+              max={maxVisit}
+              required
+              error={errors.date || ""}
+              label="Session Date"
               onChange={handleChange}
             />
-            {errors.date && <small>{errors.date}</small>}
           </div>
 
           <div className="field">
@@ -389,7 +391,7 @@ const styles = `
 .service-hero p{margin:0;color:#5d7180;font-size:13px;line-height:1.4}
 .service-form{max-width:760px;margin:0 auto;padding:14px;background:#fff;border:1px solid #e4ecef;border-radius:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
 .service-form .field{display:flex;flex-direction:column;min-width:0}
-.service-form .field.full{grid-column:1/-1}
+.service-form .field.full,.service-form .field:has(.dmy-fields){grid-column:1/-1}
 .service-form label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .service-form label span{color:#d84b4b}
 .service-form input:not([type="radio"]):not([type="checkbox"]),.service-form select,.service-form textarea{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;height:38px;min-height:38px;background:#fff}
