@@ -6,6 +6,7 @@ import {
   formatHospitalDistance,
   hospitalDestination,
   nearestIcuHospitals,
+  typedHospitalDestination,
 } from "./icuHospitals";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import PaymentBlock from "./PaymentBlock";
@@ -60,23 +61,12 @@ function Ambulance() {
   useEffect(() => {
     if (!/^\d{6}$/.test(pickupPin)) {
       setIcuHospitals([]);
-      setForm((prev) =>
-        prev.destinationId ? { ...prev, ...hospitalDestination(null) } : prev
-      );
       return undefined;
     }
     let cancelled = false;
     const applyList = (list) => {
       if (cancelled) return;
       setIcuHospitals(list);
-      setForm((prev) => {
-        const stillValid = list.some((row) => row.id === prev.destinationId);
-        if (stillValid) {
-          const picked = list.find((row) => row.id === prev.destinationId);
-          return { ...prev, ...hospitalDestination(picked) };
-        }
-        return { ...prev, ...hospitalDestination(list[0] || null) };
-      });
     };
     applyList(nearestIcuHospitals({ pin: pickupPin, limit: 3 }));
     lookupPinDirectory(pickupPin).then((row) => {
@@ -96,22 +86,42 @@ function Ambulance() {
 
   const pickHospital = (hospital) => {
     setForm((prev) => ({ ...prev, ...hospitalDestination(hospital) }));
-    setErrors((prev) => ({ ...prev, destinationId: "" }));
+    setErrors((prev) => ({
+      ...prev,
+      destinationName: "",
+      destinationAddress: "",
+    }));
   };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     const next =
       name === "mobile" || name === "pinCode" ? value.replace(/\D/g, "") : value;
-    setForm((prev) => ({ ...prev, [name]: next }));
+    setForm((prev) => {
+      if (name === "destinationName" || name === "destinationAddress") {
+        return {
+          ...prev,
+          ...typedHospitalDestination({
+            name: name === "destinationName" ? next : prev.destinationName,
+            address:
+              name === "destinationAddress" ? next : prev.destinationAddress,
+            pin: prev.destinationPin,
+          }),
+        };
+      }
+      return { ...prev, [name]: next };
+    });
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const validate = () => {
     const next = validateBookingDetails(form, profile);
     if (!form.emergencyType) next.emergencyType = "Select emergency type.";
-    if (/^\d{6}$/.test(pickupPin) && !form.destinationId) {
-      next.destinationId = "Select a nearby ICU and ventilator hospital.";
+    if (!String(form.destinationName || "").trim()) {
+      next.destinationName = "Enter the hospital name.";
+    }
+    if (!String(form.destinationAddress || "").trim()) {
+      next.destinationAddress = "Enter the hospital address.";
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -150,20 +160,16 @@ function Ambulance() {
         ...addr,
         emergencyType: form.emergencyType,
         notes: form.notes.trim(),
-        ...hospitalDestination(
-          icuHospitals.find((row) => row.id === form.destinationId) || {
-            id: form.destinationId,
-            name: form.destinationName,
-            address: form.destinationAddress,
-            pin: form.destinationPin,
-            phone: form.destinationPhone,
-            distanceKm: form.destinationKm,
-            facilities: String(form.destinationFacilities || "ICU, Ventilator")
-              .split(",")
-              .map((part) => part.trim())
-              .filter(Boolean),
-          }
-        ),
+        ...(() => {
+          const picked = icuHospitals.find((row) => row.id === form.destinationId);
+          return picked
+            ? hospitalDestination(picked)
+            : typedHospitalDestination({
+                name: form.destinationName,
+                address: form.destinationAddress,
+                pin: form.destinationPin,
+              });
+        })(),
         total: pay.amountRupees,
         saleRupees: pay.saleRupees,
         couponCode: pay.couponCode,
@@ -247,18 +253,34 @@ function Ambulance() {
                 <strong>{request.pickupAddress}</strong>
               </div>
               {request.destinationName ? (
-                <div className="confirm-row">
-                  <span>Drop At</span>
-                  <strong>
-                    {request.destinationName}
-                    {request.destinationFacilities
-                      ? ` · ${request.destinationFacilities}`
-                      : " · ICU, Ventilator"}
-                    {request.destinationKm !== "" && request.destinationKm != null
-                      ? ` · ${formatHospitalDistance(request.destinationKm)}`
-                      : ""}
-                  </strong>
-                </div>
+                <>
+                  <div className="confirm-row">
+                    <span>Drop At</span>
+                    <strong>{request.destinationName}</strong>
+                  </div>
+                  {request.destinationAddress ? (
+                    <div className="confirm-row">
+                      <span>Hospital Address</span>
+                      <strong>{request.destinationAddress}</strong>
+                    </div>
+                  ) : null}
+                  {request.destinationFacilities || request.destinationKm ? (
+                    <div className="confirm-row">
+                      <span>Reach</span>
+                      <strong>
+                        {[
+                          request.destinationFacilities,
+                          request.destinationKm !== "" &&
+                          request.destinationKm != null
+                            ? formatHospitalDistance(request.destinationKm)
+                            : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </strong>
+                    </div>
+                  ) : null}
+                </>
               ) : null}
               <div className="confirm-row">
                 <span>PIN</span>
@@ -337,13 +359,46 @@ function Ambulance() {
             {errors.emergencyType && <small>{errors.emergencyType}</small>}
           </div>
 
+          <div className="field full">
+            <label htmlFor="amb-hospital-name">
+              Hospital Name <span>*</span>
+            </label>
+            <input
+              id="amb-hospital-name"
+              name="destinationName"
+              value={form.destinationName}
+              onChange={handleChange}
+              placeholder="Hospital where the patient should be taken"
+            />
+            {errors.destinationName ? (
+              <small>{errors.destinationName}</small>
+            ) : null}
+          </div>
+          <div className="field full">
+            <label htmlFor="amb-hospital-address">
+              Hospital Address <span>*</span>
+            </label>
+            <textarea
+              id="amb-hospital-address"
+              name="destinationAddress"
+              rows="2"
+              value={form.destinationAddress}
+              onChange={handleChange}
+              placeholder="Full hospital address, area and PIN"
+            />
+            {errors.destinationAddress ? (
+              <small>{errors.destinationAddress}</small>
+            ) : null}
+          </div>
+
           <div className="field full amb-hospitals">
-            <p className="amb-hospitals-kicker">Nearest ICU And Ventilator Hospitals</p>
+            <p className="amb-hospitals-kicker">Faster Reach Options</p>
             {/^\d{6}$/.test(pickupPin) ? (
               <>
                 <p className="pin-gps-hint">
-                  Suggested from pickup PIN {pickupPin}. The nearest hospital is
-                  selected; choose another if needed.
+                  Hospitals with ICU and ventilator that can be reached fastest
+                  from PIN {pickupPin}. Tap one to fill the name and address, or
+                  keep the hospital you typed.
                 </p>
                 {icuHospitals.length ? (
                   <div className="amb-hospital-list">
@@ -358,7 +413,7 @@ function Ambulance() {
                         >
                           <strong>{hospital.name}</strong>
                           <span>
-                            {hospital.area}, {hospital.city} · PIN {hospital.pin}
+                            {hospital.address}
                           </span>
                           <span className="amb-hospital-meta">
                             ICU · Ventilator
@@ -371,16 +426,13 @@ function Ambulance() {
                     })}
                   </div>
                 ) : (
-                  <p className="pin-gps-hint">Finding hospitals near this PIN…</p>
+                  <p className="pin-gps-hint">Finding faster hospitals near this PIN…</p>
                 )}
-                {errors.destinationId ? (
-                  <small>{errors.destinationId}</small>
-                ) : null}
               </>
             ) : (
               <p className="pin-gps-hint">
-                Enter the pickup PIN Code to see the nearest hospitals with ICU
-                and ventilator.
+                Enter the pickup PIN Code to see hospitals that can be reached
+                fastest.
               </p>
             )}
           </div>

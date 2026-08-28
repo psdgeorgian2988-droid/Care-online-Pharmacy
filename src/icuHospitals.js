@@ -272,18 +272,30 @@ export function hospitalDestination(hospital) {
     };
   }
   return {
-    destinationId: hospital.id,
+    destinationId: hospital.id || "",
     destinationName: hospital.name,
     destinationAddress: hospital.address,
-    destinationPin: hospital.pin,
+    destinationPin: hospital.pin || "",
     destinationPhone: hospital.phone || "",
     destinationKm:
       hospital.distanceKm != null && hospital.distanceKm !== ""
         ? hospital.distanceKm
         : "",
-    destinationFacilities: (hospital.facilities || ["ICU", "Ventilator"]).join(
-      ", "
-    ),
+    destinationFacilities: hospital.id
+      ? (hospital.facilities || ["ICU", "Ventilator"]).join(", ")
+      : "",
+  };
+}
+
+export function typedHospitalDestination({ name, address, pin } = {}) {
+  return {
+    destinationId: "",
+    destinationName: String(name || "").trim(),
+    destinationAddress: String(address || "").trim(),
+    destinationPin: String(pin || "").replace(/\D/g, "").slice(0, 6),
+    destinationPhone: "",
+    destinationKm: "",
+    destinationFacilities: "",
   };
 }
 

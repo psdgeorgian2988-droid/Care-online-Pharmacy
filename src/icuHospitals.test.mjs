@@ -4,6 +4,7 @@ import {
   ICU_VENTILATOR_HOSPITALS,
   hospitalDestination,
   nearestIcuHospitals,
+  typedHospitalDestination,
 } from "./icuHospitals.js";
 
 test("every suggested hospital is listed as ICU with ventilator", () => {
@@ -56,4 +57,15 @@ test("selected hospital becomes the ambulance drop destination", () => {
   assert.equal(dest.destinationPin, top.pin);
   assert.match(dest.destinationFacilities, /ICU/);
   assert.match(dest.destinationFacilities, /Ventilator/);
+});
+
+test("customer can type any hospital name and address as the drop", () => {
+  const dest = typedHospitalDestination({
+    name: "Holy Family Hospital",
+    address: "Okhla Road, New Delhi 110025",
+  });
+  assert.equal(dest.destinationId, "");
+  assert.equal(dest.destinationName, "Holy Family Hospital");
+  assert.equal(dest.destinationAddress, "Okhla Road, New Delhi 110025");
+  assert.equal(dest.destinationFacilities, "");
 });
