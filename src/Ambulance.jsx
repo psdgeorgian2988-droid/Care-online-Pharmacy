@@ -8,7 +8,9 @@ import {
   hospitalDestination,
   nearestIcuHospitals,
   persistHospitalDestination,
+  pinFromText,
   typedHospitalDestination,
+  validateAmbulanceDrop,
 } from "./icuHospitals";
 import { noContactFieldProps } from "./noContactAutofill";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
@@ -23,6 +25,7 @@ import {
   applyResolvedPin,
   pickAddress,
   readUserProfile,
+  validateAddress,
 } from "./addressFields";
 import {
   accountOwnerBooking,
@@ -94,22 +97,34 @@ function Ambulance() {
       ...prev,
       destinationName: "",
       destinationAddress: "",
+      destinationPin: "",
     }));
   };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     const next =
-      name === "mobile" || name === "pinCode" ? value.replace(/\D/g, "") : value;
+      name === "mobile"
+        ? value.replace(/\D/g, "")
+        : name === "pinCode" || name === "destinationPin"
+          ? value.replace(/\D/g, "").slice(0, 6)
+          : value;
     setForm((prev) => {
-      if (name === "destinationName" || name === "destinationAddress") {
+      if (
+        name === "destinationName" ||
+        name === "destinationAddress" ||
+        name === "destinationPin"
+      ) {
+        const address =
+          name === "destinationAddress" ? next : prev.destinationAddress;
+        const typedPin =
+          name === "destinationPin" ? next : prev.destinationPin;
         return {
           ...prev,
           ...typedHospitalDestination({
             name: name === "destinationName" ? next : prev.destinationName,
-            address:
-              name === "destinationAddress" ? next : prev.destinationAddress,
-            pin: prev.destinationPin,
+            address,
+            pin: typedPin || pinFromText(address),
           }),
         };
       }
@@ -119,14 +134,12 @@ function Ambulance() {
   };
 
   const validate = () => {
-    const next = validateBookingDetails(form, profile);
+    const next = {
+      ...validateBookingDetails(form, profile),
+      ...validateAddress(form),
+      ...validateAmbulanceDrop(form),
+    };
     if (!form.emergencyType) next.emergencyType = "Select emergency type.";
-    if (!String(form.destinationName || "").trim()) {
-      next.destinationName = "Enter the hospital name.";
-    }
-    if (!String(form.destinationAddress || "").trim()) {
-      next.destinationAddress = "Enter the hospital address.";
-    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -137,7 +150,10 @@ function Ambulance() {
 
     setSubmitting(true);
     try {
-      const booked = withBookingIdentity(form, profile);
+      const booked = {
+        ...withBookingIdentity(form, profile),
+        ...pickAddress(form),
+      };
       const urgent = form.emergencyType === "emergency";
       const queue = await holdForPartnerQueue("ambulance", { urgent });
       const gps = await resolvePinLocation(booked.pinCode);
@@ -253,8 +269,12 @@ function Ambulance() {
                 <strong>{maskMobile(request.mobile)}</strong>
               </div>
               <div className="confirm-row">
-                <span>Pickup</span>
+                <span>Pickup Address</span>
                 <strong>{request.pickupAddress}</strong>
+              </div>
+              <div className="confirm-row">
+                <span>Pickup PIN</span>
+                <strong>{request.pinCode}</strong>
               </div>
               {request.destinationName ? (
                 <>
@@ -264,10 +284,14 @@ function Ambulance() {
                   </div>
                   {request.destinationAddress ? (
                     <div className="confirm-row">
-                      <span>Hospital Address</span>
+                      <span>Drop Address</span>
                       <strong>{request.destinationAddress}</strong>
                     </div>
                   ) : null}
+                  <div className="confirm-row">
+                    <span>Drop PIN</span>
+                    <strong>{request.destinationPin || "—"}</strong>
+                  </div>
                   {request.destinationFacilities || request.destinationKm ? (
                     <div className="confirm-row">
                       <span>Reach</span>
@@ -286,10 +310,6 @@ function Ambulance() {
                   ) : null}
                 </>
               ) : null}
-              <div className="confirm-row">
-                <span>PIN</span>
-                <strong>{request.pinCode}</strong>
-              </div>
               <PinGpsBlock record={request} />
               {request.notes ? (
                 <div className="confirm-row">
@@ -344,6 +364,8 @@ function Ambulance() {
             values={form}
             errors={errors}
             askWho={false}
+            alwaysAskAddress
+            addressTitle="Pickup Address"
             onChange={handleChange}
             pinHint="Select the Village / Sector / Mohalla attached to this PIN."
           >
@@ -384,7 +406,7 @@ function Ambulance() {
           </div>
           <div className="field full">
             <label htmlFor="amb-hospital-address">
-              Hospital Address <span>*</span>
+              Drop Address <span>*</span>
             </label>
             <textarea
               id="amb-hospital-address"
@@ -392,12 +414,30 @@ function Ambulance() {
               rows="2"
               value={form.destinationAddress}
               onChange={handleChange}
-              placeholder="Full hospital address, area and PIN"
+              placeholder="Full hospital address, area and landmark"
               wrap="soft"
               {...noContactFieldProps}
             />
             {errors.destinationAddress ? (
               <small>{errors.destinationAddress}</small>
+            ) : null}
+          </div>
+          <div className="field">
+            <label htmlFor="amb-hospital-pin">
+              Drop PIN Code <span>*</span>
+            </label>
+            <input
+              id="amb-hospital-pin"
+              name="destinationPin"
+              value={form.destinationPin}
+              onChange={handleChange}
+              placeholder="6-digit PIN"
+              inputMode="numeric"
+              maxLength="6"
+              {...noContactFieldProps}
+            />
+            {errors.destinationPin ? (
+              <small>{errors.destinationPin}</small>
             ) : null}
           </div>
 

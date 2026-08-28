@@ -38,6 +38,7 @@ export default function BookingContactFields({
   nameKey = "patientName",
   nameLabel = "Name",
   pinHint,
+  addressTitle = "",
 }) {
   const skin = LAYOUT[layout] || LAYOUT.service;
   if (!shouldAskBookingDetails(values, profile)) return null;
@@ -130,6 +131,9 @@ export default function BookingContactFields({
         ) : null}
       </div>
       <div className={skin.addressClass}>
+        {addressTitle ? (
+          <p className="booking-address-title">{addressTitle}</p>
+        ) : null}
         <AddressFields
           idPrefix={idPrefix}
           values={values}
@@ -149,4 +153,5 @@ const styles = `
 .booking-contact-field label span,.booking-contact-field label em{color:#d84b4b;font-style:normal}
 .booking-contact-field input,.booking-contact-field select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px}
 .booking-contact-address{margin:0 0 12px}
+.booking-address-title{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.4px;color:#1a6b7a}
 `;

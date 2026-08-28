@@ -295,13 +295,23 @@ function persistHospitalText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
+export function pinFromText(value) {
+  const match = String(value || "").match(/\b(\d{6})\b/);
+  return match ? match[1] : "";
+}
+
+function digitsPin(value) {
+  return String(value || "").replace(/\D/g, "").slice(0, 6);
+}
+
 /** Keep spaces while typing so a hospital name can be several words, with no length cap. */
 export function typedHospitalDestination({ name, address, pin } = {}) {
+  const typedPin = digitsPin(pin);
   return {
     destinationId: "",
     destinationName: keepHospitalText(name),
     destinationAddress: keepHospitalText(address),
-    destinationPin: String(pin || "").replace(/\D/g, "").slice(0, 6),
+    destinationPin: typedPin || pinFromText(address),
     destinationPhone: "",
     destinationKm: "",
     destinationFacilities: "",
@@ -313,8 +323,22 @@ export function persistHospitalDestination({ name, address, pin } = {}) {
   return typedHospitalDestination({
     name: persistHospitalText(name),
     address: persistHospitalText(address),
-    pin,
+    pin: digitsPin(pin) || pinFromText(address),
   });
+}
+
+export function validateAmbulanceDrop(source = {}) {
+  const errors = {};
+  if (!String(source.destinationName || "").trim()) {
+    errors.destinationName = "Enter the hospital name.";
+  }
+  if (!String(source.destinationAddress || "").trim()) {
+    errors.destinationAddress = "Enter the drop address.";
+  }
+  if (!/^\d{6}$/.test(digitsPin(source.destinationPin))) {
+    errors.destinationPin = "Enter the 6-digit drop PIN Code.";
+  }
+  return errors;
 }
 
 export function nearestIcuHospitals({ lat, lng, pin, limit = 3 } = {}) {

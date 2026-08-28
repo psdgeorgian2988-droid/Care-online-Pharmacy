@@ -6,6 +6,7 @@ import {
   nearestIcuHospitals,
   persistHospitalDestination,
   typedHospitalDestination,
+  validateAmbulanceDrop,
 } from "./icuHospitals.js";
 
 test("every suggested hospital is listed as ICU with ventilator", () => {
@@ -88,6 +89,33 @@ test("hospital name is not cut off by length", () => {
   assert.equal(dest.destinationName.length > 40, true);
 });
 
+test("typed drop keeps a 6-digit PIN from the address or the PIN field", () => {
+  const fromAddress = typedHospitalDestination({
+    name: "Holy Family Hospital",
+    address: "Okhla Road, New Delhi 110025",
+  });
+  assert.equal(fromAddress.destinationPin, "110025");
+  const fromField = typedHospitalDestination({
+    name: "Holy Family Hospital",
+    address: "Okhla Road, New Delhi",
+    pin: "110025",
+  });
+  assert.equal(fromField.destinationPin, "110025");
+});
+
+test("ambulance drop requires hospital name, address and PIN", () => {
+  const empty = validateAmbulanceDrop({});
+  assert.equal(empty.destinationName, "Enter the hospital name.");
+  assert.equal(empty.destinationAddress, "Enter the drop address.");
+  assert.equal(empty.destinationPin, "Enter the 6-digit drop PIN Code.");
+  const ok = validateAmbulanceDrop({
+    destinationName: "Holy Family Hospital",
+    destinationAddress: "Okhla Road, New Delhi",
+    destinationPin: "110025",
+  });
+  assert.deepEqual(ok, {});
+});
+
 test("saving a hospital name trims edges but keeps the full wording", () => {
   const saved = persistHospitalDestination({
     name: "  Holy Family Hospital Okhla  ",
@@ -95,4 +123,5 @@ test("saving a hospital name trims edges but keeps the full wording", () => {
   });
   assert.equal(saved.destinationName, "Holy Family Hospital Okhla");
   assert.equal(saved.destinationAddress, "Okhla Road, New Delhi 110025");
+  assert.equal(saved.destinationPin, "110025");
 });

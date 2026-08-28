@@ -1,5 +1,6 @@
 import BookingContactFields from "./BookingContactFields";
 import BookingForFields from "./BookingForFields";
+import AddressFields from "./AddressFields";
 import { hasHouseholdProfile, shouldAskBookingDetails } from "./bookingFor";
 
 export default function BookingFlow({
@@ -12,10 +13,13 @@ export default function BookingFlow({
   layout = "service",
   pinHint,
   askWho = true,
+  alwaysAskAddress = false,
+  addressTitle = "",
   children,
 }) {
   const showWho = askWho && hasHouseholdProfile(profile);
   const showDetails = shouldAskBookingDetails(values, profile);
+  const showAddressOnly = alwaysAskAddress && !showDetails;
 
   return (
     <>
@@ -41,6 +45,20 @@ export default function BookingFlow({
             errors={errors}
             onChange={onChange}
             pinHint={pinHint}
+            addressTitle={addressTitle}
+          />
+        </div>
+      ) : null}
+      {showAddressOnly ? (
+        <div className="field full booking-flow-address">
+          {addressTitle ? (
+            <p className="booking-address-title">{addressTitle}</p>
+          ) : null}
+          <AddressFields
+            idPrefix={idPrefix}
+            values={values}
+            errors={errors}
+            onChange={onChange}
           />
         </div>
       ) : null}
@@ -51,4 +69,6 @@ export default function BookingFlow({
 
 const styles = `
 .booking-flow-who,.booking-flow-details,.booking-flow-service{display:contents}
+.booking-flow-address{display:flex;flex-direction:column;min-width:0;grid-column:1/-1}
+.booking-address-title{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.4px;color:#1a6b7a}
 `;
