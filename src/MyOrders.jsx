@@ -10,7 +10,7 @@ import PinGpsBlock from "./PinGpsBlock";
 import { BillButton } from "./OrderBill";
 import OrderFeedbackCta from "./OrderFeedbackCta";
 import { paymentMethodSummary } from "./paymentMethods";
-import SettlementConfirm from "./SettlementConfirm";
+import { maskMobile } from "./personFields";
 
 function typeLabel(order) {
   return kindLabel(order?.kind || order?.orderType);
@@ -140,7 +140,7 @@ function MyOrders() {
                 </p>
                 <p>
                   <strong>Mobile:</strong>{" "}
-                  {selectedOrder.mobile || "Not provided"}
+                  {maskMobile(selectedOrder.mobile) || "Not provided"}
                 </p>
                 <p>
                   <strong>
@@ -324,7 +324,6 @@ function MyOrders() {
                   "Cash on delivery / visit"
                 )}
               </p>
-              <SettlementConfirm split={selectedOrder.split} variant="p" />
             ) : null}
             <PinGpsBlock record={selectedOrder} compact />
             {selectedOrder.kind === "medicine" && (
@@ -436,7 +435,6 @@ function MyOrders() {
                         "Cash on delivery"
                       )}
                     </p>
-                    <SettlementConfirm split={order.split} variant="p" />
                   ) : null}
                   <p>
                     <strong>Status:</strong> {order.status}

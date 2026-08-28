@@ -10,7 +10,7 @@ import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
 import BookingFlow from "./BookingFlow";
 import { paymentMethodSummary } from "./paymentMethods";
-import SettlementConfirm from "./SettlementConfirm";
+import { maskMobile } from "./personFields";
 import {
   applyResolvedPin,
   pickAddress,
@@ -376,14 +376,13 @@ function HomeCare() {
                   {paymentMethodSummary(booking.paymentMethod, "Cash on visit")}
                 </strong>
               </div>
-              <SettlementConfirm split={booking.split} />
               <div className="confirm-row">
                 <span>Patient</span>
                 <strong>{booking.patientName}</strong>
               </div>
               <div className="confirm-row">
                 <span>Mobile</span>
-                <strong>{booking.mobile}</strong>
+                <strong>{maskMobile(booking.mobile)}</strong>
               </div>
               <div className="confirm-row">
                 <span>Address</span>

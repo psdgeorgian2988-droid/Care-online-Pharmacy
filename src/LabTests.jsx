@@ -10,7 +10,7 @@ import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
 import { DIAGNOSTIC_LABS, IMAGING_CENTRES } from "./diagnosticPartners";
 import { paymentMethodSummary } from "./paymentMethods";
-import SettlementConfirm from "./SettlementConfirm";
+import { maskMobile } from "./personFields";
 import BookingFlow from "./BookingFlow";
 import {
   addressFromUnknown,
@@ -506,7 +506,7 @@ function LabTests() {
               </div>
               <div className="confirm-row">
                 <span>Mobile</span>
-                <strong>{booking.mobile}</strong>
+                <strong>{maskMobile(booking.mobile)}</strong>
               </div>
               <div className="confirm-row">
                 <span>{booking.serviceType === "lab" ? "Collection type" : "Appointment type"}</span>
@@ -539,7 +539,6 @@ function LabTests() {
                   {paymentMethodSummary(booking.paymentMethod, "Pay on visit / collection")}
                 </strong>
               </div>
-              <SettlementConfirm split={booking.split} />
             </div>
             <AssignedAgent record={booking} />
             <p className="confirm-note">

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { buildOrderBill } from "./orderBill";
-import { shareSettlement } from "./shareSettlement";
+import { maskMobile } from "./personFields";
 
 export function BillButton({ order, className = "service-submit" }) {
   const [open, setOpen] = useState(false);
@@ -18,17 +18,9 @@ export function BillButton({ order, className = "service-submit" }) {
 export default function OrderBill({ order, onClose }) {
   const bill = buildOrderBill(order);
   const seller = bill.seller;
-  const [shareNote, setShareNote] = useState("");
 
   const printBill = () => {
     window.print();
-  };
-
-  const shareLedger = async () => {
-    const result = await shareSettlement(bill.ledgerText || bill.settlement);
-    if (result === "shared") setShareNote("Ledger shared.");
-    else if (result === "copied") setShareNote("Ledger copied.");
-    else setShareNote("Could not share. Copy the ledger from the bill.");
   };
 
   return (
@@ -40,11 +32,6 @@ export default function OrderBill({ order, onClose }) {
             <button type="button" onClick={printBill}>
               Print / Save PDF
             </button>
-            {bill.ledgerText ? (
-              <button type="button" onClick={shareLedger}>
-                Share Ledger
-              </button>
-            ) : null}
             <button type="button" onClick={onClose}>
               Close
             </button>
@@ -104,7 +91,7 @@ export default function OrderBill({ order, onClose }) {
               <p>
                 <strong>{bill.buyer.name}</strong>
               </p>
-              {bill.buyer.mobile ? <p>Mobile: {bill.buyer.mobile}</p> : null}
+              {bill.buyer.mobile ? <p>Mobile: {maskMobile(bill.buyer.mobile)}</p> : null}
               {bill.buyer.address ? <p>{bill.buyer.address}</p> : null}
               {bill.buyer.pin ? <p>PIN: {bill.buyer.pin}</p> : null}
             </section>
@@ -157,43 +144,6 @@ export default function OrderBill({ order, onClose }) {
                 <dd>{bill.payment}</dd>
               </div>
             </dl>
-            {bill.settlement?.ledger?.length ? (
-              <section className="order-bill-ledger" aria-label="Settlement ledger">
-                <h2>Settlement Ledger</h2>
-                {bill.settlementSummary ? <p>{bill.settlementSummary}</p> : null}
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Party</th>
-                      <th>Note</th>
-                      <th>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bill.settlement.ledger.map((row, index) => (
-                      <tr key={`${row.partyKey}-${index}`}>
-                        <td>{row.party}</td>
-                        <td>{row.note}</td>
-                        <td>{bill.formatInr(row.amountRupees)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {bill.settlement.dueFromPartnerRupees ? (
-                  <p>
-                    <strong>Due from service provider:</strong>{" "}
-                    {bill.formatInr(bill.settlement.dueFromPartnerRupees)}
-                  </p>
-                ) : null}
-                {bill.settlement.dueToPartnerRupees ? (
-                  <p>
-                    <strong>Due to partner:</strong>{" "}
-                    {bill.formatInr(bill.settlement.dueToPartnerRupees)}
-                  </p>
-                ) : null}
-                {shareNote ? <p className="order-bill-note no-print">{shareNote}</p> : null}
-              </section>
-            ) : null}
             <p className="order-bill-foot">
               Amount is inclusive of applicable GST. This is a computer-generated
               invoice from MediHome.

@@ -16,7 +16,6 @@ import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
 import BookingFlow from "./BookingFlow";
 import { paymentMethodSummary } from "./paymentMethods";
-import SettlementConfirm from "./SettlementConfirm";
 import {
   applyResolvedPin,
   pickAddress,
@@ -27,6 +26,7 @@ import {
   validateBookingDetails,
   withBookingIdentity,
 } from "./bookingFor";
+import { maskMobile } from "./personFields";
 
 const AMBULANCE_FEE = {
   emergency: 3999,
@@ -241,14 +241,13 @@ function Ambulance() {
                   {paymentMethodSummary(request.paymentMethod, "Cash on arrival")}
                 </strong>
               </div>
-              <SettlementConfirm split={request.split} />
               <div className="confirm-row">
                 <span>Patient</span>
                 <strong>{request.patientName}</strong>
               </div>
               <div className="confirm-row">
                 <span>Mobile</span>
-                <strong>{request.mobile}</strong>
+                <strong>{maskMobile(request.mobile)}</strong>
               </div>
               <div className="confirm-row">
                 <span>Pickup</span>

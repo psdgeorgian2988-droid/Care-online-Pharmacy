@@ -21,9 +21,8 @@ import {
   withBookingIdentity,
 } from "./bookingFor";
 import DateMonthYearFields from "./DateMonthYearFields";
-import { isoDateToday, isoDateYearsAhead } from "./personFields";
+import { isoDateToday, isoDateYearsAhead, maskMobile } from "./personFields";
 import { paymentMethodSummary } from "./paymentMethods";
-import SettlementConfirm from "./SettlementConfirm";
 
 const STORAGE_KEY = "mediHomeStepDownBookings";
 const AMBULANCE_STORAGE_KEY = "mediHomeAmbulanceRequests";
@@ -377,7 +376,7 @@ function StepDownCare() {
               </div>
               <div className="confirm-row">
                 <span>Mobile</span>
-                <strong>{booking.mobile}</strong>
+                <strong>{maskMobile(booking.mobile)}</strong>
               </div>
               <div className="confirm-row">
                 <span>Address</span>
@@ -412,7 +411,6 @@ function StepDownCare() {
                   {paymentMethodSummary(booking.paymentMethod, "Pay at centre")}
                 </strong>
               </div>
-              <SettlementConfirm split={booking.split} />
               <div className="confirm-row">
                 <span>Ambulance to centre</span>
                 <strong>{booking.needAmbulance ? "Yes · booked automatically" : "No"}</strong>
