@@ -194,22 +194,21 @@ const styles = `
 .info-footnote a{color:#1a6b7a;font-weight:700;text-decoration:none}
 .social-panel h2{margin:0 0 4px;font-size:16px;color:#123b59}
 .social-panel p{margin:0 0 12px;color:#5d7180;font-size:13px;line-height:1.4}
-.contact-social{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.contact-social{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .contact-social .social-handle-card{display:flex;align-items:center;gap:10px;min-height:72px;padding:12px 14px;border:1px solid #e4ecef;border-radius:12px;background:#f7fbfe;color:#143246;text-decoration:none}
 .contact-social .social-handle-card:hover{border-color:#1a6b7a;background:#fff}
 .contact-social .social-handle-icon{display:flex;align-items:center;justify-content:center;width:40px;height:40px;flex:0 0 40px;border-radius:10px;background:#e8f4f6;color:#1a6b7a}
 .contact-social .social-handle-icon svg{width:20px;height:20px}
 .contact-social .social-handle-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
 .contact-social .social-handle-copy strong{font-size:13px;font-weight:800;color:#123b59}
-.contact-social .social-handle-copy em{font-style:normal;font-size:13px;font-weight:700;color:#1a6b7a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.contact-social .social-handle-copy em{font-style:normal;font-size:13px;font-weight:700;color:#1a6b7a}
 .contact-social .social-handle-card[data-network="instagram"] .social-handle-icon{background:#fdeef6;color:#c13584}
 .contact-social .social-handle-card[data-network="facebook"] .social-handle-icon{background:#e8f1fb;color:#1877f2}
 .contact-social .social-handle-card[data-network="youtube"] .social-handle-icon{background:#fdecec;color:#e11d2e}
 .contact-social .social-handle-card[data-network="linkedin"] .social-handle-icon{background:#e8f3f8;color:#0a66c2}
 .contact-social .social-handle-card[data-network="x"] .social-handle-icon{background:#ececec;color:#111}
 .contact-social .social-handle-card[data-network="whatsapp"] .social-handle-icon{background:#e8f8ee;color:#1fa855}
-@media (max-width:800px){.service-page{padding:14px}.service-form,.contact-details{grid-template-columns:1fr}.contact-social{grid-template-columns:1fr 1fr}}
-@media (max-width:520px){.contact-social{grid-template-columns:1fr}}
+@media (max-width:800px){.service-page{padding:14px}.service-form,.contact-details,.contact-social{grid-template-columns:1fr}}
 `;
 
 export default Contact;
