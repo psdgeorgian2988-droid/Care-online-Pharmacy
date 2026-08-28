@@ -295,6 +295,47 @@ export function formatDueAge(vaccineOrMonths) {
   return `${n} months`;
 }
 
+export function dueSortKey(vaccine) {
+  if (vaccine?.dueAgeWeeks != null) return Number(vaccine.dueAgeWeeks) / 4.345;
+  if (vaccine?.dueAgeMonths != null) return Number(vaccine.dueAgeMonths);
+  if (vaccine?.minAgeYears != null) return Number(vaccine.minAgeYears) * 12;
+  return 9999;
+}
+
+/** Full Government of India list, grouped by age, from newborn through older persons. */
+export function fullVaccinationSchedule() {
+  const childMap = new Map();
+  const childSorted = [...CHILD_VACCINES].sort((a, b) => dueSortKey(a) - dueSortKey(b));
+  for (const vaccine of childSorted) {
+    const when = formatDueAge(vaccine);
+    if (!childMap.has(when)) childMap.set(when, []);
+    childMap.get(when).push({
+      id: vaccine.id,
+      name: vaccine.name,
+      note: vaccine.note,
+      endemicOnly: Boolean(vaccine.endemicOnly),
+      girlsOnly: Boolean(vaccine.girlsOnly),
+    });
+  }
+  const adultMap = new Map();
+  const adultSorted = [...SENIOR_VACCINES].sort((a, b) => dueSortKey(a) - dueSortKey(b));
+  for (const vaccine of adultSorted) {
+    const when = `${vaccine.minAgeYears}+ years`;
+    if (!adultMap.has(when)) adultMap.set(when, []);
+    adultMap.get(when).push({
+      id: vaccine.id,
+      name: vaccine.name,
+      note: vaccine.note,
+      endemicOnly: false,
+      girlsOnly: false,
+    });
+  }
+  return {
+    children: [...childMap.entries()].map(([when, vaccines]) => ({ when, vaccines })),
+    adults: [...adultMap.entries()].map(([when, vaccines]) => ({ when, vaccines })),
+  };
+}
+
 export function visitTotal(selected, visitFee = HOME_VISIT_FEE) {
   const list = Array.isArray(selected) ? selected : [];
   const vaccineSum = list.reduce((sum, item) => {

@@ -7,6 +7,7 @@ import {
   SENIOR_VACCINES,
   ageGroupFromYears,
   dueDateFromBirth,
+  fullVaccinationSchedule,
   suggestChildVaccines,
   suggestSeniorVaccines,
   visitTotal,
@@ -98,6 +99,24 @@ test("UIP due dates are calculated from date of birth", () => {
   assert.equal(dueDateFromBirth("2026-01-01", CHILD_VACCINES.find((row) => row.id === "penta-2")), "2026-03-12");
   assert.equal(dueDateFromBirth("2026-01-01", CHILD_VACCINES.find((row) => row.id === "pcv-2")), "2026-04-09");
   assert.equal(dueDateFromBirth("2026-01-01", CHILD_VACCINES.find((row) => row.id === "mr-1")), "2026-10-01");
+});
+
+test("full schedule lists newborn through older-person vaccines, grouped by age", () => {
+  const guide = fullVaccinationSchedule();
+  assert.equal(guide.children[0].when, "At birth");
+  assert.equal(
+    guide.children[0].vaccines.some((row) => row.id === "bcg"),
+    true
+  );
+  const names = guide.children.flatMap((row) => row.vaccines.map((item) => item.id));
+  assert.equal(names.includes("td-16"), true);
+  assert.equal(guide.adults.some((row) => row.when.includes("65")), true);
+  assert.equal(
+    guide.adults.some((row) =>
+      row.vaccines.some((item) => item.id === "influenza-ncdc")
+    ),
+    true
+  );
 });
 
 test("home visit fee is added to selected vaccine prices", () => {

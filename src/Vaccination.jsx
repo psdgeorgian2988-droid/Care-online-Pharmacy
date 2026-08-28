@@ -25,7 +25,6 @@ import {
   ALL_VACCINES,
   CHILD_MAX_YEARS,
   HOME_VISIT_FEE,
-  SENIOR_MIN_YEARS,
   SLOTS,
   UIP_DISCLAIMER,
   ageGroupFromYears,
@@ -33,6 +32,7 @@ import {
   ageYearsFromDob,
   dueDateFromBirth,
   formatDisplayDate,
+  fullVaccinationSchedule,
   suggestVaccines,
   visitTotal,
   yearsToMonths,
@@ -92,6 +92,7 @@ function Vaccination() {
   const [submitting, setSubmitting] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
+  const [showSchedule, setShowSchedule] = useState(false);
   const busyWait = useBusyOverlay(submitting, "vaccination");
 
   useEffect(() => {
@@ -103,6 +104,15 @@ function Vaccination() {
       window.removeEventListener("storage", refresh);
     };
   }, []);
+
+  useEffect(() => {
+    if (!showSchedule) return undefined;
+    const onKey = (event) => {
+      if (event.key === "Escape") setShowSchedule(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showSchedule]);
 
   const group = form.group || ageGroupFromYears(Number(form.ageYears || 0)) || "child";
   const ageYears =
@@ -127,6 +137,7 @@ function Vaccination() {
   const total = visitTotal(selectedVaccines, HOME_VISIT_FEE);
   const reminders = savedReminders(store);
   const soon = dueSoonReminders(store, 21);
+  const scheduleGuide = useMemo(() => fullVaccinationSchedule(), []);
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
@@ -413,13 +424,20 @@ function Vaccination() {
         <section className="service-hero">
           <div>
             <span className="service-kicker">MediHome Vaccination</span>
-            <h1>Children And Older Persons — Government Of India Schedule</h1>
+            <h1>Book A Nurse Vaccination Visit</h1>
             <p>
-              Suggestions follow the Universal Immunisation Programme (MoHFW / NHM) and NCDC
-              guidance for older adults. You can keep a record and save the date each due
-              vaccine should be given.
+              Keep a record and due-date reminders. Open the Government of India
+              schedule only when you want to see vaccines from newborn through older
+              persons.
             </p>
           </div>
+          <button
+            type="button"
+            className="vac-schedule-btn"
+            onClick={() => setShowSchedule(true)}
+          >
+            View vaccination schedule
+          </button>
         </section>
 
         {soon.length ? (
@@ -680,7 +698,7 @@ function Vaccination() {
             </div>
 
             <div className="field">
-              <label htmlFor="vac-group">Schedule</label>
+              <label htmlFor="vac-group">Age group</label>
               <select
                 id="vac-group"
                 name="group"
@@ -763,42 +781,60 @@ function Vaccination() {
               Save Reminder With The Date Each Due Vaccine Should Be Done
             </label>
 
-            <div className="field full">
-              <span className="plan-label">
-                Suggested Vaccines (Government Schedule) <span>*</span>
-              </span>
-              {group === "adult" || (group === "senior" && suggestions.length === 0) ? (
-                <p className="vac-copy">
-                  UIP is for children up to {CHILD_MAX_YEARS - 1} years. Government adult
-                  recommendations listed here start at 60 years (COVID-19) and {SENIOR_MIN_YEARS === 50 ? "65" : SENIOR_MIN_YEARS}{" "}
-                  years (influenza and pneumococcal).
-                </p>
-              ) : null}
-              <div className="vac-suggest">
-                {suggestions.length === 0 ? (
-                  <p className="vac-copy">Enter age or date of birth to see due vaccines.</p>
-                ) : (
-                  suggestions.map((row) => (
-                    <label key={row.id} className={form.selectedIds.includes(row.id) ? "is-on" : ""}>
-                      <input
-                        type="checkbox"
-                        checked={form.selectedIds.includes(row.id)}
-                        onChange={() => toggleVaccine(row.id)}
-                      />
-                      <span>
-                        <strong>{row.name}</strong>
-                        <em>
-                          {row.status} · {row.dueLabel}
-                          {row.dueOn ? ` · do on ${formatDisplayDate(row.dueOn)}` : ""}
-                        </em>
-                        <small>{row.note}</small>
-                      </span>
-                    </label>
-                  ))
-                )}
-              </div>
+            <div className="field">
+              <label htmlFor="vac-pick">
+                Vaccines To Book <span>*</span>
+              </label>
+              <select
+                id="vac-pick"
+                value=""
+                onChange={(event) => {
+                  if (event.target.value) toggleVaccine(event.target.value);
+                }}
+              >
+                <option value="">
+                  {suggestions.length ? "Select a vaccine" : "Enter age or date of birth first"}
+                </option>
+                {suggestions.map((row) => (
+                  <option
+                    key={row.id}
+                    value={row.id}
+                    disabled={form.selectedIds.includes(row.id)}
+                  >
+                    {row.name}
+                    {row.dueLabel ? ` · ${row.dueLabel}` : ""}
+                  </option>
+                ))}
+              </select>
               {errors.selectedIds ? <small>{errors.selectedIds}</small> : null}
             </div>
+            <div className="field">
+              <p className="vac-picked-label">Selected</p>
+              {selectedVaccines.length ? (
+                <ul className="vac-picked">
+                  {selectedVaccines.map((row) => (
+                    <li key={row.id}>
+                      <span>
+                        {row.name}
+                        {row.dueOn ? ` · ${formatDisplayDate(row.dueOn)}` : ""}
+                      </span>
+                      <button type="button" onClick={() => toggleVaccine(row.id)}>
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="vac-copy">None yet. Use View vaccination schedule if you want the full age list.</p>
+              )}
+            </div>
+
+            {group === "adult" || (group === "senior" && suggestions.length === 0) ? (
+              <p className="vac-copy vac-adult-note">
+                UIP is for children up to {CHILD_MAX_YEARS - 1} years. Adult recommendations
+                listed in the schedule start at 60 years.
+              </p>
+            ) : null}
 
             <div className="field full">
               <AddressFields
@@ -849,7 +885,6 @@ function Vaccination() {
               />
             </div>
 
-            <p className="vac-disclaimer">{UIP_DISCLAIMER}</p>
             <button type="submit" className="service-submit" disabled={submitting}>
               {submitting
                 ? "Connecting PIN To Map…"
@@ -857,6 +892,71 @@ function Vaccination() {
             </button>
           </form>
         )}
+
+        {showSchedule ? (
+          <div
+            className="vac-overlay"
+            role="presentation"
+            onClick={() => setShowSchedule(false)}
+          >
+            <div
+              className="vac-guide"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="vac-guide-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <p className="vac-guide-kicker">Government Of India</p>
+              <h2 id="vac-guide-title">Vaccination Schedule</h2>
+              <p className="vac-copy">
+                Newborn through 16 years (UIP / NIS), then adult and older-person
+                vaccines advised by MoHFW / NCDC.
+              </p>
+              <section>
+                <h3>Children — Newborn To 16 Years</h3>
+                {scheduleGuide.children.map((group) => (
+                  <div key={group.when} className="vac-guide-age">
+                    <strong>{group.when}</strong>
+                    <ul>
+                      {group.vaccines.map((row) => (
+                        <li key={row.id}>
+                          <span>{row.name}</span>
+                          {row.girlsOnly ? <em>Girls</em> : null}
+                          {row.endemicOnly ? <em>Endemic districts</em> : null}
+                          {row.note ? <small>{row.note}</small> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </section>
+              <section>
+                <h3>Adults And Older Persons</h3>
+                {scheduleGuide.adults.map((group) => (
+                  <div key={group.when} className="vac-guide-age">
+                    <strong>{group.when}</strong>
+                    <ul>
+                      {group.vaccines.map((row) => (
+                        <li key={row.id}>
+                          <span>{row.name}</span>
+                          {row.note ? <small>{row.note}</small> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </section>
+              <p className="vac-disclaimer">{UIP_DISCLAIMER}</p>
+              <button
+                type="button"
+                className="service-submit"
+                onClick={() => setShowSchedule(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </>
   );
@@ -885,14 +985,26 @@ const styles = `
 .service-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:40px;cursor:pointer;font-family:inherit}
 .vac-check{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#29455a;font-weight:600}
 .vac-check input{width:auto;min-height:0;margin-top:3px}
-.vac-suggest{display:grid;gap:8px}
-.vac-suggest label{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border:1px solid #d7e2e9;border-radius:10px;background:#fff;cursor:pointer}
-.vac-suggest label.is-on{border-color:#1e8a73;background:#eef8f5}
-.vac-suggest input{width:auto;min-height:0;margin-top:4px}
-.vac-suggest span{display:grid;gap:2px}
-.vac-suggest strong{font-size:13px;color:#143246}
-.vac-suggest em{font-style:normal;font-size:12px;color:#1a6b7a}
-.vac-suggest small{color:#5d7180;font-size:11px;font-weight:400}
+.vac-schedule-btn{border:1px solid #1a6b7a;border-radius:8px;background:#fff;color:#1a6b7a;font:inherit;font-size:13px;font-weight:700;min-height:40px;padding:8px 14px;cursor:pointer;white-space:nowrap}
+.vac-schedule-btn:hover{background:#e8f4f6}
+.vac-picked-label{margin:0 0 5px;font-size:12px;font-weight:700;color:#34546b}
+.vac-picked{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.vac-picked li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e4ecef;border-radius:8px;background:#fff;font-size:13px}
+.vac-picked button{border:0;background:none;color:#b64b4b;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.vac-adult-note{grid-column:1/-1}
+.vac-overlay{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-start;justify-content:center;padding:20px;background:rgba(20,50,70,.46);overflow:auto}
+.vac-guide{width:min(640px,100%);margin:12px auto 24px;padding:20px 20px 16px;border-radius:12px;background:#fff;border:1px solid #e4ecef;box-shadow:0 18px 48px rgba(20,50,70,.22);color:#143246}
+.vac-guide-kicker{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#1a6b7a}
+.vac-guide h2{margin:0 0 8px;font-size:20px}
+.vac-guide h3{margin:16px 0 8px;font-size:14px;font-weight:800;color:#1a6b7a}
+.vac-guide-age{margin:0 0 10px;padding:10px 12px;border:1px solid #e4ecef;border-radius:8px;background:#f7fbfe}
+.vac-guide-age > strong{display:block;margin-bottom:6px;font-size:13px}
+.vac-guide-age ul{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.vac-guide-age li{display:grid;gap:2px}
+.vac-guide-age li span{font-size:13px;font-weight:700;color:#143246}
+.vac-guide-age li em{font-style:normal;font-size:11px;font-weight:700;color:#1a6b7a}
+.vac-guide-age li small{font-size:12px;color:#5d7180;line-height:1.4}
+.vac-guide .service-submit{margin-top:12px;width:100%}
 .vac-copy{margin:0;color:#5d7180;font-size:13px;line-height:1.45}
 .vac-disclaimer{grid-column:1/-1;margin:0;font-size:12px;color:#5d7180;line-height:1.45}
 .vac-section-title{margin:0 0 6px;font-size:14px;font-weight:800;color:#29455a;grid-column:1/-1}
