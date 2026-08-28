@@ -5877,7 +5877,7 @@ body,
 .app:not(.app-ops) .service-form textarea,
 .app:not(.app-ops) .profile-field input,
 .app:not(.app-ops) .profile-field textarea,
-.app:not(.app-ops) .lab-field input,
+.app:not(.app-ops) .lab-field input:not([type="radio"]):not([type="checkbox"]),
 .app:not(.app-ops) .lab-field select,
 .app:not(.app-ops) .lab-field textarea {
   background: #ffffff !important;
@@ -6323,32 +6323,45 @@ body,
 .app:not(.app-ops) .sd-choice {
   display: flex !important;
   flex-wrap: wrap !important;
-  gap: 8px !important;
+  align-items: center !important;
+  gap: 6px !important;
 }
 
-.app:not(.app-ops) .sd-choice label {
+.app:not(.app-ops) .lab-field .sd-choice label {
   display: inline-flex !important;
   width: auto !important;
-  min-width: 0 !important;
-  min-height: 28px !important;
-  padding: 3px 10px !important;
-  border-radius: 8px !important;
-  font-size: 12px !important;
+  min-width: 52px !important;
+  max-width: max-content !important;
+  margin: 0 !important;
+  min-height: 24px !important;
+  height: 24px !important;
+  padding: 0 8px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
+  line-height: 1 !important;
 }
 
-.app:not(.app-ops) .sd-choice input[type="radio"] {
-  width: 14px !important;
-  min-width: 14px !important;
-  max-width: 14px !important;
-  height: 14px !important;
-  min-height: 14px !important;
+.app:not(.app-ops) .lab-field .sd-choice input[type="radio"] {
+  width: 12px !important;
+  min-width: 12px !important;
+  max-width: 12px !important;
+  height: 12px !important;
+  min-height: 12px !important;
   padding: 0 !important;
-  flex: 0 0 14px !important;
+  flex: 0 0 12px !important;
   margin: 0 !important;
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
+}
+
+.app:not(.app-ops) .sd-amb-submit {
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 32px !important;
+  padding: 0 14px !important;
+  font-size: 13px !important;
 }
 
 @media (max-width: 800px) {

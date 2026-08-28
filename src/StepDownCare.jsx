@@ -777,7 +777,7 @@ function StepDownCare() {
                 />
               </div>
 
-              <button type="submit" className="service-submit" disabled={submitting}>
+              <button type="submit" className="service-submit sd-amb-submit" disabled={submitting}>
                 {submitting
                   ? "Booking…"
                   : form.needAmbulance === "yes"
@@ -834,10 +834,11 @@ const styles = `
 .sd-full{grid-column:1/-1}
 .sd-picked{margin:8px 0 0;color:#5d7180;font-size:13px}
 .sd-link{border:0;background:none;padding:0;color:#1a6b7a;font:inherit;font-weight:700;cursor:pointer}
-.sd-choice{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-.sd-choice label{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:auto;min-width:0;min-height:28px;padding:3px 10px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;font-size:12px;font-weight:700;color:#143246;cursor:pointer}
-.sd-choice label.is-on{border-color:#1a6b7a;background:#e8f4f6;color:#1a6b7a}
-.sd-choice input{width:14px;min-width:14px;max-width:14px;height:14px;min-height:0;margin:0;padding:0;border:none;background:transparent;accent-color:#1a6b7a}
+.sd-choice{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.lab-field .sd-choice label{display:inline-flex;align-items:center;justify-content:center;gap:5px;width:auto;min-width:52px;max-width:max-content;margin:0;min-height:24px;height:24px;padding:0 8px;border:1px solid #d7e2e9;border-radius:6px;background:#fff;font-size:11px;font-weight:700;line-height:1;color:#143246;cursor:pointer;box-sizing:border-box}
+.lab-field .sd-choice label.is-on{border-color:#1a6b7a;background:#e8f4f6;color:#1a6b7a}
+.lab-field .sd-choice input{width:12px;min-width:12px;max-width:12px;height:12px;min-height:12px;margin:0;padding:0;border:none;background:transparent;accent-color:#1a6b7a;flex:0 0 12px}
+.sd-amb-submit{width:auto;min-width:0;min-height:32px;padding:0 14px;font-size:13px}
 .service-submit{margin-top:16px;width:100%;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:42px;cursor:pointer;font-family:inherit}
 .service-page{padding:16px 20px 24px 14px;box-sizing:border-box;color:#143246}
 .service-confirm{max-width:640px;margin:12px auto;text-align:center}
