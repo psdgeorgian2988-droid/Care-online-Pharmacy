@@ -5,7 +5,6 @@ import {
   ledgerShareText,
   partnerSettlementNote,
   quoteCheckout,
-  settlementOpsNote,
   splitPayment,
 } from "./paymentSplit.js";
 import { buildOrderBill } from "./orderBill.js";
@@ -128,16 +127,39 @@ test("cash without an explicit collector defaults to reverse split", () => {
   assert.equal(split.dueFromPartnerRupees, split.platformSettledRupees);
 });
 
-test("cash collected by MediHome is a forward split payable to the partner", () => {
+test("cash is collected by the partner even if a MediHome collector is sent", () => {
   const split = splitPayment("medicine", 100, "110001", {
     paymentMethod: "cod",
     collector: "medihome",
+    paidOn: "customer",
   });
+  assert.equal(split.splitMode, "reverse");
+  assert.equal(split.collector, "partner");
+  assert.equal(split.paidOn, "partner");
+  assert.equal(split.dueFromPartnerRupees, split.platformSettledRupees);
+});
+
+test("online on the main app is paid to MediHome", () => {
+  const split = splitPayment("medicine", 100, "110001", {
+    paymentMethod: "upi",
+    paidOn: "customer",
+    collector: "partner",
+  });
+  assert.equal(split.collector, "medihome");
+  assert.equal(split.paidOn, "customer");
   assert.equal(split.splitMode, "forward");
-  assert.equal(split.dueToPartnerRupees, 60);
-  assert.equal(split.dueFromPartnerRupees, 0);
-  assert.match(settlementOpsNote(split), /Forward Split/i);
-  assert.match(partnerSettlementNote(split), /Due To You/i);
+});
+
+test("online on the partner app is collected by the partner", () => {
+  const split = splitPayment("lab", 1000, "110001", {
+    paymentMethod: "upi",
+    paidOn: "partner",
+  });
+  assert.equal(split.collector, "partner");
+  assert.equal(split.paidOn, "partner");
+  assert.equal(split.splitMode, "reverse");
+  assert.equal(split.collection, "online");
+  assert.match(split.ledger[0].note, /service provider/i);
 });
 
 test("shared ledger text names both parties and the amount due", () => {

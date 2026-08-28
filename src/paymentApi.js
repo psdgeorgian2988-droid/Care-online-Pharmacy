@@ -1,4 +1,4 @@
-import { normalizeCollector, splitPayment } from "./paymentSplit.js";
+import { resolveCollector, splitPayment } from "./paymentSplit.js";
 import { isOnlinePayment, validatePaymentDetails } from "./paymentMethods.js";
 import {
   clearSensitiveInstrument,
@@ -90,13 +90,15 @@ export async function settleCheckoutPayment({
   description,
 }) {
   const instrument = getCheckoutInstrument();
-  const collector = normalizeCollector(instrument.collector, method);
+  const paidOn = instrument.paidOn === "partner" ? "partner" : "customer";
+  const collector = resolveCollector({ method, paidOn });
   const split = splitPayment(kind, amountRupees, pin, {
     saleRupees: saleRupees ?? amountRupees,
     payableRupees: amountRupees,
     couponCode,
     collector,
     paymentMethod: method,
+    paidOn,
   });
   if (collector === "partner") {
     return {
@@ -109,6 +111,7 @@ export async function settleCheckoutPayment({
       couponCode: split.couponCode,
       discountRupees: split.discountRupees,
       collector,
+      paidOn,
       split,
     };
   }
@@ -127,6 +130,7 @@ export async function settleCheckoutPayment({
       couponCode: split.couponCode,
       discountRupees: split.discountRupees,
       collector,
+      paidOn,
       split,
     };
   }
@@ -142,6 +146,7 @@ export async function settleCheckoutPayment({
       couponCode: split.couponCode,
       discountRupees: split.discountRupees,
       collector,
+      paidOn,
       split,
     };
   }
@@ -157,6 +162,7 @@ export async function settleCheckoutPayment({
     description,
     collector,
     paymentMethod: method,
+    paidOn,
   });
   maybeSaveInstrument(mobile, method, instrument);
   return {
@@ -169,6 +175,7 @@ export async function settleCheckoutPayment({
     couponCode: (paid.split || split).couponCode,
     discountRupees: (paid.split || split).discountRupees,
     collector,
+    paidOn,
     split: paid.split || split,
   };
 }
@@ -195,6 +202,7 @@ export async function takeOnlinePayment({
   description,
   collector,
   paymentMethod,
+  paidOn,
 }) {
   const created = await createPaymentOrder({
     amountRupees,
@@ -208,6 +216,7 @@ export async function takeOnlinePayment({
     description,
     collector,
     paymentMethod,
+    paidOn,
   });
 
   if (created.testCheckout) {

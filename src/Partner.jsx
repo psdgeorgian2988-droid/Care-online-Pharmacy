@@ -1,14 +1,9 @@
 import { useEffect, useState } from "react";
-import {
-  fetchPartnerJobs,
-  partnerLogin,
-  partnerLogout,
-  partnerSession,
-} from "./partnerApi";
 import { kindLabel } from "./orderTracking";
 import { partnerSettlementNote, splitModeLabel } from "./paymentSplit";
 import { shareSettlement } from "./shareSettlement";
 import { isOnlinePayment } from "./paymentMethods";
+import { fetchPartnerJobs, partnerLogin, partnerLogout, partnerSession, patchPartnerJob } from "./partnerApi";
 
 export default function Partner() {
   const session = partnerSession();
@@ -19,6 +14,7 @@ export default function Partner() {
   const [error, setError] = useState("");
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [collectingId, setCollectingId] = useState("");
 
   const loadJobs = async () => {
     setLoading(true);
@@ -41,6 +37,20 @@ export default function Partner() {
   useEffect(() => {
     if (token) loadJobs();
   }, [token]);
+
+  const collectJob = async (job, paymentMethod) => {
+    const id = job.id || job.bookingId || job.requestId;
+    setCollectingId(id);
+    setError("");
+    try {
+      await patchPartnerJob(id, { collectPayment: true, paymentMethod });
+      await loadJobs();
+    } catch (err) {
+      setError(err.message || "Could Not Record Collection.");
+    } finally {
+      setCollectingId("");
+    }
+  };
 
   const handleLogin = async (event) => {
     event.preventDefault();
@@ -152,6 +162,8 @@ export default function Partner() {
               ) : (
                 jobs.map((job) => {
                   const id = job.id || job.bookingId || job.requestId;
+                  const paid = String(job.paymentStatus || "").toLowerCase() === "paid";
+                  const needsCollect = !paid;
                   return (
                     <tr key={id}>
                       <td>#{id}</td>
@@ -163,6 +175,18 @@ export default function Partner() {
                       <td>
                         {isOnlinePayment(job.paymentMethod) ? "Online" : "COD"}
                         {job.paymentStatus ? ` · ${job.paymentStatus}` : ""}
+                        {paid && job.collector === "medihome" ? (
+                          <>
+                            <br />
+                            Paid To MediHome
+                          </>
+                        ) : null}
+                        {paid && job.collector === "partner" ? (
+                          <>
+                            <br />
+                            Collected By Partner
+                          </>
+                        ) : null}
                         {job.split?.splitMode ? (
                           <>
                             <br />
@@ -181,16 +205,37 @@ export default function Partner() {
                         {partnerSettlementNote(job.split, {
                           collector: job.collector,
                           paymentMethod: job.paymentMethod,
+                          paidOn: job.paidOn,
                         }) ? (
                           <>
                             <br />
                             {partnerSettlementNote(job.split, {
                               collector: job.collector,
                               paymentMethod: job.paymentMethod,
+                              paidOn: job.paidOn,
                             })}
                           </>
                         ) : null}
-                        {job.split ? <ShareLedgerButton split={job.split} /> : null}
+                        {needsCollect ? (
+                          <div className="partner-collect">
+                            <button
+                              type="button"
+                              disabled={collectingId === id}
+                              onClick={() => collectJob(job, "cod")}
+                            >
+                              Collect Cash
+                            </button>
+                            <button
+                              type="button"
+                              disabled={collectingId === id}
+                              onClick={() => collectJob(job, "upi")}
+                            >
+                              Collect Online
+                            </button>
+                          </div>
+                        ) : job.split ? (
+                          <ShareLedgerButton split={job.split} />
+                        ) : null}
                       </td>
                       <td>{job.status || job.trackStatus || "—"}</td>
                     </tr>
@@ -232,6 +277,9 @@ const styles = `
 .admin-hero-actions{display:flex;flex-wrap:wrap;gap:6px}
 .admin-hero-actions button{border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer}
 .partner-share-ledger{margin-top:6px;border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:700;padding:4px 8px;cursor:pointer}
+.partner-collect{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.partner-collect button{border:1px solid #1a6b7a;border-radius:6px;background:#1a6b7a;color:#fff;font:inherit;font-size:12px;font-weight:700;padding:4px 8px;cursor:pointer}
+.partner-collect button:disabled{opacity:.6;cursor:wait}
 .admin-login{max-width:420px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}

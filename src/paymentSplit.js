@@ -5,6 +5,7 @@ import {
   findCoupon,
 } from "./offers.js";
 import { isOnlinePayment } from "./paymentMethods.js";
+import { coinsToRupees, quoteWalletSpend } from "./pointsStore.js";
 
 /** Platform share of each rupee of MRP / sale. Remainder is for the working partner. */
 export const SPLIT_PLATFORM_PERCENT = {
@@ -111,24 +112,42 @@ export function splitPayment(kind, amountRupees, pin, options = {}) {
   return attachSettlement(split, {
     collector: options.collector,
     paymentMethod: options.paymentMethod,
+    paidOn: options.paidOn,
   });
 }
 
-export function normalizeCollector(collector, method) {
-  const key = String(collector || "").toLowerCase();
-  if (key === "partner" || key === "provider" || key === "reverse") return "partner";
-  if (key === "medihome" || key === "platform" || key === "forward") return "medihome";
+export function paidOnChannel(value) {
+  const key = String(value || "").toLowerCase();
+  if (key === "partner" || key === "provider" || key === "partner-app") {
+    return "partner";
+  }
+  return "customer";
+}
+
+function isPartnerCollectorKey(value) {
+  const key = String(value || "").toLowerCase();
+  return key === "partner" || key === "provider" || key === "reverse";
+}
+
+/** Main-app online → MediHome. Cash or partner-app pay → partner. */
+export function resolveCollector({ method, paidOn, collector } = {}) {
+  if (paidOnChannel(paidOn) === "partner") return "partner";
   if (method && !isOnlinePayment(method)) return "partner";
+  if (!paidOn && isPartnerCollectorKey(collector)) return "partner";
   return "medihome";
+}
+
+export function normalizeCollector(collector, method, paidOn) {
+  return resolveCollector({ collector, method, paidOn });
 }
 
 function moneyLine(party, partyKey, note, amountRupees, kind) {
   return { party, partyKey, note, amountRupees, kind };
 }
 
-export function attachSettlement(split, { collector, paymentMethod } = {}) {
+export function attachSettlement(split, { collector, paymentMethod, paidOn } = {}) {
   const method = paymentMethod || "online";
-  const who = normalizeCollector(collector, method);
+  const who = resolveCollector({ collector, method, paidOn });
   const reverse = who === "partner";
   const online = isOnlinePayment(method);
   const partnerLabel = split.partnerLabel || "Partner";
@@ -185,6 +204,7 @@ export function attachSettlement(split, { collector, paymentMethod } = {}) {
   return {
     ...split,
     collector: who,
+    paidOn: who === "partner" ? "partner" : "customer",
     splitMode: reverse ? "reverse" : "forward",
     collection: online ? "online" : "cash",
     dueFromPartnerRupees,
@@ -281,6 +301,10 @@ export function quoteCheckout({
   platformPercent,
   collector,
   paymentMethod,
+  paidOn,
+  useWallet,
+  walletCoins,
+  walletMoneyRupees,
 } = {}) {
   const sale = Math.max(0, Number(saleRupees) || 0);
   const list = Math.max(0, Number(listRupees ?? sale) || 0);
@@ -292,7 +316,15 @@ export function quoteCheckout({
   const offerDiscount = coupon
     ? 0
     : Math.max(0, roundRupees(sale - list));
-  const payable = Math.max(0, roundRupees(sale - offerDiscount - couponDiscount));
+  const afterOffers = Math.max(0, roundRupees(sale - offerDiscount - couponDiscount));
+  const wallet = useWallet
+    ? quoteWalletSpend({
+        moneyRupees: walletMoneyRupees,
+        coins: walletCoins,
+        remainingRupees: afterOffers,
+      })
+    : { moneyRupees: 0, coins: 0, rupees: 0 };
+  const payable = Math.max(0, roundRupees(afterOffers - wallet.rupees));
   const split = splitPayment(kind, payable, pin, {
     saleRupees: sale,
     payableRupees: payable,
@@ -301,6 +333,7 @@ export function quoteCheckout({
     platformPercent,
     collector,
     paymentMethod,
+    paidOn,
   });
   return {
     kind,
@@ -311,6 +344,11 @@ export function quoteCheckout({
     couponLabel: coupon?.label || "",
     couponDiscountRupees: roundRupees(couponDiscount),
     couponError: couponResult.ok ? "" : couponResult.error,
+    walletDiscountRupees: wallet.rupees,
+    walletMoneyRupees: wallet.moneyRupees,
+    walletCoins: wallet.coins,
+    pointsDiscountRupees: coinsToRupees(wallet.coins),
+    pointsUsed: wallet.coins,
     payableRupees: payable,
     split,
   };

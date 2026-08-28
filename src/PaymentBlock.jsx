@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { applyCoupon, normalizeCouponCode } from "./offers";
-import { quoteCheckout } from "./paymentSplit";
+import { quoteCheckout, resolveCollector } from "./paymentSplit";
 import { useLoginSession } from "./authSession";
 import GuestCheckoutRegister from "./GuestCheckoutRegister";
 import { MONTH_OPTIONS } from "./personFields";
@@ -64,7 +64,8 @@ export default function PaymentBlock({
   const [saveConsent, setSaveConsent] = useState(false);
   const [shareQr, setShareQr] = useState("");
   const [shareNote, setShareNote] = useState("");
-  const collector = isOnlinePayment(method) ? "medihome" : "partner";
+  const paidOn = "customer";
+  const collector = resolveCollector({ method, paidOn });
   const couponInputRef = useRef(null);
   const accountMobile = user?.mobile || guestDetails?.mobile || "";
   const saved = useMemo(
@@ -105,8 +106,9 @@ export default function PaymentBlock({
         pin,
         collector,
         paymentMethod: method,
+        paidOn,
       }),
-    [kind, amount, saleAmount, couponCode, pin, collector, method]
+    [kind, amount, saleAmount, couponCode, pin, collector, method, paidOn]
   );
 
   useEffect(() => {
@@ -118,9 +120,9 @@ export default function PaymentBlock({
       method,
       details,
       save: saveConsent,
-      collector,
+      paidOn,
     });
-  }, [method, details, saveConsent, collector]);
+  }, [method, details, saveConsent, paidOn]);
 
   useEffect(() => {
     if (method !== "qr") {

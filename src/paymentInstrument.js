@@ -1,20 +1,23 @@
-import { emptyPaymentDetails, isOnlinePayment } from "./paymentMethods.js";
+import { resolveCollector } from "./paymentSplit.js";
+import { emptyPaymentDetails } from "./paymentMethods.js";
 
 let checkoutInstrument = {
   method: "cod",
   details: emptyPaymentDetails(),
   save: false,
+  paidOn: "customer",
   collector: "partner",
 };
 
 export function setCheckoutInstrument(next) {
   const method = next?.method || "cod";
+  const paidOn = next?.paidOn === "partner" ? "partner" : "customer";
   checkoutInstrument = {
     method,
     details: { ...emptyPaymentDetails(), ...(next?.details || {}) },
     save: Boolean(next?.save),
-    collector:
-      next?.collector || (isOnlinePayment(method) ? "medihome" : "partner"),
+    paidOn,
+    collector: resolveCollector({ method, paidOn }),
   };
 }
 

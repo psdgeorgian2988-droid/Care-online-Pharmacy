@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { listOrders, patchOrder, upsertOrder } from "./store.mjs";
-import { attachSettlement, splitPayment } from "../src/paymentSplit.js";
+import { attachSettlement, resolveCollector, splitPayment } from "../src/paymentSplit.js";
 import { isOnlinePayment } from "../src/paymentMethods.js";
 import { openTrafficFromOrders } from "../src/partnerQueue.js";
 import {
@@ -78,13 +78,15 @@ function splitFromOrderBody(kind, pin, body, payable) {
   const sale = Number(
     body.saleRupees ?? body.mrpTotal ?? body.split?.saleRupees ?? payable
   );
+  const paymentMethod = body.paymentMethod || "";
+  const paidOn = body.paidOn || body.split?.paidOn || "";
   return splitPayment(kind, payable, pin, {
     saleRupees: sale,
     payableRupees: payable,
     couponCode: body.couponCode || body.split?.couponCode || "",
     couponLabel: body.split?.couponLabel || "",
-    collector: body.collector || body.split?.collector || "",
-    paymentMethod: body.paymentMethod || "",
+    paymentMethod,
+    paidOn,
   });
 }
 
@@ -95,16 +97,23 @@ function enrichOrder(body) {
   const total = Number(body.total || body.charges || 0);
   const next = { ...body, kind };
   if (!next.paymentMethod) next.paymentMethod = "cod";
+  const paidOn = next.paidOn || next.split?.paidOn || "";
+  next.collector = resolveCollector({
+    method: next.paymentMethod,
+    paidOn,
+    collector: next.collector || next.split?.collector,
+  });
+  next.paidOn = next.collector === "partner" ? "partner" : "customer";
   if (next.split && !next.split.splitMode) {
     next.split = attachSettlement(next.split, {
-      collector: next.collector || next.split.collector,
+      collector: next.collector,
       paymentMethod: next.paymentMethod,
+      paidOn: next.paidOn,
     });
   } else if (!next.split && total > 0) {
     next.split = splitFromOrderBody(kind, pin, next, total);
-  }
-  if (!next.collector && next.split?.collector) {
     next.collector = next.split.collector;
+    next.paidOn = next.split.paidOn;
   }
   if (!next.paymentStatus) {
     next.paymentStatus = isOnlinePayment(next.paymentMethod) ? "paid" : "cod";
@@ -142,13 +151,15 @@ export async function handleApi(req, res) {
       const kind = String(body.kind || "medicine");
       const pin = String(body.pin || "");
       const paymentMethod = String(body.paymentMethod || "online");
-      const collector = body.collector || "";
+      const paidOn = body.paidOn === "partner" ? "partner" : "customer";
+      const collector = resolveCollector({ method: paymentMethod, paidOn });
       const split = splitPayment(kind, amountRupees, pin, {
         saleRupees: body.saleRupees ?? amountRupees,
         payableRupees: amountRupees,
         couponCode: body.couponCode || "",
         collector,
         paymentMethod,
+        paidOn,
       });
       const partnerCollects = split.collector === "partner";
       const payment = {
@@ -160,6 +171,7 @@ export async function handleApi(req, res) {
         name: String(body.name || ""),
         mobile: String(body.mobile || ""),
         collector: split.collector,
+        paidOn: split.paidOn,
         paymentMethod,
         split,
         razorpayOrderId: "",
@@ -444,6 +456,30 @@ export async function handleApi(req, res) {
           body.trackStatus === "done"
             ? "Completed"
             : String(body.status || existing.status || "Updated");
+      }
+      if (body.collectPayment) {
+        const paymentMethod = isOnlinePayment(body.paymentMethod)
+          ? String(body.paymentMethod)
+          : "cod";
+        const paidOn = "partner";
+        const collector = resolveCollector({ method: paymentMethod, paidOn });
+        const payable = Number(
+          existing.split?.payableRupees ?? existing.total ?? existing.charges ?? 0
+        );
+        const kind = existing.kind || existing.orderType || "medicine";
+        const pin = existing.pinCode || existing.pin || "";
+        patch.paidOn = paidOn;
+        patch.collector = collector;
+        patch.paymentMethod = paymentMethod;
+        patch.paymentStatus = "paid";
+        patch.split = splitPayment(kind, payable, pin, {
+          saleRupees:
+            existing.split?.saleRupees ?? existing.saleRupees ?? payable,
+          payableRupees: existing.split?.payableRupees ?? payable,
+          couponCode: existing.split?.couponCode || existing.couponCode || "",
+          paymentMethod,
+          paidOn,
+        });
       }
       const updated = await patchOrder(orderId(existing), patch);
       send(res, 200, { order: updated });
