@@ -1,16 +1,39 @@
-# React + Vite
+# MediHome
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Customer website plus API for medicines, lab tests, Home Care, psychologist consultation, step-down care, and ambulance in Delhi NCR.
 
-Currently, two official plugins are available:
+Save this project on your laptop in a folder named **medihome**.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Run on the laptop
 
-## React Compiler
+```bash
+cd medihome
+npm ci
+npm test
+npm run build
+npm start
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Then open http://localhost:3001/
 
-## Expanding the Oxlint configuration
+`npm start` serves the built website and the API from one Node process. That is the same command to use when you put the site online.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Before going live
+
+1. Copy `.env.example` to `.env`.
+2. Set Razorpay keys if you want live online pay. Without keys, checkout uses local test pay.
+3. Change the staff password. Default staff login is `admin` / `MediHome@26` unless you set `MEDIHOME_ADMIN_USER` and `MEDIHOME_ADMIN_PASSWORD`.
+4. Point **medihome.in** (or your host) at this server and put HTTPS in front of port 3001.
+
+## Demo logins
+
+- Staff: `admin` / `MediHome@26`
+- Partner mobiles: `9654222901`–`9654222907`, PIN `1111`
+- Care WhatsApp: `7292094000`
+
+## Scripts
+
+- `npm run dev` — Vite customer site on port 5173 (API via the Vite plugin)
+- `npm test` — unit tests
+- `npm run build` — production website into `dist/`
+- `npm start` — website + API together

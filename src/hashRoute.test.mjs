@@ -8,6 +8,13 @@ test("empty and home hashes open the home page", () => {
   }
 });
 
+test("social and staff aliases open the live pages", () => {
+  assert.equal(parseAppHash("#social").route, "#contact");
+  assert.equal(parseAppHash("#staff").route, "#admin");
+  assert.equal(parseAppHash("#ops").route, "#admin");
+  assert.equal(parseAppHash("#partners").route, "#partner");
+});
+
 test("login, register and forgot hashes open their own pages", () => {
   assert.equal(parseAppHash("#login").route, "#login");
   assert.equal(parseAppHash("#register").route, "#register");

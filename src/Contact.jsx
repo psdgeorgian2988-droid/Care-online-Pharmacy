@@ -1,5 +1,6 @@
 import { useState } from "react";
 import SocialLinks from "./SocialLinks";
+import { shareMediHome } from "./socialHandlers";
 import {
   CARE_EMAIL,
   CARE_PHONE_DISPLAY,
@@ -24,6 +25,7 @@ function openWhatsAppUrl(url, event) {
 function Contact() {
   const [form, setForm] = useState({ name: "", mobile: "", message: "" });
   const [errors, setErrors] = useState({});
+  const [shareNote, setShareNote] = useState("");
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -104,9 +106,32 @@ function Contact() {
             <h2>Follow MediHome</h2>
             <p>
               Official handles for health tips, offers, and service updates.
-              Tap a card to open that page.
+              Tap a card to open that page, or copy the handle.
             </p>
             <SocialLinks className="contact-social" layout="cards" />
+            <div className="social-share-row">
+              <button
+                type="button"
+                className="social-share-btn"
+                onClick={async () => {
+                  try {
+                    const result = await shareMediHome();
+                    setShareNote(
+                      result === "shared"
+                        ? "Opened the share sheet."
+                        : result === "copied"
+                          ? "Copied the MediHome link."
+                          : "Copy a handle from the cards above."
+                    );
+                  } catch {
+                    setShareNote("Copy a handle from the cards above.");
+                  }
+                }}
+              >
+                Share MediHome
+              </button>
+              {shareNote ? <small>{shareNote}</small> : null}
+            </div>
           </section>
 
           <form className="service-form" onSubmit={handleSubmit}>
@@ -195,9 +220,14 @@ const styles = `
 .social-panel h2{margin:0 0 4px;font-size:16px;color:#123b59}
 .social-panel p{margin:0 0 12px;color:#5d7180;font-size:13px;line-height:1.4}
 .contact-social{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.contact-social .social-handle-card{display:flex;align-items:center;gap:10px;min-height:72px;padding:12px 14px;border:1px solid #e4ecef;border-radius:12px;background:#f7fbfe;color:#143246;text-decoration:none}
+.contact-social .social-handle-card{display:flex;align-items:center;gap:8px;min-height:72px;padding:10px 12px;border:1px solid #e4ecef;border-radius:12px;background:#f7fbfe;color:#143246}
 .contact-social .social-handle-card:hover{border-color:#1a6b7a;background:#fff}
+.contact-social .social-handle-open{display:flex;align-items:center;gap:10px;min-width:0;flex:1;color:inherit;text-decoration:none}
+.contact-social .social-copy-handle{flex:0 0 auto;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#1a6b7a;font:inherit;font-size:11px;font-weight:800;min-height:32px;padding:0 8px;cursor:pointer}
 .contact-social .social-handle-icon{display:flex;align-items:center;justify-content:center;width:40px;height:40px;flex:0 0 40px;border-radius:10px;background:#e8f4f6;color:#1a6b7a}
+.social-share-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px}
+.social-share-btn{border:none;border-radius:8px;background:#1a6b7a;color:#fff;font:inherit;font-size:14px;font-weight:700;min-height:40px;padding:0 16px;cursor:pointer}
+.social-share-row small{color:#1a6b7a;font-size:13px;font-weight:700}
 .contact-social .social-handle-icon svg{width:20px;height:20px}
 .contact-social .social-handle-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
 .contact-social .social-handle-copy strong{font-size:13px;font-weight:800;color:#123b59}

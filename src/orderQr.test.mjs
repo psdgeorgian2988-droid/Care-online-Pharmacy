@@ -18,25 +18,27 @@ test("QR payload and URL parsing recover the order id", () => {
   assert.equal(parseOrderQr("MH-PSY-7788"), "MH-PSY-7788");
 });
 
-test("first scan is partner pickup, second scan is customer receive", () => {
+test("first scan is partner pickup, second scan is customer delivery", () => {
   const open = { kind: "medicine", trackStatus: "confirmed" };
   assert.equal(nextQrScanAction(open), "pickup");
   const picked = qrScanPatch(open, 1700000000000);
   assert.equal(picked.patch.trackStatus, "on_the_way");
   assert.equal(picked.patch.qrLastScan, "pickup");
 
-  const receive = qrScanPatch({ ...open, ...picked.patch }, 1700000001000);
-  assert.equal(receive.action, "receive");
-  assert.equal(receive.patch.trackStatus, "done");
-  assert.equal(receive.patch.status, "Delivered");
+  const delivered = qrScanPatch({ ...open, ...picked.patch }, 1700000001000);
+  assert.equal(delivered.action, "deliver");
+  assert.equal(delivered.patch.trackStatus, "done");
+  assert.equal(delivered.patch.status, "Delivered");
 });
 
-test("home care receive marks completed, and a done order is not scanned again", () => {
-  const receive = qrScanPatch({
+test("home care delivery marks completed, and a done order is not scanned again", () => {
+  const delivered = qrScanPatch({
     kind: "homecare",
     trackStatus: "on_the_way",
+    checkPickupAt: 1700000000000,
+    qrPickedAt: 1700000000000,
   });
-  assert.equal(receive.patch.status, "Completed");
+  assert.equal(delivered.patch.status, "Completed");
   assert.equal(
     nextQrScanAction({ trackStatus: "done", trackCompleted: true }),
     "already_done"

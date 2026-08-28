@@ -33,7 +33,14 @@ export function parseAppHash(rawHash) {
     plan = "";
     service = "";
   }
-  const route = !path || path === "home" ? "#home" : `#${path}`;
+  const HASH_ALIASES = {
+    social: "contact",
+    staff: "admin",
+    ops: "admin",
+    partners: "partner",
+  };
+  const mapped = HASH_ALIASES[path] || path;
+  const route = !mapped || mapped === "home" ? "#home" : `#${mapped}`;
   return { route, q, id, step, plan, service };
 }
 

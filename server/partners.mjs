@@ -46,6 +46,15 @@ const SEED = [
     outletId: "MH-OUT-SD",
   },
   {
+    id: "P-PSY-01",
+    name: "Dr. Ananya Mehra",
+    role: "Psychologist",
+    kinds: ["psychologist"],
+    mobile: "9654222907",
+    pin: "1111",
+    outletId: "MH-OUT-SD",
+  },
+  {
     id: "P-AMB-01",
     name: "Sanjay Ambulance",
     role: "Ambulance operator",

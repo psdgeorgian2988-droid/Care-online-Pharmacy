@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { SOCIAL } from "./siteMeta";
+import { copyHandle, openSocial } from "./socialHandlers";
 
 const ICONS = {
   instagram: (
@@ -51,48 +53,99 @@ const ICONS = {
   ),
 };
 
+function shouldUseHandler(event) {
+  if (event.defaultPrevented) return false;
+  if (event.button !== 0) return false;
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+    return false;
+  }
+  return true;
+}
+
 export default function SocialLinks({
   className = "",
   showHandles = false,
   layout = "icons",
 }) {
   const isCards = layout === "cards";
+  const [copiedId, setCopiedId] = useState("");
+
+  const handleOpen = (event, item) => {
+    if (!shouldUseHandler(event)) return;
+    event.preventDefault();
+    openSocial(item);
+  };
+
+  const handleCopy = async (event, item) => {
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+      await copyHandle(item);
+      setCopiedId(item.id);
+    } catch {
+      setCopiedId("");
+    }
+  };
+
   return (
     <nav className={`social-links ${className}`.trim()} aria-label="MediHome on social media">
-      {SOCIAL.map((item) => (
-        <a
-          key={item.id}
-          className={isCards ? "social-handle-card" : undefined}
-          data-network={item.id}
-          href={item.href}
-          target="_blank"
-          rel="noopener noreferrer me"
-          title={`${item.label} ${item.handle}`}
-        >
-          {isCards ? (
-            <>
-              <span className="social-handle-icon" aria-hidden="true">
-                {ICONS[item.id]}
-              </span>
-              <span className="social-handle-copy">
-                <strong>{item.label}</strong>
-                <em>{item.handle}</em>
-              </span>
-            </>
-          ) : (
-            <>
-              {ICONS[item.id]}
-              {showHandles ? (
-                <span>
-                  {item.label} {item.handle}
+      {SOCIAL.map((item) => {
+        const openLabel = `${item.label} ${item.handle}`;
+        const copied = copiedId === item.id;
+        if (isCards) {
+          return (
+            <div
+              key={item.id}
+              className="social-handle-card"
+              data-network={item.id}
+            >
+              <a
+                className="social-handle-open"
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer me"
+                title={openLabel}
+                onClick={(event) => handleOpen(event, item)}
+              >
+                <span className="social-handle-icon" aria-hidden="true">
+                  {ICONS[item.id]}
                 </span>
-              ) : (
-                <span className="sr-only">{item.label}</span>
-              )}
-            </>
-          )}
-        </a>
-      ))}
+                <span className="social-handle-copy">
+                  <strong>{item.label}</strong>
+                  <em>{item.handle}</em>
+                </span>
+              </a>
+              <button
+                type="button"
+                className="social-copy-handle"
+                onClick={(event) => handleCopy(event, item)}
+              >
+                {copied ? "Copied" : "Copy Handle"}
+              </button>
+            </div>
+          );
+        }
+        return (
+          <a
+            key={item.id}
+            data-network={item.id}
+            href={item.href}
+            target="_blank"
+            rel="noopener noreferrer me"
+            title={openLabel}
+            onClick={(event) => handleOpen(event, item)}
+          >
+            {ICONS[item.id]}
+            {showHandles ? (
+              <span>
+                {item.label} {item.handle}
+              </span>
+            ) : (
+              <span className="sr-only">{item.label}</span>
+            )}
+          </a>
+        );
+      })}
     </nav>
   );
 }
