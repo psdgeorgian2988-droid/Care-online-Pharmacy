@@ -4,6 +4,7 @@ import {
   compareWithPrescribedBrand,
   findMatchingMediHome,
   findPrescribedBrand,
+  monthlySavingForItem,
   resolveCartAdd,
 } from "./medicineCartCompare.js";
 
@@ -68,16 +69,31 @@ test("compare uses prescribed MRP against the selling price", () => {
   assert.equal(compare.percent, 24);
 });
 
-test("adding a prescribed brand puts the matching MediHome pack in the cart", () => {
-  const added = resolveCartAdd(glycomet, list, glycomet);
+test("adding a prescribed brand while searching puts MediHome in the cart", () => {
+  const added = resolveCartAdd(glycomet, list, glycomet, { searchingBrand: true });
   assert.equal(added.selling.id, 1);
   assert.equal(added.compare.brand, "Glycomet");
   assert.equal(added.compare.save, 10);
 });
 
-test("adding MediHome still records the prescribed brand comparison", () => {
-  const added = resolveCartAdd(metforminHome, list, glycomet);
+test("adding MediHome while searching a prescribed brand records the comparison", () => {
+  const added = resolveCartAdd(metforminHome, list, glycomet, { searchingBrand: true });
   assert.equal(added.selling.id, 1);
   assert.equal(added.compare.brand, "Glycomet");
   assert.equal(added.compare.mrp, 42);
+});
+
+test("browsing a category adds the clicked pack with no brand comparison", () => {
+  const added = resolveCartAdd(glycomet, list, null, { searchingBrand: false });
+  assert.equal(added.selling.id, 2);
+  assert.equal(added.compare, null);
+});
+
+test("monthly saving uses prescribed pack MRP at the usual monthly pack rate", () => {
+  const item = {
+    ...metforminHome,
+    packSize: "10 tablets",
+    prescribedBrand: compareWithPrescribedBrand(metforminHome, glycomet),
+  };
+  assert.equal(monthlySavingForItem(item), 30);
 });

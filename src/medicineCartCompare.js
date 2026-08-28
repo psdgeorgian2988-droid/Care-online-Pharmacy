@@ -58,12 +58,43 @@ export function compareWithPrescribedBrand(sellingMed, prescribedBrand) {
   };
 }
 
-export function resolveCartAdd(medicine, list = [], preferredBrand = null) {
+export function packsPerMonthFor(medicine) {
+  const count = parseInt(String(medicine?.packSize || "").match(/\d+/)?.[0] || "10", 10);
+  if (!count || count <= 0) return 3;
+  return Math.max(1, Math.min(12, Math.round(30 / count) || 3));
+}
+
+export function monthlySavingForItem(item) {
+  const compare = item?.prescribedBrand;
+  if (!compare) return 0;
+  const savePack = Number(
+    compare.save ||
+      Math.max(0, Number(compare.mrp || 0) - Number(item?.price || 0))
+  );
+  return savePack * packsPerMonthFor(item);
+}
+
+export function monthlySavingForCart(cart = []) {
+  return cart.reduce((sum, item) => sum + monthlySavingForItem(item), 0);
+}
+
+export function resolveCartAdd(medicine, list = [], preferredBrand = null, options = {}) {
   if (!medicine) return null;
-  const prescribed = findPrescribedBrand(list, medicine, preferredBrand);
+  if (!options.searchingBrand) {
+    return { selling: medicine, prescribed: null, compare: null };
+  }
+  const prescribed =
+    preferredBrand && !preferredBrand.isMediHome
+      ? preferredBrand
+      : medicine.isMediHome
+        ? null
+        : medicine;
   const selling = medicine.isMediHome
     ? medicine
     : findMatchingMediHome(list, medicine) || medicine;
-  const compare = compareWithPrescribedBrand(selling, prescribed);
-  return { selling, prescribed, compare };
+  return {
+    selling,
+    prescribed,
+    compare: prescribed ? compareWithPrescribedBrand(selling, prescribed) : null,
+  };
 }

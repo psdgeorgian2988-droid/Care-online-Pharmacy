@@ -25,7 +25,7 @@ import {
   validateBookingDetails,
   withBookingIdentity,
 } from "./bookingFor";
-import { resolveCartAdd } from "./medicineCartCompare";
+import { monthlySavingForCart, monthlySavingForItem, resolveCartAdd } from "./medicineCartCompare";
 
 function readHomeMedicineSearch() {
   const hash = window.location.hash || "";
@@ -2672,12 +2672,6 @@ function medicineSearchBlob(medicine) {
   );
 }
 
-function brandSearchBlob(medicine) {
-  return normalizeSearchText(
-    [medicine.brand, medicine.name, ...(medicine.aliases || [])].join(" ")
-  );
-}
-
 function tokenHitScore(query, blob) {
   const compact = normalizeSearchText(query);
   if (!compact || compact.length < 2 || !blob) return 0;
@@ -2705,13 +2699,9 @@ function bestFieldScore(query, medicine) {
   return Math.max(fieldBest, tokenHitScore(query, medicineSearchBlob(medicine)));
 }
 
-function bestBrandScore(query, medicine) {
-  const fields = [medicine.brand, medicine.name, ...(medicine.aliases || [])];
-  const fieldBest = fields.reduce(
-    (best, field) => Math.max(best, fuzzyScore(query, field)),
-    0
-  );
-  return Math.max(fieldBest, tokenHitScore(query, brandSearchBlob(medicine)));
+function prescribedBrandNameScore(query, medicine) {
+  const fields = [medicine.brand, medicine.name];
+  return fields.reduce((best, field) => Math.max(best, fuzzyScore(query, field)), 0);
 }
 
 function saltKey(medicine) {
@@ -2734,15 +2724,6 @@ function findMediHomeMatch(list, brandMedicine) {
   );
 }
 
-function findBrandFamily(list, mediHomeMedicine) {
-  if (!mediHomeMedicine) return [];
-  const key = compositionKey(mediHomeMedicine);
-  if (!key) return [];
-  return list.filter(
-    (medicine) => !medicine.isMediHome && compositionKey(medicine) === key
-  );
-}
-
 function findMediHomeFamily(list, brandMedicine) {
   if (!brandMedicine) return [];
   const key = saltKey(brandMedicine);
@@ -2759,6 +2740,7 @@ function searchMedicines(list, query) {
       brandMatch: null,
       brandMatches: [],
       mediHomeMatch: null,
+      prescribedSearch: false,
       noExactMatch: false,
       emptyHint: "",
     };
@@ -2767,7 +2749,7 @@ function searchMedicines(list, query) {
   const scored = list.map((medicine) => ({
     medicine,
     score: bestFieldScore(searchText, medicine),
-    brandScore: bestBrandScore(searchText, medicine),
+    brandScore: prescribedBrandNameScore(searchText, medicine),
   }));
 
   const brandCandidates = scored
@@ -2796,41 +2778,33 @@ function searchMedicines(list, query) {
     brandMatches = brandCandidates.map((entry) => entry.medicine);
   }
 
+  const prescribedSearch = brandCandidates.length > 0;
   const brandMatch = brandMatches[0] || null;
   const mediHomeMatch = findMediHomeMatch(list, brandMatch);
   const mediHomeFamily = findMediHomeFamily(list, brandMatch);
-  const noExactMatch = Boolean(brandMatch && !mediHomeMatch);
+  const noExactMatch = Boolean(prescribedSearch && brandMatch && !mediHomeMatch);
 
   const itemMap = new Map();
   scored
-    .filter((entry) => entry.score >= 0.5)
+    .filter((entry) => entry.score >= 0.5 && entry.medicine.isMediHome)
     .forEach((entry) => itemMap.set(entry.medicine.id, entry.medicine));
-  brandMatches.forEach((medicine) => itemMap.set(medicine.id, medicine));
   if (mediHomeMatch) itemMap.set(mediHomeMatch.id, mediHomeMatch);
   mediHomeFamily.forEach((medicine) => itemMap.set(medicine.id, medicine));
 
-  if (!brandMatches.length) {
-    const mediHomeHit = mediHomeMatch ||
-      Array.from(itemMap.values()).find((medicine) => medicine.isMediHome);
-    const relatedBrands = findBrandFamily(list, mediHomeHit);
-    if (relatedBrands.length) {
-      brandMatches = relatedBrands;
-    }
-  }
-
-  const resolvedBrand = brandMatches[0] || brandMatch;
+  const resolvedBrand = prescribedSearch ? brandMatch : null;
   const resolvedMediHome = mediHomeMatch || findMediHomeMatch(list, resolvedBrand);
 
-  if (!resolvedBrand && !emptyHint && itemMap.size === 0) {
+  if (!itemMap.size && !resolvedBrand && !emptyHint) {
     emptyHint = "No medicines match your search.";
   }
 
   return {
     items: Array.from(itemMap.values()),
     brandMatch: resolvedBrand,
-    brandMatches,
+    brandMatches: prescribedSearch ? brandMatches : [],
     mediHomeMatch: resolvedMediHome,
     mediHomeFamily,
+    prescribedSearch,
     noExactMatch: Boolean(resolvedBrand && !resolvedMediHome),
     emptyHint,
   };
@@ -2870,130 +2844,6 @@ function MedicineCard({ medicine, onAdd }) {
   );
 }
 
-function suggestedPacksPerMonth(medicine) {
-  const count = parseInt(String(medicine?.packSize || "").match(/\d+/)?.[0] || "10", 10);
-  if (!count || count <= 0) return 3;
-  return Math.max(1, Math.min(12, Math.round(30 / count) || 3));
-}
-
-function SavingsCalculator({
-  brandMed,
-  mediHomeMed,
-  packs,
-  onPacksChange,
-  onAdd,
-  brandOptions,
-  onBrandChange,
-}) {
-  if (!brandMed) return null;
-
-  const brandStrip = Number(brandMed.mrp) || 0;
-  const mhStrip = mediHomeMed ? Number(mediHomeMed.price) || 0 : 0;
-  const monthlyBrand = brandStrip * packs;
-  const monthlyHome = mediHomeMed ? mhStrip * packs : 0;
-  const monthlySave = mediHomeMed ? Math.max(0, monthlyBrand - monthlyHome) : 0;
-  const savePercent =
-    monthlyBrand > 0 ? Math.round((monthlySave / monthlyBrand) * 100) : 0;
-  const monthsElapsed = new Date().getMonth() + 1;
-  const tillDateSave = monthlySave * monthsElapsed;
-  const monthLabel = new Date().toLocaleString("en-IN", { month: "long" });
-  const year = new Date().getFullYear();
-
-  return (
-    <section className="savings-panel" aria-label="Savings calculator">
-      <div className="savings-panel-head">
-        <div>
-          <p className="savings-kicker">Savings calculator</p>
-          <h3>Prescribed brand vs MediHome</h3>
-          <p>
-            Compare pack MRP of the prescribed brand with the matching MediHome
-            salt and strength.
-          </p>
-        </div>
-        <div className="savings-controls">
-          {brandOptions?.length ? (
-            <label className="savings-packs">
-              Prescribed medicine
-              <select
-                value={brandMed?.id || ""}
-                onChange={(event) => onBrandChange?.(Number(event.target.value))}
-              >
-                {brandOptions.map((medicine) => (
-                  <option key={medicine.id} value={medicine.id}>
-                    {medicine.brand} · {medicine.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          <label className="savings-packs">
-            Packs / month
-            <input
-              type="number"
-              min="1"
-              max="30"
-              value={packs}
-              onChange={(event) =>
-                onPacksChange(Math.max(1, Math.min(30, Number(event.target.value) || 1)))
-              }
-            />
-          </label>
-        </div>
-      </div>
-
-      <div className="savings-compare">
-        <div>
-          <span>Prescribed</span>
-          <strong>
-            ₹{brandStrip} <em>/ pack</em>
-          </strong>
-          <p>₹{monthlyBrand} / month</p>
-        </div>
-        <div>
-          <span>MediHome</span>
-          <strong>
-            {mediHomeMed ? (
-              <>
-                ₹{mhStrip} <em>/ pack</em>
-              </>
-            ) : (
-              "No exact match"
-            )}
-          </strong>
-          <p>{mediHomeMed ? `₹${monthlyHome} / month` : "Same salt and strength required"}</p>
-        </div>
-        <div className="savings-total">
-          <span>Saving this month ({monthLabel})</span>
-          <strong>
-            ₹{monthlySave}{" "}
-            <em className="savings-percent">{savePercent}%</em>
-          </strong>
-          <p>
-            ₹{monthlyBrand} prescribed vs ₹{monthlyHome} MediHome
-          </p>
-        </div>
-        <div className="savings-total savings-till-date">
-          <span>Total till date</span>
-          <strong>
-            ₹{tillDateSave}{" "}
-            <em className="savings-percent">{savePercent}%</em>
-          </strong>
-          <p>
-            {monthLabel} {year} YTD · {monthsElapsed} month
-            {monthsElapsed > 1 ? "s" : ""} at this rate
-          </p>
-        </div>
-      </div>
-
-      {mediHomeMed ? (
-        <button type="button" className="savings-add" onClick={() => onAdd(mediHomeMed)}>
-          Add MediHome to cart · save ₹{monthlySave} ({savePercent}%) this month
-        </button>
-      ) : null}
-    </section>
-  );
-}
-
 function BrandSearchStrip({
   brandMatch,
   brandMatches = [],
@@ -3002,10 +2852,94 @@ function BrandSearchStrip({
   emptyHint,
   selectedId,
   onSelectBrand,
-  packs,
-  onPacksChange,
   onAdd,
 }) {
+  if (!brandMatch && !emptyHint) return null;
+  const list = brandMatches.length ? brandMatches : brandMatch ? [brandMatch] : [];
+
+  return (
+    <aside className="brand-search-panel">
+      <p className="brand-search-kicker">
+        Prescribed brand · pack rate compared with MediHome
+      </p>
+      {brandMatch ? (
+        <>
+          {list.length > 1 ? (
+            <div className="brand-match-pills" role="list">
+              {list.map((medicine) => (
+                <button
+                  key={medicine.id}
+                  type="button"
+                  role="listitem"
+                  className={medicine.id === selectedId ? "is-on" : ""}
+                  onClick={() => onSelectBrand(medicine.id)}
+                >
+                  {medicine.brand}
+                  <em>{medicine.strength}</em>
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <div className="brand-search-strip">
+            <article className="brand-result-card">
+              <MedicinePhoto medicine={brandMatch} className="brand-search-photo" />
+              <div className="brand-result-body">
+                <span className="brand-match-pill">Prescribed brand</span>
+                <h3>{brandMatch.name}</h3>
+                <p className="brand-result-brand">{brandMatch.brand}</p>
+                <p className="brand-result-comp">{brandMatch.composition}</p>
+                <p className="brand-result-mrp">
+                  MRP <strong>₹{brandMatch.mrp}</strong>
+                  <span> · {brandMatch.packSize}</span>
+                </p>
+              </div>
+            </article>
+
+            {mediHomeMatch ? (
+              <article className="medihome-suggest-card">
+                <MedicinePhoto medicine={mediHomeMatch} className="brand-search-photo" />
+                <div className="brand-result-body">
+                  <span className="composition-match-pill">Exact combination match</span>
+                  <h3>Buy MediHome brand</h3>
+                  <p className="brand-result-brand">{mediHomeMatch.name}</p>
+                  <p className="brand-result-comp">{mediHomeMatch.composition}</p>
+                  <p className="brand-result-price">
+                    <span className="medicine-mrp">Brand MRP ₹{brandMatch.mrp}</span>
+                    <strong>₹{mediHomeMatch.price}</strong>
+                    {mediHomeMatch.price < brandMatch.mrp ? (
+                      <span className="brand-save">
+                        Save ₹{brandMatch.mrp - mediHomeMatch.price} / pack (
+                        {Math.round(
+                          ((brandMatch.mrp - mediHomeMatch.price) / brandMatch.mrp) *
+                            100
+                        )}
+                        %)
+                      </span>
+                    ) : null}
+                  </p>
+                  <button type="button" onClick={() => onAdd(mediHomeMatch)}>
+                    Add MediHome to cart
+                  </button>
+                </div>
+              </article>
+            ) : noExactMatch ? (
+              <article className="medihome-nomatch-card">
+                <h3>No exact MediHome match</h3>
+                <p>
+                  No MediHome SKU has this exact combination (
+                  {brandMatch.composition}). We will not substitute a different
+                  salt or strength.
+                </p>
+              </article>
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <p className="brand-search-empty">{emptyHint}</p>
+      )}
+    </aside>
+  );
+}
   if (!brandMatch && !emptyHint) return null;
   const list = brandMatches.length ? brandMatches : brandMatch ? [brandMatch] : [];
 
@@ -3085,13 +3019,6 @@ function BrandSearchStrip({
               </article>
             ) : null}
           </div>
-          <SavingsCalculator
-            brandMed={brandMatch}
-            mediHomeMed={mediHomeMatch}
-            packs={packs}
-            onPacksChange={onPacksChange}
-            onAdd={onAdd}
-          />
         </>
       ) : (
         <p className="brand-search-empty">{emptyHint}</p>
@@ -3125,7 +3052,6 @@ function Medicines({ initialSearch = "" }) {
   const [payQuote, setPayQuote] = useState(null);
   const busyWait = useBusyOverlay(placingOrder, "medicine");
   const [pickedBrandId, setPickedBrandId] = useState(null);
-  const [packsPerMonth, setPacksPerMonth] = useState(3);
 
   useEffect(() => {
     const next = (initialSearch || "").trim();
@@ -3183,15 +3109,19 @@ function Medicines({ initialSearch = "" }) {
   useEffect(() => {
     if (searchResult.brandMatch) {
       setPickedBrandId(searchResult.brandMatch.id);
-      setPacksPerMonth(suggestedPacksPerMonth(searchResult.brandMatch));
     }
   }, [search, searchResult.brandMatch?.id]);
   const hasSearch = search.trim().length >= 2;
+  const searchingBrand = Boolean(hasSearch && searchResult.prescribedSearch && selectedBrand);
   const listed = hasSearch ? searchResult.items : catalogue;
   const filteredMedicines = sortMedicineRows(
-    listed.filter((medicine) => category === "All" || medicine.category === category)
+    listed.filter((medicine) => {
+      if (hasSearch && !medicine.isMediHome) return false;
+      return category === "All" || medicine.category === category;
+    })
   );
-  const showBrandStrip = hasSearch;
+  const showBrandStrip = searchingBrand;
+  const monthlySave = monthlySavingForCart(cart);
 
   const cartCount = cart.reduce(
     (total, item) => total + (item.quantity || 1),
@@ -3212,7 +3142,9 @@ function Medicines({ initialSearch = "" }) {
   const cartNeedsPrescription = cart.some(requiresPrescription);
 
   const addToCart = (medicine) => {
-    const added = resolveCartAdd(medicine, catalogue, selectedBrand);
+    const added = resolveCartAdd(medicine, catalogue, selectedBrand, {
+      searchingBrand,
+    });
     if (!added?.selling) return;
     const selling = {
       ...added.selling,
@@ -3444,9 +3376,9 @@ function Medicines({ initialSearch = "" }) {
           ))}
         </div>
         <p className="medicines-combo-hint">
-          All lists every pack. A category such as Diabetes lists every
-          combination in that group. Add to cart compares the selling price with
-          the prescribed brand of the same salt and strength.
+          Browse All or a category to see every pack. Search a prescribed brand
+          to compare pack rates with MediHome. Monthly saving is calculated at
+          checkout.
         </p>
         <div className="medicine-search-box">
           <input
@@ -3501,26 +3433,10 @@ function Medicines({ initialSearch = "" }) {
               <div className="cart-item" key={item.id}>
                 <div className="cart-item-info">
                   <span>{item.name}</span>
-                  {item.prescribedBrand ? (
-                    <span className="cart-item-compare">
-                      Prescribed {item.prescribedBrand.brand} MRP ₹
-                      {item.prescribedBrand.mrp} · Selling ₹{item.price}
-                      {item.prescribedBrand.save > 0
-                        ? ` · Save ₹${item.prescribedBrand.save} (${item.prescribedBrand.percent}%)`
-                        : ""}
-                    </span>
-                  ) : (
-                    <span>
-                      ₹{item.price} × {item.quantity || 1} = ₹
-                      {item.price * (item.quantity || 1)}
-                    </span>
-                  )}
-                  {item.prescribedBrand ? (
-                    <span>
-                      ₹{item.price} × {item.quantity || 1} = ₹
-                      {item.price * (item.quantity || 1)}
-                    </span>
-                  ) : null}
+                  <span>
+                    ₹{item.price} × {item.quantity || 1} = ₹
+                    {item.price * (item.quantity || 1)}
+                  </span>
                 </div>
                 <div className="cart-item-actions">
                   <button
@@ -3642,6 +3558,26 @@ function Medicines({ initialSearch = "" }) {
             }}
             pinHint="Select the Village / Sector / Mohalla attached to this PIN."
           >
+          {monthlySave > 0 ? (
+            <section className="checkout-monthly-save" aria-label="Monthly saving">
+              <h3>Monthly saving</h3>
+              <p>
+                Versus the prescribed brand you searched, MediHome saves about ₹
+                {monthlySave} / month at the usual pack rate.
+              </p>
+              <ul>
+                {cart
+                  .filter((item) => item.prescribedBrand)
+                  .map((item) => (
+                    <li key={item.id}>
+                      {item.prescribedBrand.brand} MRP ₹{item.prescribedBrand.mrp} vs
+                      MediHome ₹{item.price} · about ₹{monthlySavingForItem(item)} /
+                      month
+                    </li>
+                  ))}
+              </ul>
+            </section>
+          ) : null}
           {cartNeedsPrescription && (
             <div className="checkout-rx">
               <label>Prescription</label>
@@ -3786,13 +3722,7 @@ function Medicines({ initialSearch = "" }) {
               noExactMatch={Boolean(selectedBrand && !selectedMediHome)}
               emptyHint={searchResult.emptyHint}
               selectedId={selectedBrand?.id}
-              onSelectBrand={(id) => {
-                setPickedBrandId(id);
-                const next = searchResult.brandMatches.find((item) => item.id === id);
-                if (next) setPacksPerMonth(suggestedPacksPerMonth(next));
-              }}
-              packs={packsPerMonth}
-              onPacksChange={setPacksPerMonth}
+              onSelectBrand={(id) => setPickedBrandId(id)}
               onAdd={addToCart}
             />
           )}

@@ -3450,6 +3450,34 @@ footer .logo {
   font-size: 12px;
 }
 
+.checkout-monthly-save {
+  grid-column: 1 / -1;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid #d7e8e8;
+  border-radius: 10px;
+  background: #f7fbf8;
+}
+
+.checkout-monthly-save h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  color: #123b59;
+}
+
+.checkout-monthly-save p,
+.checkout-monthly-save li {
+  margin: 0;
+  color: #34546b;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.checkout-monthly-save ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
 @media (max-width: 800px) {
   #medicines .medicine-row,
   .medicines-page .medicine-row {
