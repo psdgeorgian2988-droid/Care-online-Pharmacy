@@ -17,7 +17,6 @@ import {
   Reports,
   Reviews,
   ScanPage,
-  Social,
   StepDownCare,
   TrackPage,
   Vaccination,
@@ -58,7 +57,6 @@ const ACCOUNT_LINKS = [
 const BOTTOM_LINKS = [
   { href: "#about", label: "About" },
   { href: "#contact", label: "Contact" },
-  { href: "#social", label: "Social" },
 ];
 
 const OPS_LINKS = [
@@ -355,6 +353,10 @@ function App() {
   const isOps = route === "#admin" || route === "#partner";
   const features = useFeatures();
 
+  useEffect(() => {
+    if (route === "#social") goToHash("#contact");
+  }, [route]);
+
   const renderPage = () => {
     if (!routeEnabled(route, features)) {
       return <PausedService route={route} features={features} />;
@@ -389,9 +391,8 @@ function App() {
       case "#about":
         return <About />;
       case "#contact":
-        return <Contact />;
       case "#social":
-        return <Social />;
+        return <Contact />;
       case "#feedback":
         return <Feedback />;
       case "#reviews":

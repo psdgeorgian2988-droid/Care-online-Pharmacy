@@ -19,4 +19,3 @@ export const Reviews = lazy(() => import("./Reviews"));
 export const Admin = lazy(() => import("./Admin"));
 export const Partner = lazy(() => import("./Partner"));
 export const ScanPage = lazy(() => import("./ScanPage"));
-export const Social = lazy(() => import("./Social"));

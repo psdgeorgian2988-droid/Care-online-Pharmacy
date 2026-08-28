@@ -51,24 +51,45 @@ const ICONS = {
   ),
 };
 
-export default function SocialLinks({ className = "", showHandles = false }) {
+export default function SocialLinks({
+  className = "",
+  showHandles = false,
+  layout = "icons",
+}) {
+  const isCards = layout === "cards";
   return (
     <nav className={`social-links ${className}`.trim()} aria-label="MediHome on social media">
       {SOCIAL.map((item) => (
         <a
           key={item.id}
+          className={isCards ? "social-handle-card" : undefined}
+          data-network={item.id}
           href={item.href}
           target="_blank"
           rel="noopener noreferrer me"
           title={`${item.label} ${item.handle}`}
         >
-          {ICONS[item.id]}
-          {showHandles ? (
-            <span>
-              {item.label} {item.handle}
-            </span>
+          {isCards ? (
+            <>
+              <span className="social-handle-icon" aria-hidden="true">
+                {ICONS[item.id]}
+              </span>
+              <span className="social-handle-copy">
+                <strong>{item.label}</strong>
+                <em>{item.handle}</em>
+              </span>
+            </>
           ) : (
-            <span className="sr-only">{item.label}</span>
+            <>
+              {ICONS[item.id]}
+              {showHandles ? (
+                <span>
+                  {item.label} {item.handle}
+                </span>
+              ) : (
+                <span className="sr-only">{item.label}</span>
+              )}
+            </>
           )}
         </a>
       ))}

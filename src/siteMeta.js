@@ -131,10 +131,15 @@ const PAGE_META = {
     description:
       "MediHome is a neighbourhood health partner for medicines, diagnostics, and home services in Delhi NCR.",
   },
-  social: {
-    title: "Social Media | MediHome",
+  contact: {
+    title: "Contact Us | MediHome",
     description:
-      "Follow MediHome on Instagram, Facebook, YouTube, LinkedIn, and X. Copy ready captions for social media marketing.",
+      "Call, email, or WhatsApp MediHome customer care. Follow official handles on Instagram, Facebook, YouTube, LinkedIn, X, and WhatsApp.",
+  },
+  social: {
+    title: "Contact Us | MediHome",
+    description:
+      "Call, email, or WhatsApp MediHome customer care. Follow official handles on Instagram, Facebook, YouTube, LinkedIn, X, and WhatsApp.",
   },
   feedback: {
     title: "Share Feedback | MediHome",
