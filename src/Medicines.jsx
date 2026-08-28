@@ -2564,15 +2564,16 @@ const FLAGSHIP_BRANDS = new Set([
 ]);
 
 const catalogue = medicines.map(withHouseBrand);
-const catalogueCountByCategory = catalogue.reduce((counts, medicine) => {
+const houseCatalogue = catalogue.filter((medicine) => medicine.isMediHome);
+const houseCountByCategory = houseCatalogue.reduce((counts, medicine) => {
   const key = medicine.category || "Other";
   counts[key] = (counts[key] || 0) + 1;
   return counts;
 }, {});
 
 function catalogueCountForTab(tab) {
-  if (tab === "All") return catalogue.length;
-  return catalogueCountByCategory[tab] || 0;
+  if (tab === "All") return houseCatalogue.length;
+  return houseCountByCategory[tab] || 0;
 }
 
 function sortMedicineRows(list) {
@@ -3027,10 +3028,11 @@ function Medicines({ initialSearch = "" }) {
   }, [search, searchResult.brandMatch?.id]);
   const hasSearch = search.trim().length >= 2;
   const searchingBrand = Boolean(hasSearch && searchResult.prescribedSearch && selectedBrand);
-  const listed = hasSearch ? searchResult.items : catalogue;
+  const listed = hasSearch ? searchResult.items : houseCatalogue;
   const filteredMedicines = sortMedicineRows(
     listed.filter((medicine) => {
-      if (hasSearch && !medicine.isMediHome) return false;
+      if (!medicine.isMediHome) return false;
+      if (hasSearch) return true;
       return category === "All" || medicine.category === category;
     })
   );
@@ -3290,8 +3292,8 @@ function Medicines({ initialSearch = "" }) {
           ))}
         </div>
         <p className="medicines-combo-hint">
-          Browse All or a category to see every pack. Search a prescribed brand
-          to compare pack rates with MediHome. Monthly saving is calculated at
+          Other brands stay hidden until you search a prescribed brand. Then we
+          compare that pack rate with MediHome. Monthly saving is calculated at
           checkout.
         </p>
         <div className="medicine-search-box">
