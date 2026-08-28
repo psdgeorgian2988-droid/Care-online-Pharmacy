@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
-import { RELATION_OPTIONS } from "./personFields";
+import { maskMobile } from "./personFields";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import {
-  POINT_VALUES,
-  referralShareText,
-  spendForReferral,
+  referralWhatsAppHref,
+  saveReferralInvite,
   useWallet,
 } from "./pointsStore";
 
@@ -18,16 +17,23 @@ function readProfile() {
   }
 }
 
+function openWhatsApp(href) {
+  if (!href) return;
+  const opened = window.open(href, "_blank", "noopener,noreferrer");
+  if (opened) opened.opener = null;
+}
+
 function ReferFamily() {
   const wallet = useWallet();
   const me = useMemo(() => readProfile(), []);
   const [form, setForm] = useState({
     name: "",
     mobile: "",
-    relation: "spouse",
   });
   const [errors, setErrors] = useState({});
   const [done, setDone] = useState(null);
+
+  const shareHref = done ? referralWhatsAppHref(done, me.name) : "";
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -39,55 +45,52 @@ function ReferFamily() {
     setErrors(next);
     if (Object.keys(next).length) return;
 
-    const result = spendForReferral({
+    const result = saveReferralInvite({
       name: form.name.trim(),
       mobile: form.mobile,
-      relation: form.relation,
     });
     if (!result.ok) {
-      setErrors({
-        points: `You need ${POINT_VALUES.referral} points to send an invite. Attend a webinar or attempt a quiz first.`,
-      });
+      setErrors({ points: "Could not save this invite. Please try again." });
       return;
     }
+    const href = referralWhatsAppHref(result.referral, me.name);
     setDone(result.referral);
-    setForm({ name: "", mobile: "", relation: "spouse" });
+    setForm({ name: "", mobile: "" });
+    openWhatsApp(href);
   };
-
-  const shareHref = done
-    ? `https://wa.me/91${done.mobile}?text=${encodeURIComponent(
-        referralShareText(done, me.name)
-      )}`
-    : "";
 
   return (
     <>
     <article className="points-refer-card">
       <h2>Refer Family And Friends</h2>
-      <p>
-        Send a personal invite with a family code they can mention when they
-        register.
-      </p>
 
       {done ? (
         <div className="points-refer-done">
           <p>
-            Invite ready for <strong>{done.name}</strong>. Family code{" "}
-            <strong>{done.id}</strong>. {POINT_VALUES.referral} referral points
-            used.
+            WhatsApp is ready for <strong>{done.name}</strong>{" "}
+            {maskMobile(done.mobile)}.
           </p>
-          <a className="points-share-btn" href={shareHref} target="_blank" rel="noreferrer">
-            Send on WhatsApp
+          <a
+            className="points-share-btn"
+            href={shareHref}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(event) => {
+              event.preventDefault();
+              openWhatsApp(shareHref);
+            }}
+          >
+            Send App Link On WhatsApp
           </a>
           <button type="button" className="points-ghost-btn" onClick={() => setDone(null)}>
-            Refer someone else
+            Refer Someone Else
           </button>
         </div>
       ) : (
         <form className="points-refer-form" onSubmit={handleSubmit}>
           {errors.points ? <p className="points-error">{errors.points}</p> : null}
           <label>
-            Their name
+            Name
             <input
               value={form.name}
               onChange={(event) => {
@@ -99,7 +102,7 @@ function ReferFamily() {
             {errors.name ? <span>{errors.name}</span> : null}
           </label>
           <label>
-            Their mobile
+            Contact No
             <input
               maxLength={10}
               value={form.mobile}
@@ -114,36 +117,9 @@ function ReferFamily() {
             />
             {errors.mobile ? <span>{errors.mobile}</span> : null}
           </label>
-          <label>
-            Relation
-            <select
-              value={form.relation}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, relation: event.target.value }))
-              }
-            >
-              <option value="">Select</option>
-              {RELATION_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="submit"
-            className="points-share-btn"
-            disabled={wallet.balance < POINT_VALUES.referral}
-          >
-            Use {POINT_VALUES.referral} of {wallet.balance} points to refer
+          <button type="submit" className="points-share-btn">
+            Send App Link On WhatsApp
           </button>
-          {wallet.balance < POINT_VALUES.referral ? (
-            <p className="points-hint">
-              Earn points in <a href="#education">Health Education</a> by
-              attending a webinar (+{POINT_VALUES.webinar}) or attempting a quiz
-              (+{POINT_VALUES.quiz}).
-            </p>
-          ) : null}
         </form>
       )}
 
@@ -152,9 +128,18 @@ function ReferFamily() {
           {wallet.referrals.map((row) => (
             <li key={row.id}>
               <strong>{row.name}</strong>
-              <span>
-                {row.relation} · {row.mobile} · {row.id}
-              </span>
+              <span>{maskMobile(row.mobile)}</span>
+              <a
+                href={referralWhatsAppHref(row, me.name)}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(event) => {
+                  event.preventDefault();
+                  openWhatsApp(referralWhatsAppHref(row, me.name));
+                }}
+              >
+                Send App Link On WhatsApp
+              </a>
             </li>
           ))}
         </ul>
@@ -174,7 +159,7 @@ const referStyles = `
 .points-balance-line strong{font-size:20px}
 .points-refer-form{display:grid;gap:10px}
 .points-refer-form label{display:grid;gap:4px;font-size:12px;font-weight:700;color:#1a6b7a}
-.points-refer-form input,.points-refer-form select{height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;font-weight:500;color:#143246;background:#fff}
+.points-refer-form input{height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;font-weight:500;color:#143246;background:#fff}
 .points-refer-form span,.points-error{color:#b42318;font-weight:700;font-size:12px}
 .points-share-btn{appearance:none;display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:8px 16px;border:2px solid #0639b8;border-radius:10px;background:#0639b8;color:#fff;font:inherit;font-size:14px;font-weight:800;text-decoration:none;cursor:pointer}
 .points-share-btn:disabled{opacity:.45;cursor:not-allowed}
@@ -185,6 +170,7 @@ const referStyles = `
 .points-refer-list{margin:16px 0 0;padding:0;list-style:none}
 .points-refer-list li{padding:8px 0;border-top:1px solid #edf1f3;display:flex;flex-direction:column;gap:2px;font-size:13px}
 .points-refer-list span{color:#5d7180}
+.points-refer-list a{margin-top:4px;color:#0639b8;font-size:12px;font-weight:800;text-decoration:none}
 `;
 
 export default ReferFamily;

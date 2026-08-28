@@ -18,6 +18,7 @@ import {
   relationLabel,
   validateFamilyMembers,
   validatePerson,
+  maskMobile,
 } from "./personFields";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import { PROFILE_KEY, useLoginSession, writeLoginSession } from "./authSession";
@@ -131,7 +132,7 @@ function Profile() {
               </div>
               <div>
                 <dt>Mobile</dt>
-                <dd>{session.mobile || "—"}</dd>
+                <dd>{maskMobile(session.mobile) || "—"}</dd>
               </div>
             </dl>
           </section>
@@ -195,7 +196,7 @@ function Profile() {
                   name="mobile"
                   maxLength="10"
                   placeholder="10-digit mobile number"
-                  value={accountCreatorMobile(form)}
+                  value={maskMobile(accountCreatorMobile(form)) || accountCreatorMobile(form)}
                   readOnly
                   {...noContactMobileProps}
                 />
@@ -247,8 +248,7 @@ function Profile() {
           <h2>Your MediHome points</h2>
           <p>
             Webinar +{POINT_VALUES.webinar} · Quiz +{POINT_VALUES.quiz} · Family
-            member +{POINT_VALUES.familyMember} · Referral uses {POINT_VALUES.referral}{" "}
-            points for family and friends.
+            member +{POINT_VALUES.familyMember}.
           </p>
           {wallet.ledger.length ? (
             <ul className="profile-ledger">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { pickFamilyMembers } from "./personFields.js";
+import { SITE } from "./siteMeta.js";
 
 const STORAGE_KEY = "mediHomePointsWallet";
 export const POINTS_EVENT = "medihome-points";
@@ -120,36 +121,26 @@ export function awardFamilyMemberPoints(members = []) {
   return { awarded, count, wallet: loadWallet() };
 }
 
-export function spendForReferral({ name, mobile, relation }) {
-  const amount = POINT_VALUES.referral;
+export function saveReferralInvite({ name, mobile }) {
   const wallet = loadWallet();
-  if (wallet.balance < amount) {
-    return { ok: false, reason: "points", wallet };
-  }
   const now = new Date();
   const code = "MH-FAM-" + Math.floor(1000 + Math.random() * 9000);
   const referral = {
     id: code,
-    name,
-    mobile,
-    relation,
-    pointsUsed: amount,
+    name: String(name || "").trim(),
+    mobile: String(mobile || "").replace(/\D/g, "").slice(-10),
+    pointsUsed: 0,
     at: now.toLocaleString(),
     atMs: now.getTime(),
   };
-  wallet.balance -= amount;
   wallet.referrals.unshift(referral);
-  wallet.ledger.unshift({
-    id: "MH-PT-" + now.getTime(),
-    type: "spend",
-    amount: -amount,
-    label: `Referral invite: ${name}`,
-    key: `refer:${code}`,
-    at: referral.at,
-    atMs: referral.atMs,
-  });
   persist(wallet);
   return { ok: true, referral, wallet };
+}
+
+/** @deprecated Use saveReferralInvite. Family/friend invites no longer spend points. */
+export function spendForReferral(payload) {
+  return saveReferralInvite(payload);
 }
 
 export function providerServiceLabel(kind) {
@@ -205,6 +196,21 @@ export function providerReferralShareText(referral, fromName) {
 }
 
 export function referralShareText(referral, fromName) {
-  const who = fromName ? `${fromName} (MediHome)` : "a MediHome customer";
-  return `Hi ${referral.name}, ${who} invited you to MediHome for medicines, lab tests, and home care in Delhi NCR. Use family code ${referral.id} when you register.`;
+  const who = fromName ? `${fromName}` : "A MediHome customer";
+  const link = SITE.appDownloadUrl || SITE.url;
+  return [
+    `Hi ${referral.name},`,
+    `${who} invited you to MediHome for medicines, lab tests, and home care in Delhi NCR.`,
+    `Download the MediHome app: ${link}`,
+    referral.id ? `Use family code ${referral.id} when you register.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+export function referralWhatsAppHref(referral, fromName) {
+  const mobile = String(referral?.mobile || "").replace(/\D/g, "").slice(-10);
+  return `https://wa.me/91${mobile}?text=${encodeURIComponent(
+    referralShareText(referral, fromName)
+  )}`;
 }

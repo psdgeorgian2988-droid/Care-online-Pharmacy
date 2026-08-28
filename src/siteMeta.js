@@ -4,6 +4,7 @@ export const SITE = {
   description:
     "Order generic medicines, book lab tests and radiology, Home Care, psychologist consultation, step-down recovery, and ambulance in Delhi NCR. Cash on delivery and live PIN tracking.",
   url: "https://medihome.in",
+  appDownloadUrl: "https://medihome.in",
   locale: "en_IN",
   phoneDisplay: "+91 72920 94000",
   phoneTel: "+917292094000",
