@@ -153,7 +153,10 @@ function Profile() {
           <div>
             <span className="profile-label">MEDIHOME ACCOUNT</span>
             <h1>Your Family</h1>
-            <p>The family tree shows the account holder and added members.</p>
+            <p>
+              Add family members here after you log in. The family tree shows
+              the account holder and added members.
+            </p>
           </div>
         </section>
 
@@ -168,7 +171,7 @@ function Profile() {
               members={form.familyMembers}
               errors={errors}
               accountMobile={accountCreatorMobile(form)}
-              savedAs="hidden"
+              savedAs="summary"
               collapseTick={memberFormTick}
               onChange={handleChange}
             />

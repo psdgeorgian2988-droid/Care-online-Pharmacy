@@ -224,11 +224,8 @@ function HomePage() {
               </>
             ) : (
               <>
-                <a className="home-account-btn is-login" href="#login">
-                  Login
-                </a>
-                <a className="home-account-btn is-primary" href="#register">
-                  Register
+                <a className="home-account-btn is-primary" href="#login">
+                  Login / Register
                 </a>
                 <button
                   type="button"
@@ -510,20 +507,16 @@ function App() {
                 </button>
               </>
             ) : (
-              <>
-                <a
-                  href="#login"
-                  className={route === "#login" ? "active" : undefined}
-                >
-                  Login
-                </a>
-                <a
-                  href="#register"
-                  className={route === "#register" ? "active" : undefined}
-                >
-                  Register
-                </a>
-              </>
+              <a
+                href="#login"
+                className={
+                  route === "#login" || route === "#register"
+                    ? "active"
+                    : undefined
+                }
+              >
+                Login / Register
+              </a>
             )}
           </nav>
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import AddressFields from "./AddressFields";
 import PersonFields from "./PersonFields";
-import FamilyMembersFields from "./FamilyMembersFields";
 import {
   emptyAddress,
   pickAddress,
@@ -13,7 +12,6 @@ import {
   emptyPerson,
   pickFamilyMembers,
   pickPerson,
-  validateFamilyMembers,
   validatePerson,
   accountCreatorMobile,
   pickEmail,
@@ -27,7 +25,6 @@ import {
 } from "./authSession";
 import { goToHash } from "./hashRoute";
 import { noContactEmailProps, noContactMobileProps, noContactNameProps } from "./noContactAutofill";
-import FamilyTree from "./FamilyTree";
 import {
   MEMBER_ROLE,
   findAccountActor,
@@ -46,12 +43,10 @@ export default function AuthPage({ mode = "login" }) {
     mobile: "",
     email: "",
     ...emptyPerson(),
-    familyMembers: [],
     ...emptyAddress(),
   });
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState({ type: "", text: "" });
-  const [memberFormTick, setMemberFormTick] = useState(0);
   const session = readLoginSession();
   const editingAccount = isRegister && Boolean(session);
   const holderEditing =
@@ -79,7 +74,6 @@ export default function AuthPage({ mode = "login" }) {
       email: saved.email || "",
       ...emptyPerson(),
       ...pickPerson(saved),
-      familyMembers: pickFamilyMembers(saved),
       ...emptyAddress(),
       ...pickAddress(saved),
     });
@@ -93,18 +87,6 @@ export default function AuthPage({ mode = "login" }) {
 
   const handleRegisterChange = (event) => {
     const { name, value } = event.target;
-    if (name === "familyMembers") {
-      setRegister((prev) => ({ ...prev, familyMembers: value }));
-      setErrors((prev) => {
-        const next = { ...prev };
-        Object.keys(next).forEach((key) => {
-          if (key.startsWith("familyMembers.")) delete next[key];
-        });
-        return next;
-      });
-      setStatus({ type: "", text: "" });
-      return;
-    }
     const nextValue =
       name === "mobile" || name === "pinCode" ? digitsOnly(value) : value;
     setRegister((prev) => ({ ...prev, [name]: nextValue }));
@@ -154,28 +136,25 @@ export default function AuthPage({ mode = "login" }) {
         holderEditing ? { ...register, addressConfirmed: "yes" } : register
       )
     );
-    Object.assign(nextErrors, validateFamilyMembers(register));
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
     const previous = readUserProfile();
     const creatorMobile = accountCreatorMobile(register, previous);
+    const sameAccount = Boolean(previous.mobile) && previous.mobile === creatorMobile;
     const profile = {
       name: register.name.trim(),
       mobile: creatorMobile,
       creatorMobile,
       email: pickEmail(register),
       ...pickPerson(register),
-      familyMembers: pickFamilyMembers({
-        ...register,
-        mobile: creatorMobile,
-        creatorMobile,
-      }),
+      familyMembers: sameAccount
+        ? pickFamilyMembers({ ...previous, mobile: creatorMobile, creatorMobile })
+        : [],
       ...withFormattedAddress({ ...register, addressConfirmed: "yes" }),
     };
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     writeLoginSession(profile, holderActor(profile));
-    setMemberFormTick((tick) => tick + 1);
     const next = editingAccount ? "#profile" : consumeReturnHash();
     goToHash(next === "#home" ? "#profile" : next);
   };
@@ -189,9 +168,6 @@ export default function AuthPage({ mode = "login" }) {
 
           {isRegister ? (
             <form className="auth-form" onSubmit={handleRegister} autoComplete="off">
-              {holderEditing ? <FamilyTree profile={register} /> : null}
-              {holderEditing ? null : (
-                <>
               <div className="auth-field">
                 <label htmlFor="auth-register-name">
                   Full name <span>*</span>
@@ -251,17 +227,12 @@ export default function AuthPage({ mode = "login" }) {
                 errors={errors}
                 onChange={handleRegisterChange}
               />
-                </>
+              {editingAccount ? null : (
+                <p className="auth-hint">
+                  After you create this account and log in, add family members
+                  from Profile.
+                </p>
               )}
-              <FamilyMembersFields
-                idPrefix="auth-family"
-                members={register.familyMembers}
-                errors={errors}
-                accountMobile={accountCreatorMobile(register)}
-                savedAs={holderEditing ? "hidden" : "summary"}
-                collapseTick={memberFormTick}
-                onChange={handleRegisterChange}
-              />
               <button type="submit">
                 {editingAccount ? "Save Changes" : "Create account"}
               </button>
@@ -315,11 +286,14 @@ export default function AuthPage({ mode = "login" }) {
                 Already registered? <a href="#login">Login</a>
               </>
             ) : (
-              <>
-                New here? <a href="#register">Create account</a>
-              </>
+              "New here?"
             )}
           </p>
+          {isRegister || editingAccount ? null : (
+            <a className="auth-create-btn" href="#register">
+              Create account
+            </a>
+          )}
         </section>
       </div>
     </>
@@ -340,7 +314,8 @@ const styles = `
 .auth-form select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px;outline:none}
 .auth-form textarea{width:100%;box-sizing:border-box;height:auto;min-height:64px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px;outline:none;resize:vertical}
 .auth-form input:focus,.auth-form select:focus,.auth-form textarea:focus{border-color:#1a6b7a}
-.auth-form .person-fields,.auth-form .addr-fields,.auth-form .family-fields,.auth-form .family-tree,.auth-form button[type=submit]{grid-column:1/-1}
+.auth-form .person-fields,.auth-form .addr-fields,.auth-form .auth-hint,.auth-form button[type=submit]{grid-column:1/-1}
+.auth-hint{margin:0;color:#5d7180;font-size:13px;line-height:1.4}
 .auth-form button[type=submit]{margin-top:6px;height:40px;max-width:220px;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:800;cursor:pointer}
 .auth-form-login button[type=submit]{max-width:none}
 .auth-error{margin-top:4px;color:#d84b4b;font-size:11px}
@@ -349,6 +324,7 @@ const styles = `
 .auth-status.success{color:#1c9b61}
 .auth-switch{margin:14px 0 0;color:#5d7180;font-size:13px}
 .auth-switch a{color:#1a6b7a;font-weight:800;text-decoration:none}
+.auth-create-btn{display:flex;align-items:center;justify-content:center;margin:10px 0 0;width:100%;height:40px;box-sizing:border-box;border:1px solid #1a6b7a;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:800;text-decoration:none}
 @media (max-width:800px){
   .auth-page{padding:14px 10px 24px}
   .auth-form{grid-template-columns:1fr}
