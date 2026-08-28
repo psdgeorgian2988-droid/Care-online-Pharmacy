@@ -1,16 +1,20 @@
-import { emptyPaymentDetails } from "./paymentMethods.js";
+import { emptyPaymentDetails, isOnlinePayment } from "./paymentMethods.js";
 
 let checkoutInstrument = {
   method: "cod",
   details: emptyPaymentDetails(),
   save: false,
+  collector: "partner",
 };
 
 export function setCheckoutInstrument(next) {
+  const method = next?.method || "cod";
   checkoutInstrument = {
-    method: next?.method || "cod",
+    method,
     details: { ...emptyPaymentDetails(), ...(next?.details || {}) },
     save: Boolean(next?.save),
+    collector:
+      next?.collector || (isOnlinePayment(method) ? "medihome" : "partner"),
   };
 }
 

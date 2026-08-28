@@ -1,6 +1,11 @@
 import { DEFAULT_OUTLET, outletForPin } from "./deliveryOutlets.js";
 import { MEDIHOME_BILLING, findDiagnosticParty } from "./diagnosticPartners.js";
 import { paymentMethodSummary } from "./paymentMethods.js";
+import {
+  attachSettlement,
+  ledgerShareText,
+  settlementSummary,
+} from "./paymentSplit.js";
 
 function money(value) {
   const n = Number(value || 0);
@@ -158,6 +163,16 @@ function buyerFrom(order) {
   };
 }
 
+function settlementFrom(order) {
+  const split = order?.split;
+  if (!split) return null;
+  if (split.splitMode && Array.isArray(split.ledger)) return split;
+  return attachSettlement(split, {
+    collector: order?.collector || split.collector,
+    paymentMethod: order?.paymentMethod,
+  });
+}
+
 export function buildOrderBill(order) {
   const kind = recordKind(order);
   const seller = billingPartyFor(order);
@@ -170,6 +185,7 @@ export function buildOrderBill(order) {
   const sale = money(order?.saleRupees ?? lineTotal);
   const discount = money(order?.discountRupees ?? Math.max(0, sale - payable));
   const id = recordId(order, kind) || "DRAFT";
+  const settlement = settlementFrom(order);
   return {
     kind,
     kindLabel: kindLabel(kind),
@@ -187,6 +203,9 @@ export function buildOrderBill(order) {
     sale,
     discount,
     payable,
+    settlement,
+    settlementSummary: settlementSummary(settlement),
+    ledgerText: ledgerShareText(settlement),
     formatInr,
   };
 }

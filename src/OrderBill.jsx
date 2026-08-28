@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { buildOrderBill } from "./orderBill";
+import { shareSettlement } from "./shareSettlement";
 
 export function BillButton({ order, className = "service-submit" }) {
   const [open, setOpen] = useState(false);
@@ -17,9 +18,17 @@ export function BillButton({ order, className = "service-submit" }) {
 export default function OrderBill({ order, onClose }) {
   const bill = buildOrderBill(order);
   const seller = bill.seller;
+  const [shareNote, setShareNote] = useState("");
 
   const printBill = () => {
     window.print();
+  };
+
+  const shareLedger = async () => {
+    const result = await shareSettlement(bill.ledgerText || bill.settlement);
+    if (result === "shared") setShareNote("Ledger shared.");
+    else if (result === "copied") setShareNote("Ledger copied.");
+    else setShareNote("Could not share. Copy the ledger from the bill.");
   };
 
   return (
@@ -31,6 +40,11 @@ export default function OrderBill({ order, onClose }) {
             <button type="button" onClick={printBill}>
               Print / Save PDF
             </button>
+            {bill.ledgerText ? (
+              <button type="button" onClick={shareLedger}>
+                Share Ledger
+              </button>
+            ) : null}
             <button type="button" onClick={onClose}>
               Close
             </button>
@@ -143,6 +157,43 @@ export default function OrderBill({ order, onClose }) {
                 <dd>{bill.payment}</dd>
               </div>
             </dl>
+            {bill.settlement?.ledger?.length ? (
+              <section className="order-bill-ledger" aria-label="Settlement ledger">
+                <h2>Settlement Ledger</h2>
+                {bill.settlementSummary ? <p>{bill.settlementSummary}</p> : null}
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Party</th>
+                      <th>Note</th>
+                      <th>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bill.settlement.ledger.map((row, index) => (
+                      <tr key={`${row.partyKey}-${index}`}>
+                        <td>{row.party}</td>
+                        <td>{row.note}</td>
+                        <td>{bill.formatInr(row.amountRupees)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {bill.settlement.dueFromPartnerRupees ? (
+                  <p>
+                    <strong>Due from service provider:</strong>{" "}
+                    {bill.formatInr(bill.settlement.dueFromPartnerRupees)}
+                  </p>
+                ) : null}
+                {bill.settlement.dueToPartnerRupees ? (
+                  <p>
+                    <strong>Due to partner:</strong>{" "}
+                    {bill.formatInr(bill.settlement.dueToPartnerRupees)}
+                  </p>
+                ) : null}
+                {shareNote ? <p className="order-bill-note no-print">{shareNote}</p> : null}
+              </section>
+            ) : null}
             <p className="order-bill-foot">
               Amount is inclusive of applicable GST. This is a computer-generated
               invoice from MediHome.
@@ -178,6 +229,10 @@ const styles = `
 .order-bill-totals{margin:12px 0 0 auto;width:min(320px,100%)}
 .order-bill-totals div{display:flex;justify-content:space-between;gap:12px;padding:4px 0}
 .order-bill-totals .is-pay{margin-top:6px;padding-top:8px;border-top:2px solid #1a6b7a;font-size:15px;font-weight:800}
+.order-bill-ledger{margin-top:16px;padding:10px 12px;background:#f4faf8;border-radius:8px}
+.order-bill-ledger table{width:100%;border-collapse:collapse;margin-top:8px}
+.order-bill-ledger th,.order-bill-ledger td{border-bottom:1px solid #e5edf1;padding:6px 4px;text-align:left;vertical-align:top}
+.order-bill-ledger th:last-child,.order-bill-ledger td:last-child{text-align:right}
 .order-bill-foot{margin-top:16px;color:#5d7180;font-size:11px}
 @media print{
   body *{visibility:hidden}

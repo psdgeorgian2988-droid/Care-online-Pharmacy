@@ -4,6 +4,7 @@ import {
   couponDiscountOnSale,
   findCoupon,
 } from "./offers.js";
+import { isOnlinePayment } from "./paymentMethods.js";
 
 /** Platform share of each rupee of MRP / sale. Remainder is for the working partner. */
 export const SPLIT_PLATFORM_PERCENT = {
@@ -76,7 +77,7 @@ export function splitPayment(kind, amountRupees, pin, options = {}) {
   const platformSettledPaise = payablePaise - partnerTransferPaise;
   const outlet = outletForPin(pin);
   const couponCode = String(options.couponCode || "").trim();
-  return {
+  const split = {
     currency: "INR",
     kind,
     saleRupees: paiseToRupees(salePaise),
@@ -107,6 +108,168 @@ export function splitPayment(kind, amountRupees, pin, options = {}) {
     outletName: outlet?.name || "MediHome Central Fulfilment",
     razorpayAccountId: outlet?.razorpayAccountId || "",
   };
+  return attachSettlement(split, {
+    collector: options.collector,
+    paymentMethod: options.paymentMethod,
+  });
+}
+
+export function normalizeCollector(collector, method) {
+  const key = String(collector || "").toLowerCase();
+  if (key === "partner" || key === "provider" || key === "reverse") return "partner";
+  if (key === "medihome" || key === "platform" || key === "forward") return "medihome";
+  if (method && !isOnlinePayment(method)) return "partner";
+  return "medihome";
+}
+
+function moneyLine(party, partyKey, note, amountRupees, kind) {
+  return { party, partyKey, note, amountRupees, kind };
+}
+
+export function attachSettlement(split, { collector, paymentMethod } = {}) {
+  const method = paymentMethod || "online";
+  const who = normalizeCollector(collector, method);
+  const reverse = who === "partner";
+  const online = isOnlinePayment(method);
+  const partnerLabel = split.partnerLabel || "Partner";
+  const collected = Number(split.payableRupees || 0);
+  const partnerShare = Number(split.partnerTransferRupees || 0);
+  const mhShare = Number(split.platformSettledRupees || 0);
+  let dueFromPartnerRupees = 0;
+  let dueToPartnerRupees = 0;
+  let medihomeAccountRupees = 0;
+  let partnerAccountRupees = 0;
+  let ledger = [];
+
+  if (!reverse && online) {
+    dueToPartnerRupees = 0;
+    medihomeAccountRupees = mhShare;
+    partnerAccountRupees = partnerShare;
+    ledger = [
+      moneyLine("MediHome", "medihome", "Collected online from customer", collected, "collected"),
+      moneyLine(partnerLabel, "partner", "Partner share credited to partner account", partnerShare, "credit"),
+      moneyLine("MediHome", "medihome", "MediHome share retained", mhShare, "retain"),
+    ];
+  } else if (!reverse && !online) {
+    dueToPartnerRupees = partnerShare;
+    medihomeAccountRupees = mhShare;
+    ledger = [
+      moneyLine("MediHome", "medihome", "Cash collected from customer", collected, "collected"),
+      moneyLine(partnerLabel, "partner", "Partner share payable to partner", partnerShare, "due"),
+      moneyLine("MediHome", "medihome", "MediHome share retained from cash", mhShare, "retain"),
+    ];
+  } else if (reverse && online) {
+    medihomeAccountRupees = mhShare;
+    partnerAccountRupees = partnerShare;
+    ledger = [
+      moneyLine(partnerLabel, "partner", "Collected online by service provider", collected, "collected"),
+      moneyLine(partnerLabel, "partner", "Partner share credited to partner account", partnerShare, "credit"),
+      moneyLine("MediHome", "medihome", "Balance credited to MediHome account", mhShare, "credit"),
+    ];
+  } else {
+    dueFromPartnerRupees = mhShare;
+    partnerAccountRupees = collected;
+    ledger = [
+      moneyLine(partnerLabel, "partner", "Cash collected by service provider", collected, "collected"),
+      moneyLine(partnerLabel, "partner", "Partner share retained from cash", partnerShare, "retain"),
+      moneyLine(
+        "MediHome",
+        "medihome",
+        "MediHome portion — balance towards service provider",
+        mhShare,
+        "due"
+      ),
+    ];
+  }
+
+  return {
+    ...split,
+    collector: who,
+    splitMode: reverse ? "reverse" : "forward",
+    collection: online ? "online" : "cash",
+    dueFromPartnerRupees,
+    dueToPartnerRupees,
+    medihomeAccountRupees,
+    partnerAccountRupees,
+    ledger,
+  };
+}
+
+export function settlementSummary(split) {
+  if (!split?.splitMode) return "";
+  const mh = Number(split.dueFromPartnerRupees || split.medihomeAccountRupees || 0);
+  const partner = Number(split.partnerAccountRupees || split.dueToPartnerRupees || 0);
+  if (split.splitMode === "reverse" && split.collection === "cash") {
+    return `Service provider collected cash. MediHome ₹${mh} is balance towards the service provider.`;
+  }
+  if (split.splitMode === "reverse") {
+    return `Service provider collected online. Partner ₹${partner} credited to partner account. MediHome ₹${mh} credited to MediHome.`;
+  }
+  if (split.collection === "cash") {
+    return `Cash collected by MediHome. Partner share ₹${split.dueToPartnerRupees} payable to partner.`;
+  }
+  return `Collected by MediHome. Partner ₹${partner} credited to partner account.`;
+}
+
+export function ledgerShareText(split) {
+  if (!split) return "";
+  const row = ensureSettlement(split) || split;
+  const lines = [
+    `MediHome Settlement (${splitModeLabel(row)})`,
+    `Collected By: ${row.collector === "partner" ? row.partnerLabel || "Service Provider" : "MediHome"}`,
+    `Collection: ${row.collection === "online" ? "Online" : "Cash"}`,
+  ];
+  for (const entry of row.ledger || []) {
+    lines.push(`${entry.party}: ${entry.note} — ₹${entry.amountRupees}`);
+  }
+  if (row.dueFromPartnerRupees) {
+    lines.push(`Due From Service Provider: ₹${row.dueFromPartnerRupees}`);
+  }
+  if (row.dueToPartnerRupees) {
+    lines.push(`Due To Partner: ₹${row.dueToPartnerRupees}`);
+  }
+  return lines.join("\n");
+}
+
+export function ensureSettlement(split, extras = {}) {
+  if (!split || typeof split !== "object") return null;
+  if (split.splitMode && Array.isArray(split.ledger)) return split;
+  return attachSettlement(split, extras);
+}
+
+export function splitModeLabel(split) {
+  return split?.splitMode === "reverse" ? "Reverse Split" : "Forward Split";
+}
+
+export function settlementOpsNote(split, extras = {}) {
+  const row = ensureSettlement(split, extras);
+  if (!row?.splitMode) return "";
+  const mode = splitModeLabel(row);
+  if (row.splitMode === "reverse" && row.collection === "cash") {
+    return `${mode} · Due From Partner ₹${row.dueFromPartnerRupees}`;
+  }
+  if (row.splitMode === "reverse") {
+    return `${mode} · Partner Credited ₹${row.partnerAccountRupees} · MediHome Credited ₹${row.medihomeAccountRupees}`;
+  }
+  if (row.collection === "cash") {
+    return `${mode} · Due To Partner ₹${row.dueToPartnerRupees}`;
+  }
+  return `${mode} · Partner Credited ₹${row.partnerAccountRupees}`;
+}
+
+export function partnerSettlementNote(split, extras = {}) {
+  const row = ensureSettlement(split, extras);
+  if (!row?.splitMode) return "";
+  if (row.splitMode === "reverse" && row.collection === "cash") {
+    return `Due To MediHome ₹${row.dueFromPartnerRupees}`;
+  }
+  if (row.splitMode === "reverse") {
+    return `Credited To Your Account ₹${row.partnerAccountRupees}`;
+  }
+  if (row.collection === "cash") {
+    return `Due To You ₹${row.dueToPartnerRupees}`;
+  }
+  return `Credited To Your Account ₹${row.partnerAccountRupees}`;
 }
 
 export function quoteCheckout({
@@ -116,6 +279,8 @@ export function quoteCheckout({
   couponCode,
   pin,
   platformPercent,
+  collector,
+  paymentMethod,
 } = {}) {
   const sale = Math.max(0, Number(saleRupees) || 0);
   const list = Math.max(0, Number(listRupees ?? sale) || 0);
@@ -134,6 +299,8 @@ export function quoteCheckout({
     couponCode: coupon?.code || "",
     couponLabel: coupon?.label || "",
     platformPercent,
+    collector,
+    paymentMethod,
   });
   return {
     kind,

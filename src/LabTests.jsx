@@ -10,6 +10,7 @@ import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
 import { DIAGNOSTIC_LABS, IMAGING_CENTRES } from "./diagnosticPartners";
 import { paymentMethodSummary } from "./paymentMethods";
+import SettlementConfirm from "./SettlementConfirm";
 import BookingFlow from "./BookingFlow";
 import {
   addressFromUnknown,
@@ -538,6 +539,7 @@ function LabTests() {
                   {paymentMethodSummary(booking.paymentMethod, "Pay on visit / collection")}
                 </strong>
               </div>
+              <SettlementConfirm split={booking.split} />
             </div>
             <AssignedAgent record={booking} />
             <p className="confirm-note">

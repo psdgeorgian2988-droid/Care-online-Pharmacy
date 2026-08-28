@@ -85,4 +85,5 @@ test("custom report filter and analysis CSV include breakdowns", () => {
   assert.match(csv, /SERVICE GROWTH/);
   assert.match(csv, /MONTH-WISE BY PIN/);
   assert.match(csv, /122017/);
+  assert.match(csv, /Split Mode/);
 });

@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { listOrders, patchOrder, upsertOrder } from "./store.mjs";
-import { splitPayment } from "../src/paymentSplit.js";
+import { attachSettlement, splitPayment } from "../src/paymentSplit.js";
 import { isOnlinePayment } from "../src/paymentMethods.js";
 import { openTrafficFromOrders } from "../src/partnerQueue.js";
 import {
@@ -83,6 +83,8 @@ function splitFromOrderBody(kind, pin, body, payable) {
     payableRupees: payable,
     couponCode: body.couponCode || body.split?.couponCode || "",
     couponLabel: body.split?.couponLabel || "",
+    collector: body.collector || body.split?.collector || "",
+    paymentMethod: body.paymentMethod || "",
   });
 }
 
@@ -92,10 +94,18 @@ function enrichOrder(body) {
   const pin = body.pinCode || body.pin || "";
   const total = Number(body.total || body.charges || 0);
   const next = { ...body, kind };
-  if (!next.split && total > 0) {
-    next.split = splitFromOrderBody(kind, pin, body, total);
-  }
   if (!next.paymentMethod) next.paymentMethod = "cod";
+  if (next.split && !next.split.splitMode) {
+    next.split = attachSettlement(next.split, {
+      collector: next.collector || next.split.collector,
+      paymentMethod: next.paymentMethod,
+    });
+  } else if (!next.split && total > 0) {
+    next.split = splitFromOrderBody(kind, pin, next, total);
+  }
+  if (!next.collector && next.split?.collector) {
+    next.collector = next.split.collector;
+  }
   if (!next.paymentStatus) {
     next.paymentStatus = isOnlinePayment(next.paymentMethod) ? "paid" : "cod";
   }
@@ -131,11 +141,16 @@ export async function handleApi(req, res) {
       }
       const kind = String(body.kind || "medicine");
       const pin = String(body.pin || "");
+      const paymentMethod = String(body.paymentMethod || "online");
+      const collector = body.collector || "";
       const split = splitPayment(kind, amountRupees, pin, {
         saleRupees: body.saleRupees ?? amountRupees,
         payableRupees: amountRupees,
         couponCode: body.couponCode || "",
+        collector,
+        paymentMethod,
       });
+      const partnerCollects = split.collector === "partner";
       const payment = {
         id: newPaymentId(),
         status: "created",
@@ -144,13 +159,15 @@ export async function handleApi(req, res) {
         reference: String(body.reference || ""),
         name: String(body.name || ""),
         mobile: String(body.mobile || ""),
+        collector: split.collector,
+        paymentMethod,
         split,
         razorpayOrderId: "",
         razorpayPaymentId: "",
         createdAt: Date.now(),
       };
 
-      if (razorpayEnabled()) {
+      if (razorpayEnabled() && !partnerCollects) {
         const transfers = split.razorpayAccountId
           ? [
               {
@@ -177,6 +194,20 @@ export async function handleApi(req, res) {
           keyId: publicPaymentConfig().keyId,
           split,
           testCheckout: false,
+        });
+        return true;
+      }
+
+      if (partnerCollects) {
+        payment.status = isOnlinePayment(paymentMethod) ? "paid" : "created";
+        payment.partnerCollected = true;
+        payment.paidAt = isOnlinePayment(paymentMethod) ? Date.now() : undefined;
+        await savePayment(payment);
+        send(res, 200, {
+          paymentId: payment.id,
+          split,
+          testCheckout: true,
+          partnerCollected: true,
         });
         return true;
       }

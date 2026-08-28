@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { applyCoupon, normalizeCouponCode } from "./offers";
-import { quoteCheckout } from "./paymentSplit";
+import { quoteCheckout, settlementSummary } from "./paymentSplit";
 import { useLoginSession } from "./authSession";
 import GuestCheckoutRegister from "./GuestCheckoutRegister";
 import { MONTH_OPTIONS } from "./personFields";
@@ -64,6 +64,9 @@ export default function PaymentBlock({
   const [saveConsent, setSaveConsent] = useState(false);
   const [shareQr, setShareQr] = useState("");
   const [shareNote, setShareNote] = useState("");
+  const [collector, setCollector] = useState(() =>
+    isOnlinePayment(method) ? "medihome" : "partner"
+  );
   const couponInputRef = useRef(null);
   const accountMobile = user?.mobile || guestDetails?.mobile || "";
   const saved = useMemo(
@@ -81,6 +84,7 @@ export default function PaymentBlock({
   const pickMethod = (next) => {
     setDetails(emptyPaymentDetails());
     setSaveConsent(false);
+    setCollector(isOnlinePayment(next) ? "medihome" : "partner");
     if (user || guestSkipped) {
       onMethodChange(next);
       return;
@@ -102,8 +106,10 @@ export default function PaymentBlock({
         listRupees: amount,
         couponCode,
         pin,
+        collector,
+        paymentMethod: method,
       }),
-    [kind, amount, saleAmount, couponCode, pin]
+    [kind, amount, saleAmount, couponCode, pin, collector, method]
   );
 
   useEffect(() => {
@@ -115,11 +121,12 @@ export default function PaymentBlock({
       method,
       details,
       save: saveConsent,
+      collector,
     });
-  }, [method, details, saveConsent]);
+  }, [method, details, saveConsent, collector]);
 
   useEffect(() => {
-    if (method !== "qr") {
+    if (method !== "qr" || collector !== "medihome") {
       setShareQr("");
       setShareNote("");
       return undefined;
@@ -139,7 +146,7 @@ export default function PaymentBlock({
     return () => {
       cancelled = true;
     };
-  }, [method, quote.payableRupees, kind]);
+  }, [method, collector, quote.payableRupees, kind]);
 
   const sharePayQr = async () => {
     const text = paymentShareText({ amount: quote.payableRupees, kind });
@@ -228,7 +235,8 @@ export default function PaymentBlock({
     quote.offerDiscountRupees > 0 ||
     quote.couponDiscountRupees > 0 ||
     quote.pointsDiscountRupees > 0;
-  const showInstrument = isOnlinePayment(method) && method !== "online";
+  const showInstrument =
+    collector === "medihome" && isOnlinePayment(method) && method !== "online";
   const usingSavedCard = Boolean(details.savedId) && (method === "credit" || method === "debit");
   const usingSavedBank = Boolean(details.savedId) && method === "bank";
 
@@ -260,6 +268,28 @@ export default function PaymentBlock({
             );
           })}
         </div>
+        <div className="pay-methods" role="radiogroup" aria-label="Payment collected by">
+          {[
+            { value: "medihome", label: "Collected By MediHome" },
+            { value: "partner", label: "Collected By Service Provider" },
+          ].map((option) => (
+            <label
+              key={option.value}
+              className={collector === option.value ? "is-on" : ""}
+            >
+              <input
+                type="radio"
+                name={`pay-collector-${kind}`}
+                checked={collector === option.value}
+                onChange={() => setCollector(option.value)}
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
+        {quote.split ? (
+          <p className="pay-saved-cap pay-settle-note">{settlementSummary(quote.split)}</p>
+        ) : null}
         {guestNote ? <p className="pay-guest-note">{guestNote}</p> : null}
 
         {showInstrument ? (
@@ -569,6 +599,7 @@ const styles = `
 .pay-block{margin:12px 0;padding:12px;border:1px solid #d7e2e9;border-radius:10px;background:#f7fbfd;text-align:left;grid-column:1/-1;width:100%;box-sizing:border-box}
 .pay-kicker{margin:0 0 8px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#1a6b7a}
 .pay-methods{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0}
+.pay-methods + .pay-methods{margin-top:8px}
 .pay-methods label{display:flex !important;flex-direction:row !important;justify-content:flex-start !important;align-items:center !important;gap:8px !important;margin:0;padding:8px 10px;min-height:40px;border:1px solid #e4ecef;border-radius:8px;background:#fff;cursor:pointer;text-align:left !important;width:auto;box-sizing:border-box}
 .pay-methods label.is-on{border-color:#1a6b7a;background:#e8f4f6}
 .pay-methods input[type="radio"]{width:16px !important;min-width:16px !important;max-width:16px !important;height:16px !important;min-height:16px !important;margin:0 !important;padding:0 !important;flex:0 0 16px !important;accent-color:#1a6b7a}
@@ -587,6 +618,7 @@ const styles = `
 .pay-saved-row button{border:1px solid #d7e2e9;border-radius:999px;background:#f7fbfd;color:#143246;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer}
 .pay-saved-row button.is-on{border-color:#1a6b7a;background:#e8f4f6;color:#1a6b7a}
 .pay-saved-cap{margin:0;font-size:12px;font-weight:700;color:#34546b}
+.pay-settle-note{margin:8px 0 0;line-height:1.4}
 .pay-save{display:flex;align-items:flex-start;gap:8px;margin:4px 0 0;font-size:13px;font-weight:800;color:#143246}
 .pay-save input{width:16px;height:16px;margin:2px 0 0;accent-color:#1a6b7a;flex:0 0 16px}
 .pay-save-note{margin:0;font-size:12px;line-height:1.4;color:#5d7180}

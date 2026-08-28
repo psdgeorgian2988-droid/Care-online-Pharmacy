@@ -6,6 +6,9 @@ import {
   partnerSession,
 } from "./partnerApi";
 import { kindLabel } from "./orderTracking";
+import { partnerSettlementNote, splitModeLabel } from "./paymentSplit";
+import { shareSettlement } from "./shareSettlement";
+import { isOnlinePayment } from "./paymentMethods";
 
 export default function Partner() {
   const session = partnerSession();
@@ -105,7 +108,7 @@ export default function Partner() {
           <div>
             <span className="service-kicker">{partner.role}</span>
             <h1>{partner.name}</h1>
-            <p>Assigned Jobs Only. Split Is Visible Here, Not To Customers.</p>
+            <p>Assigned Jobs Only. Settlement Ledger Is Shared On Each Job.</p>
           </div>
           <div className="admin-hero-actions">
             <button type="button" onClick={loadJobs} disabled={loading}>
@@ -158,8 +161,14 @@ export default function Partner() {
                         {job.outletName ? ` · ${job.outletName}` : ""}
                       </td>
                       <td>
-                        {job.paymentMethod === "online" ? "Online" : "COD"}
+                        {isOnlinePayment(job.paymentMethod) ? "Online" : "COD"}
                         {job.paymentStatus ? ` · ${job.paymentStatus}` : ""}
+                        {job.split?.splitMode ? (
+                          <>
+                            <br />
+                            {splitModeLabel(job.split)}
+                          </>
+                        ) : null}
                       </td>
                       <td>
                         {job.split?.partnerRupees != null
@@ -169,6 +178,19 @@ export default function Partner() {
                                 : ""
                             }`
                           : "—"}
+                        {partnerSettlementNote(job.split, {
+                          collector: job.collector,
+                          paymentMethod: job.paymentMethod,
+                        }) ? (
+                          <>
+                            <br />
+                            {partnerSettlementNote(job.split, {
+                              collector: job.collector,
+                              paymentMethod: job.paymentMethod,
+                            })}
+                          </>
+                        ) : null}
+                        {job.split ? <ShareLedgerButton split={job.split} /> : null}
                       </td>
                       <td>{job.status || job.trackStatus || "—"}</td>
                     </tr>
@@ -183,11 +205,33 @@ export default function Partner() {
   );
 }
 
+function ShareLedgerButton({ split }) {
+  const [note, setNote] = useState("");
+  return (
+    <div>
+      <button
+        type="button"
+        className="partner-share-ledger"
+        onClick={async () => {
+          const result = await shareSettlement(split);
+          setNote(
+            result === "shared" ? "Shared." : result === "copied" ? "Copied." : ""
+          );
+        }}
+      >
+        Share Ledger
+      </button>
+      {note ? <span> {note}</span> : null}
+    </div>
+  );
+}
+
 const styles = `
 .partner-page{max-width:1100px}
 .admin-hero{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
 .admin-hero-actions{display:flex;flex-wrap:wrap;gap:6px}
 .admin-hero-actions button{border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer}
+.partner-share-ledger{margin-top:6px;border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:700;padding:4px 8px;cursor:pointer}
 .admin-login{max-width:420px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}

@@ -8,6 +8,7 @@ import { buildIndiaCombos } from "./indiaMedicineCombos";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import { paymentMethodSummary } from "./paymentMethods";
+import SettlementConfirm from "./SettlementConfirm";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import MedicineSearchTools from "./MedicineSearchTools";
@@ -3720,6 +3721,7 @@ function Medicines({ initialSearch = "" }) {
             <strong>Payment:</strong>{" "}
             {paymentMethodSummary(confirmedOrder.paymentMethod, "Cash on delivery")}
           </p>
+          <SettlementConfirm split={confirmedOrder.split} variant="p" />
           <p>
             <strong>Delivery Address:</strong> {confirmedOrder.deliveryAddress}
           </p>

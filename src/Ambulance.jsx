@@ -16,6 +16,7 @@ import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
 import BookingFlow from "./BookingFlow";
 import { paymentMethodSummary } from "./paymentMethods";
+import SettlementConfirm from "./SettlementConfirm";
 import {
   applyResolvedPin,
   pickAddress,
@@ -240,6 +241,7 @@ function Ambulance() {
                   {paymentMethodSummary(request.paymentMethod, "Cash on arrival")}
                 </strong>
               </div>
+              <SettlementConfirm split={request.split} />
               <div className="confirm-row">
                 <span>Patient</span>
                 <strong>{request.patientName}</strong>

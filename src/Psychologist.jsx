@@ -10,6 +10,7 @@ import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
 import BookingFlow from "./BookingFlow";
 import { paymentMethodSummary } from "./paymentMethods";
+import SettlementConfirm from "./SettlementConfirm";
 import {
   applyResolvedPin,
   pickAddress,
@@ -211,6 +212,7 @@ function Psychologist() {
                   {paymentMethodSummary(booking.paymentMethod, "Pay at session")}
                 </strong>
               </div>
+              <SettlementConfirm split={booking.split} />
               <div className="confirm-row">
                 <span>Patient</span>
                 <strong>{booking.patientName}</strong>

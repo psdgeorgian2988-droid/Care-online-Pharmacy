@@ -492,6 +492,9 @@ export function ordersToCsv(orders) {
     "When",
     "Amount",
     "Payment",
+    "Split Mode",
+    "Due From Partner",
+    "Due To Partner",
     "Status",
     "Partner",
   ];
@@ -508,6 +511,9 @@ export function ordersToCsv(orders) {
         formatWhen(row),
         orderAmount(row),
         `${row.paymentMethod || "cod"} ${row.paymentStatus || ""}`.trim(),
+        row.split?.splitMode || "",
+        row.split?.dueFromPartnerRupees ?? "",
+        row.split?.dueToPartnerRupees ?? "",
         row.status || row.trackStatus || "",
         row.partnerName || "",
       ]

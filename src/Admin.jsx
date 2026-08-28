@@ -68,6 +68,7 @@ import {
 import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateToday, isoDateYearsAgo } from "./personFields";
 import { paymentMethodLabel } from "./paymentMethods";
+import { settlementOpsNote } from "./paymentSplit";
 
 function personName(order) {
   return (
@@ -912,6 +913,18 @@ function Admin() {
                             {order.split.partnerPercent != null
                               ? ` (${order.split.partnerPercent}% MRP)`
                               : ""}
+                            {settlementOpsNote(order.split, {
+                              collector: order.collector,
+                              paymentMethod: order.paymentMethod,
+                            }) ? (
+                              <>
+                                <br />
+                                {settlementOpsNote(order.split, {
+                                  collector: order.collector,
+                                  paymentMethod: order.paymentMethod,
+                                })}
+                              </>
+                            ) : null}
                           </span>
                         ) : null}
                       </td>

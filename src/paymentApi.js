@@ -1,4 +1,4 @@
-import { splitPayment } from "./paymentSplit.js";
+import { normalizeCollector, splitPayment } from "./paymentSplit.js";
 import { isOnlinePayment, validatePaymentDetails } from "./paymentMethods.js";
 import {
   clearSensitiveInstrument,
@@ -90,15 +90,32 @@ export async function settleCheckoutPayment({
   description,
 }) {
   const instrument = getCheckoutInstrument();
-  const detailError = validatePaymentDetails(method, instrument.details);
-  if (detailError) {
-    throw new Error(detailError);
-  }
+  const collector = normalizeCollector(instrument.collector, method);
   const split = splitPayment(kind, amountRupees, pin, {
     saleRupees: saleRupees ?? amountRupees,
     payableRupees: amountRupees,
     couponCode,
+    collector,
+    paymentMethod: method,
   });
+  if (collector === "partner") {
+    return {
+      paymentMethod: method || (isOnlinePayment(method) ? "online" : "cod"),
+      paymentStatus: isOnlinePayment(method) ? "paid" : "cod",
+      paymentId: "",
+      razorpayPaymentId: "",
+      razorpayOrderId: "",
+      saleRupees: split.saleRupees,
+      couponCode: split.couponCode,
+      discountRupees: split.discountRupees,
+      collector,
+      split,
+    };
+  }
+  const detailError = validatePaymentDetails(method, instrument.details);
+  if (detailError) {
+    throw new Error(detailError);
+  }
   if (!isOnlinePayment(method)) {
     return {
       paymentMethod: method || "cod",
@@ -109,6 +126,7 @@ export async function settleCheckoutPayment({
       saleRupees: split.saleRupees,
       couponCode: split.couponCode,
       discountRupees: split.discountRupees,
+      collector,
       split,
     };
   }
@@ -123,6 +141,7 @@ export async function settleCheckoutPayment({
       saleRupees: split.saleRupees,
       couponCode: split.couponCode,
       discountRupees: split.discountRupees,
+      collector,
       split,
     };
   }
@@ -136,6 +155,8 @@ export async function settleCheckoutPayment({
     mobile,
     reference,
     description,
+    collector,
+    paymentMethod: method,
   });
   maybeSaveInstrument(mobile, method, instrument);
   return {
@@ -147,6 +168,7 @@ export async function settleCheckoutPayment({
     saleRupees: (paid.split || split).saleRupees,
     couponCode: (paid.split || split).couponCode,
     discountRupees: (paid.split || split).discountRupees,
+    collector,
     split: paid.split || split,
   };
 }
@@ -171,6 +193,8 @@ export async function takeOnlinePayment({
   mobile,
   reference,
   description,
+  collector,
+  paymentMethod,
 }) {
   const created = await createPaymentOrder({
     amountRupees,
@@ -182,6 +206,8 @@ export async function takeOnlinePayment({
     mobile,
     reference,
     description,
+    collector,
+    paymentMethod,
   });
 
   if (created.testCheckout) {
