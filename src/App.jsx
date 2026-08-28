@@ -164,7 +164,7 @@ function HomeAuthCard() {
   const handleRegisterChange = (event) => {
     const { name, value } = event.target;
     const nextValue =
-      name === "mobile" || name === "pinCode" || name === "age"
+      name === "mobile" || name === "pinCode"
         ? digitsOnly(String(value || ""))
         : value;
     setRegister((prev) => ({ ...prev, [name]: nextValue }));
@@ -210,9 +210,7 @@ function HomeAuthCard() {
     writeLoginSession(saved);
     setStatus({
       type: "success",
-      text: saved.name
-        ? `Welcome back, ${saved.name}. Add family members from Profile.`
-        : "Logged in successfully. Add family members from Profile.",
+      text: saved.name ? `Welcome back, ${saved.name}.` : "Logged in successfully.",
     });
   };
 
@@ -244,7 +242,7 @@ function HomeAuthCard() {
     setLogin({ mobile: profile.mobile, pinCode: profile.pinCode || "" });
     setStatus({
       type: "success",
-      text: "Account saved. Log in, then add family members from Profile.",
+      text: "Account saved. Please log in.",
     });
   };
 
@@ -274,7 +272,7 @@ function HomeAuthCard() {
       {tab === "login" ? (
         <form className="home-auth-form" onSubmit={handleLogin}>
           <div className="home-auth-field">
-            <label htmlFor="home-login-mobile">Mobile number</label>
+            <label htmlFor="home-login-mobile">Mobile number <span>*</span></label>
             <input
               id="home-login-mobile"
               name="mobile"
@@ -287,7 +285,7 @@ function HomeAuthCard() {
             />
           </div>
           <div className="home-auth-field">
-            <label htmlFor="home-login-pin">PIN</label>
+            <label htmlFor="home-login-pin">PIN <span>*</span></label>
             <input
               id="home-login-pin"
               name="pinCode"
@@ -304,7 +302,7 @@ function HomeAuthCard() {
       ) : (
         <form className="home-auth-form" onSubmit={handleRegister}>
           <div className="home-auth-field">
-            <label htmlFor="home-register-name">Full name</label>
+            <label htmlFor="home-register-name">Full name <span>*</span></label>
             <input
               id="home-register-name"
               name="name"
@@ -315,7 +313,7 @@ function HomeAuthCard() {
             {errors.name && <small className="home-auth-error">{errors.name}</small>}
           </div>
           <div className="home-auth-field">
-            <label htmlFor="home-register-mobile">Mobile number</label>
+            <label htmlFor="home-register-mobile">Mobile number <span>*</span></label>
             <input
               id="home-register-mobile"
               name="mobile"
@@ -341,11 +339,7 @@ function HomeAuthCard() {
             values={register}
             errors={errors}
             onChange={handleRegisterChange}
-            pinHint="Or tap Use My Location."
           />
-          <p className="home-auth-family-note">
-            After you register and log in, add family members from Profile.
-          </p>
           <button type="submit">Create account</button>
         </form>
       )}

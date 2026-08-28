@@ -11,6 +11,7 @@ export function bookingForOptions(profile = {}) {
     relation: "self",
     gender: profile.gender || "",
     age: profile.age || "",
+    dob: profile.dob || "",
     mobile: String(profile.mobile || profile.mobileNumber || "")
       .replace(/\D/g, "")
       .slice(0, 10),
@@ -24,6 +25,7 @@ export function bookingForOptions(profile = {}) {
       relation: row.relation,
       gender: row.gender,
       age: row.age,
+      dob: row.dob,
       mobile: String(row.mobile || profile.mobile || profile.mobileNumber || "")
         .replace(/\D/g, "")
         .slice(0, 10),
@@ -59,6 +61,7 @@ export function bookingForPatch(option, profile = {}) {
       patientName: "",
       gender: "",
       age: "",
+      dob: "",
       ...fromRegister,
     };
   }
@@ -69,6 +72,7 @@ export function bookingForPatch(option, profile = {}) {
     patientName: option.name,
     gender: option.gender,
     age: option.age,
+    dob: option.dob || "",
     ...(option.mobile || mobile ? { mobile: option.mobile || mobile } : {}),
     ...(hasAddress ? address : {}),
   };

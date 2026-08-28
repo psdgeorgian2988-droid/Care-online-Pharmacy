@@ -15,8 +15,62 @@ export const RELATION_OPTIONS = [
   { value: "other", label: "Other" },
 ];
 
+export function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+
+export function toIsoDate(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+export function parseIsoDate(value) {
+  const text = String(value || "").trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+  return date;
+}
+
+export function isoDateToday(today = new Date()) {
+  return toIsoDate(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
+}
+
+export function isoDateYearsAgo(years, today = new Date()) {
+  return toIsoDate(
+    new Date(today.getFullYear() - Number(years || 0), today.getMonth(), today.getDate())
+  );
+}
+
+export function normalizeDob(value) {
+  return parseIsoDate(value) ? String(value).trim() : "";
+}
+
+export function ageFromDob(dob, today = new Date()) {
+  const birth = parseIsoDate(dob);
+  if (!birth) return "";
+  const now = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  let years = now.getFullYear() - birth.getFullYear();
+  const monthDiff = now.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
+    years -= 1;
+  }
+  if (years < 0 || years > 120) return "";
+  return String(years);
+}
+
 export function emptyPerson() {
-  return { gender: "", age: "" };
+  return { gender: "", dob: "", age: "" };
 }
 
 export function emptyFamilyMember() {
@@ -25,6 +79,7 @@ export function emptyFamilyMember() {
     name: "",
     relation: "family",
     gender: "",
+    dob: "",
     age: "",
   };
 }
@@ -41,9 +96,11 @@ export function normalizeAge(value) {
 }
 
 export function pickPerson(source = {}) {
+  const dob = normalizeDob(source.dob || source.dateOfBirth);
   return {
     gender: normalizeGender(source.gender || source.sex),
-    age: normalizeAge(source.age),
+    dob,
+    age: dob ? ageFromDob(dob) : normalizeAge(source.age),
   };
 }
 
@@ -63,9 +120,13 @@ export function validatePerson(source = {}) {
   const person = pickPerson(source);
   const errors = {};
   if (!person.gender) errors.gender = "Select Male or Female.";
+  if (!person.dob) {
+    errors.dob = "Select date of birth.";
+    return errors;
+  }
   const age = Number(person.age);
-  if (!person.age || !Number.isInteger(age) || age < 1 || age > 120) {
-    errors.age = "Enter age in years (1 to 120).";
+  if (person.age === "" || !Number.isInteger(age) || age < 0 || age > 120) {
+    errors.dob = "Select a valid date of birth.";
   }
   return errors;
 }
@@ -95,8 +156,8 @@ export function validateFamilyMembers(source = {}) {
     if (personErrors.gender) {
       errors[`familyMembers.${index}.gender`] = personErrors.gender;
     }
-    if (personErrors.age) {
-      errors[`familyMembers.${index}.age`] = personErrors.age;
+    if (personErrors.dob) {
+      errors[`familyMembers.${index}.dob`] = personErrors.dob;
     }
   });
   return errors;

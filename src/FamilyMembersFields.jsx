@@ -34,13 +34,7 @@ export default function FamilyMembersFields({
       <style>{styles}</style>
       <div className="family-fields">
         <div className="family-head">
-          <div>
-            <p className="family-title">Add Family Members</p>
-            <p className="family-copy">
-              Available after you register and log in. Each complete member adds
-              10 credit points once.
-            </p>
-          </div>
+          <p className="family-title">Add Family Members</p>
           <button type="button" className="family-add" onClick={addMember}>
             Add Family Member
           </button>
@@ -101,7 +95,7 @@ export default function FamilyMembersFields({
                 values={member}
                 errors={{
                   gender: errors[`familyMembers.${index}.gender`],
-                  age: errors[`familyMembers.${index}.age`],
+                  dob: errors[`familyMembers.${index}.dob`],
                 }}
                 onChange={(event) => {
                   const { name, value } = event.target;
@@ -118,9 +112,8 @@ export default function FamilyMembersFields({
 
 const styles = `
 .family-fields{display:grid;gap:10px;width:100%}
-.family-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.family-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .family-title{margin:0;font-size:13px;font-weight:800;color:#29455a}
-.family-copy{margin:4px 0 0;font-size:12px;color:#5d7180;line-height:1.4}
 .family-add,.family-remove{appearance:none;border-radius:8px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
 .family-add{padding:8px 10px;border:1px solid #1e8a73;background:#1e8a73;color:#fff;white-space:nowrap}
 .family-remove{padding:6px 8px;border:1px solid #d7e2e9;background:#fff;color:#b64b4b}

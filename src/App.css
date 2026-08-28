@@ -3721,6 +3721,10 @@ body,
   font-weight: 700;
 }
 
+.home-landing .home-auth-form label span {
+  color: #e34d4d;
+}
+
 .home-landing .home-auth-form input:not([type="radio"]):not([type="checkbox"]),
 .home-landing .home-auth-form select,
 .home-landing .home-auth-form textarea {
@@ -3752,7 +3756,6 @@ body,
 
 .home-landing .home-auth-form .person-fields,
 .home-landing .home-auth-form .addr-fields,
-.home-landing .home-auth-form .home-auth-family-note,
 .home-landing .home-auth-form button[type="submit"] {
   grid-column: 1 / -1;
 }
@@ -3793,13 +3796,6 @@ body,
 
 .home-landing .home-auth-status.error {
   color: #d84b4b;
-}
-
-.home-landing .home-auth-family-note {
-  margin: 0;
-  color: #5d7180;
-  font-size: 12px;
-  line-height: 1.4;
 }
 
 .home-landing .home-auth-family-btn {

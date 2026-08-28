@@ -33,7 +33,7 @@ function Profile() {
     const nextValue =
       name === "familyMembers"
         ? value
-        : name === "mobile" || name === "pinCode" || name === "age"
+        : name === "mobile" || name === "pinCode"
           ? String(value || "").replace(/\D/g, "")
           : value;
 
@@ -85,10 +85,7 @@ function Profile() {
           <div>
             <span className="profile-label">MEDIHOME ACCOUNT</span>
             <h1>Your Profile</h1>
-            <p>
-              Save your details once. After you register and log in, add family
-              members here for medicine and service bookings.
-            </p>
+            <p>Save your details once for medicine and service bookings.</p>
           </div>
         </section>
 
@@ -148,7 +145,6 @@ function Profile() {
             values={form}
             errors={errors}
             onChange={handleChange}
-            pinHint="Select the Village / Sector / Mohalla attached to this PIN. It is also used to sign in."
           />
 
           {saved ? (

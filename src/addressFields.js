@@ -65,9 +65,8 @@ export const ADDRESS_FIELDS = [
   {
     name: "nearby",
     label: "Landmark Near By",
-    placeholder: "Temple, metro, market — optional",
+    placeholder: "Temple, metro, market",
     required: false,
-    hint: "Optional. You can leave this blank.",
   },
 ];
 

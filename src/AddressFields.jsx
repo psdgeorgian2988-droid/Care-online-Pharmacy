@@ -42,7 +42,6 @@ export default function AddressFields({
   values = {},
   errors = {},
   onChange,
-  pinHint = "Enter the PIN Code to choose Village / Sector / Mohalla.",
 }) {
   const [pinStatus, setPinStatus] = useState("");
   const [locating, setLocating] = useState(false);
@@ -80,11 +79,7 @@ export default function AddressFields({
         return;
       }
       const areas = Array.isArray(row.areas) ? row.areas : [];
-      setPinStatus(
-        areas.length
-          ? "Select the Village / Sector / Mohalla for this PIN."
-          : ""
-      );
+      setPinStatus("");
       patch("areas", areas);
       const hint = suggestedArea.current;
       suggestedArea.current = "";
@@ -114,10 +109,10 @@ export default function AddressFields({
       if (digitsPin(values.pinCode) === found.pin) {
         const matched = matchAreaName(pinAreas(values), found.suggestedArea);
         if (matched && values.area !== matched) patch("area", matched);
-        setPinStatus("PIN filled from your location. Recheck Village / Sector / Mohalla.");
+        setPinStatus("");
       } else {
         patch("pinCode", found.pin);
-        setPinStatus("PIN filled from your location. Recheck Village / Sector / Mohalla.");
+        setPinStatus("");
       }
     } catch (error) {
       setPinStatus(
@@ -166,11 +161,7 @@ export default function AddressFields({
             >
               <label htmlFor={id}>
                 {field.label}
-                {field.required === false ? (
-                  <em> (optional)</em>
-                ) : (
-                  <span> *</span>
-                )}
+                {field.required === false ? null : <span> *</span>}
               </label>
               {selectable ? (
                 <select
@@ -231,7 +222,7 @@ export default function AddressFields({
               )}
               {errors[field.name] ? (
                 <small className="addr-error">{errors[field.name]}</small>
-              ) : field.name === "pinCode" ? (
+              ) : field.name === "pinCode" && pinStatus ? (
                 <small
                   className={
                     pinMissing || /allow location|could not|not available/i.test(pinStatus)
@@ -239,16 +230,8 @@ export default function AddressFields({
                       : "addr-hint"
                   }
                 >
-                  {pinStatus ||
-                    "Enter the PIN Code, or tap Use My Location to fill it from GPS."}
+                  {pinStatus}
                 </small>
-              ) : selectable ? (
-                <small className="addr-hint">
-                  Only the Village / Sector / Mohalla attached to this PIN Code
-                  can be selected.
-                </small>
-              ) : field.hint ? (
-                <small className="addr-hint">{field.hint}</small>
               ) : null}
             </div>
           );
@@ -285,11 +268,7 @@ export default function AddressFields({
             </label>
             {errors.addressConfirmed ? (
               <small className="addr-error">{errors.addressConfirmed}</small>
-            ) : (
-              <small className="addr-hint">
-                Confirm the details above before submitting.
-              </small>
-            )}
+            ) : null}
           </div>
         ) : null}
       </div>

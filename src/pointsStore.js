@@ -102,7 +102,7 @@ export function awardOnce(key, amount, label) {
 
 export function awardFamilyMemberPoints(members = []) {
   const complete = pickFamilyMembers({ familyMembers: members }).filter(
-    (row) => row.id && row.name && row.gender && row.age
+    (row) => row.id && row.name && row.gender && row.dob
   );
   let awarded = 0;
   let count = 0;
