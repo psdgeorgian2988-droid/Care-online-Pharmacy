@@ -53,6 +53,9 @@ function MyOrders() {
           </p>
         </div>
         <div className="orders-header-actions">
+          <a className="orders-nav-btn" href="#vaccination">
+            Book vaccination
+          </a>
           <a className="orders-nav-btn orders-nav-home" href="#home">
             Back to Home
           </a>
@@ -374,7 +377,7 @@ function MyOrders() {
               <a href="#medicine-search">Order medicines</a>
               <a href="#labs">Book diagnostics</a>
               <a href="#homecare">Book home care</a>
-              <a href="#vaccination">Vaccination record</a>
+              <a href="#vaccination">Book vaccination</a>
               <a href="#psychologist">Book a psychologist</a>
               <a href="#stepdown">Find a step-down centre</a>
               <a href="#ambulance">Request ambulance</a>
