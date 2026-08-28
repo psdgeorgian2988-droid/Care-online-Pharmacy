@@ -15,11 +15,11 @@ import {
 } from "./personFields";
 import {
   PROFILE_KEY,
+  consumeReturnHash,
   readLoginSession,
   writeLoginSession,
 } from "./authSession";
 import { goToHash } from "./hashRoute";
-import { consumeReturnHash } from "./GuestRegisterPrompt";
 
 function digitsOnly(value) {
   return String(value || "").replace(/\D/g, "");
@@ -113,13 +113,7 @@ export default function AuthPage({ mode = "login" }) {
       <style>{styles}</style>
       <div className={`auth-page${isRegister ? " is-register" : " is-login"}`}>
         <section className="auth-card">
-          <p className="auth-kicker">MediHome Account</p>
           <h1>{isRegister ? "Create Account" : "Login"}</h1>
-          <p className="auth-lead">
-            {isRegister
-              ? "Name, mobile, date of birth and address."
-              : "Use your registered mobile and PIN."}
-          </p>
 
           {isRegister ? (
             <form className="auth-form" onSubmit={handleRegister}>
@@ -229,9 +223,7 @@ const styles = `
 .auth-page{min-height:auto;padding:22px 4% 36px;background:transparent;color:#17324d;box-sizing:border-box}
 .auth-card{max-width:860px;margin:0 auto;padding:20px 22px 22px;background:#fff;border-radius:16px;box-shadow:0 3px 14px rgba(30,100,140,.07)}
 .auth-page.is-login .auth-card{max-width:420px}
-.auth-kicker{margin:0 0 4px;font-size:10px;font-weight:800;letter-spacing:1.3px;color:#1686b8;text-transform:uppercase}
-.auth-card h1{margin:0 0 6px;font-size:24px;color:#123b59}
-.auth-lead{margin:0 0 16px;color:#607589;font-size:13px;line-height:1.4}
+.auth-card h1{margin:0 0 16px;font-size:24px;color:#123b59}
 .auth-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 14px;align-items:start}
 .auth-form-login{grid-template-columns:1fr}
 .auth-field{display:flex;flex-direction:column;min-width:0}

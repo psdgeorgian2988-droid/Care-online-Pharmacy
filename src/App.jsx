@@ -215,8 +215,6 @@ function HomePage() {
           <aside className="home-account-card" aria-label="Account">
             {user ? (
               <>
-                <p className="home-account-kicker">Welcome Back</p>
-                <p className="home-account-name">Hi, {user.name || "there"}</p>
                 <a className="home-account-btn is-primary" href="#profile">
                   Profile
                 </a>
@@ -226,10 +224,6 @@ function HomePage() {
               </>
             ) : (
               <>
-                <p className="home-account-kicker">Your Account</p>
-                <p className="home-account-copy">
-                  Login or register for year-round offers and MediHome points.
-                </p>
                 <a className="home-account-btn" href="#login">
                   Login
                 </a>

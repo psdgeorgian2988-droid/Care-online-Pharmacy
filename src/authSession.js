@@ -27,6 +27,19 @@ export function writeLoginSession(user) {
   }
 }
 
+export function consumeReturnHash() {
+  try {
+    const next = sessionStorage.getItem("mediHomeReturnHash") || "";
+    sessionStorage.removeItem("mediHomeReturnHash");
+    if (next.startsWith("#") && next !== "#login" && next !== "#register") {
+      return next;
+    }
+  } catch {
+    /* ignore */
+  }
+  return "#home";
+}
+
 export function logoutSession() {
   writeLoginSession(null);
 }

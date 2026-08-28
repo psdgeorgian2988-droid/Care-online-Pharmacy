@@ -3671,37 +3671,12 @@ body,
   flex-direction: column;
   justify-content: center;
   gap: 10px;
-  min-height: 168px;
-  padding: 18px 16px;
+  padding: 16px;
   background: linear-gradient(180deg, #ffffff 0%, #eef8fb 100%);
   border: 1px solid #c5e0ea;
   border-radius: 16px;
   box-shadow: 0 8px 22px rgba(26, 107, 122, 0.12);
   box-sizing: border-box;
-}
-
-.home-landing .home-account-kicker {
-  margin: 0;
-  color: #1a6b7a;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.home-landing .home-account-name {
-  margin: 0 0 4px;
-  color: #123b59;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.2;
-}
-
-.home-landing .home-account-copy {
-  margin: 0 0 4px;
-  color: #34546b;
-  font-size: 13px;
-  line-height: 1.4;
 }
 
 .home-landing .home-account-btn {
