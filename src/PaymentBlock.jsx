@@ -62,7 +62,7 @@ export default function PaymentBlock({
     }
     setCouponCode(result.coupon.code);
     setCouponDraft(result.coupon.code);
-    setCouponMessage(`${result.coupon.label} applied. Taken from MediHome share.`);
+    setCouponMessage(`${result.coupon.label} applied.`);
   };
 
   const clearCoupon = () => {
@@ -70,9 +70,6 @@ export default function PaymentBlock({
     setCouponDraft("");
     setCouponMessage("");
   };
-
-  const split = quote.split;
-  const hasDiscount = quote.offerDiscountRupees > 0 || quote.couponDiscountRupees > 0;
 
   return (
     <>
@@ -143,16 +140,13 @@ export default function PaymentBlock({
               {couponMessage}
             </p>
           ) : (
-            <p className="pay-coupon-hint">
-              Try CARE35 for 35% off. Partner still gets their share of MRP.
-              The discount comes from MediHome.
-            </p>
+            <p className="pay-coupon-hint">Try CARE35 for 35% off.</p>
           )}
         </div>
 
         <ul className="pay-split">
           <li>
-            <span>Sale / MRP</span>
+            <span>Total amount</span>
             <strong>{formatRupee(quote.saleRupees)}</strong>
           </li>
           {quote.offerDiscountRupees > 0 ? (
@@ -167,32 +161,22 @@ export default function PaymentBlock({
               <strong>−{formatRupee(quote.couponDiscountRupees)}</strong>
             </li>
           ) : null}
-          <li>
-            <span>
-              Partner {split.partnerPercent}% of MRP
-            </span>
-            <strong>{formatRupee(split.partnerRupees)}</strong>
-          </li>
-          <li>
-            <span>MediHome after discount</span>
-            <strong>{formatRupee(split.platformRupees)}</strong>
-          </li>
+          {quote.pointsDiscountRupees > 0 ? (
+            <li>
+              <span>
+                Points
+                {quote.pointsUsed
+                  ? ` (${quote.pointsUsed} pts)`
+                  : ""}
+              </span>
+              <strong>−{formatRupee(quote.pointsDiscountRupees)}</strong>
+            </li>
+          ) : null}
         </ul>
         <p className="pay-total">
           <span>Amount payable</span>
           <strong>{formatRupee(quote.payableRupees)}</strong>
         </p>
-        {hasDiscount ? (
-          <p className="pay-split-note">
-            Partner is paid {split.partnerPercent}% of sale / MRP. Coupon and
-            offer discounts are deducted from MediHome’s share only.
-          </p>
-        ) : (
-          <p className="pay-split-note">
-            Partner {split.partnerPercent}% of sale / MRP. MediHome{" "}
-            {split.platformPercent}%. A coupon reduces only the MediHome part.
-          </p>
-        )}
       </div>
     </>
   );
@@ -221,5 +205,4 @@ const styles = `
 .pay-split li strong{font-size:13px}
 .pay-total{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:8px 0 0;padding-top:8px;font-size:13px;color:#34546b}
 .pay-total strong{font-size:15px}
-.pay-split-note{margin:8px 0 0;font-size:12px;line-height:1.4;color:#5d7180}
 `;
