@@ -6247,15 +6247,24 @@ body,
 .app:not(.app-ops) .lab-tabs,
 .app:not(.app-ops) .vac-tabs,
 .app:not(.app-ops) .edu-tabs {
-  display: inline-flex !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 0 14px !important;
   padding: 4px !important;
   border-radius: 10px !important;
   background: #e7f2fa !important;
   gap: 4px !important;
+  box-sizing: border-box !important;
 }
 
-.app:not(.app-ops) .edu-tabs {
-  margin: 0 0 14px !important;
+.app:not(.app-ops) .edu-page .info-stack,
+.app:not(.app-ops) .edu-page .edu-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  width: 100% !important;
+  max-width: none !important;
 }
 
 .app:not(.app-ops) .edu-tab,

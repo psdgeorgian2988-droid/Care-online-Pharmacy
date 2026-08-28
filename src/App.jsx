@@ -310,6 +310,13 @@ function HomePage() {
               <span>Save a report</span>
             </a>
           ) : null}
+          {features.education !== false ? (
+            <a className="home-service-card" href="#education">
+              <h2>Health Education</h2>
+              <p>Guides, live webinars, and quick quizzes.</p>
+              <span>Open education</span>
+            </a>
+          ) : null}
         </section>
 
         <p className="home-trust">

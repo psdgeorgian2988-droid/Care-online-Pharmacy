@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import ReferFamily from "./ReferFamily";
 import { awardOnce, POINT_VALUES, useWallet } from "./pointsStore";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
+import { maskMobile } from "./personFields";
 
 const GUIDES = [
   {
@@ -381,7 +382,7 @@ function WebinarsPanel() {
         <PointsEarnedBanner result={done.award} label="webinar" />
         <p>
           Thank you, {done.name}. We will send the live link to WhatsApp on{" "}
-          <strong>{done.mobile}</strong> before the session. Reference{" "}
+          <strong>{maskMobile(done.mobile)}</strong> before the session. Reference{" "}
           <strong>{done.id}</strong>.
         </p>
         <button type="button" className="edu-btn edu-btn-primary" onClick={() => setDone(null)}>
@@ -670,47 +671,45 @@ function HealthEducation() {
   const [tab, setTab] = useState("guides");
 
   return (
-    <>
+    <div className="service-page info-page edu-page">
       <style>{styles}</style>
-      <div className="service-page info-page">
-        <section className="service-hero">
-          <div>
-            <span className="service-kicker">MediHome Health Education</span>
-            <h1>Guides, Live Webinars, And Quick Quizzes</h1>
-            <p>
-              Short, Plain-Language notes for Patients. This is
-              education, not a personal prescription — Follow your Clinician.
-            </p>
-          </div>
-        </section>
-
-        <div className="edu-tabs" role="tablist" aria-label="Health education sections">
-          {TABS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === item.id}
-              className={tab === item.id ? "edu-tab is-active" : "edu-tab"}
-              onClick={() => setTab(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
+      <section className="service-hero">
+        <div>
+          <span className="service-kicker">MediHome Health Education</span>
+          <h1>Guides, Live Webinars, And Quick Quizzes</h1>
+          <p>
+            Short, Plain-Language notes for Patients. This is
+            education, not a personal prescription — Follow your Clinician.
+          </p>
         </div>
+      </section>
 
-        {tab === "guides" ? <GuidesPanel /> : null}
-        {tab === "webinars" ? <WebinarsPanel /> : null}
-        {tab === "quiz" ? <QuizPanel /> : null}
-        {tab === "refer" ? <ReferFamily /> : null}
-
-        <p className="info-footnote">
-          Need a test or refill?{" "}
-          <a href="#labs">Book diagnostics</a> or{" "}
-          <a href="#medicine-search">search medicines</a>.
-        </p>
+      <div className="edu-tabs" role="tablist" aria-label="Health education sections">
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === item.id}
+            className={tab === item.id ? "edu-tab is-active" : "edu-tab"}
+            onClick={() => setTab(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
-    </>
+
+      {tab === "guides" ? <GuidesPanel /> : null}
+      {tab === "webinars" ? <WebinarsPanel /> : null}
+      {tab === "quiz" ? <QuizPanel /> : null}
+      {tab === "refer" ? <ReferFamily /> : null}
+
+      <p className="info-footnote">
+        Need a test or refill?{" "}
+        <a href="#labs">Book diagnostics</a> or{" "}
+        <a href="#medicine-search">search medicines</a>.
+      </p>
+    </div>
   );
 }
 
@@ -721,6 +720,9 @@ const styles = `
 .service-hero h1{margin:0 0 4px;font-size:22px}
 .service-hero p{margin:0;color:#5d7180;font-size:13px;line-height:1.4}
 .info-stack,.edu-grid,.edu-tabs,.info-footnote,.points-refer-card{max-width:760px;margin-left:auto;margin-right:auto}
+.edu-page{display:flex;flex-direction:column;min-height:0;width:100%;box-sizing:border-box}
+.edu-tabs{display:flex;flex-wrap:wrap;gap:8px;width:100%;margin:0 auto 14px;padding:4px;border-radius:12px;background:#e8f0f4;box-sizing:border-box}
+.edu-tab{flex:1 1 120px;min-height:42px;border:0;border-radius:9px;background:transparent;color:#34546b;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
 .info-card{background:#fff;border:1px solid #e4ecef;border-radius:12px;margin-bottom:10px;overflow:hidden}
 .info-card-toggle{width:100%;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px;border:0;background:#fff;text-align:left;cursor:pointer;font-family:inherit;color:#143246}
 .info-card-toggle strong{display:block;font-size:15px}
@@ -731,8 +733,6 @@ const styles = `
 .info-card li:last-child{margin-bottom:0}
 .info-footnote{margin:16px 2px 0;color:#5d7180;font-size:13px}
 .info-footnote a{color:#1a6b7a;font-weight:700;text-decoration:none}
-.edu-tabs{display:flex;gap:8px;margin:0 auto 14px;padding:4px;border-radius:12px;background:#e8f0f4}
-.edu-tab{flex:1;min-height:42px;border:0;border-radius:9px;background:transparent;color:#34546b;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
 .edu-tab.is-active{background:#0639b8;color:#fff;box-shadow:0 3px 8px rgba(6,57,184,.22)}
 .edu-grid{display:grid;gap:12px}
 .edu-panel-card{padding:16px;border:1px solid #e4ecef;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(20,50,70,.06)}
