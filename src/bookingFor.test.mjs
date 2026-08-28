@@ -43,6 +43,18 @@ test("dropdown lists registered names, then Someone Else last", () => {
   assert.equal(options.at(-1).id, OTHER_BOOKING_ID);
 });
 
+test("vaccination records list only registered household names", () => {
+  const options = bookingForOptions(profile, { includeOther: false });
+  assert.deepEqual(
+    options.map((row) => bookingForSelectLabel(row)),
+    ["Anita Sharma", "Aarav Sharma", "Riya Sharma"]
+  );
+  assert.equal(
+    options.some((row) => row.id === OTHER_BOOKING_ID),
+    false
+  );
+});
+
 test("selecting Self fills registered name, gender, age, mobile and address", () => {
   const option = findBookingFor(profile, "self");
   const patch = bookingForPatch(option, profile);

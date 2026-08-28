@@ -23,11 +23,15 @@ import {
 } from "./vaccinationBooking";
 import SelectedVaccinesFields from "./SelectedVaccinesFields";
 import BookingForFields from "./BookingForFields";
-import { OTHER_BOOKING_ID, findBookingFor, hasHouseholdProfile } from "./bookingFor";
+import {
+  OTHER_BOOKING_ID,
+  findBookingFor,
+  hasHouseholdProfile,
+  isHouseholdBooking,
+} from "./bookingFor";
 import { useLoginSession } from "./authSession";
 import { readUserProfile } from "./addressFields";
 import DateMonthYearFields from "./DateMonthYearFields";
-import { noContactNameProps } from "./noContactAutofill";
 
 function personFromOption(option = {}) {
   return {
@@ -47,13 +51,16 @@ function Vaccination() {
   const isRegistered = hasHouseholdProfile(profile);
   const [store, setStore] = useState(() => loadVaccinationStore());
   const [booking, setBooking] = useState(() => loadVaccinationBooking());
-  const [recordForm, setRecordForm] = useState(() => ({
-    id: "",
-    bookedFor: loadVaccinationBooking().bookedFor || "",
-    name: loadVaccinationBooking().name || "",
-    gender: loadVaccinationBooking().gender || "",
-    dob: loadVaccinationBooking().dob || "",
-  }));
+  const [recordForm, setRecordForm] = useState(() => {
+    const bookedFor = loadVaccinationBooking().bookedFor || "";
+    return {
+      id: "",
+      bookedFor: bookedFor === OTHER_BOOKING_ID ? "" : bookedFor,
+      name: loadVaccinationBooking().name || "",
+      gender: loadVaccinationBooking().gender || "",
+      dob: loadVaccinationBooking().dob || "",
+    };
+  });
   const [markGiven, setMarkGiven] = useState({
     personId: "",
     vaccineId: "",
@@ -65,11 +72,8 @@ function Vaccination() {
   const soon = dueSoonReminders(store, 21);
   const scheduleGuide = useMemo(() => fullVaccinationSchedule(), []);
   const selectedPerson = isRegistered
-    ? findBookingFor(profile, recordForm.bookedFor)
+    ? findBookingFor(profile, recordForm.bookedFor, { includeOther: false })
     : null;
-  const isSomeoneElse = selectedPerson?.id === OTHER_BOOKING_ID;
-  const showGuestDetails = !isRegistered || isSomeoneElse;
-  const showGender = !isRegistered || isSomeoneElse;
   const bookHref = nurseBookingHref(carePlanForGroup(booking.group));
 
   useEffect(() => {
@@ -99,33 +103,26 @@ function Vaccination() {
 
   const saveRecordPerson = (event) => {
     event.preventDefault();
+    if (!isRegistered) return;
     const next = {};
-    if (isRegistered && !recordForm.bookedFor) {
-      next.bookedFor = "Select a name.";
-    }
-    if (showGuestDetails) {
-      if (!recordForm.name.trim()) next.name = "Name is required.";
-      if (showGender && !recordForm.gender) next.gender = "Select Male or Female.";
-      if (!recordForm.dob) next.dob = "Select Date Of Birth.";
+    if (!isHouseholdBooking(recordForm, profile) || !selectedPerson?.name) {
+      next.bookedFor = "Select a registered name.";
     }
     setRecordErrors(next);
     if (Object.keys(next).length) return;
-    const household = isRegistered && selectedPerson && !isSomeoneElse;
-    const name = (household ? selectedPerson.name : recordForm.name).trim();
-    const gender = household ? selectedPerson.gender : recordForm.gender;
-    const dob = household
-      ? selectedPerson.dob || booking.dob
-      : recordForm.dob || booking.dob;
     upsertVaccinationPerson({
-      name,
-      gender,
-      dob,
+      name: selectedPerson.name.trim(),
+      gender: selectedPerson.gender,
+      dob: selectedPerson.dob || booking.dob,
       keepRecord: true,
       remindersOn: true,
       requiredIds: booking.vaccineIds,
     });
     setStore(loadVaccinationStore());
-    if (!isRegistered) {
+  };
+
+  const choosePerson = (option) => {
+    if (!option || option.id === OTHER_BOOKING_ID || !option.name) {
       setRecordForm({
         id: "",
         bookedFor: "",
@@ -133,11 +130,10 @@ function Vaccination() {
         gender: "",
         dob: "",
       });
+      setRecordErrors({});
+      return;
     }
-  };
-
-  const choosePerson = (option) => {
-    const person = personFromOption(option || {});
+    const person = personFromOption(option);
     const applied = applyPersonToBooking(person);
     setBooking(applied);
     setRecordForm({
@@ -148,22 +144,6 @@ function Vaccination() {
       dob: applied.dob,
     });
     setRecordErrors({});
-  };
-
-  const updateGuestField = (name, value) => {
-    const nextForm = { ...recordForm, [name]: value };
-    setRecordForm(nextForm);
-    setRecordErrors((prev) => ({ ...prev, [name]: "" }));
-    if (name === "gender" || name === "dob" || name === "name") {
-      setBooking(
-        applyPersonToBooking({
-          bookedFor: nextForm.bookedFor || OTHER_BOOKING_ID,
-          name: nextForm.name,
-          gender: nextForm.gender,
-          dob: nextForm.dob,
-        })
-      );
-    }
   };
 
   const chooseGroup = (group) => {
@@ -220,74 +200,26 @@ function Vaccination() {
                   idPrefix="vac"
                   profile={profile}
                   selectedId={recordForm.bookedFor}
-                  error={recordErrors.bookedFor || recordErrors.name}
+                  error={recordErrors.bookedFor}
                   onSelect={choosePerson}
                   label="Select Name"
+                  includeOther={false}
                 />
               </div>
             ) : (
-              <div className="field">
-                <label htmlFor="vac-rec-name">
-                  Name <span>*</span>
-                </label>
-                <input
-                  id="vac-rec-name"
-                  value={recordForm.name}
-                  onChange={(event) => updateGuestField("name", event.target.value)}
-                  {...noContactNameProps}
-                />
-                {recordErrors.name ? <small>{recordErrors.name}</small> : null}
-              </div>
+              <p className="vac-copy vac-register-hint">
+                Login or create an account to save vaccination records for
+                registered family members.{" "}
+                <a href="#login">Login</a>
+                {" · "}
+                <a href="#register">Create Account</a>
+              </p>
             )}
-            {showGuestDetails ? (
-              <>
-                {isRegistered ? (
-                  <div className="field">
-                    <label htmlFor="vac-rec-other-name">
-                      Name <span>*</span>
-                    </label>
-                    <input
-                      id="vac-rec-other-name"
-                      value={recordForm.name}
-                      onChange={(event) => updateGuestField("name", event.target.value)}
-                      {...noContactNameProps}
-                    />
-                    {recordErrors.name ? <small>{recordErrors.name}</small> : null}
-                  </div>
-                ) : null}
-                {showGender ? (
-                <div className="field">
-                  <label htmlFor="vac-rec-gender">
-                    Male / Female <span>*</span>
-                  </label>
-                  <select
-                    id="vac-rec-gender"
-                    value={recordForm.gender}
-                    onChange={(event) => updateGuestField("gender", event.target.value)}
-                  >
-                    <option value="">Select</option>
-                    <option value="M">Male</option>
-                    <option value="F">Female</option>
-                  </select>
-                  {recordErrors.gender ? <small>{recordErrors.gender}</small> : null}
-                </div>
-                ) : null}
-                <div className="field full">
-                  <DateMonthYearFields
-                    idPrefix="vac-rec-dob"
-                    name="dob"
-                    value={recordForm.dob}
-                    max={today}
-                    required
-                    error={recordErrors.dob || ""}
-                    onChange={(event) => updateGuestField("dob", event.target.value)}
-                  />
-                </div>
-              </>
+            {isRegistered ? (
+              <button type="submit" className="service-submit">
+                Save Record And Due Dates
+              </button>
             ) : null}
-            <button type="submit" className="service-submit">
-              Save Record And Due Dates
-            </button>
           </form>
 
           <div className="vac-book-card">
@@ -550,6 +482,8 @@ const styles = `
 .vac-guide-age li button{display:grid;gap:2px;width:100%;border:0;background:none;padding:0;text-align:left;cursor:pointer;font:inherit}
 .vac-guide-age li button.is-on span{color:#1a6b7a}
 .vac-copy{margin:0;color:#5d7180;font-size:13px;line-height:1.45}
+.vac-register-hint{grid-column:1/-1}
+.vac-register-hint a{color:#1a6b7a;font-weight:800;text-decoration:none}
 .vac-section-title{margin:0 0 6px;font-size:14px;font-weight:800;color:#29455a;grid-column:1/-1}
 .vac-record{display:grid;gap:16px}
 .vac-book-card,.vac-given{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}

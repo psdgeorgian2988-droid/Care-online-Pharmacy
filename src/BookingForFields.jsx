@@ -12,9 +12,10 @@ export default function BookingForFields({
   error = "",
   onSelect,
   label = "Select Name",
+  includeOther = true,
 }) {
   if (!hasHouseholdProfile(profile)) return null;
-  const options = bookingForOptions(profile);
+  const options = bookingForOptions(profile, { includeOther });
   const selectId = `${idPrefix}-who`;
 
   return (
@@ -28,7 +29,11 @@ export default function BookingForFields({
           id={selectId}
           name="bookedFor"
           value={selectedId || ""}
-          onChange={(event) => onSelect?.(findBookingFor(profile, event.target.value))}
+          onChange={(event) =>
+            onSelect?.(
+              findBookingFor(profile, event.target.value, { includeOther })
+            )
+          }
           aria-label="Select name"
         >
           <option value="">Select name</option>

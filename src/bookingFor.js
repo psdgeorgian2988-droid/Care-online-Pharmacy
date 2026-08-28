@@ -41,7 +41,7 @@ export function profileHasBookingContact(profile = {}) {
   );
 }
 
-export function bookingForOptions(profile = {}) {
+export function bookingForOptions(profile = {}, { includeOther = true } = {}) {
   const selfName = String(profile.name || "").trim();
   const self = {
     id: SELF_BOOKING_ID,
@@ -67,6 +67,7 @@ export function bookingForOptions(profile = {}) {
         .slice(0, 10),
       label: row.name,
     }));
+  if (!includeOther) return [self, ...members].filter((row) => row.name);
   const other = {
     id: OTHER_BOOKING_ID,
     name: "",
@@ -86,8 +87,8 @@ export function bookingForSelectLabel(option) {
   return option.name || "Registered member";
 }
 
-export function findBookingFor(profile, id) {
-  return bookingForOptions(profile).find((row) => row.id === id) || null;
+export function findBookingFor(profile, id, options) {
+  return bookingForOptions(profile, options).find((row) => row.id === id) || null;
 }
 
 export function isOtherBooking(source = {}) {
