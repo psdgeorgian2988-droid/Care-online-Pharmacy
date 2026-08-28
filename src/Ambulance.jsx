@@ -1,7 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
-import { resolvePinLocation } from "./pinLocation";
+import { lookupPinDirectory, resolvePinLocation } from "./pinLocation";
+import {
+  formatHospitalDistance,
+  hospitalDestination,
+  nearestIcuHospitals,
+} from "./icuHospitals";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
@@ -21,7 +26,6 @@ import {
   withBookingIdentity,
 } from "./bookingFor";
 
-const STORAGE_KEY = "mediHomeAmbulanceRequests";
 const AMBULANCE_FEE = {
   emergency: 3999,
   "non-emergency": 2499,
@@ -40,15 +44,60 @@ function Ambulance() {
     ...accountOwnerBooking(profile),
     emergencyType: "emergency",
     notes: "",
+    ...hospitalDestination(null),
   });
   const [errors, setErrors] = useState({});
   const [request, setRequest] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
+  const [icuHospitals, setIcuHospitals] = useState([]);
   const urgentRide = form.emergencyType === "emergency";
   const busyWait = useBusyOverlay(submitting, "ambulance", urgentRide);
   const ambFee = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
+  const pickupPin = String(form.pinCode || "").replace(/\D/g, "");
+
+  useEffect(() => {
+    if (!/^\d{6}$/.test(pickupPin)) {
+      setIcuHospitals([]);
+      setForm((prev) =>
+        prev.destinationId ? { ...prev, ...hospitalDestination(null) } : prev
+      );
+      return undefined;
+    }
+    let cancelled = false;
+    const applyList = (list) => {
+      if (cancelled) return;
+      setIcuHospitals(list);
+      setForm((prev) => {
+        const stillValid = list.some((row) => row.id === prev.destinationId);
+        if (stillValid) {
+          const picked = list.find((row) => row.id === prev.destinationId);
+          return { ...prev, ...hospitalDestination(picked) };
+        }
+        return { ...prev, ...hospitalDestination(list[0] || null) };
+      });
+    };
+    applyList(nearestIcuHospitals({ pin: pickupPin, limit: 3 }));
+    lookupPinDirectory(pickupPin).then((row) => {
+      applyList(
+        nearestIcuHospitals({
+          lat: row?.lat,
+          lng: row?.lng,
+          pin: pickupPin,
+          limit: 3,
+        })
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pickupPin]);
+
+  const pickHospital = (hospital) => {
+    setForm((prev) => ({ ...prev, ...hospitalDestination(hospital) }));
+    setErrors((prev) => ({ ...prev, destinationId: "" }));
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -61,6 +110,9 @@ function Ambulance() {
   const validate = () => {
     const next = validateBookingDetails(form, profile);
     if (!form.emergencyType) next.emergencyType = "Select emergency type.";
+    if (/^\d{6}$/.test(pickupPin) && !form.destinationId) {
+      next.destinationId = "Select a nearby ICU and ventilator hospital.";
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -98,6 +150,20 @@ function Ambulance() {
         ...addr,
         emergencyType: form.emergencyType,
         notes: form.notes.trim(),
+        ...hospitalDestination(
+          icuHospitals.find((row) => row.id === form.destinationId) || {
+            id: form.destinationId,
+            name: form.destinationName,
+            address: form.destinationAddress,
+            pin: form.destinationPin,
+            phone: form.destinationPhone,
+            distanceKm: form.destinationKm,
+            facilities: String(form.destinationFacilities || "ICU, Ventilator")
+              .split(",")
+              .map((part) => part.trim())
+              .filter(Boolean),
+          }
+        ),
         total: pay.amountRupees,
         saleRupees: pay.saleRupees,
         couponCode: pay.couponCode,
@@ -126,8 +192,10 @@ function Ambulance() {
       ...accountOwnerBooking(profile),
       emergencyType: "emergency",
       notes: "",
+      ...hospitalDestination(null),
     });
     setPayMethod("cod");
+    setIcuHospitals([]);
     setErrors({});
   };
 
@@ -180,8 +248,16 @@ function Ambulance() {
               </div>
               {request.destinationName ? (
                 <div className="confirm-row">
-                  <span>Drop at</span>
-                  <strong>{request.destinationName}</strong>
+                  <span>Drop At</span>
+                  <strong>
+                    {request.destinationName}
+                    {request.destinationFacilities
+                      ? ` · ${request.destinationFacilities}`
+                      : " · ICU, Ventilator"}
+                    {request.destinationKm !== "" && request.destinationKm != null
+                      ? ` · ${formatHospitalDistance(request.destinationKm)}`
+                      : ""}
+                  </strong>
                 </div>
               ) : null}
               <div className="confirm-row">
@@ -261,6 +337,54 @@ function Ambulance() {
             {errors.emergencyType && <small>{errors.emergencyType}</small>}
           </div>
 
+          <div className="field full amb-hospitals">
+            <p className="amb-hospitals-kicker">Nearest ICU And Ventilator Hospitals</p>
+            {/^\d{6}$/.test(pickupPin) ? (
+              <>
+                <p className="pin-gps-hint">
+                  Suggested from pickup PIN {pickupPin}. The nearest hospital is
+                  selected; choose another if needed.
+                </p>
+                {icuHospitals.length ? (
+                  <div className="amb-hospital-list">
+                    {icuHospitals.map((hospital) => {
+                      const on = form.destinationId === hospital.id;
+                      return (
+                        <button
+                          key={hospital.id}
+                          type="button"
+                          className={on ? "is-on" : ""}
+                          onClick={() => pickHospital(hospital)}
+                        >
+                          <strong>{hospital.name}</strong>
+                          <span>
+                            {hospital.area}, {hospital.city} · PIN {hospital.pin}
+                          </span>
+                          <span className="amb-hospital-meta">
+                            ICU · Ventilator
+                            {hospital.distanceKm != null
+                              ? ` · ${formatHospitalDistance(hospital.distanceKm)}`
+                              : ""}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="pin-gps-hint">Finding hospitals near this PIN…</p>
+                )}
+                {errors.destinationId ? (
+                  <small>{errors.destinationId}</small>
+                ) : null}
+              </>
+            ) : (
+              <p className="pin-gps-hint">
+                Enter the pickup PIN Code to see the nearest hospitals with ICU
+                and ventilator.
+              </p>
+            )}
+          </div>
+
           <div className="field full">
             <label htmlFor="amb-notes">Notes (optional)</label>
             <textarea
@@ -269,7 +393,7 @@ function Ambulance() {
               rows="2"
               value={form.notes}
               onChange={handleChange}
-              placeholder="Symptoms, hospital preference, floor, etc."
+              placeholder="Symptoms, floor, landmark for the crew, etc."
             />
           </div>
 
@@ -316,7 +440,15 @@ const styles = `
 .service-form textarea{height:auto;min-height:56px;resize:vertical}
 .service-form input:focus,.service-form select:focus,.service-form textarea:focus{border-color:#1a6b7a}
 .service-form small{margin-top:4px;color:#d84b4b;font-size:12px}
-.service-form small.pin-gps-hint{color:#5d7180}
+.service-form small.pin-gps-hint,.pin-gps-hint{color:#5d7180}
+.amb-hospitals{display:flex;flex-direction:column;gap:8px}
+.amb-hospitals-kicker{margin:0;font-size:12px;font-weight:800;color:#1a6b7a}
+.amb-hospital-list{display:grid;gap:8px}
+.amb-hospital-list button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin:0;padding:10px 12px;border:1px solid #d7e2e9;border-radius:10px;background:#fff;color:#143246;font:inherit;text-align:left;cursor:pointer}
+.amb-hospital-list button.is-on{border-color:#1a6b7a;background:#e8f4f6}
+.amb-hospital-list strong{font-size:14px}
+.amb-hospital-list span{font-size:12px;color:#5d7180;line-height:1.4}
+.amb-hospital-meta{color:#1a6b7a !important;font-weight:700}
 .service-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:40px;cursor:pointer;font-family:inherit}
 .confirm-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
 .confirm-actions .service-submit{grid-column:auto;min-width:180px}

@@ -257,6 +257,9 @@ function MyOrders() {
                 {selectedOrder.destinationName ? (
                   <p>
                     <strong>Drop at:</strong> {selectedOrder.destinationName}
+                    {selectedOrder.destinationFacilities
+                      ? ` · ${selectedOrder.destinationFacilities}`
+                      : ""}
                   </p>
                 ) : null}
               </>
