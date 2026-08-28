@@ -224,7 +224,7 @@ function HomePage() {
               </>
             ) : (
               <>
-                <a className="home-account-btn" href="#login">
+                <a className="home-account-btn is-login" href="#login">
                   Login
                 </a>
                 <a className="home-account-btn is-primary" href="#register">
@@ -278,8 +278,8 @@ function HomePage() {
           {features.vaccination !== false ? (
             <a className="home-service-card" href="#vaccination">
               <h2>Vaccination</h2>
-              <p>Government of India schedule, record and due-date reminders.</p>
-              <span>View schedule</span>
+              <p>Record, schedule and due-date reminders.</p>
+              <span>View record</span>
             </a>
           ) : null}
           {features.psychologist !== false ? (

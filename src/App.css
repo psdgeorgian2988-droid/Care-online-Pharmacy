@@ -3696,6 +3696,13 @@ body,
   cursor: pointer;
 }
 
+.home-landing .home-account-btn.is-login {
+  background: #087f8c;
+  border-color: #087f8c;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(8, 127, 140, 0.25);
+}
+
 .home-landing .home-account-btn.is-primary {
   background: #1e8a73;
   border-color: #1e8a73;
