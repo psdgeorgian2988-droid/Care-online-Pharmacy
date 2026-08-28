@@ -25,6 +25,7 @@ import {
   validateBookingDetails,
   withBookingIdentity,
 } from "./bookingFor";
+import { resolveCartAdd } from "./medicineCartCompare";
 
 function readHomeMedicineSearch() {
   const hash = window.location.hash || "";
@@ -2563,17 +2564,30 @@ const FLAGSHIP_BRANDS = new Set([
 ]);
 
 const catalogue = medicines.map(withHouseBrand);
-const mediHomeCatalogue = catalogue.filter((medicine) => medicine.isMediHome);
-const mediHomeCountByCategory = mediHomeCatalogue.reduce((counts, medicine) => {
+const catalogueCountByCategory = catalogue.reduce((counts, medicine) => {
   const key = medicine.category || "Other";
   counts[key] = (counts[key] || 0) + 1;
   return counts;
 }, {});
-const mediHomeTotalCount = mediHomeCatalogue.length;
 
-function mediHomeCountForTab(tab) {
-  if (tab === "All") return mediHomeTotalCount;
-  return mediHomeCountByCategory[tab] || 0;
+function catalogueCountForTab(tab) {
+  if (tab === "All") return catalogue.length;
+  return catalogueCountByCategory[tab] || 0;
+}
+
+function sortMedicineRows(list) {
+  return [...list].sort((a, b) => {
+    const cat = String(a.category || "").localeCompare(String(b.category || ""));
+    if (cat) return cat;
+    const salt = String(a.salt || "").localeCompare(String(b.salt || ""));
+    if (salt) return salt;
+    const str = String(a.strength || "").localeCompare(String(b.strength || ""), undefined, {
+      numeric: true,
+    });
+    if (str) return str;
+    if (Boolean(a.isMediHome) !== Boolean(b.isMediHome)) return a.isMediHome ? -1 : 1;
+    return String(a.brand || a.name || "").localeCompare(String(b.brand || b.name || ""));
+  });
 }
 
 function normalizeSearchText(value) {
@@ -2585,17 +2599,6 @@ function normalizeSearchText(value) {
 function compositionKey(medicine) {
   return normalizeSearchText(`${medicine.salt || ""} ${medicine.strength || ""}`);
 }
-
-const indianBrandsByComposition = catalogue.reduce((map, medicine) => {
-  if (medicine.isMediHome) return map;
-  const key = compositionKey(medicine);
-  const name = medicine.brand || medicine.name;
-  if (!name) return map;
-  const current = map.get(key) || [];
-  if (!current.includes(name)) current.push(name);
-  map.set(key, current);
-  return map;
-}, new Map());
 
 function extractStrengthTokens(query) {
   const matches = String(query || "")
@@ -2848,50 +2851,21 @@ function MedicinePhoto({ medicine, className = "medicine-photo" }) {
   );
 }
 
-function MedicineCard({ medicine, onAdd, sameBrands = [] }) {
+function MedicineCard({ medicine, onAdd }) {
   return (
-    <div className="medicine-card">
-      <MedicinePhoto medicine={medicine} />
-      <div className="medicine-card-main">
-        <h3>{medicine.name}</h3>
-        {medicine.isMediHome ? (
-          <span className="medihome-badge">MediHome</span>
-        ) : (
-          <span className="medicine-brand-label">Brand: {medicine.brand}</span>
-        )}
-        <span className="medicine-salt">{medicine.composition}</span>
-        {medicine.isMediHome && sameBrands.length > 0 ? (
-          <p className="medicine-same-brands">
-            Same composition as {sameBrands.slice(0, 4).join(", ")}
-            {sameBrands.length > 4 ? ` +${sameBrands.length - 4} more` : ""}
-          </p>
-        ) : null}
-        <div className="medicine-card-meta">
-          <span>
-            <strong>Strength:</strong> {medicine.strength}
-          </span>
-          <span>
-            <strong>Pack:</strong> {medicine.packSize}
-          </span>
-          <span>
-            <strong>Category:</strong> {medicine.category}
-          </span>
-        </div>
-        {requiresPrescription(medicine) ? (
-          <span className="prescription-badge">📋 Prescription Required</span>
-        ) : (
-          <span className="prescription-badge otc">✓ No Prescription Required</span>
-        )}
-      </div>
-      <div className="medicine-card-actions">
-        <p className="medicine-price-row">
-          <span className="medicine-mrp">MRP ₹{medicine.mrp}</span>
-          <strong>₹{medicine.price}</strong>
-        </p>
-        <button type="button" onClick={() => onAdd(medicine)}>
-          Add to Cart
-        </button>
-      </div>
+    <div className="medicine-row">
+      <button
+        type="button"
+        className="medicine-row-add"
+        onClick={() => onAdd(medicine)}
+      >
+        Add to cart
+      </button>
+      <span className="medicine-row-brand">{medicine.brand || "MediHome"}</span>
+      <span className="medicine-row-comp">{medicine.salt || medicine.composition}</span>
+      <span className="medicine-row-str">{medicine.strength}</span>
+      <span className="medicine-row-mrp">₹{medicine.mrp}</span>
+      <span className="medicine-row-price">₹{medicine.price}</span>
     </div>
   );
 }
@@ -3212,16 +3186,11 @@ function Medicines({ initialSearch = "" }) {
       setPacksPerMonth(suggestedPacksPerMonth(searchResult.brandMatch));
     }
   }, [search, searchResult.brandMatch?.id]);
-  const featuredIds = new Set(
-    [selectedBrand?.id, selectedMediHome?.id].filter(Boolean)
-  );
-  const filteredMedicines = searchResult.items.filter(
-    (medicine) =>
-      medicine.isMediHome &&
-      (category === "All" || medicine.category === category) &&
-      !(search.trim().length >= 2 && featuredIds.has(medicine.id))
-  );
   const hasSearch = search.trim().length >= 2;
+  const listed = hasSearch ? searchResult.items : catalogue;
+  const filteredMedicines = sortMedicineRows(
+    listed.filter((medicine) => category === "All" || medicine.category === category)
+  );
   const showBrandStrip = hasSearch;
 
   const cartCount = cart.reduce(
@@ -3243,20 +3212,31 @@ function Medicines({ initialSearch = "" }) {
   const cartNeedsPrescription = cart.some(requiresPrescription);
 
   const addToCart = (medicine) => {
+    const added = resolveCartAdd(medicine, catalogue, selectedBrand);
+    if (!added?.selling) return;
+    const selling = {
+      ...added.selling,
+      prescribedBrand: added.compare || null,
+    };
     setCart((currentCart) => {
-      const existingItem = currentCart.find((item) => item.id === medicine.id);
+      const existingItem = currentCart.find((item) => item.id === selling.id);
 
       if (existingItem) {
         return currentCart.map((item) =>
-          item.id === medicine.id
-            ? { ...item, quantity: (item.quantity || 1) + 1 }
+          item.id === selling.id
+            ? {
+                ...item,
+                quantity: (item.quantity || 1) + 1,
+                prescribedBrand: selling.prescribedBrand || item.prescribedBrand,
+              }
             : item
         );
       }
 
-      return [...currentCart, { ...medicine, quantity: 1 }];
+      return [...currentCart, { ...selling, quantity: 1 }];
     });
     setShowCart(true);
+    setShowCheckout(false);
     setConfirmedOrder(null);
   };
 
@@ -3443,33 +3423,35 @@ function Medicines({ initialSearch = "" }) {
               }`}
               aria-label={
                 item === "All"
-                  ? `All brands, ${mediHomeCountForTab(item)} MediHome medicines`
-                  : `${item}, ${mediHomeCountForTab(item)} MediHome medicines`
+                  ? `All, ${catalogueCountForTab(item)} medicines`
+                  : `${item}, ${catalogueCountForTab(item)} medicines`
               }
               onClick={() => {
                 setCategory(item);
+                setSearch("");
                 setShowCart(false);
                 setShowCheckout(false);
                 setConfirmedOrder(null);
               }}
             >
               <span className="medicine-category-name">
-                {item === "All" ? "All brands" : item}
+                {item === "All" ? "All" : item}
               </span>
               <span className="medicine-category-count">
-                {mediHomeCountForTab(item)}
+                {catalogueCountForTab(item)}
               </span>
             </button>
           ))}
         </div>
         <p className="medicines-combo-hint">
-          Search a brand or salt to compare the prescribed pack with MediHome.
-          Brands stay hidden until you search.
+          All lists every pack. A category such as Diabetes lists every
+          combination in that group. Add to cart compares the selling price with
+          the prescribed brand of the same salt and strength.
         </p>
         <div className="medicine-search-box">
           <input
             type="text"
-            placeholder="Search a brand (Dolo, Crocin, Pan-D, Augmentin, Thyronorm…)"
+            placeholder="Search by brand, name or salt (e.g. Dolo, Crocin, Metformin)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => {
@@ -3519,10 +3501,26 @@ function Medicines({ initialSearch = "" }) {
               <div className="cart-item" key={item.id}>
                 <div className="cart-item-info">
                   <span>{item.name}</span>
-                  <span>
-                    ₹{item.price} × {item.quantity || 1} = ₹
-                    {item.price * (item.quantity || 1)}
-                  </span>
+                  {item.prescribedBrand ? (
+                    <span className="cart-item-compare">
+                      Prescribed {item.prescribedBrand.brand} MRP ₹
+                      {item.prescribedBrand.mrp} · Selling ₹{item.price}
+                      {item.prescribedBrand.save > 0
+                        ? ` · Save ₹${item.prescribedBrand.save} (${item.prescribedBrand.percent}%)`
+                        : ""}
+                    </span>
+                  ) : (
+                    <span>
+                      ₹{item.price} × {item.quantity || 1} = ₹
+                      {item.price * (item.quantity || 1)}
+                    </span>
+                  )}
+                  {item.prescribedBrand ? (
+                    <span>
+                      ₹{item.price} × {item.quantity || 1} = ₹
+                      {item.price * (item.quantity || 1)}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="cart-item-actions">
                   <button
@@ -3799,26 +3797,32 @@ function Medicines({ initialSearch = "" }) {
             />
           )}
           <div className="medicine-grid">
-            {!hasSearch ? (
-              <p className="medicines-empty-hint">
-                Type a brand or medicine name and tap Search Medicine to see
-                matching packs.
-              </p>
-            ) : filteredMedicines.length === 0 ? (
+            {filteredMedicines.length === 0 ? (
               showBrandStrip && searchResult.brandMatch ? null : (
                 <p className="medicines-empty-hint">
-                  {searchResult.emptyHint || "No medicines match your search."}
+                  {hasSearch
+                    ? searchResult.emptyHint || "No medicines match your search."
+                    : "No medicines in this category."}
                 </p>
               )
             ) : (
-              filteredMedicines.map((medicine) => (
-                <MedicineCard
-                  key={medicine.id}
-                  medicine={medicine}
-                  sameBrands={indianBrandsByComposition.get(compositionKey(medicine)) || []}
-                  onAdd={addToCart}
-                />
-              ))
+              <>
+                <div className="medicine-row medicine-row-head">
+                  <span className="medicine-row-add-label">Cart</span>
+                  <span>Brand</span>
+                  <span>Composition</span>
+                  <span>Strength</span>
+                  <span>MRP</span>
+                  <span>Selling Price</span>
+                </div>
+                {filteredMedicines.map((medicine) => (
+                  <MedicineCard
+                    key={medicine.id}
+                    medicine={medicine}
+                    onAdd={addToCart}
+                  />
+                ))}
+              </>
             )}
           </div>
         </>

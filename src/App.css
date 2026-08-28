@@ -3362,6 +3362,121 @@ footer .logo {
   text-align: center;
 }
 
+#medicines .medicine-row,
+.medicines-page .medicine-row {
+  display: grid;
+  grid-template-columns: 92px minmax(90px, 1.1fr) minmax(140px, 1.8fr) 88px 72px 88px;
+  gap: 8px 10px;
+  align-items: center;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #e4ecef;
+  border-radius: 8px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+#medicines .medicine-row-head {
+  border: none;
+  background: transparent;
+  padding: 4px 10px 0;
+  color: #5d7180;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+#medicines .medicine-row-brand,
+#medicines .medicine-row-comp,
+#medicines .medicine-row-str,
+#medicines .medicine-row-mrp,
+#medicines .medicine-row-price {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: #143246;
+}
+
+#medicines .medicine-row-brand {
+  font-weight: 800;
+}
+
+#medicines .medicine-row-comp {
+  color: #34546b;
+}
+
+#medicines .medicine-row-mrp {
+  color: #8a9aa8;
+  text-decoration: line-through;
+}
+
+#medicines .medicine-row-price {
+  font-weight: 800;
+  color: #1a6b7a;
+}
+
+#medicines .medicine-row-add,
+#medicines .medicine-row-add-label {
+  justify-self: start;
+}
+
+#medicines .medicine-row-add {
+  appearance: none;
+  margin: 0;
+  padding: 5px 8px;
+  border: 1px solid #cfdce4;
+  border-radius: 6px;
+  background: #f7fbfd;
+  color: #3d5566;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#medicines .medicine-row-add:hover {
+  border-color: #1a6b7a;
+  color: #1a6b7a;
+  background: #fff;
+}
+
+.cart-item-compare {
+  color: #5d7180;
+  font-size: 12px;
+}
+
+@media (max-width: 800px) {
+  #medicines .medicine-row,
+  .medicines-page .medicine-row {
+    grid-template-columns: 86px minmax(0, 1fr) minmax(0, 1.4fr);
+    grid-template-areas:
+      "add brand brand"
+      "add comp str"
+      "add mrp price";
+  }
+
+  #medicines .medicine-row-head {
+    display: none;
+  }
+
+  #medicines .medicine-row-add,
+  #medicines .medicine-row-add-label {
+    grid-area: add;
+    align-self: start;
+  }
+
+  #medicines .medicine-row-brand { grid-area: brand; }
+  #medicines .medicine-row-comp { grid-area: comp; }
+  #medicines .medicine-row-str { grid-area: str; }
+  #medicines .medicine-row-mrp { grid-area: mrp; }
+  #medicines .medicine-row-price { grid-area: price; }
+}
+
 @media (max-width: 800px) {
   .medicines-page .medicine-category-boxes {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
