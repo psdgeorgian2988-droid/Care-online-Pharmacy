@@ -336,6 +336,7 @@ function Ambulance() {
                 method={payMethod}
                 onMethodChange={setPayMethod}
                 onQuoteChange={setPayQuote}
+                guestDetails={form}
               />
             </div>
           )}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { applyCoupon, normalizeCouponCode } from "./offers";
 import { quoteCheckout } from "./paymentSplit";
+import GuestCheckoutRegister from "./GuestCheckoutRegister";
 
 function formatRupee(amount) {
   return `₹${Number(amount || 0).toLocaleString("en-IN", {
@@ -16,6 +17,7 @@ export default function PaymentBlock({
   method,
   onMethodChange,
   onQuoteChange,
+  guestDetails,
 }) {
   const [couponDraft, setCouponDraft] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -74,6 +76,7 @@ export default function PaymentBlock({
     <>
       <style>{styles}</style>
       <div className="pay-block">
+        <GuestCheckoutRegister details={guestDetails} />
         <p className="pay-kicker">Payment</p>
         <div className="pay-methods" role="radiogroup" aria-label="Payment method">
           <label className={method === "cod" ? "is-on" : ""}>

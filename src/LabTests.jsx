@@ -863,6 +863,7 @@ function LabTests() {
               method={payMethod}
               onMethodChange={setPayMethod}
               onQuoteChange={setPayQuote}
+              guestDetails={form}
             />
 
             <div className="lab-book-foot">

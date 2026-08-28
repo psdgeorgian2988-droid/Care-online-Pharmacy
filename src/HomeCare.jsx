@@ -537,6 +537,7 @@ function HomeCare() {
               method={payMethod}
               onMethodChange={setPayMethod}
               onQuoteChange={setPayQuote}
+              guestDetails={form}
             />
           </div>
 

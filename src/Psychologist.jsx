@@ -410,6 +410,7 @@ function Psychologist() {
               method={payMethod}
               onMethodChange={setPayMethod}
               onQuoteChange={setPayQuote}
+              guestDetails={form}
             />
           </div>
 

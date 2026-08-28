@@ -3641,6 +3641,14 @@ function Medicines({ initialSearch = "" }) {
             method={payMethod}
             onMethodChange={setPayMethod}
             onQuoteChange={setPayQuote}
+            guestDetails={{
+              name: fullName,
+              mobile: mobileNumber,
+              gender: whoFor.gender,
+              dob: whoFor.dob,
+              age: whoFor.age,
+              ...delivery,
+            }}
           />
           <div className="cart-actions">
             <button
