@@ -12,24 +12,33 @@ export function monthsInRange(minIso, maxIso, year) {
   const y = Number(year);
   const min = splitIsoDate(minIso);
   const max = splitIsoDate(maxIso);
+  const minY = Number(min.year) || 0;
+  const maxY = Number(max.year) || 0;
+  const minM = Number(min.month) || 1;
+  const maxM = Number(max.month) || 12;
+
   return MONTH_OPTIONS.filter((option) => {
     const month = Number(option.value);
-    if (y && min.year && y === Number(min.year) && month < Number(min.month)) {
-      return false;
+    if (y) {
+      if (minY && y === minY && month < minM) return false;
+      if (maxY && y === maxY && month > maxM) return false;
+      return true;
     }
-    if (y && max.year && y === Number(max.year) && month > Number(max.month)) {
-      return false;
-    }
-    return true;
+    if (!minY && !maxY) return true;
+    if (minY === maxY) return month >= minM && month <= maxM;
+    if (maxY - minY >= 2) return true;
+    return month >= minM || month <= maxM;
   });
 }
 
 export function daysInRange(minIso, maxIso, year, month) {
-  const count = daysInMonth(month, year);
-  const y = Number(year);
-  const m = Number(month);
   const min = splitIsoDate(minIso);
   const max = splitIsoDate(maxIso);
+  const y =
+    Number(year) ||
+    (min.year && min.year === max.year ? Number(min.year) : 0);
+  const m = Number(month);
+  const count = daysInMonth(month, y || year);
   const days = [];
   for (let day = 1; day <= count; day += 1) {
     if (
