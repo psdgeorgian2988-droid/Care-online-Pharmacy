@@ -1,38 +1,23 @@
 import { useMemo, useState } from "react";
 import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateToday, isoDateYearsAgo } from "./personFields";
+import {
+  ADD_UNLISTED_TEST,
+  LABORATORY_TESTS,
+  RADIOLOGY_TESTS,
+  correctTestSpelling,
+  loadCustomReportTests,
+  saveCustomReportTest,
+} from "./healthTestNames";
 
 const STORAGE_KEY = "mediHomeReports";
 const MAX_FILE_BYTES = 1.5 * 1024 * 1024;
 
-/** Same bookable names as LabTests.jsx (LABS + RADIOLOGY_PARTNERS), unique. */
-const LABORATORY_TESTS = [
-  "Complete Blood Count (CBC)",
-  "HbA1c - Diabetes Test",
-  "Lipid Profile",
-  "Liver Function Test (LFT)",
-  "Kidney Function Test (KFT)",
-  "Thyroid Profile",
-  "Vitamin D Test",
-  "Fasting Blood Sugar",
-  "Insulin (Fasting)",
-  "Complete Urine Examination",
-  "Urine Culture",
-  "Urine Pregnancy Test",
-  "Stool Routine Examination",
-  "Stool Occult Blood",
-];
-
-const RADIOLOGY_TESTS = [
-  "MRI Brain",
-  "CT Scan Chest",
-  "Ultrasound Abdomen",
-  "X-Ray Chest",
-  "Doppler Lower Limb",
-  "Mammography",
-];
-
-function TestNameOptions({ placeholder = "Select test name" }) {
+function TestNameOptions({
+  placeholder = "Select test name",
+  customTests = [],
+  allowAdd = false,
+}) {
   return (
     <>
       <option value="">{placeholder}</option>
@@ -50,6 +35,18 @@ function TestNameOptions({ placeholder = "Select test name" }) {
           </option>
         ))}
       </optgroup>
+      {customTests.length ? (
+        <optgroup label="Added Tests">
+          {customTests.map((name) => (
+            <option key={`custom-${name}`} value={name}>
+              {name}
+            </option>
+          ))}
+        </optgroup>
+      ) : null}
+      {allowAdd ? (
+        <option value={ADD_UNLISTED_TEST}>Add Test If Not Listed</option>
+      ) : null}
     </>
   );
 }
@@ -67,6 +64,7 @@ function Reports() {
   const today = isoDateToday();
   const minReport = isoDateYearsAgo(20);
   const [reports, setReports] = useState(() => loadReports());
+  const [customTests, setCustomTests] = useState(() => loadCustomReportTests());
   const [form, setForm] = useState({
     testName: "",
     name: "",
@@ -79,6 +77,8 @@ function Reports() {
   const [filterTest, setFilterTest] = useState("");
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("");
+  const [addingTest, setAddingTest] = useState(false);
+  const [draftTest, setDraftTest] = useState("");
 
   const sorted = useMemo(() => {
     const list = [...reports].sort((a, b) =>
@@ -97,9 +97,50 @@ function Reports() {
 
   const handleChange = (event) => {
     const { name, value } = event.target;
+    if (name === "testName" && value === ADD_UNLISTED_TEST) {
+      setAddingTest(true);
+      setDraftTest("");
+      setForm((prev) => ({ ...prev, testName: "" }));
+      setErrors((prev) => ({ ...prev, testName: "" }));
+      setStatus("");
+      return;
+    }
+    if (name === "testName") setAddingTest(false);
     setForm((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: "" }));
     setStatus("");
+  };
+
+  const addUnlistedTest = () => {
+    const result = correctTestSpelling(draftTest, customTests);
+    if (!result.ok) {
+      setErrors((prev) => ({ ...prev, testName: result.error }));
+      return;
+    }
+    const listed =
+      LABORATORY_TESTS.includes(result.name) ||
+      RADIOLOGY_TESTS.includes(result.name);
+    const nextCustom = listed
+      ? customTests
+      : saveCustomReportTest(result.name, customTests);
+    setCustomTests(nextCustom);
+    setForm((prev) => ({ ...prev, testName: result.name }));
+    setAddingTest(false);
+    setDraftTest("");
+    setErrors((prev) => ({ ...prev, testName: "" }));
+    if (listed) {
+      setStatus(
+        result.corrected
+          ? `Selected ${result.name} after spelling check.`
+          : `${result.name} is already on this list.`
+      );
+      return;
+    }
+    setStatus(
+      result.corrected
+        ? `Added as ${result.name} after spelling check.`
+        : `${result.name} added to this page.`
+    );
   };
 
   const handleFile = (event) => {
@@ -167,7 +208,10 @@ function Reports() {
 
   const validate = () => {
     const next = {};
-    if (!form.testName.trim()) next.testName = "Please select a test name.";
+    if (addingTest) next.testName = "Add the new test name, or pick one from the list.";
+    else if (!form.testName.trim() || form.testName === ADD_UNLISTED_TEST) {
+      next.testName = "Please select a test name.";
+    }
     if (!form.date) next.date = "Please select a date.";
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -222,18 +266,58 @@ function Reports() {
         </section>
 
         <form className="service-form" onSubmit={handleSubmit}>
-          <div className="field">
+          <div className="field full">
             <label htmlFor="rpt-test-name">
               Test name <span>*</span>
             </label>
             <select
               id="rpt-test-name"
               name="testName"
-              value={form.testName}
+              value={addingTest ? ADD_UNLISTED_TEST : form.testName}
               onChange={handleChange}
             >
-              <TestNameOptions />
+              <TestNameOptions customTests={customTests} allowAdd />
             </select>
+            {addingTest ? (
+              <>
+                <div className="add-test-row">
+                  <input
+                    id="rpt-new-test"
+                    value={draftTest}
+                    autoComplete="off"
+                    placeholder="Type the test name"
+                    aria-label="New test name"
+                    onChange={(event) => {
+                      setDraftTest(event.target.value);
+                      setErrors((prev) => ({ ...prev, testName: "" }));
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addUnlistedTest();
+                      }
+                    }}
+                  />
+                  <button type="button" onClick={addUnlistedTest}>
+                    Add Test
+                  </button>
+                  <button
+                    type="button"
+                    className="add-test-cancel"
+                    onClick={() => {
+                      setAddingTest(false);
+                      setDraftTest("");
+                      setErrors((prev) => ({ ...prev, testName: "" }));
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+                <p className="add-test-hint">
+                  Spelling is checked, then the test is added to this list.
+                </p>
+              </>
+            ) : null}
             {errors.testName && <small>{errors.testName}</small>}
           </div>
 
@@ -310,7 +394,10 @@ function Reports() {
                 value={filterTest}
                 onChange={(event) => setFilterTest(event.target.value)}
               >
-                <TestNameOptions placeholder="All tests" />
+                <TestNameOptions
+                  placeholder="All tests"
+                  customTests={customTests}
+                />
               </select>
             </div>
           </div>
@@ -366,6 +453,11 @@ const styles = `
 .service-form textarea{height:auto;min-height:56px;resize:vertical}
 .service-form input:focus,.service-form select:focus,.service-form textarea:focus{border-color:#1a6b7a}
 .service-form small{margin-top:4px;color:#d84b4b;font-size:12px}
+.add-test-row{display:flex;gap:8px;margin-top:8px}
+.add-test-row input{flex:1;min-width:0}
+.add-test-row button{border:1px solid #1a6b7a;border-radius:8px;background:#1a6b7a;color:#fff;font:inherit;font-size:12px;font-weight:800;padding:8px 12px;cursor:pointer;white-space:nowrap;height:38px}
+.add-test-row button.add-test-cancel{background:#fff;color:#34546b;border-color:#d7e2e9}
+.add-test-hint{margin:6px 0 0;color:#5d7180;font-size:12px}
 .file-meta{margin:6px 0 0;color:#5d7180;font-size:12px}
 .form-status{grid-column:1/-1;margin:0;padding:8px 10px;border-radius:8px;background:#e5f8ee;color:#1c9b61;font-size:13px;font-weight:600}
 .service-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:40px;cursor:pointer;font-family:inherit}
