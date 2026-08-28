@@ -143,7 +143,12 @@ export default function AuthPage({ mode = "login" }) {
       nextErrors.mobile = "Enter a valid 10-digit mobile number.";
     }
     Object.assign(nextErrors, validatePerson(register));
-    Object.assign(nextErrors, validateAddress(register));
+    Object.assign(
+      nextErrors,
+      validateAddress(
+        holderEditing ? { ...register, addressConfirmed: "yes" } : register
+      )
+    );
     Object.assign(nextErrors, validateFamilyMembers(register));
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -160,7 +165,7 @@ export default function AuthPage({ mode = "login" }) {
         mobile: creatorMobile,
         creatorMobile,
       }),
-      ...withFormattedAddress(register),
+      ...withFormattedAddress({ ...register, addressConfirmed: "yes" }),
     };
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     writeLoginSession(profile, holderActor(profile));

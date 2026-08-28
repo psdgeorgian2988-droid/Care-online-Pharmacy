@@ -58,7 +58,10 @@ function Profile() {
       newErrors.mobile = "Enter a valid 10-digit mobile number.";
     }
     Object.assign(newErrors, validatePerson(form));
-    Object.assign(newErrors, validateAddress(form));
+    Object.assign(
+      newErrors,
+      validateAddress(editDetails ? form : { ...form, addressConfirmed: "yes" })
+    );
     Object.assign(newErrors, validateFamilyMembers(form));
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -80,7 +83,7 @@ function Profile() {
         mobile: creatorMobile,
         creatorMobile,
       }),
-      ...withFormattedAddress(form),
+      ...withFormattedAddress({ ...form, addressConfirmed: "yes" }),
     };
 
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
