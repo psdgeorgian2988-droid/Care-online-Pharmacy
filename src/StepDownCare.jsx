@@ -674,6 +674,7 @@ function StepDownCare() {
                     required
                     error={errors.date || ""}
                     label="Start Date"
+                    order="ymd"
                     onChange={handleChange}
                   />
                   <small className="lab-hint">Today or up to 7 days ahead.</small>

@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  daysInMonth,
   isoDateToday,
   isoDateYearsAgo,
-  joinIsoDate,
   splitIsoDate,
 } from "./personFields";
-import { clampIsoDate, daysInRange, monthsInRange } from "./dateMonthYear";
+import {
+  constrainDateParts,
+  daysInRange,
+  monthsInRange,
+} from "./dateMonthYear";
 
 function yearRange(minIso, maxIso) {
   const maxYear = Number(splitIsoDate(maxIso).year || new Date().getFullYear());
@@ -26,6 +28,7 @@ export default function DateMonthYearFields({
   error = "",
   label = "Date Of Birth",
   required = false,
+  order = "dmy",
 }) {
   const [parts, setParts] = useState(() => splitIsoDate(value));
   const years = useMemo(() => yearRange(min, max), [min, max]);
@@ -49,74 +52,91 @@ export default function DateMonthYearFields({
   }, [value]);
 
   const emit = (patch) => {
-    const next = { ...parts, ...patch };
-    const maxDay = daysInMonth(next.month, next.year);
-    if (next.day && Number(next.day) > maxDay) next.day = String(maxDay);
-    const joined = joinIsoDate(next.day, next.month, next.year);
-    const clamped = clampIsoDate(joined, min, max);
-    const synced = clamped ? splitIsoDate(clamped) : next;
-    setParts(synced);
+    const synced = constrainDateParts({ ...parts, ...patch }, min, max);
+    setParts({ day: synced.day, month: synced.month, year: synced.year });
     onChange?.({
       target: {
         name,
-        value: clamped,
+        value: synced.iso,
       },
     });
   };
+
+  const daySelect = (
+    <select
+      id={`${idPrefix}-day`}
+      aria-label="Date"
+      value={parts.day}
+      required={required}
+      onChange={(event) => emit({ day: event.target.value })}
+    >
+      <option value="">Date</option>
+      {days.map((day) => (
+        <option key={day} value={String(day)}>
+          {day}
+        </option>
+      ))}
+    </select>
+  );
+
+  const monthSelect = (
+    <select
+      id={`${idPrefix}-month`}
+      aria-label="Month"
+      value={parts.month}
+      required={required}
+      onChange={(event) => emit({ month: event.target.value })}
+    >
+      <option value="">Month</option>
+      {months.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+
+  const yearSelect = (
+    <select
+      id={`${idPrefix}-year`}
+      aria-label="Year"
+      value={parts.year}
+      required={required}
+      onChange={(event) => emit({ year: event.target.value })}
+    >
+      <option value="">Year</option>
+      {years.map((year) => (
+        <option key={year} value={String(year)}>
+          {year}
+        </option>
+      ))}
+    </select>
+  );
 
   return (
     <>
       <style>{styles}</style>
       <div className="dmy-fields">
         {label ? (
-          <label className="dmy-label" htmlFor={`${idPrefix}-day`}>
+          <label className="dmy-label" htmlFor={`${idPrefix}-year`}>
             {label}
             {required ? <span> *</span> : null}
           </label>
         ) : null}
         <div className="dmy-row">
-          <select
-            id={`${idPrefix}-day`}
-            aria-label="Date"
-            value={parts.day}
-            required={required}
-            onChange={(event) => emit({ day: event.target.value })}
-          >
-            <option value="">Date</option>
-            {days.map((day) => (
-              <option key={day} value={String(day)}>
-                {day}
-              </option>
-            ))}
-          </select>
-          <select
-            id={`${idPrefix}-month`}
-            aria-label="Month"
-            value={parts.month}
-            required={required}
-            onChange={(event) => emit({ month: event.target.value })}
-          >
-            <option value="">Month</option>
-            {months.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <select
-            id={`${idPrefix}-year`}
-            aria-label="Year"
-            value={parts.year}
-            required={required}
-            onChange={(event) => emit({ year: event.target.value })}
-          >
-            <option value="">Year</option>
-            {years.map((year) => (
-              <option key={year} value={String(year)}>
-                {year}
-              </option>
-            ))}
-          </select>
+          {order === "ymd" ? (
+            <>
+              {yearSelect}
+              {monthSelect}
+              {daySelect}
+            </>
+          ) : (
+            <>
+              {daySelect}
+              {monthSelect}
+              {yearSelect}
+            </>
+          )}
         </div>
         {error ? <small className="dmy-error">{error}</small> : null}
       </div>

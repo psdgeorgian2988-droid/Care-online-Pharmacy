@@ -582,6 +582,7 @@ function HomeCare() {
                   ? "Visit Date"
                   : "Start Date"
               }
+              order="ymd"
               onChange={handleChange}
             />
             <small className="booking-hint">Today or up to 7 days ahead.</small>

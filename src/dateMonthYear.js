@@ -1,4 +1,4 @@
-import { daysInMonth, MONTH_OPTIONS, splitIsoDate } from "./personFields.js";
+import { daysInMonth, joinIsoDate, MONTH_OPTIONS, splitIsoDate } from "./personFields.js";
 
 export function clampIsoDate(iso, minIso = "", maxIso = "") {
   const value = String(iso || "").trim();
@@ -32,18 +32,18 @@ export function monthsInRange(minIso, maxIso, year) {
 }
 
 export function daysInRange(minIso, maxIso, year, month) {
+  const m = Number(month);
+  if (!m) return [];
   const min = splitIsoDate(minIso);
   const max = splitIsoDate(maxIso);
   const y =
     Number(year) ||
     (min.year && min.year === max.year ? Number(min.year) : 0);
-  const m = Number(month);
   const count = daysInMonth(month, y || year);
   const days = [];
   for (let day = 1; day <= count; day += 1) {
     if (
       y &&
-      m &&
       min.year &&
       y === Number(min.year) &&
       m === Number(min.month) &&
@@ -53,7 +53,6 @@ export function daysInRange(minIso, maxIso, year, month) {
     }
     if (
       y &&
-      m &&
       max.year &&
       y === Number(max.year) &&
       m === Number(max.month) &&
@@ -64,4 +63,30 @@ export function daysInRange(minIso, maxIso, year, month) {
     days.push(day);
   }
   return days;
+}
+
+export function constrainDateParts(parts = {}, minIso = "", maxIso = "") {
+  let year = String(parts.year || "");
+  let month = String(parts.month || "");
+  let day = String(parts.day || "");
+
+  const months = monthsInRange(minIso, maxIso, year);
+  if (month && !months.some((row) => String(row.value) === month)) {
+    month = "";
+    day = "";
+  }
+
+  const days = daysInRange(minIso, maxIso, year, month);
+  if (day && !days.includes(Number(day))) {
+    day = "";
+  }
+
+  const iso = joinIsoDate(day, month, year);
+  if (iso && minIso && iso < minIso) {
+    return { day: "", month, year, iso: "" };
+  }
+  if (iso && maxIso && iso > maxIso) {
+    return { day: "", month, year, iso: "" };
+  }
+  return { day, month, year, iso };
 }
