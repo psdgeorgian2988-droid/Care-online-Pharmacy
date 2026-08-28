@@ -23,6 +23,8 @@ import {
   validateBookingDetails,
   withBookingIdentity,
 } from "./bookingFor";
+import DateMonthYearFields from "./DateMonthYearFields";
+import { isoDateToday, isoDateYearsAhead } from "./personFields";
 
 const PREP_LABEL = {
   fasting: "Fasting required",
@@ -220,7 +222,8 @@ function LabTests() {
   const labTotal = selectedTests.reduce((sum, test) => sum + test.price, 0);
   const radTotal = selectedImagingTests.reduce((sum, test) => sum + test.price, 0);
   const total = activeTests.reduce((sum, test) => sum + test.price, 0);
-  const today = new Date().toISOString().split("T")[0];
+  const today = isoDateToday();
+  const maxVisit = isoDateYearsAhead(1);
   const prepSummaryTests = serviceType === "lab" ? selectedTests : selectedImagingTests;
   const fastingSelected = prepSummaryTests.filter((test) => test.prepType === "fasting");
   const imagingFastingSelected = prepSummaryTests.filter(
@@ -733,19 +736,18 @@ function LabTests() {
               onChange={handleChange}
               pinHint="Select the Village / Sector / Mohalla attached to this PIN."
             >
-            <div className="lab-field">
-              <label htmlFor="date">
-                Date <em>*</em>
-              </label>
-              <input
-                id="date"
+            <div className="lab-field lab-span">
+              <DateMonthYearFields
+                idPrefix="lab-date"
                 name="date"
-                type="date"
-                min={today}
                 value={form.date}
+                min={today}
+                max={maxVisit}
+                required
+                error={errors.date || ""}
+                label="Date"
                 onChange={handleChange}
               />
-              {errors.date ? <small className="lab-error">{errors.date}</small> : null}
             </div>
 
             <div className="lab-field">
@@ -918,7 +920,7 @@ const styles = `
 .lab-book{position:relative;top:auto}
 .lab-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px 16px;align-items:start}
 .lab-field{display:flex;flex-direction:column;min-width:0}
-.lab-field.lab-span,.lab-field.lab-field-full,.lab-field:has(.book-for),.lab-field:has(.addr-fields){grid-column:1/-1}
+.lab-field.lab-span,.lab-field.lab-field-full,.lab-field:has(.book-for),.lab-field:has(.addr-fields),.lab-field:has(.dmy-fields){grid-column:1/-1}
 .lab-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .centre-note{margin:0;padding:10px 12px;border-radius:8px;background:#f7fbfe;border:1px solid #e4ecef;font-size:13px;line-height:1.45;color:#5d7180}
 .lab-book-foot{margin-top:14px;padding-top:14px;border-top:1px solid #eef3f6;display:flex;flex-direction:column;gap:10px}

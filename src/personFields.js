@@ -113,6 +113,10 @@ export function isoDateYearsAgo(years, today = new Date()) {
   );
 }
 
+export function isoDateYearsAhead(years, today = new Date()) {
+  return isoDateYearsAgo(-Number(years || 0), today);
+}
+
 export function normalizeDob(value) {
   return parseIsoDate(value) ? String(value).trim() : "";
 }
