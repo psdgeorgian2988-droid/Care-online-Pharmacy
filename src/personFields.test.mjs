@@ -6,6 +6,7 @@ import {
   joinIsoDate,
   RELATION_OPTIONS,
   normalizeRelation,
+  relationLabel,
   pickPerson,
   splitIsoDate,
   validateFamilyMembers,
@@ -124,6 +125,9 @@ test("family relation options are spouse, children, parents and grandparents", (
   assert.equal(normalizeRelation("family"), "");
   assert.equal(normalizeRelation("brother"), "");
   assert.equal(normalizeRelation("Grand Mother"), "grandmother");
+  assert.equal(normalizeRelation("Grand Father"), "grandfather");
+  assert.equal(relationLabel("grandmother"), "Grand Mother");
+  assert.equal(relationLabel("grandfather"), "Grand Father");
   assert.equal(normalizeRelation("spouse"), "spouse");
   assert.equal(
     validateFamilyMembers({

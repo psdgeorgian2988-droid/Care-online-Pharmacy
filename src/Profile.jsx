@@ -4,20 +4,23 @@ import { POINT_VALUES, awardFamilyMemberPoints, useWallet } from "./pointsStore"
 import AddressFields from "./AddressFields";
 import PersonFields from "./PersonFields";
 import FamilyMembersFields from "./FamilyMembersFields";
+import FamilyTree from "./FamilyTree";
 import {
   readUserProfile,
   validateAddress,
   withFormattedAddress,
 } from "./addressFields";
 import {
+  genderLabel,
   pickFamilyMembers,
   pickPerson,
+  relationLabel,
   validateFamilyMembers,
   validatePerson,
 } from "./personFields";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
-
-const PROFILE_KEY = "mediHomeUser";
+import { PROFILE_KEY, useLoginSession, writeLoginSession } from "./authSession";
+import { MEMBER_ROLE, holderActor } from "./familyAccount";
 
 function readProfile() {
   return readUserProfile();
@@ -25,9 +28,12 @@ function readProfile() {
 
 function Profile() {
   const wallet = useWallet();
+  const session = useLoginSession();
+  const holderView = session?.accountRole !== MEMBER_ROLE;
   const [form, setForm] = useState(readProfile);
   const [errors, setErrors] = useState({});
   const [saved, setSaved] = useState(false);
+  const [editDetails, setEditDetails] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -69,14 +75,57 @@ function Profile() {
     };
 
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    writeLoginSession(profile, holderActor(profile));
     const points = awardFamilyMemberPoints(profile.familyMembers);
     setForm(profile);
+    setEditDetails(false);
     setSaved(
       points.count
         ? `Profile saved. +${points.awarded} credit points for ${points.count} family member${points.count === 1 ? "" : "s"}.`
         : true
     );
   };
+
+  if (!holderView && session) {
+    return (
+      <>
+        <style>{styles}</style>
+        <div className="profile-page">
+          <section className="profile-hero">
+            <div>
+              <span className="profile-label">MEDIHOME ACCOUNT</span>
+              <h1>{session.name || "Your Details"}</h1>
+              <p>Only your details from this family account are shown.</p>
+            </div>
+          </section>
+          <section className="profile-card" aria-label="Your details">
+            <dl className="profile-member-details">
+              <div>
+                <dt>Name</dt>
+                <dd>{session.name || "—"}</dd>
+              </div>
+              <div>
+                <dt>Relation</dt>
+                <dd>{relationLabel(session.accountRelation) || "Family Member"}</dd>
+              </div>
+              <div>
+                <dt>Male / Female</dt>
+                <dd>{genderLabel(session.gender) || "—"}</dd>
+              </div>
+              <div>
+                <dt>Age</dt>
+                <dd>{session.age ? `${session.age} years` : "—"}</dd>
+              </div>
+              <div>
+                <dt>Mobile</dt>
+                <dd>{session.mobile || "—"}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -85,9 +134,13 @@ function Profile() {
         <section className="profile-hero">
           <div>
             <span className="profile-label">MEDIHOME ACCOUNT</span>
-            <h1>Your Profile</h1>
-            <p>Save your details once for medicine and service bookings.</p>
+            <h1>Your Family</h1>
+            <p>The family tree shows the account holder and added members.</p>
           </div>
+        </section>
+
+        <section className="profile-card" aria-label="Family tree">
+          <FamilyTree profile={form} />
         </section>
 
         <form className="profile-form" onSubmit={handleSave} autoComplete="off">
@@ -97,57 +150,61 @@ function Profile() {
               members={form.familyMembers}
               errors={errors}
               accountMobile={form.mobile}
+              savedAs="hidden"
               onChange={handleChange}
             />
           </section>
 
-          <section className="profile-card">
-          <div className="profile-field">
-            <label htmlFor="name">
-              Full Name <span>*</span>
-            </label>
-            <input
-              id="name"
-              name="name"
-              placeholder="Enter your full name"
-              value={form.name}
-              onChange={handleChange}
-              {...noContactNameProps}
-            />
-            {errors.name && <small className="profile-error">{errors.name}</small>}
-          </div>
+          {editDetails ? (
+            <section className="profile-card">
+              <div className="profile-field">
+                <label htmlFor="profile-account-name">
+                  Full Name <span>*</span>
+                </label>
+                <input
+                  id="profile-account-name"
+                  name="name"
+                  placeholder="Enter your full name"
+                  value={form.name}
+                  onChange={handleChange}
+                  {...noContactNameProps}
+                />
+                {errors.name && <small className="profile-error">{errors.name}</small>}
+              </div>
 
-          <div className="profile-field">
-            <label htmlFor="mobile">
-              Mobile Number <span>*</span>
-            </label>
-            <input
-              id="mobile"
-              name="mobile"
-              maxLength="10"
-              placeholder="10-digit mobile number"
-              value={form.mobile}
-              onChange={handleChange}
-              {...noContactMobileProps}
-            />
-            {errors.mobile && (
-              <small className="profile-error">{errors.mobile}</small>
-            )}
-          </div>
+              <div className="profile-field">
+                <label htmlFor="profile-account-mobile">
+                  Mobile Number <span>*</span>
+                </label>
+                <input
+                  id="profile-account-mobile"
+                  name="mobile"
+                  maxLength="10"
+                  placeholder="10-digit mobile number"
+                  value={form.mobile}
+                  onChange={handleChange}
+                  {...noContactMobileProps}
+                />
+                {errors.mobile && (
+                  <small className="profile-error">{errors.mobile}</small>
+                )}
+              </div>
 
-          <PersonFields
-            idPrefix="profile"
-            values={form}
-            errors={errors}
-            onChange={handleChange}
-          />
+              <PersonFields
+                idPrefix="profile"
+                values={form}
+                errors={errors}
+                onChange={handleChange}
+              />
 
-          <AddressFields
-            idPrefix="profile"
-            values={form}
-            errors={errors}
-            onChange={handleChange}
-          />
+              <AddressFields
+                idPrefix="profile"
+                values={form}
+                errors={errors}
+                onChange={handleChange}
+              />
+            </section>
+          ) : null}
 
           {saved ? (
             <p className="profile-success">
@@ -157,10 +214,18 @@ function Profile() {
             </p>
           ) : null}
 
-          <button type="submit" className="profile-save-btn">
-            Save Profile
-          </button>
-          </section>
+          <div className="profile-actions">
+            <button
+              type="button"
+              className="profile-edit-btn"
+              onClick={() => setEditDetails((on) => !on)}
+            >
+              {editDetails ? "Hide Account Details" : "Edit Account Details"}
+            </button>
+            <button type="submit" className="profile-save-btn">
+              Save Profile
+            </button>
+          </div>
         </form>
 
         <section className="profile-points-card">
@@ -204,13 +269,12 @@ const styles = `
   .profile-label{display:inline-block;margin-bottom:4px;font-size:10px;font-weight:800;letter-spacing:1.3px;color:#1686b8}
   .profile-hero h1{margin:0 0 4px;font-size:25px;color:#123b59}
   .profile-hero p{margin:0;color:#607589;font-size:13px;line-height:1.4}
-  .profile-hero-icon{width:54px;height:54px;border-radius:50%;background:#fff;display:flex;justify-content:center;align-items:center;font-size:27px;box-shadow:0 3px 10px rgba(0,0,0,.07);flex-shrink:0}
   .profile-points-chip{flex-shrink:0;min-width:118px;padding:10px 12px;border-radius:12px;background:#1a6b7a;color:#fff;text-decoration:none;text-align:center}
   .profile-points-chip strong{display:block;font-size:22px;line-height:1.1}
   .profile-points-chip span{display:block;margin-top:4px;font-size:11px;font-weight:800}
   .profile-points-card,.profile-refer-wrap,.profile-form{max-width:760px;margin:0 auto 14px}
   .profile-form{display:grid;gap:14px}
-  .profile-card{padding:18px;background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.06);display:grid;gap:12px}
+  .profile-card{max-width:760px;margin:0 auto 14px;padding:18px;background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.06);display:grid;gap:12px}
   .profile-points-card{padding:16px 18px;background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.06)}
   .profile-points-card h2{margin:0 0 6px;font-size:18px;color:#123b59}
   .profile-points-card p{margin:0 0 10px;color:#607589;font-size:13px}
@@ -226,8 +290,15 @@ const styles = `
   .profile-field input:focus,.profile-field select:focus,.profile-field textarea:focus{border-color:#1a6b7a;box-shadow:none}
   .profile-error{margin-top:4px;color:#d84b4b;font-size:11px}
   .profile-success{margin:0;padding:10px 12px;border-radius:8px;background:#e5f8ee;color:#1c9b61;font-size:13px;font-weight:600}
-  .profile-save-btn{border:none;border-radius:8px;padding:11px 16px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:800;cursor:pointer}
-  @media (max-width:800px){.profile-page{padding:14px 10px}.profile-hero{padding:14px}.profile-hero-icon{display:none}}
+  .profile-actions{display:flex;flex-wrap:wrap;gap:8px;max-width:760px;margin:0 auto 14px}
+  .profile-save-btn,.profile-edit-btn{border:none;border-radius:8px;padding:11px 16px;font-size:14px;font-weight:800;cursor:pointer}
+  .profile-save-btn{background:#1a6b7a;color:#fff}
+  .profile-edit-btn{background:#fff;color:#1a6b7a;border:1px solid #d7e2e9}
+  .profile-member-details{display:grid;gap:10px;margin:0}
+  .profile-member-details div{display:grid;gap:2px}
+  .profile-member-details dt{font-size:11px;font-weight:800;color:#5d7180}
+  .profile-member-details dd{margin:0;font-size:15px;font-weight:700;color:#143246}
+  @media (max-width:800px){.profile-page{padding:14px 10px}.profile-hero{padding:14px}}
 `;
 
 export default Profile;

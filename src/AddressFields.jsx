@@ -42,6 +42,7 @@ export default function AddressFields({
   values = {},
   errors = {},
   onChange,
+  showUseMyLocation = true,
 }) {
   const [pinStatus, setPinStatus] = useState("");
   const [locating, setLocating] = useState(false);
@@ -184,7 +185,9 @@ export default function AddressFields({
                   ))}
                 </select>
               ) : field.name === "pinCode" ? (
-                <div className="addr-pin-row">
+                <div
+                  className={`addr-pin-row${showUseMyLocation ? "" : " is-pin-only"}`}
+                >
                   <input
                     id={id}
                     name={field.name}
@@ -196,14 +199,16 @@ export default function AddressFields({
                     autoComplete="off"
                     required
                   />
-                  <button
-                    type="button"
-                    className="addr-locate-btn"
-                    onClick={handleUseLocation}
-                    disabled={locating}
-                  >
-                    {locating ? "Detecting…" : "Use My Location"}
-                  </button>
+                  {showUseMyLocation ? (
+                    <button
+                      type="button"
+                      className="addr-locate-btn"
+                      onClick={handleUseLocation}
+                      disabled={locating}
+                    >
+                      {locating ? "Detecting…" : "Use My Location"}
+                    </button>
+                  ) : null}
                 </div>
               ) : (
                 <input
@@ -293,6 +298,7 @@ const styles = `
 .addr-field.addr-select select{background:#fff;cursor:pointer;height:38px}
 .addr-field.addr-select select:disabled{background:#f3f7fa;color:#7a8a92;cursor:default}
 .addr-pin-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.addr-pin-row.is-pin-only{grid-template-columns:1fr}
 .addr-pin-row input{flex:1;min-width:0;height:38px}
 .addr-locate-btn{box-sizing:border-box;height:38px;min-height:38px;padding:0 12px;border:1px solid #1a6b7a;border-radius:8px;background:#1a6b7a;color:#fff;font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 .addr-locate-btn:disabled{opacity:.7;cursor:wait}

@@ -1,5 +1,5 @@
 import AddressFields from "./AddressFields";
-import { shouldAskBookingDetails } from "./bookingFor";
+import { isOtherBooking, shouldAskBookingDetails } from "./bookingFor";
 import { GENDER_OPTIONS, normalizeAge } from "./personFields";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 
@@ -134,6 +134,7 @@ export default function BookingContactFields({
           errors={errors}
           onChange={onChange}
           pinHint={pinHint}
+          showUseMyLocation={!isOtherBooking(values)}
         />
       </div>
     </>

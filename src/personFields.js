@@ -9,8 +9,8 @@ export const RELATION_OPTIONS = [
   { value: "daughter", label: "Daughter" },
   { value: "mother", label: "Mother" },
   { value: "father", label: "Father" },
-  { value: "grandmother", label: "Grandmother" },
-  { value: "grandfather", label: "Grandfather" },
+  { value: "grandmother", label: "Grand Mother" },
+  { value: "grandfather", label: "Grand Father" },
 ];
 
 export function normalizeRelation(value) {

@@ -24,6 +24,12 @@ import {
 } from "./authSession";
 import { goToHash } from "./hashRoute";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
+import FamilyTree from "./FamilyTree";
+import {
+  MEMBER_ROLE,
+  findAccountActor,
+  holderActor,
+} from "./familyAccount";
 
 function digitsOnly(value) {
   return String(value || "").replace(/\D/g, "");
@@ -41,7 +47,10 @@ export default function AuthPage({ mode = "login" }) {
   });
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState({ type: "", text: "" });
-  const editingAccount = isRegister && Boolean(readLoginSession());
+  const session = readLoginSession();
+  const editingAccount = isRegister && Boolean(session);
+  const holderEditing =
+    editingAccount && session?.accountRole !== MEMBER_ROLE;
 
   useEffect(() => {
     if (isRegister) return;
@@ -50,7 +59,12 @@ export default function AuthPage({ mode = "login" }) {
 
   useEffect(() => {
     if (!isRegister) return;
-    if (!readLoginSession()) return;
+    const current = readLoginSession();
+    if (!current) return;
+    if (current.accountRole === MEMBER_ROLE) {
+      goToHash("#profile");
+      return;
+    }
     const saved = readUserProfile();
     if (!saved.name && !saved.mobile) return;
     setRegister({
@@ -106,15 +120,16 @@ export default function AuthPage({ mode = "login" }) {
       setStatus({ type: "error", text: "No account found. Please register first." });
       return;
     }
-    if (saved.mobile !== login.mobile || saved.pinCode !== login.pinCode) {
+    const actor = findAccountActor(saved, login.mobile);
+    if (!actor || String(saved.pinCode || "") !== login.pinCode) {
       setStatus({
         type: "error",
         text: "Mobile or PIN does not match your saved profile.",
       });
       return;
     }
-    writeLoginSession(saved);
-    goToHash(consumeReturnHash());
+    writeLoginSession(saved, actor);
+    goToHash(actor.role === MEMBER_ROLE ? "#profile" : consumeReturnHash());
   };
 
   const handleRegister = (event) => {
@@ -138,8 +153,9 @@ export default function AuthPage({ mode = "login" }) {
       ...withFormattedAddress(register),
     };
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-    writeLoginSession(profile);
-    goToHash(editingAccount ? "#profile" : consumeReturnHash());
+    writeLoginSession(profile, holderActor(profile));
+    const next = editingAccount ? "#profile" : consumeReturnHash();
+    goToHash(next === "#home" ? "#profile" : next);
   };
 
   return (
@@ -151,6 +167,9 @@ export default function AuthPage({ mode = "login" }) {
 
           {isRegister ? (
             <form className="auth-form" onSubmit={handleRegister} autoComplete="off">
+              {holderEditing ? <FamilyTree profile={register} /> : null}
+              {holderEditing ? null : (
+                <>
               <div className="auth-field">
                 <label htmlFor="auth-register-name">
                   Full name <span>*</span>
@@ -194,11 +213,14 @@ export default function AuthPage({ mode = "login" }) {
                 errors={errors}
                 onChange={handleRegisterChange}
               />
+                </>
+              )}
               <FamilyMembersFields
                 idPrefix="auth-family"
                 members={register.familyMembers}
                 errors={errors}
                 accountMobile={register.mobile}
+                savedAs={holderEditing ? "hidden" : "summary"}
                 onChange={handleRegisterChange}
               />
               <button type="submit">
@@ -279,7 +301,7 @@ const styles = `
 .auth-form select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px;outline:none}
 .auth-form textarea{width:100%;box-sizing:border-box;height:auto;min-height:64px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px;outline:none;resize:vertical}
 .auth-form input:focus,.auth-form select:focus,.auth-form textarea:focus{border-color:#1a6b7a}
-.auth-form .person-fields,.auth-form .addr-fields,.auth-form .family-fields,.auth-form button[type=submit]{grid-column:1/-1}
+.auth-form .person-fields,.auth-form .addr-fields,.auth-form .family-fields,.auth-form .family-tree,.auth-form button[type=submit]{grid-column:1/-1}
 .auth-form button[type=submit]{margin-top:6px;height:40px;max-width:220px;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:800;cursor:pointer}
 .auth-form-login button[type=submit]{max-width:none}
 .auth-error{margin-top:4px;color:#d84b4b;font-size:11px}

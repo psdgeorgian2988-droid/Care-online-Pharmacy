@@ -1,24 +1,53 @@
 import { useEffect, useState } from "react";
 import { readUserProfile } from "./addressFields";
+import {
+  holderActor,
+  isHolderActor,
+  profileForActor,
+} from "./familyAccount";
 
 export const PROFILE_KEY = "mediHomeUser";
 export const LOGIN_SESSION_KEY = "mediHomeLoggedIn";
+export const ACTOR_SESSION_KEY = "mediHomeActor";
 export const AUTH_EVENT = "medihome-auth";
+
+export function readAccountActor() {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(ACTOR_SESSION_KEY) || "null");
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch {
+    /* ignore */
+  }
+  return { role: "holder", memberId: "" };
+}
+
+export function readHouseholdProfile() {
+  return readUserProfile();
+}
 
 export function readLoginSession() {
   try {
     if (sessionStorage.getItem(LOGIN_SESSION_KEY) !== "1") return null;
     const saved = readUserProfile();
-    return saved.mobile ? saved : null;
+    if (!saved.mobile) return null;
+    return profileForActor(saved, readAccountActor());
   } catch {
     return null;
   }
 }
 
-export function writeLoginSession(user) {
+export function writeLoginSession(user, actor) {
   try {
-    if (user?.mobile) sessionStorage.setItem(LOGIN_SESSION_KEY, "1");
-    else sessionStorage.removeItem(LOGIN_SESSION_KEY);
+    if (user?.mobile) {
+      sessionStorage.setItem(LOGIN_SESSION_KEY, "1");
+      sessionStorage.setItem(
+        ACTOR_SESSION_KEY,
+        JSON.stringify(actor || holderActor(user))
+      );
+    } else {
+      sessionStorage.removeItem(LOGIN_SESSION_KEY);
+      sessionStorage.removeItem(ACTOR_SESSION_KEY);
+    }
   } catch {
     /* ignore quota / private mode */
   }
@@ -58,4 +87,13 @@ export function useLoginSession() {
   }, []);
 
   return user;
+}
+
+export function useAccountActor() {
+  const user = useLoginSession();
+  if (!user) return null;
+  if (!isHolderActor(readAccountActor()) || user.accountRole === "member") {
+    return { role: "member", memberId: user.accountMemberId || "" };
+  }
+  return { role: "holder", memberId: "" };
 }
