@@ -41,8 +41,10 @@ function personFromOption(option = {}) {
 function Vaccination() {
   const today = new Date().toISOString().split("T")[0];
   const session = useLoginSession();
-  const profile = session?.mobile ? session : readUserProfile();
-  const isRegistered = isRegisteredMember(profile);
+  const stored = readUserProfile();
+  const profile = session?.mobile ? { ...stored, ...session } : stored;
+  const isRegistered =
+    isRegisteredMember(profile) || Boolean(String(profile.name || "").trim());
   const [store, setStore] = useState(() => loadVaccinationStore());
   const [booking, setBooking] = useState(() => loadVaccinationBooking());
   const [recordForm, setRecordForm] = useState(() => ({
@@ -67,7 +69,7 @@ function Vaccination() {
     : null;
   const isSomeoneElse = selectedPerson?.id === OTHER_BOOKING_ID;
   const showGuestDetails = !isRegistered || isSomeoneElse;
-  const showGender = showGuestDetails;
+  const showGender = !isRegistered || isSomeoneElse;
   const bookHref = nurseBookingHref(carePlanForGroup(booking.group));
 
   useEffect(() => {

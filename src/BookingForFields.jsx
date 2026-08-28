@@ -13,7 +13,7 @@ export default function BookingForFields({
   onSelect,
   label = "Select Name",
 }) {
-  if (!isRegisteredMember(profile)) return null;
+  if (!isRegisteredMember(profile) && !String(profile.name || "").trim()) return null;
   const options = bookingForOptions(profile);
   const selectId = `${idPrefix}-who`;
 
