@@ -5,7 +5,7 @@ import {
   findCoupon,
 } from "./offers.js";
 import { isOnlinePayment } from "./paymentMethods.js";
-import { coinsToRupees, quoteWalletSpend } from "./pointsStore.js";
+import { coinsToRupees, quoteWalletSpend } from "./walletQuote.js";
 
 /** Platform share of each rupee of MRP / sale. Remainder is for the working partner. */
 export const SPLIT_PLATFORM_PERCENT = {
