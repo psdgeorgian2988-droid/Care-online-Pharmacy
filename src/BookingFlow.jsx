@@ -11,9 +11,10 @@ export default function BookingFlow({
   onChange,
   layout = "service",
   pinHint,
+  askWho = true,
   children,
 }) {
-  const showWho = hasHouseholdProfile(profile);
+  const showWho = askWho && hasHouseholdProfile(profile);
   const showDetails = shouldAskBookingDetails(values, profile);
 
   return (

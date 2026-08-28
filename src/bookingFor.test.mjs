@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   OTHER_BOOKING_ID,
   SELF_BOOKING_ID,
+  accountOwnerBooking,
   bookingForOptions,
   bookingForPatch,
   bookingForSelectLabel,
@@ -13,6 +14,7 @@ import {
   shouldAskBookingDetails,
   shouldAskBookingName,
   validateBookingDetails,
+  withBookingIdentity,
 } from "./bookingFor.js";
 
 const profile = {
@@ -116,6 +118,19 @@ test("registered Self or family does not require typed name, mobile or address",
   assert.equal(errors.age, undefined);
   assert.equal(errors.mobile, undefined);
   assert.equal(errors.pinCode, undefined);
+});
+
+test("ambulance-style booking uses the account owner without a who-for choice", () => {
+  const locked = accountOwnerBooking(profile);
+  assert.equal(locked.bookedFor, SELF_BOOKING_ID);
+  assert.equal(locked.patientName, "Anita Sharma");
+  assert.equal(locked.mobile, "9876543210");
+  assert.equal(shouldAskBookingDetails(locked, profile), false);
+  const identity = withBookingIdentity(locked, profile);
+  assert.equal(identity.patientName, "Anita Sharma");
+  const errors = validateBookingDetails(locked, profile);
+  assert.equal(errors.bookedFor, undefined);
+  assert.equal(errors.patientName, undefined);
 });
 
 test("Male/Female is asked only for guests or Someone Else", () => {

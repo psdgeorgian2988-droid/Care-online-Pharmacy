@@ -245,6 +245,23 @@ export function initialBookingFor(profile = {}) {
   return bookingForPatch(null, profile);
 }
 
+export function accountOwnerBooking(profile = {}) {
+  const selfName = String(profile.name || "").trim();
+  if (!selfName) return bookingForPatch(null, profile);
+  return bookingForPatch(
+    {
+      id: SELF_BOOKING_ID,
+      name: selfName,
+      relation: "self",
+      gender: profile.gender || "",
+      age: profile.age || "",
+      dob: profile.dob || "",
+      mobile: registeredMobile(profile),
+    },
+    profile
+  );
+}
+
 export function validateBookingFor(source = {}, profile = {}) {
   if (!hasHouseholdProfile(profile)) return {};
   const options = bookingForOptions(profile);

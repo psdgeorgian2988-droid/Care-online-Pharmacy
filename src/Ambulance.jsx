@@ -16,8 +16,7 @@ import {
   readUserProfile,
 } from "./addressFields";
 import {
-  bookingForPatch,
-  initialBookingFor,
+  accountOwnerBooking,
   validateBookingDetails,
   withBookingIdentity,
 } from "./bookingFor";
@@ -38,7 +37,7 @@ function Ambulance() {
     patientName: profile.name,
     mobile: profile.mobile,
     ...pickAddress(profile),
-    ...initialBookingFor(profile),
+    ...accountOwnerBooking(profile),
     emergencyType: "emergency",
     notes: "",
   });
@@ -124,7 +123,7 @@ function Ambulance() {
       patientName: profile.name,
       mobile: profile.mobile,
       ...pickAddress(profile),
-      ...initialBookingFor(profile),
+      ...accountOwnerBooking(profile),
       emergencyType: "emergency",
       notes: "",
     });
@@ -241,10 +240,7 @@ function Ambulance() {
             profile={profile}
             values={form}
             errors={errors}
-            onSelect={(option) => {
-              setForm((prev) => ({ ...prev, ...bookingForPatch(option, profile) }));
-              setErrors((prev) => ({ ...prev, bookedFor: "" }));
-            }}
+            askWho={false}
             onChange={handleChange}
             pinHint="Select the Village / Sector / Mohalla attached to this PIN."
           >
