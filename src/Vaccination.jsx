@@ -32,6 +32,7 @@ import {
 import { useLoginSession } from "./authSession";
 import { readUserProfile } from "./addressFields";
 import DateMonthYearFields from "./DateMonthYearFields";
+import { isoDateToday } from "./personFields";
 
 function personFromOption(option = {}) {
   return {
@@ -44,10 +45,15 @@ function personFromOption(option = {}) {
 }
 
 function Vaccination() {
-  const today = new Date().toISOString().split("T")[0];
+  const today = isoDateToday();
   const session = useLoginSession();
   const stored = readUserProfile();
-  const profile = session?.mobile ? { ...stored, ...session } : stored;
+  const profile =
+    session?.accountRole === "member"
+      ? session
+      : session?.mobile
+        ? { ...stored, ...session, familyMembers: stored.familyMembers }
+        : stored;
   const isRegistered = hasHouseholdProfile(profile);
   const [store, setStore] = useState(() => loadVaccinationStore());
   const [booking, setBooking] = useState(() => loadVaccinationBooking());
@@ -71,9 +77,6 @@ function Vaccination() {
   const reminders = savedReminders(store);
   const soon = dueSoonReminders(store, 21);
   const scheduleGuide = useMemo(() => fullVaccinationSchedule(), []);
-  const selectedPerson = isRegistered
-    ? findBookingFor(profile, recordForm.bookedFor, { includeOther: false })
-    : null;
   const bookHref = nurseBookingHref(carePlanForGroup(booking.group));
 
   useEffect(() => {
@@ -104,19 +107,38 @@ function Vaccination() {
   const saveRecordPerson = (event) => {
     event.preventDefault();
     if (!isRegistered) return;
+    const option = findBookingFor(profile, recordForm.bookedFor, {
+      includeOther: false,
+    });
+    const dob = String(recordForm.dob || option?.dob || booking.dob || "").trim();
     const next = {};
-    if (!isHouseholdBooking(recordForm, profile) || !selectedPerson?.name) {
+    if (!option?.name || !isHouseholdBooking({ bookedFor: option.id }, profile)) {
       next.bookedFor = "Select a registered name.";
     }
+    if (!dob) next.dob = "Select date, month and year of birth.";
     setRecordErrors(next);
     if (Object.keys(next).length) return;
     upsertVaccinationPerson({
-      name: selectedPerson.name.trim(),
-      gender: selectedPerson.gender,
-      dob: selectedPerson.dob || booking.dob,
+      name: option.name.trim(),
+      gender: option.gender || recordForm.gender,
+      dob,
+      ageYears: option.age,
       keepRecord: true,
       remindersOn: true,
       requiredIds: booking.vaccineIds,
+    });
+    setRecordForm((prev) => ({ ...prev, dob }));
+    setStore(loadVaccinationStore());
+  };
+
+  const saveGivenDose = (event) => {
+    event.preventDefault();
+    if (!markGiven.personId || !markGiven.vaccineId || !markGiven.givenOn) return;
+    recordVaccinationDose({
+      personId: markGiven.personId,
+      vaccineId: markGiven.vaccineId,
+      givenOn: markGiven.givenOn,
+      status: "given",
     });
     setStore(loadVaccinationStore());
   };
@@ -195,17 +217,47 @@ function Vaccination() {
           <form className="vac-record-form" onSubmit={saveRecordPerson}>
             <p className="vac-section-title">Save Record And Due Dates</p>
             {isRegistered ? (
-              <div className="field full">
-                <BookingForFields
-                  idPrefix="vac"
-                  profile={profile}
-                  selectedId={recordForm.bookedFor}
-                  error={recordErrors.bookedFor}
-                  onSelect={choosePerson}
-                  label="Select Name"
-                  includeOther={false}
-                />
-              </div>
+              <>
+                <div className="field full">
+                  <BookingForFields
+                    idPrefix="vac"
+                    profile={profile}
+                    selectedId={recordForm.bookedFor}
+                    error={recordErrors.bookedFor}
+                    onSelect={choosePerson}
+                    label="Select Name"
+                    includeOther={false}
+                  />
+                </div>
+                <div className="field full">
+                  <DateMonthYearFields
+                    idPrefix="vac-rec-dob"
+                    name="dob"
+                    value={recordForm.dob}
+                    max={today}
+                    required
+                    error={recordErrors.dob || ""}
+                    label="Date Of Birth"
+                    onChange={(event) => {
+                      setRecordForm((prev) => ({ ...prev, dob: event.target.value }));
+                      setRecordErrors((prev) => ({ ...prev, dob: "" }));
+                      if (recordForm.bookedFor) {
+                        setBooking(
+                          applyPersonToBooking({
+                            bookedFor: recordForm.bookedFor,
+                            name: recordForm.name,
+                            gender: recordForm.gender,
+                            dob: event.target.value,
+                          })
+                        );
+                      }
+                    }}
+                  />
+                </div>
+                <button type="submit" className="service-submit">
+                  Save Record And Due Dates
+                </button>
+              </>
             ) : (
               <p className="vac-copy vac-register-hint">
                 Login or create an account to save vaccination records for
@@ -215,11 +267,6 @@ function Vaccination() {
                 <a href="#register">Create Account</a>
               </p>
             )}
-            {isRegistered ? (
-              <button type="submit" className="service-submit">
-                Save Record And Due Dates
-              </button>
-            ) : null}
           </form>
 
           <div className="vac-book-card">
@@ -302,7 +349,8 @@ function Vaccination() {
                   name="givenOn"
                   value={markGiven.givenOn}
                   max={today}
-                  label=""
+                  required
+                  label="Date Given"
                   onChange={(event) =>
                     setMarkGiven((prev) => ({ ...prev, givenOn: event.target.value }))
                   }
@@ -427,18 +475,6 @@ function Vaccination() {
       </div>
     </>
   );
-
-  function saveGivenDose(event) {
-    event.preventDefault();
-    if (!markGiven.personId || !markGiven.vaccineId || !markGiven.givenOn) return;
-    recordVaccinationDose({
-      personId: markGiven.personId,
-      vaccineId: markGiven.vaccineId,
-      givenOn: markGiven.givenOn,
-      status: "given",
-    });
-    setStore(loadVaccinationStore());
-  }
 }
 
 const styles = `
@@ -489,7 +525,7 @@ const styles = `
 .vac-book-card,.vac-given{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
 .vac-record-form{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 8px}
 .vac-book-card,.vac-saved,.vac-given{padding:12px;border:1px solid #e4ecef;border-radius:10px;background:#f7fbfe}
-.vac-record-form .field.full{grid-column:1/-1}
+.vac-record-form .field.full,.vac-book-card .field.full,.vac-given .field.full,.vac-record-form .dmy-fields{grid-column:1/-1}
 .vac-record-form .field,.vac-book-card .field{display:flex;flex-direction:column;min-width:0}
 .vac-book-link{grid-column:1/-1;color:#1a6b7a;font-size:13px;font-weight:700;text-decoration:none}
 .vac-reminder-list{margin:0;padding:0;list-style:none;display:grid;gap:8px}
