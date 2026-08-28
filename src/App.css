@@ -3714,6 +3714,7 @@ body,
   background: #1a6b7a;
   border-color: #1a6b7a;
   color: #ffffff;
+  box-shadow: 0 4px 10px rgba(26, 107, 122, 0.25);
 }
 
 .home-landing .home-account-btn:hover {
