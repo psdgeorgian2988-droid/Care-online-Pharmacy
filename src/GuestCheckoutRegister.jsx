@@ -7,6 +7,7 @@ import {
 } from "./authSession";
 import { readUserProfile, withFormattedAddress } from "./addressFields";
 import { pickFamilyMembers, pickPerson, pickEmail, validatePerson, validateEmail, accountCreatorMobile } from "./personFields";
+import { normalizeLoginPin, pickLoginPin } from "./loginPin";
 import { noContactEmailProps } from "./noContactAutofill";
 import {
   GUEST_REGISTER_BENEFITS,
@@ -23,6 +24,7 @@ function saveAccount(draft) {
     mobile: creatorMobile,
     creatorMobile,
     email: pickEmail(draft),
+    loginPin: pickLoginPin(draft, existing) || normalizeLoginPin(draft.pinCode),
     ...pickPerson(draft),
     familyMembers: sameAccount
       ? pickFamilyMembers({ ...existing, mobile: creatorMobile, creatorMobile })

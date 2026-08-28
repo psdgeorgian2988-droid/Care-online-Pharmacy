@@ -15,6 +15,7 @@ import {
   validateFamilyMembers,
   validatePerson,
   maskMobile,
+  maskEmail,
   isValidEmail,
   pickEmail,
   validateEmail,
@@ -150,6 +151,11 @@ test("account creator mobile stays the original number", () => {
 test("maskMobile keeps the first two and last three digits", () => {
   assert.equal(maskMobile("9876543210"), "98*****210");
   assert.equal(maskMobile(""), "");
+});
+
+test("maskEmail keeps the first two mailbox letters", () => {
+  assert.equal(maskEmail("asha@medihome.in"), "as**@medihome.in");
+  assert.equal(maskEmail("ab@x.co"), "ab*@x.co");
 });
 
 test("OTP-verified save can replace the account creator mobile", () => {

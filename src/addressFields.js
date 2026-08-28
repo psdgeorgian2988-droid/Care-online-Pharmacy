@@ -1,3 +1,4 @@
+import { normalizeLoginPin } from "./loginPin.js";
 import {
   accountCreatorMobile,
   emptyPerson,
@@ -204,19 +205,24 @@ export function applyResolvedPin(source = {}, gps = {}) {
   };
 }
 
+function emptyUserProfile() {
+  return {
+    name: "",
+    mobile: "",
+    creatorMobile: "",
+    email: "",
+    loginPin: "",
+    ...emptyPerson(),
+    familyMembers: [],
+    ...emptyAddress(),
+  };
+}
+
 export function readUserProfile() {
   try {
     const parsed = JSON.parse(localStorage.getItem("mediHomeUser") || "null");
     if (!parsed || typeof parsed !== "object") {
-      return {
-        name: "",
-        mobile: "",
-        creatorMobile: "",
-        email: "",
-        ...emptyPerson(),
-        familyMembers: [],
-        ...emptyAddress(),
-      };
+      return emptyUserProfile();
     }
     const mobile = String(parsed.mobile || parsed.mobileNumber || "").trim();
     const creatorMobile = accountCreatorMobile(parsed, parsed);
@@ -230,16 +236,9 @@ export function readUserProfile() {
       ...pickPerson(parsed),
       familyMembers: pickFamilyMembers({ ...parsed, mobile, creatorMobile }),
       ...addressFromUnknown(parsed),
+      loginPin: normalizeLoginPin(parsed.loginPin),
     };
   } catch {
-    return {
-      name: "",
-      mobile: "",
-      creatorMobile: "",
-      email: "",
-      ...emptyPerson(),
-      familyMembers: [],
-      ...emptyAddress(),
-    };
+    return emptyUserProfile();
   }
 }

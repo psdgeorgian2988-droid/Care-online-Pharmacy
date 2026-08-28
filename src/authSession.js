@@ -60,7 +60,12 @@ export function consumeReturnHash() {
   try {
     const next = sessionStorage.getItem("mediHomeReturnHash") || "";
     sessionStorage.removeItem("mediHomeReturnHash");
-    if (next.startsWith("#") && next !== "#login" && next !== "#register") {
+    if (
+      next.startsWith("#") &&
+      next !== "#login" &&
+      next !== "#register" &&
+      next !== "#forgot"
+    ) {
       return next;
     }
   } catch {

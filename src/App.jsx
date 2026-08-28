@@ -405,6 +405,8 @@ function App() {
         return <AuthPage mode="login" />;
       case "#register":
         return <AuthPage mode="register" />;
+      case "#forgot":
+        return <AuthPage mode="forgot" />;
       case "#home":
       default:
         return <HomePage />;
@@ -511,7 +513,7 @@ function App() {
               <a
                 href="#login"
                 className={
-                  route === "#login" || route === "#register"
+                  route === "#login" || route === "#register" || route === "#forgot"
                     ? "active"
                     : undefined
                 }

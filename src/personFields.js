@@ -176,6 +176,17 @@ export function maskMobile(value) {
   return `${digits.slice(0, 2)}${"*".repeat(digits.length - 5)}${digits.slice(-3)}`;
 }
 
+/** Show the first two letters of the mailbox only, e.g. asha@medihome.in → as**@medihome.in */
+export function maskEmail(value) {
+  const email = normalizeEmail(value);
+  const at = email.indexOf("@");
+  if (at < 1) return email;
+  const user = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  const keep = user.slice(0, Math.min(2, user.length));
+  return `${keep}${"*".repeat(Math.max(1, user.length - keep.length))}@${domain}`;
+}
+
 export function isValidMobile(value) {
   return /^[6-9]\d{9}$/.test(normalizeMobile(value));
 }

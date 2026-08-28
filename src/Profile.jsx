@@ -25,6 +25,7 @@ import {
 import { noContactEmailProps, noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import { PROFILE_KEY, useLoginSession, writeLoginSession } from "./authSession";
 import { MEMBER_ROLE, holderActor } from "./familyAccount";
+import { pickLoginPin } from "./loginPin";
 
 function readProfile() {
   return readUserProfile();
@@ -82,6 +83,7 @@ function Profile() {
       mobile: creatorMobile,
       creatorMobile,
       email: pickEmail(form),
+      loginPin: pickLoginPin(form, previous),
       ...pickPerson(form),
       familyMembers: pickFamilyMembers({
         ...form,
