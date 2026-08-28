@@ -312,7 +312,7 @@ const styles = `
 .auth-form select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px;outline:none}
 .auth-form textarea{width:100%;box-sizing:border-box;height:auto;min-height:64px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px;outline:none;resize:vertical}
 .auth-form input:focus,.auth-form select:focus,.auth-form textarea:focus{border-color:#1a6b7a}
-.auth-form .person-fields,.auth-form .addr-fields,.auth-form .auth-hint,.auth-form button[type=submit],.auth-form .auth-login-actions{grid-column:1/-1}
+.auth-form .person-fields,.auth-form .addr-fields,.auth-form .auth-hint,.auth-form .auth-login-actions,.auth-form > button[type=submit]{grid-column:1/-1}
 .auth-hint{margin:0;color:#5d7180;font-size:13px;line-height:1.4}
 .auth-form button[type=submit]{margin-top:6px;height:40px;max-width:220px;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:800;cursor:pointer}
 .auth-login-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
