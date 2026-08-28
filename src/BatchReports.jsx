@@ -4,9 +4,13 @@ import {
   saveBatches,
   MAX_BATCH_FILE_BYTES,
 } from "./batchStore";
+import DateMonthYearFields from "./DateMonthYearFields";
+import { isoDateToday, isoDateYearsAgo, isoDateYearsAhead } from "./personFields";
 
 function BatchReports({ products = [], onChange }) {
-  const today = new Date().toISOString().split("T")[0];
+  const today = isoDateToday();
+  const minMfg = isoDateYearsAgo(20);
+  const maxExpiry = isoDateYearsAhead(10);
   const mediHome = useMemo(
     () => products.filter((item) => item.isMediHome),
     [products]
@@ -214,32 +218,32 @@ function BatchReports({ products = [], onChange }) {
             {errors.batchNo ? <small>{errors.batchNo}</small> : null}
           </div>
 
-          <div className="batch-field">
-            <label htmlFor="batch-mfg">
-              Mfg date <em>*</em>
-            </label>
-            <input
-              id="batch-mfg"
+          <div className="batch-field batch-span">
+            <DateMonthYearFields
+              idPrefix="batch-mfg"
               name="mfgDate"
-              type="date"
               value={form.mfgDate}
+              min={minMfg}
+              max={today}
+              required
+              error={errors.mfgDate || ""}
+              label="Mfg Date"
               onChange={handleChange}
             />
-            {errors.mfgDate ? <small>{errors.mfgDate}</small> : null}
           </div>
 
-          <div className="batch-field">
-            <label htmlFor="batch-exp">
-              Expiry date <em>*</em>
-            </label>
-            <input
-              id="batch-exp"
+          <div className="batch-field batch-span">
+            <DateMonthYearFields
+              idPrefix="batch-exp"
               name="expiryDate"
-              type="date"
               value={form.expiryDate}
+              min={form.mfgDate || today}
+              max={maxExpiry}
+              required
+              error={errors.expiryDate || ""}
+              label="Expiry Date"
               onChange={handleChange}
             />
-            {errors.expiryDate ? <small>{errors.expiryDate}</small> : null}
           </div>
 
           <div className="batch-field batch-span">

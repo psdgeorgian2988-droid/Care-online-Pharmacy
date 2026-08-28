@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import DateMonthYearFields from "./DateMonthYearFields";
+import { isoDateToday, isoDateYearsAgo } from "./personFields";
 
 const STORAGE_KEY = "mediHomeReports";
 const MAX_FILE_BYTES = 1.5 * 1024 * 1024;
@@ -62,7 +64,8 @@ function loadReports() {
 }
 
 function Reports() {
-  const today = new Date().toISOString().split("T")[0];
+  const today = isoDateToday();
+  const minReport = isoDateYearsAgo(20);
   const [reports, setReports] = useState(() => loadReports());
   const [form, setForm] = useState({
     testName: "",
@@ -234,18 +237,18 @@ function Reports() {
             {errors.testName && <small>{errors.testName}</small>}
           </div>
 
-          <div className="field">
-            <label htmlFor="rpt-date">
-              Report date <span>*</span>
-            </label>
-            <input
-              id="rpt-date"
+          <div className="field full">
+            <DateMonthYearFields
+              idPrefix="rpt-date"
               name="date"
-              type="date"
               value={form.date}
+              min={minReport}
+              max={today}
+              required
+              error={errors.date || ""}
+              label="Report Date"
               onChange={handleChange}
             />
-            {errors.date && <small>{errors.date}</small>}
           </div>
 
           <div className="field full">

@@ -20,6 +20,8 @@ import {
   validateBookingDetails,
   withBookingIdentity,
 } from "./bookingFor";
+import DateMonthYearFields from "./DateMonthYearFields";
+import { isoDateToday, isoDateYearsAhead } from "./personFields";
 
 const STORAGE_KEY = "mediHomeStepDownBookings";
 const AMBULANCE_STORAGE_KEY = "mediHomeAmbulanceRequests";
@@ -149,7 +151,8 @@ function centreMatches(centre, query, focus) {
 
 function StepDownCare() {
   const profile = useMemo(() => readProfile(), []);
-  const today = new Date().toISOString().split("T")[0];
+  const today = isoDateToday();
+  const maxVisit = isoDateYearsAhead(1);
   const [tab, setTab] = useState("find");
   const [query, setQuery] = useState("");
   const [focus, setFocus] = useState("all");
@@ -634,19 +637,18 @@ function StepDownCare() {
                   </select>
                   {errors.serviceType ? <small className="lab-error">{errors.serviceType}</small> : null}
                 </div>
-                <div className="lab-field">
-                  <label htmlFor="sd-date">
-                    Start date <em>*</em>
-                  </label>
-                  <input
-                    id="sd-date"
+                <div className="lab-field sd-full">
+                  <DateMonthYearFields
+                    idPrefix="sd-date"
                     name="date"
-                    type="date"
-                    min={today}
                     value={form.date}
+                    min={today}
+                    max={maxVisit}
+                    required
+                    error={errors.date || ""}
+                    label="Start Date"
                     onChange={handleChange}
                   />
-                  {errors.date ? <small className="lab-error">{errors.date}</small> : null}
                 </div>
                 <div className="lab-field">
                   <label htmlFor="sd-slot">

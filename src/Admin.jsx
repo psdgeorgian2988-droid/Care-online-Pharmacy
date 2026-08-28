@@ -65,6 +65,8 @@ import {
   serviceKind,
   trackKey,
 } from "./orderStatus";
+import DateMonthYearFields from "./DateMonthYearFields";
+import { isoDateToday, isoDateYearsAgo } from "./personFields";
 
 function personName(order) {
   return (
@@ -689,22 +691,28 @@ function Admin() {
             </label>
             {reportPeriod === "custom" ? (
               <>
-                <label>
-                  From
-                  <input
-                    type="date"
+                <div className="admin-dmy">
+                  <DateMonthYearFields
+                    idPrefix="admin-from"
+                    name="reportFrom"
                     value={reportFrom}
+                    min={isoDateYearsAgo(10)}
+                    max={isoDateToday()}
+                    label="From"
                     onChange={(event) => setReportFrom(event.target.value)}
                   />
-                </label>
-                <label>
-                  To
-                  <input
-                    type="date"
+                </div>
+                <div className="admin-dmy">
+                  <DateMonthYearFields
+                    idPrefix="admin-to"
+                    name="reportTo"
                     value={reportTo}
+                    min={reportFrom || isoDateYearsAgo(10)}
+                    max={isoDateToday()}
+                    label="To"
                     onChange={(event) => setReportTo(event.target.value)}
                   />
-                </label>
+                </div>
               </>
             ) : null}
             <button type="button" onClick={generateReport}>
@@ -1030,6 +1038,7 @@ const styles = `
 .admin-report-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:12px}
 .admin-report-controls label{display:flex;flex-direction:column;gap:4px;font-size:12px}
 .admin-report-controls select,.admin-report-controls input[type=date]{min-height:34px;border:1px solid #d7e2e9;border-radius:8px;padding:4px 8px;font:inherit}
+.admin-dmy{min-width:280px;flex:1 1 280px}
 .admin-status-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 12px}
 .admin-status-kpis button{border:1px solid #e4ecef;border-radius:10px;background:#f7fafc;padding:10px 12px;text-align:left;font:inherit;cursor:pointer}
 .admin-status-kpis button.is-on{background:#e7f1f6;border-color:#b7d0dc}
