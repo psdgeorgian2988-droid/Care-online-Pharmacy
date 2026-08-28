@@ -16,6 +16,8 @@ import {
   validateFamilyMembers,
   validatePerson,
   accountCreatorMobile,
+  pickEmail,
+  validateEmail,
 } from "./personFields";
 import {
   PROFILE_KEY,
@@ -24,7 +26,7 @@ import {
   writeLoginSession,
 } from "./authSession";
 import { goToHash } from "./hashRoute";
-import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
+import { noContactEmailProps, noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import FamilyTree from "./FamilyTree";
 import {
   MEMBER_ROLE,
@@ -42,6 +44,7 @@ export default function AuthPage({ mode = "login" }) {
   const [register, setRegister] = useState({
     name: "",
     mobile: "",
+    email: "",
     ...emptyPerson(),
     familyMembers: [],
     ...emptyAddress(),
@@ -73,6 +76,7 @@ export default function AuthPage({ mode = "login" }) {
       name: saved.name || "",
       mobile: saved.creatorMobile || saved.mobile || "",
       creatorMobile: saved.creatorMobile || saved.mobile || "",
+      email: saved.email || "",
       ...emptyPerson(),
       ...pickPerson(saved),
       familyMembers: pickFamilyMembers(saved),
@@ -142,6 +146,7 @@ export default function AuthPage({ mode = "login" }) {
     if (!/^[6-9]\d{9}$/.test(register.mobile)) {
       nextErrors.mobile = "Enter a valid 10-digit mobile number.";
     }
+    Object.assign(nextErrors, validateEmail(register));
     Object.assign(nextErrors, validatePerson(register));
     Object.assign(
       nextErrors,
@@ -159,6 +164,7 @@ export default function AuthPage({ mode = "login" }) {
       name: register.name.trim(),
       mobile: creatorMobile,
       creatorMobile,
+      email: pickEmail(register),
       ...pickPerson(register),
       familyMembers: pickFamilyMembers({
         ...register,
@@ -215,6 +221,22 @@ export default function AuthPage({ mode = "login" }) {
                 />
                 {errors.mobile ? (
                   <small className="auth-error">{errors.mobile}</small>
+                ) : null}
+              </div>
+              <div className="auth-field">
+                <label htmlFor="auth-register-email">
+                  Mail ID <span>*</span>
+                </label>
+                <input
+                  id="auth-register-email"
+                  name="email"
+                  placeholder="name@email.com"
+                  value={register.email}
+                  onChange={handleRegisterChange}
+                  {...noContactEmailProps}
+                />
+                {errors.email ? (
+                  <small className="auth-error">{errors.email}</small>
                 ) : null}
               </div>
               <PersonFields

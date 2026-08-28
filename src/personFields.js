@@ -151,8 +151,12 @@ export function emptyFamilyMember() {
   };
 }
 
-/** Mobile of the person who created the account. Once set, later edits do not replace it. */
-export function accountCreatorMobile(source = {}, previous = {}) {
+/** Mobile of the person who created the account. Later edits keep it unless replace is set after OTP. */
+export function accountCreatorMobile(source = {}, previous = {}, options = {}) {
+  if (options.replace) {
+    const next = normalizeMobile(source.mobile);
+    if (isValidMobile(next)) return next;
+  }
   const kept = normalizeMobile(
     previous.creatorMobile || source.creatorMobile || previous.mobile
   );
@@ -164,8 +168,35 @@ export function normalizeMobile(value) {
   return String(value || "").replace(/\D/g, "").slice(0, 10);
 }
 
+/** Show the first two and last three digits only, e.g. 9876543210 → 98*****210 */
+export function maskMobile(value) {
+  const digits = normalizeMobile(value);
+  if (!digits) return "";
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 2)}${"*".repeat(digits.length - 5)}${digits.slice(-3)}`;
+}
+
 export function isValidMobile(value) {
   return /^[6-9]\d{9}$/.test(normalizeMobile(value));
+}
+
+export function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+export function isValidEmail(value) {
+  const email = normalizeEmail(value);
+  if (!email || email.length > 120) return false;
+  return /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(email);
+}
+
+export function pickEmail(source = {}) {
+  return normalizeEmail(source.email || source.mailId || source.mail);
+}
+
+export function validateEmail(source = {}, key = "email") {
+  if (isValidEmail(source.email || source[key])) return {};
+  return { [key]: "Enter a valid mail ID." };
 }
 
 export function normalizeGender(value) {
@@ -275,8 +306,8 @@ export function memberSummary(member, accountMobile = "") {
     row.age ? `${row.age} yrs` : "",
     row.mobile
       ? row.useAccountMobile
-        ? `Mobile ${row.mobile} (account)`
-        : `Mobile ${row.mobile}`
+        ? `Mobile ${maskMobile(row.mobile)} (account)`
+        : `Mobile ${maskMobile(row.mobile)}`
       : "",
   ].filter(Boolean);
   return bits.join(" · ");

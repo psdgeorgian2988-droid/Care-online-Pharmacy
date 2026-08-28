@@ -19,8 +19,10 @@ import {
   validateFamilyMembers,
   validatePerson,
   maskMobile,
+  pickEmail,
+  validateEmail,
 } from "./personFields";
-import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
+import { noContactEmailProps, noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import { PROFILE_KEY, useLoginSession, writeLoginSession } from "./authSession";
 import { MEMBER_ROLE, holderActor } from "./familyAccount";
 
@@ -58,6 +60,7 @@ function Profile() {
     if (!/^[6-9]\d{9}$/.test(accountCreatorMobile(form))) {
       newErrors.mobile = "Enter a valid 10-digit mobile number.";
     }
+    Object.assign(newErrors, validateEmail(form));
     Object.assign(newErrors, validatePerson(form));
     Object.assign(
       newErrors,
@@ -78,6 +81,7 @@ function Profile() {
       name: form.name.trim(),
       mobile: creatorMobile,
       creatorMobile,
+      email: pickEmail(form),
       ...pickPerson(form),
       familyMembers: pickFamilyMembers({
         ...form,
@@ -204,6 +208,21 @@ function Profile() {
                   This is the mobile used when the account was created. Family
                   members without their own number use it.
                 </small>
+              </div>
+
+              <div className="profile-field">
+                <label htmlFor="profile-account-email">
+                  Mail ID <span>*</span>
+                </label>
+                <input
+                  id="profile-account-email"
+                  name="email"
+                  placeholder="name@email.com"
+                  value={form.email || ""}
+                  onChange={handleChange}
+                  {...noContactEmailProps}
+                />
+                {errors.email && <small className="profile-error">{errors.email}</small>}
               </div>
 
               <PersonFields

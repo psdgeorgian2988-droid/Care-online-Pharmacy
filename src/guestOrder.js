@@ -12,6 +12,7 @@ export function guestDraftFromOrder(source = {}) {
   return {
     name,
     mobile,
+    email: String(source.email || source.mailId || "").trim().toLowerCase(),
     ...emptyPerson(),
     ...emptyAddress(),
     ...pickPerson(source),

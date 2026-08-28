@@ -6,7 +6,8 @@ import {
   writeLoginSession,
 } from "./authSession";
 import { readUserProfile, withFormattedAddress } from "./addressFields";
-import { pickFamilyMembers, pickPerson, validatePerson, accountCreatorMobile } from "./personFields";
+import { pickFamilyMembers, pickPerson, pickEmail, validatePerson, validateEmail, accountCreatorMobile } from "./personFields";
+import { noContactEmailProps } from "./noContactAutofill";
 import {
   GUEST_REGISTER_BENEFITS,
   GUEST_REGISTER_HEADLINE,
@@ -21,6 +22,7 @@ function saveAccount(draft) {
     name: draft.name.trim(),
     mobile: creatorMobile,
     creatorMobile,
+    email: pickEmail(draft),
     ...pickPerson(draft),
     familyMembers: sameAccount
       ? pickFamilyMembers({ ...existing, mobile: creatorMobile, creatorMobile })
@@ -100,7 +102,10 @@ export default function GuestCheckoutRegister({
       onNeedContact?.();
       return;
     }
-    const nextErrors = validatePerson(merged);
+    const nextErrors = {
+      ...validatePerson(merged),
+      ...validateEmail(merged),
+    };
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
     saveAccount(merged);
@@ -160,8 +165,21 @@ export default function GuestCheckoutRegister({
               <h2 id="guest-pay-title">Create Account</h2>
               <p className="guest-pay-reuse">
                 Name, mobile and address from this order will be saved to your
-                account.
+                account. Add your mail ID to finish.
               </p>
+              <label className="guest-pay-mail">
+                Mail ID
+                <input
+                  name="email"
+                  placeholder="name@email.com"
+                  value={form.email || ""}
+                  onChange={handleChange}
+                  {...noContactEmailProps}
+                />
+                {errors.email ? (
+                  <small className="guest-pay-error">{errors.email}</small>
+                ) : null}
+              </label>
               <PersonFields
                 idPrefix="guest-order"
                 values={form}
@@ -193,6 +211,8 @@ const styles = `
 .guest-pay-dialog h2{margin:0 0 10px;font-size:20px;font-weight:800;color:#143246}
 .guest-pay-benefits{margin:0 0 16px;padding:0 0 0 18px;display:grid;gap:8px;color:#143246;font-size:14px;font-weight:700;line-height:1.4}
 .guest-pay-reuse{margin:0 0 12px;font-size:13px;font-weight:700;color:#34546b;line-height:1.4}
+.guest-pay-mail{display:grid;gap:4px;font-size:12px;font-weight:700;color:#1a6b7a}
+.guest-pay-mail input{height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;font-weight:500;color:#143246}
 .guest-pay-form{display:grid;gap:8px}
 .guest-pay-actions{display:flex;flex-wrap:wrap;gap:8px}
 .guest-pay-btn{flex:1;min-height:42px;border:none;border-radius:8px;background:#1e8a73;color:#fff;font:inherit;font-size:14px;font-weight:800;cursor:pointer}

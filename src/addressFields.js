@@ -212,6 +212,7 @@ export function readUserProfile() {
         name: "",
         mobile: "",
         creatorMobile: "",
+        email: "",
         ...emptyPerson(),
         familyMembers: [],
         ...emptyAddress(),
@@ -223,6 +224,9 @@ export function readUserProfile() {
       name: String(parsed.name || parsed.fullName || "").trim(),
       mobile: creatorMobile || mobile,
       creatorMobile: creatorMobile || mobile,
+      email: String(parsed.email || parsed.mailId || parsed.mail || "")
+        .trim()
+        .toLowerCase(),
       ...pickPerson(parsed),
       familyMembers: pickFamilyMembers({ ...parsed, mobile, creatorMobile }),
       ...addressFromUnknown(parsed),
@@ -232,6 +236,7 @@ export function readUserProfile() {
       name: "",
       mobile: "",
       creatorMobile: "",
+      email: "",
       ...emptyPerson(),
       familyMembers: [],
       ...emptyAddress(),

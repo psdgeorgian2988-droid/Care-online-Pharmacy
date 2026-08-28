@@ -21,3 +21,15 @@ export const noContactMobileProps = {
   "data-1p-ignore": "true",
   "data-form-type": "other",
 };
+
+export const noContactEmailProps = {
+  type: "email",
+  inputMode: "email",
+  autoComplete: "off",
+  autoCorrect: "off",
+  autoCapitalize: "off",
+  spellCheck: false,
+  "data-lpignore": "true",
+  "data-1p-ignore": "true",
+  "data-form-type": "other",
+};

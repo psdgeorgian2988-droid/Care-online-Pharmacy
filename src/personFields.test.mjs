@@ -14,7 +14,20 @@ import {
   splitIsoDate,
   validateFamilyMembers,
   validatePerson,
+  maskMobile,
+  isValidEmail,
+  pickEmail,
+  validateEmail,
 } from "./personFields.js";
+
+test("mail ID is required and stored in lowercase", () => {
+  assert.equal(isValidEmail(""), false);
+  assert.equal(isValidEmail("not-an-email"), false);
+  assert.equal(isValidEmail("asha@medihome.in"), true);
+  assert.equal(pickEmail({ email: " Asha@MediHome.IN " }), "asha@medihome.in");
+  assert.equal(validateEmail({ email: "" }).email.includes("mail ID"), true);
+  assert.deepEqual(validateEmail({ email: "care@medihome.in" }), {});
+});
 
 function yearsAgoIso(years, extraDays = 0) {
   const today = new Date();
@@ -132,6 +145,22 @@ test("account creator mobile stays the original number", () => {
   );
   assert.equal(own.mobile, "9876501234");
   assert.equal(own.useAccountMobile, false);
+});
+
+test("maskMobile keeps the first two and last three digits", () => {
+  assert.equal(maskMobile("9876543210"), "98*****210");
+  assert.equal(maskMobile(""), "");
+});
+
+test("OTP-verified save can replace the account creator mobile", () => {
+  assert.equal(
+    accountCreatorMobile(
+      { mobile: "9988776655" },
+      { creatorMobile: "9876543210" },
+      { replace: true }
+    ),
+    "9988776655"
+  );
 });
 
 test("family relation options are spouse, children, parents and grandparents", () => {
