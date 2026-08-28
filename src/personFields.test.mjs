@@ -4,6 +4,8 @@ import {
   ageFromDob,
   daysInMonth,
   joinIsoDate,
+  RELATION_OPTIONS,
+  normalizeRelation,
   pickPerson,
   splitIsoDate,
   validateFamilyMembers,
@@ -64,13 +66,78 @@ test("family members can be added with male/female and date of birth", () => {
   assert.equal(Boolean(errors["familyMembers.0.name"]), true);
   assert.equal(Boolean(errors["familyMembers.0.gender"]), true);
   assert.equal(Boolean(errors["familyMembers.0.dob"]), true);
+  assert.equal(Boolean(errors["familyMembers.0.mobile"]), true);
   assert.deepEqual(
     validateFamilyMembers({
       familyMembers: [
-        { name: "Aarav", relation: "son", gender: "M", dob: yearsAgoIso(8) },
+        {
+          name: "Aarav",
+          relation: "son",
+          gender: "M",
+          dob: yearsAgoIso(8),
+          mobile: "9876501234",
+        },
       ],
     }),
     {}
+  );
+});
+
+test("family members must have a mobile or use the account holder's number", () => {
+  const missing = validateFamilyMembers({
+    mobile: "9876543210",
+    familyMembers: [
+      { name: "Aarav", relation: "son", gender: "M", dob: yearsAgoIso(8) },
+    ],
+  });
+  assert.match(missing["familyMembers.0.mobile"], /mobile/i);
+  assert.deepEqual(
+    validateFamilyMembers({
+      mobile: "9876543210",
+      familyMembers: [
+        {
+          name: "Aarav",
+          relation: "son",
+          gender: "M",
+          dob: yearsAgoIso(8),
+          useAccountMobile: true,
+        },
+      ],
+    }),
+    {}
+  );
+});
+
+test("family relation options are spouse, children, parents and grandparents", () => {
+  assert.deepEqual(
+    RELATION_OPTIONS.map((row) => row.value),
+    [
+      "spouse",
+      "son",
+      "daughter",
+      "mother",
+      "father",
+      "grandmother",
+      "grandfather",
+    ]
+  );
+  assert.equal(normalizeRelation("family"), "");
+  assert.equal(normalizeRelation("brother"), "");
+  assert.equal(normalizeRelation("Grand Mother"), "grandmother");
+  assert.equal(normalizeRelation("spouse"), "spouse");
+  assert.equal(
+    validateFamilyMembers({
+      familyMembers: [
+        {
+          name: "Aarav",
+          relation: "family",
+          gender: "M",
+          dob: yearsAgoIso(8),
+          mobile: "9876501234",
+        },
+      ],
+    })["familyMembers.0.relation"],
+    "Select a relation."
   );
 });
 

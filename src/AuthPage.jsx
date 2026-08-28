@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import AddressFields from "./AddressFields";
 import PersonFields from "./PersonFields";
+import FamilyMembersFields from "./FamilyMembersFields";
 import {
   emptyAddress,
+  pickAddress,
   readUserProfile,
   validateAddress,
   withFormattedAddress,
@@ -11,6 +13,7 @@ import {
   emptyPerson,
   pickFamilyMembers,
   pickPerson,
+  validateFamilyMembers,
   validatePerson,
 } from "./personFields";
 import {
@@ -32,14 +35,33 @@ export default function AuthPage({ mode = "login" }) {
     name: "",
     mobile: "",
     ...emptyPerson(),
+    familyMembers: [],
     ...emptyAddress(),
   });
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState({ type: "", text: "" });
+  const editingAccount = isRegister && Boolean(readLoginSession());
 
   useEffect(() => {
+    if (isRegister) return;
     if (readLoginSession()) goToHash("#home");
-  }, []);
+  }, [isRegister]);
+
+  useEffect(() => {
+    if (!isRegister) return;
+    if (!readLoginSession()) return;
+    const saved = readUserProfile();
+    if (!saved.name && !saved.mobile) return;
+    setRegister({
+      name: saved.name || "",
+      mobile: saved.mobile || "",
+      ...emptyPerson(),
+      ...pickPerson(saved),
+      familyMembers: pickFamilyMembers(saved),
+      ...emptyAddress(),
+      ...pickAddress(saved),
+    });
+  }, [isRegister]);
 
   const handleLoginChange = (event) => {
     const { name, value } = event.target;
@@ -49,6 +71,18 @@ export default function AuthPage({ mode = "login" }) {
 
   const handleRegisterChange = (event) => {
     const { name, value } = event.target;
+    if (name === "familyMembers") {
+      setRegister((prev) => ({ ...prev, familyMembers: value }));
+      setErrors((prev) => {
+        const next = { ...prev };
+        Object.keys(next).forEach((key) => {
+          if (key.startsWith("familyMembers.")) delete next[key];
+        });
+        return next;
+      });
+      setStatus({ type: "", text: "" });
+      return;
+    }
     const nextValue =
       name === "mobile" || name === "pinCode" ? digitsOnly(value) : value;
     setRegister((prev) => ({ ...prev, [name]: nextValue }));
@@ -91,21 +125,20 @@ export default function AuthPage({ mode = "login" }) {
     }
     Object.assign(nextErrors, validatePerson(register));
     Object.assign(nextErrors, validateAddress(register));
+    Object.assign(nextErrors, validateFamilyMembers(register));
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    const existing = readUserProfile();
-    const sameAccount = existing.mobile === register.mobile.trim();
     const profile = {
       name: register.name.trim(),
       mobile: register.mobile.trim(),
       ...pickPerson(register),
-      familyMembers: sameAccount ? pickFamilyMembers(existing) : [],
+      familyMembers: pickFamilyMembers(register),
       ...withFormattedAddress(register),
     };
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     writeLoginSession(profile);
-    goToHash(consumeReturnHash());
+    goToHash(editingAccount ? "#profile" : consumeReturnHash());
   };
 
   return (
@@ -113,7 +146,7 @@ export default function AuthPage({ mode = "login" }) {
       <style>{styles}</style>
       <div className={`auth-page${isRegister ? " is-register" : " is-login"}`}>
         <section className="auth-card">
-          <h1>{isRegister ? "Create Account" : "Login"}</h1>
+          <h1>{editingAccount ? "Edit Account" : isRegister ? "Create Account" : "Login"}</h1>
 
           {isRegister ? (
             <form className="auth-form" onSubmit={handleRegister}>
@@ -160,7 +193,16 @@ export default function AuthPage({ mode = "login" }) {
                 errors={errors}
                 onChange={handleRegisterChange}
               />
-              <button type="submit">Create account</button>
+              <FamilyMembersFields
+                idPrefix="auth-family"
+                members={register.familyMembers}
+                errors={errors}
+                accountMobile={register.mobile}
+                onChange={handleRegisterChange}
+              />
+              <button type="submit">
+                {editingAccount ? "Save Changes" : "Create account"}
+              </button>
             </form>
           ) : (
             <form className="auth-form auth-form-login" onSubmit={handleLogin}>
@@ -203,7 +245,11 @@ export default function AuthPage({ mode = "login" }) {
           ) : null}
 
           <p className="auth-switch">
-            {isRegister ? (
+            {editingAccount ? (
+              <>
+                Need the points page? <a href="#profile">Open Profile</a>
+              </>
+            ) : isRegister ? (
               <>
                 Already registered? <a href="#login">Login</a>
               </>
@@ -233,7 +279,7 @@ const styles = `
 .auth-form select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px;outline:none}
 .auth-form textarea{width:100%;box-sizing:border-box;height:auto;min-height:64px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px;outline:none;resize:vertical}
 .auth-form input:focus,.auth-form select:focus,.auth-form textarea:focus{border-color:#1a6b7a}
-.auth-form .person-fields,.auth-form .addr-fields,.auth-form button[type=submit]{grid-column:1/-1}
+.auth-form .person-fields,.auth-form .addr-fields,.auth-form .family-fields,.auth-form button[type=submit]{grid-column:1/-1}
 .auth-form button[type=submit]{margin-top:6px;height:40px;max-width:220px;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:800;cursor:pointer}
 .auth-form-login button[type=submit]{max-width:none}
 .auth-error{margin-top:4px;color:#d84b4b;font-size:11px}

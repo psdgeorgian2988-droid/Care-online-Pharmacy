@@ -4,16 +4,33 @@ export const GENDER_OPTIONS = [
 ];
 
 export const RELATION_OPTIONS = [
-  { value: "family", label: "Family" },
   { value: "spouse", label: "Spouse" },
-  { value: "father", label: "Father" },
-  { value: "mother", label: "Mother" },
   { value: "son", label: "Son" },
   { value: "daughter", label: "Daughter" },
-  { value: "brother", label: "Brother" },
-  { value: "sister", label: "Sister" },
-  { value: "other", label: "Other" },
+  { value: "mother", label: "Mother" },
+  { value: "father", label: "Father" },
+  { value: "grandmother", label: "Grandmother" },
+  { value: "grandfather", label: "Grandfather" },
 ];
+
+export function normalizeRelation(value) {
+  const key = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "");
+  const aliases = {
+    wife: "spouse",
+    husband: "spouse",
+    grandma: "grandmother",
+    grandfather: "grandfather",
+    granny: "grandmother",
+    grandpa: "grandfather",
+    "grand-mother": "grandmother",
+    "grand-father": "grandfather",
+  };
+  const mapped = aliases[key] || key;
+  return RELATION_OPTIONS.some((option) => option.value === mapped) ? mapped : "";
+}
 
 export function pad2(value) {
   return String(value).padStart(2, "0");
@@ -121,11 +138,21 @@ export function emptyFamilyMember() {
   return {
     id: `fam-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
     name: "",
-    relation: "family",
+    relation: "",
+    mobile: "",
+    useAccountMobile: false,
     gender: "",
     dob: "",
     age: "",
   };
+}
+
+export function normalizeMobile(value) {
+  return String(value || "").replace(/\D/g, "").slice(0, 10);
+}
+
+export function isValidMobile(value) {
+  return /^[6-9]\d{9}$/.test(normalizeMobile(value));
 }
 
 export function normalizeGender(value) {
@@ -155,9 +182,9 @@ export function genderLabel(value) {
 }
 
 export function relationLabel(value) {
-  const key = String(value || "").trim().toLowerCase();
+  const key = normalizeRelation(value);
   const hit = RELATION_OPTIONS.find((option) => option.value === key);
-  return hit ? hit.label : "Family";
+  return hit ? hit.label : "";
 }
 
 export function validatePerson(source = {}) {
@@ -175,26 +202,45 @@ export function validatePerson(source = {}) {
   return errors;
 }
 
-export function pickFamilyMember(source = {}, index = 0) {
+export function pickFamilyMember(source = {}, index = 0, accountMobile = "") {
+  const useAccount = Boolean(source.useAccountMobile);
+  const account = normalizeMobile(accountMobile);
+  const own = normalizeMobile(source.mobile);
   return {
     id: String(source.id || `fam-${index}`),
     name: String(source.name || "").trim(),
-    relation: String(source.relation || "family").trim() || "family",
+    relation: normalizeRelation(source.relation),
+    mobile: useAccount ? account : own,
+    useAccountMobile: useAccount,
     ...pickPerson(source),
   };
 }
 
 export function pickFamilyMembers(source = {}) {
   const list = Array.isArray(source.familyMembers) ? source.familyMembers : [];
-  return list.map((row, index) => pickFamilyMember(row, index));
+  const account = normalizeMobile(source.mobile);
+  return list.map((row, index) => pickFamilyMember(row, index, account));
 }
 
 export function validateFamilyMembers(source = {}) {
   const members = pickFamilyMembers(source);
+  const account = normalizeMobile(source.mobile);
   const errors = {};
   members.forEach((member, index) => {
     if (!member.name) {
       errors[`familyMembers.${index}.name`] = "Family member name is required.";
+    }
+    if (!normalizeRelation(member.relation)) {
+      errors[`familyMembers.${index}.relation`] = "Select a relation.";
+    }
+    if (member.useAccountMobile) {
+      if (!isValidMobile(account)) {
+        errors[`familyMembers.${index}.mobile`] =
+          "Enter the account mobile, or type this member's own number.";
+      }
+    } else if (!isValidMobile(member.mobile)) {
+      errors[`familyMembers.${index}.mobile`] =
+        "Enter a 10-digit mobile, or use the account holder's number.";
     }
     const personErrors = validatePerson(member);
     if (personErrors.gender) {
@@ -207,13 +253,18 @@ export function validateFamilyMembers(source = {}) {
   return errors;
 }
 
-export function memberSummary(member) {
-  const row = pickFamilyMember(member);
+export function memberSummary(member, accountMobile = "") {
+  const row = pickFamilyMember(member, 0, accountMobile);
   const bits = [
     row.name || "Family member",
     relationLabel(row.relation),
     genderLabel(row.gender) || row.gender,
     row.age ? `${row.age} yrs` : "",
+    row.mobile
+      ? row.useAccountMobile
+        ? `Mobile ${row.mobile} (account)`
+        : `Mobile ${row.mobile}`
+      : "",
   ].filter(Boolean);
   return bits.join(" · ");
 }

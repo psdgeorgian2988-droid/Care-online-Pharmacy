@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { RELATION_OPTIONS } from "./personFields";
 import {
   POINT_VALUES,
   referralShareText,
@@ -22,7 +23,7 @@ function ReferFamily() {
   const [form, setForm] = useState({
     name: "",
     mobile: "",
-    relation: "family",
+    relation: "spouse",
   });
   const [errors, setErrors] = useState({});
   const [done, setDone] = useState(null);
@@ -49,7 +50,7 @@ function ReferFamily() {
       return;
     }
     setDone(result.referral);
-    setForm({ name: "", mobile: "", relation: "family" });
+    setForm({ name: "", mobile: "", relation: "spouse" });
   };
 
   const shareHref = done
@@ -119,8 +120,12 @@ function ReferFamily() {
                 setForm((prev) => ({ ...prev, relation: event.target.value }))
               }
             >
-              <option value="family">Family</option>
-              <option value="friend">Friend</option>
+              <option value="">Select</option>
+              {RELATION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </label>
           <button

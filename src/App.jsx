@@ -218,8 +218,8 @@ function HomePage() {
                 <a className="home-account-btn is-primary" href="#profile">
                   Profile
                 </a>
-                <a className="home-account-btn" href="#profile">
-                  Add Family Members
+                <a className="home-account-btn" href="#register">
+                  Edit Account
                 </a>
               </>
             ) : (
