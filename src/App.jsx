@@ -41,7 +41,7 @@ const NAV_LINKS = [
   { href: "#medicine-search", label: "Medicines" },
   { href: "#labs", label: "Lab Tests" },
   { href: "#homecare", label: "Home Care" },
-  { href: "#vaccination", label: "Vaccination" },
+  { href: "#vaccination", label: "Vaccination Record" },
   { href: "#psychologist", label: "Psychologist" },
   { href: "#stepdown", label: "Step-Down" },
   { href: "#ambulance", label: "Ambulance" },
@@ -277,7 +277,7 @@ function HomePage() {
           ) : null}
           {features.vaccination !== false ? (
             <a className="home-service-card" href="#vaccination">
-              <h2>Vaccination</h2>
+              <h2>Vaccination Record</h2>
               <p>Record, schedule and due-date reminders.</p>
               <span>View record</span>
             </a>

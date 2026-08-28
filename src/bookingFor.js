@@ -20,6 +20,12 @@ export function isRegisteredMember(profile = {}) {
   return Boolean(name && /^[6-9]\d{9}$/.test(mobile));
 }
 
+export function hasHouseholdProfile(profile = {}) {
+  return (
+    isRegisteredMember(profile) || Boolean(String(profile.name || "").trim())
+  );
+}
+
 export function profileHasBookingContact(profile = {}) {
   const mobile = registeredMobile(profile);
   if (!/^[6-9]\d{9}$/.test(mobile)) return false;
@@ -97,7 +103,7 @@ export function isHouseholdBooking(source = {}, profile = {}) {
 }
 
 export function shouldAskBookingDetails(source = {}, profile = {}) {
-  if (!isRegisteredMember(profile)) return true;
+  if (!hasHouseholdProfile(profile)) return true;
   return isOtherBooking(source);
 }
 
@@ -239,7 +245,7 @@ export function initialBookingFor(profile = {}) {
 }
 
 export function validateBookingFor(source = {}, profile = {}) {
-  if (!isRegisteredMember(profile)) return {};
+  if (!hasHouseholdProfile(profile)) return {};
   const options = bookingForOptions(profile);
   if (!source.bookedFor || !options.some((row) => row.id === source.bookedFor)) {
     return {

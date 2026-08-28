@@ -23,7 +23,7 @@ import {
 } from "./vaccinationBooking";
 import SelectedVaccinesFields from "./SelectedVaccinesFields";
 import BookingForFields from "./BookingForFields";
-import { OTHER_BOOKING_ID, findBookingFor, isRegisteredMember } from "./bookingFor";
+import { OTHER_BOOKING_ID, findBookingFor, hasHouseholdProfile } from "./bookingFor";
 import { useLoginSession } from "./authSession";
 import { readUserProfile } from "./addressFields";
 import DateMonthYearFields from "./DateMonthYearFields";
@@ -43,8 +43,7 @@ function Vaccination() {
   const session = useLoginSession();
   const stored = readUserProfile();
   const profile = session?.mobile ? { ...stored, ...session } : stored;
-  const isRegistered =
-    isRegisteredMember(profile) || Boolean(String(profile.name || "").trim());
+  const isRegistered = hasHouseholdProfile(profile);
   const [store, setStore] = useState(() => loadVaccinationStore());
   const [booking, setBooking] = useState(() => loadVaccinationBooking());
   const [recordForm, setRecordForm] = useState(() => ({

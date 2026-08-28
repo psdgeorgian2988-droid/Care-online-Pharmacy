@@ -7,8 +7,10 @@ import {
   bookingForPatch,
   bookingForSelectLabel,
   findBookingFor,
+  hasHouseholdProfile,
   isRegisteredMember,
   shouldAskBookingContact,
+  shouldAskBookingDetails,
   shouldAskBookingName,
   validateBookingDetails,
 } from "./bookingFor.js";
@@ -98,6 +100,21 @@ test("guests are asked name, age, sex, mobile and address", () => {
 test("registered Self or family does not require typed name, mobile or address", () => {
   const errors = validateBookingDetails({ bookedFor: "self" }, profile);
   assert.equal(errors.patientName, undefined);
+  assert.equal(errors.gender, undefined);
+  assert.equal(errors.age, undefined);
   assert.equal(errors.mobile, undefined);
   assert.equal(errors.pinCode, undefined);
+});
+
+test("Male/Female is asked only for guests or Someone Else", () => {
+  assert.equal(hasHouseholdProfile(profile), true);
+  assert.equal(shouldAskBookingDetails({ bookedFor: "self" }, profile), false);
+  assert.equal(shouldAskBookingDetails({ bookedFor: "fam-1" }, profile), false);
+  assert.equal(shouldAskBookingDetails({ bookedFor: "other" }, profile), true);
+  assert.equal(shouldAskBookingDetails({}, {}), true);
+  assert.equal(validateBookingDetails({ bookedFor: "self" }, profile).gender, undefined);
+  assert.equal(
+    validateBookingDetails({ bookedFor: "other" }, profile).gender,
+    "Select Male or Female."
+  );
 });
