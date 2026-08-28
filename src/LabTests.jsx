@@ -19,7 +19,6 @@ import {
 } from "./addressFields";
 import {
   bookingForPatch,
-  bookingReadyForService,
   initialBookingFor,
   validateBookingDetails,
   withBookingIdentity,
@@ -210,7 +209,6 @@ function LabTests() {
   const busyKind = serviceType === "radiology" ? "radiology" : "lab";
   const busyWait = useBusyOverlay(submitting, busyKind);
   const [prepPopup, setPrepPopup] = useState(null);
-  const showService = bookingReadyForService(form, profile);
 
   const selectedLab = useMemo(() => LABS.find((lab) => lab.id === selectedLabId), [selectedLabId]);
   const selectedRadiologyPartner = useMemo(
@@ -581,7 +579,6 @@ function LabTests() {
               Home sample collection/Booking from your trusted Lab.
             </p>
           </div>
-          {showService ? (
           <div className="lab-tabs" role="tablist" aria-label="Service type">
             <button
               type="button"
@@ -608,11 +605,9 @@ function LabTests() {
               ) : null}
             </button>
           </div>
-          ) : null}
         </header>
 
-        <form className={`lab-shell${showService ? "" : " is-who"}`} onSubmit={handleBooking}>
-          {showService ? (
+        <form className="lab-shell" onSubmit={handleBooking}>
           <section className="lab-card">
             <div className="lab-card-head">
               <h2>{isLab ? "Select Tests" : "Select Studies"}</h2>
@@ -716,17 +711,12 @@ function LabTests() {
               ) : null}
             </div>
           </section>
-          ) : null}
 
           <section className="lab-card lab-book">
             <div className="lab-card-head">
-              <h2>{showService ? "Patient And Slot" : "Select Name"}</h2>
+              <h2>Patient And Slot</h2>
               <p>
-                {showService
-                  ? isLab
-                    ? "Home collection or a visit to the lab."
-                    : "Centre appointment only."
-                  : "Select a name to continue."}
+                {isLab ? "Home collection or a visit to the lab." : "Centre appointment only."}
               </p>
             </div>
             <div className="lab-fields">
@@ -897,7 +887,6 @@ const styles = `
 .lab-tabs button.is-on{background:#fff;color:#1a6b7a;box-shadow:0 1px 3px rgba(20,50,70,.08)}
 .lab-tabs span{min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#1a6b7a;color:#fff;font-size:11px;line-height:18px;text-align:center}
 .lab-shell{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:stretch}
-.lab-shell.is-who{grid-template-columns:minmax(0,560px);justify-content:start}
 .lab-card{background:#fff;border:1px solid #e4ecef;border-radius:12px;padding:16px 18px;min-width:0;height:100%;box-sizing:border-box}
 .lab-card-head{margin:0 0 14px;padding-bottom:12px;border-bottom:1px solid #eef3f6}
 .lab-card-head h2{margin:0;font-size:16px;font-weight:700;color:#143246}

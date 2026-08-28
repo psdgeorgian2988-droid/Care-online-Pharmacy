@@ -38,7 +38,7 @@ function Ambulance() {
     mobile: profile.mobile,
     ...pickAddress(profile),
     ...initialBookingFor(profile),
-    emergencyType: "",
+    emergencyType: "emergency",
     notes: "",
   });
   const [errors, setErrors] = useState({});
@@ -124,7 +124,7 @@ function Ambulance() {
       mobile: profile.mobile,
       ...pickAddress(profile),
       ...initialBookingFor(profile),
-      emergencyType: "",
+      emergencyType: "emergency",
       notes: "",
     });
     setPayMethod("cod");
@@ -266,8 +266,6 @@ function Ambulance() {
             {errors.emergencyType && <small>{errors.emergencyType}</small>}
           </div>
 
-          {form.emergencyType ? (
-          <>
           <div className="field full">
             <label htmlFor="amb-notes">Notes (optional)</label>
             <textarea
@@ -301,8 +299,6 @@ function Ambulance() {
           <button type="submit" className="service-submit" disabled={submitting}>
             {submitting ? "Connecting PIN to map…" : "Submit ambulance request"}
           </button>
-          </>
-          ) : null}
           </BookingFlow>
         </form>
       </div>

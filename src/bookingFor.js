@@ -115,15 +115,6 @@ export function shouldAskBookingContact(source = {}, profile = {}) {
   return shouldAskBookingDetails(source, profile);
 }
 
-export function bookingReadyForService(source = {}, profile = {}) {
-  if (hasHouseholdProfile(profile)) {
-    if (!source.bookedFor) return false;
-    if (isHouseholdBooking(source, profile)) return true;
-  }
-  if (!shouldAskBookingDetails(source, profile)) return false;
-  return Object.keys(validateBookingDetails(source, profile)).length === 0;
-}
-
 export function withBookingIdentity(source = {}, profile = {}) {
   const option = findBookingFor(profile, source.bookedFor);
   const household =

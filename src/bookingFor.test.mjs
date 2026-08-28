@@ -9,7 +9,6 @@ import {
   findBookingFor,
   hasHouseholdProfile,
   isRegisteredMember,
-  bookingReadyForService,
   shouldAskBookingContact,
   shouldAskBookingDetails,
   shouldAskBookingName,
@@ -105,35 +104,6 @@ test("registered Self or family does not require typed name, mobile or address",
   assert.equal(errors.age, undefined);
   assert.equal(errors.mobile, undefined);
   assert.equal(errors.pinCode, undefined);
-});
-
-test("services stay hidden until a household name is picked or guest details are complete", () => {
-  assert.equal(bookingReadyForService({}, profile), false);
-  assert.equal(bookingReadyForService({ bookedFor: "self" }, profile), true);
-  assert.equal(bookingReadyForService({ bookedFor: "fam-1" }, profile), true);
-  assert.equal(bookingReadyForService({ bookedFor: "other" }, profile), false);
-  assert.equal(bookingReadyForService({}, {}), false);
-  assert.equal(
-    bookingReadyForService(
-      {
-        bookedFor: "other",
-        patientName: "Guest Person",
-        gender: "F",
-        age: "30",
-        mobile: "9876501234",
-        houseNo: "1",
-        society: "Park",
-        pinCode: "122006",
-        area: "Sector 14",
-        city: "Gurugram",
-        district: "Gurugram",
-        state: "Haryana",
-        addressConfirmed: "yes",
-      },
-      profile
-    ),
-    true
-  );
 });
 
 test("Male/Female is asked only for guests or Someone Else", () => {

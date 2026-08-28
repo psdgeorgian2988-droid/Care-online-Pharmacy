@@ -104,19 +104,14 @@ function homeCareFromHash(profile) {
     service = "";
     plan = "";
   }
-  const fromLink = Boolean(service || plan);
   const serviceType =
     service === "nurse" || service === "caregiver" || service === "physiotherapy"
       ? service
       : isVaccinationPlan(plan)
         ? "nurse"
-        : fromLink
-          ? "caregiver"
-          : "";
+        : "caregiver";
   const plans = plansFor(serviceType);
-  const carePlan = plans.some((row) => row.value === plan)
-    ? plan
-    : plans[0]?.value || "";
+  const carePlan = plans.some((row) => row.value === plan) ? plan : plans[0].value;
   return {
     patientName: profile.name,
     mobile: profile.mobile,
@@ -179,10 +174,11 @@ function HomeCare() {
         ? value.replace(/\D/g, "")
         : value;
     if (name === "serviceType") {
+      const firstPlan = plansFor(next)[0]?.value || "";
       setForm((prev) => ({
         ...prev,
         serviceType: next,
-        carePlan: "",
+        carePlan: firstPlan,
         otherNote: "",
         otherRate: "999",
       }));
@@ -319,8 +315,8 @@ function HomeCare() {
       mobile: profile.mobile,
       ...pickAddress(profile),
       ...initialBookingFor(profile),
-      serviceType: "",
-      carePlan: "",
+      serviceType: "caregiver",
+      carePlan: "visit",
       date: "",
       timeSlot: "",
       otherNote: "",
@@ -482,7 +478,6 @@ function HomeCare() {
             {errors.serviceType && <small>{errors.serviceType}</small>}
           </div>
 
-          {form.serviceType ? (
           <div className="field">
             <label htmlFor="hc-plan">
               Rate <span>*</span>
@@ -502,10 +497,7 @@ function HomeCare() {
             </select>
             {errors.carePlan ? <small>{errors.carePlan}</small> : null}
           </div>
-          ) : null}
 
-          {form.carePlan ? (
-          <>
           {isVaccinationPlan(form.carePlan) ? (
             <div className="field full">
               <SelectedVaccinesFields
@@ -622,8 +614,6 @@ function HomeCare() {
                           ?.price || 0
                 )}`}
           </button>
-          </>
-          ) : null}
           </BookingFlow>
         </form>
       </div>

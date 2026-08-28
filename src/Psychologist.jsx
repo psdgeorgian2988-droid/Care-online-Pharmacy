@@ -53,7 +53,7 @@ function Psychologist() {
     mobile: profile.mobile,
     ...pickAddress(profile),
     ...initialBookingFor(profile),
-    carePlan: "",
+    carePlan: "video-45",
     date: "",
     timeSlot: "",
     concern: "",
@@ -64,12 +64,7 @@ function Psychologist() {
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
   const busyWait = useBusyOverlay(submitting, "psychologist");
-  const plan = PLANS.find((item) => item.value === form.carePlan) || {
-    value: "",
-    label: "Select a session",
-    price: 0,
-    mode: "video",
-  };
+  const plan = PLANS.find((item) => item.value === form.carePlan) || PLANS[0];
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -315,8 +310,6 @@ function Psychologist() {
             {errors.carePlan ? <small>{errors.carePlan}</small> : null}
           </div>
 
-          {form.carePlan ? (
-          <>
           <div className="field">
             <label htmlFor="psy-date">
               Session date <span>*</span>
@@ -381,8 +374,6 @@ function Psychologist() {
               ? "Holding your place…"
               : `Confirm session · ${formatRupee(plan.price)}`}
           </button>
-          </>
-          ) : null}
           </BookingFlow>
         </form>
       </div>

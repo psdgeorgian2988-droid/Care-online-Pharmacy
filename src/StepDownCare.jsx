@@ -159,7 +159,7 @@ function StepDownCare() {
     mobile: profile.mobile,
     ...pickAddress(profile),
     ...initialBookingFor(profile),
-    serviceType: "",
+    serviceType: "post-icu",
     date: "",
     timeSlot: "",
     durationDays: "7",
@@ -329,7 +329,7 @@ function StepDownCare() {
       mobile: profile.mobile,
       ...pickAddress(profile),
       ...initialBookingFor(profile),
-      serviceType: "",
+      serviceType: "post-icu",
       date: "",
       timeSlot: "",
       durationDays: "7",
@@ -634,8 +634,6 @@ function StepDownCare() {
                   </select>
                   {errors.serviceType ? <small className="lab-error">{errors.serviceType}</small> : null}
                 </div>
-                {form.centreId && form.serviceType ? (
-                <>
                 <div className="lab-field">
                   <label htmlFor="sd-date">
                     Start date <em>*</em>
@@ -749,8 +747,6 @@ function StepDownCare() {
                     ? "Confirm booking and ambulance"
                     : "Confirm step-down booking"}
               </button>
-                </>
-                ) : null}
                 </BookingFlow>
               </div>
             </section>
