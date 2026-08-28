@@ -16,6 +16,7 @@ test("slot labels parse to minutes from midnight", () => {
   assert.equal(parseSlotStartMinutes("7:00 AM - 9:00 AM"), 7 * 60);
   assert.equal(parseSlotStartMinutes("11:00 AM - 1:00 PM"), 11 * 60);
   assert.equal(parseSlotStartMinutes("2:00 PM - 4:00 PM"), 14 * 60);
+  assert.equal(parseSlotStartMinutes("08:00 AM – 10:00 AM"), 8 * 60);
 });
 
 test("lab appointment date must be today or later", () => {

@@ -9,9 +9,14 @@ export const LAB_TIME_SLOTS = [
 ];
 
 export const LAB_BOOKING_DAYS_AHEAD = 7;
+export const BOOKING_DAYS_AHEAD = 7;
+
+export function bookingMaxDate(now = new Date()) {
+  return isoDateDaysAhead(BOOKING_DAYS_AHEAD, now);
+}
 
 export function labBookingMaxDate(now = new Date()) {
-  return isoDateDaysAhead(LAB_BOOKING_DAYS_AHEAD, now);
+  return bookingMaxDate(now);
 }
 
 export function parseSlotStartMinutes(label) {

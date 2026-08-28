@@ -23,7 +23,14 @@ import {
   withBookingIdentity,
 } from "./bookingFor";
 import DateMonthYearFields from "./DateMonthYearFields";
-import { isoDateToday, isoDateYearsAhead } from "./personFields";
+import { isoDateToday } from "./personFields";
+import {
+  appointmentDateError,
+  appointmentSlotError,
+  bookingMaxDate,
+  isOpenAppointmentSlot,
+  openAppointmentSlots,
+} from "./appointmentSlot";
 
 const PLANS = [
   { value: "video-45", label: "Video 45 min", price: 999, mode: "video" },
@@ -52,7 +59,7 @@ function readProfile() {
 function Psychologist() {
   const profile = useMemo(() => readProfile(), []);
   const today = isoDateToday();
-  const maxVisit = isoDateYearsAhead(1);
+  const maxVisit = bookingMaxDate();
   const [form, setForm] = useState({
     patientName: profile.name,
     mobile: profile.mobile,
@@ -70,20 +77,41 @@ function Psychologist() {
   const [payQuote, setPayQuote] = useState(null);
   const busyWait = useBusyOverlay(submitting, "psychologist");
   const plan = PLANS.find((item) => item.value === form.carePlan) || PLANS[0];
+  const openSlots = useMemo(
+    () => openAppointmentSlots(TIME_SLOTS, form.date),
+    [form.date]
+  );
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     const next =
       name === "mobile" || name === "pinCode" ? value.replace(/\D/g, "") : value;
-    setForm((prev) => ({ ...prev, [name]: next }));
+    setForm((prev) => {
+      const patched = { ...prev, [name]: next };
+      if (
+        (name === "date" || name === "timeSlot") &&
+        patched.date &&
+        patched.timeSlot &&
+        !isOpenAppointmentSlot(patched.timeSlot, patched.date)
+      ) {
+        patched.timeSlot = "";
+      }
+      return patched;
+    });
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const validate = () => {
     const next = validateBookingDetails(form, profile);
     if (!form.carePlan) next.carePlan = "Select a session.";
-    if (!form.date) next.date = "Please select a session date.";
-    if (!form.timeSlot) next.timeSlot = "Please select a time slot.";
+    if (!form.date) {
+      next.date = "Please select a session date.";
+    } else {
+      const dateError = appointmentDateError(form.date);
+      if (dateError) next.date = dateError;
+    }
+    const slotError = appointmentSlotError(form.timeSlot, form.date, TIME_SLOTS);
+    if (slotError) next.timeSlot = slotError;
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -327,6 +355,7 @@ function Psychologist() {
               label="Session Date"
               onChange={handleChange}
             />
+            <small className="booking-hint">Today or up to 7 days ahead.</small>
           </div>
 
           <div className="field">
@@ -340,13 +369,17 @@ function Psychologist() {
               onChange={handleChange}
             >
               <option value="">Select a slot</option>
-              {TIME_SLOTS.map((slot) => (
+              {openSlots.map((slot) => (
                 <option key={slot} value={slot}>
                   {slot}
                 </option>
               ))}
             </select>
-            {errors.timeSlot && <small>{errors.timeSlot}</small>}
+            {form.date && openSlots.length === 0 ? (
+              <small>No time slots left today. Choose a later date.</small>
+            ) : errors.timeSlot ? (
+              <small>{errors.timeSlot}</small>
+            ) : null}
           </div>
 
           <div className="field full">
@@ -400,7 +433,7 @@ const styles = `
 .service-form textarea{height:auto;min-height:56px;resize:vertical}
 .service-form input:focus,.service-form select:focus,.service-form textarea:focus{border-color:#1a6b7a}
 .service-form small{margin-top:4px;color:#d84b4b;font-size:12px}
-.service-form small.pin-gps-hint{color:#5d7180}
+.service-form small.pin-gps-hint,.service-form small.booking-hint{color:#5d7180}
 .service-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:40px;cursor:pointer;font-family:inherit}
 .confirm-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
 .confirm-actions .service-submit{grid-column:auto;min-width:180px}

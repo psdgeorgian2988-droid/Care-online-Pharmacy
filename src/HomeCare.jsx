@@ -36,6 +36,13 @@ import {
 import SelectedVaccinesFields from "./SelectedVaccinesFields";
 import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateToday } from "./personFields";
+import {
+  appointmentDateError,
+  appointmentSlotError,
+  bookingMaxDate,
+  isOpenAppointmentSlot,
+  openAppointmentSlots,
+} from "./appointmentSlot";
 
 const LEGACY_STORAGE_KEY = "mediHomeHomeCareBookings";
 const SERVICE_TYPES = [
@@ -131,9 +138,7 @@ function homeCareFromHash(profile) {
 function HomeCare() {
   const profile = useMemo(() => readProfile(), []);
   const today = isoDateToday();
-  const maxVisit = isoDateToday(
-    new Date(new Date().getFullYear() + 1, new Date().getMonth(), new Date().getDate())
-  );
+  const maxVisit = bookingMaxDate();
   const [form, setForm] = useState(() => homeCareFromHash(profile));
   const [vaxBooking, setVaxBooking] = useState(() => loadVaccinationBooking());
   const [errors, setErrors] = useState({});
@@ -168,6 +173,10 @@ function HomeCare() {
   }, []);
 
   const activePlans = plansFor(form.serviceType);
+  const openSlots = useMemo(
+    () => openAppointmentSlots(TIME_SLOTS, form.date),
+    [form.date]
+  );
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -187,7 +196,18 @@ function HomeCare() {
       setErrors((prev) => ({ ...prev, serviceType: "", carePlan: "" }));
       return;
     }
-    setForm((prev) => ({ ...prev, [name]: next }));
+    setForm((prev) => {
+      const patched = { ...prev, [name]: next };
+      if (
+        (name === "date" || name === "timeSlot") &&
+        patched.date &&
+        patched.timeSlot &&
+        !isOpenAppointmentSlot(patched.timeSlot, patched.date)
+      ) {
+        patched.timeSlot = "";
+      }
+      return patched;
+    });
     setErrors((prev) => ({ ...prev, [name]: "" }));
     if (name === "carePlan" && isVaccinationPlan(next)) {
       setVaxBooking(setBookingGroup(next === "vaccination-child" ? "child" : "adult"));
@@ -208,9 +228,13 @@ function HomeCare() {
       next.date = usesVisitDate(form.serviceType, form.carePlan)
         ? "Please select a visit date."
         : "Please select a start date.";
+    } else {
+      const dateError = appointmentDateError(form.date);
+      if (dateError) next.date = dateError;
     }
-    if (!isLongDuty(form.carePlan) && !form.timeSlot) {
-      next.timeSlot = "Please select a time slot.";
+    if (!isLongDuty(form.carePlan)) {
+      const slotError = appointmentSlotError(form.timeSlot, form.date, TIME_SLOTS);
+      if (slotError) next.timeSlot = slotError;
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -560,6 +584,7 @@ function HomeCare() {
               }
               onChange={handleChange}
             />
+            <small className="booking-hint">Today or up to 7 days ahead.</small>
           </div>
 
           {!isLongDuty(form.carePlan) ? (
@@ -574,13 +599,17 @@ function HomeCare() {
                 onChange={handleChange}
               >
                 <option value="">Select a slot</option>
-                {TIME_SLOTS.map((slot) => (
+                {openSlots.map((slot) => (
                   <option key={slot} value={slot}>
                     {slot}
                   </option>
                 ))}
               </select>
-              {errors.timeSlot && <small>{errors.timeSlot}</small>}
+              {form.date && openSlots.length === 0 ? (
+                <small>No time slots left today. Choose a later date.</small>
+              ) : errors.timeSlot ? (
+                <small>{errors.timeSlot}</small>
+              ) : null}
             </div>
           ) : null}
 
@@ -636,7 +665,7 @@ const styles = `
 .service-form textarea{height:auto;min-height:56px;resize:vertical}
 .service-form input:focus,.service-form select:focus,.service-form textarea:focus{border-color:#1a6b7a}
 .service-form small{margin-top:4px;color:#d84b4b;font-size:12px}
-.service-form small.pin-gps-hint{color:#5d7180}
+.service-form small.pin-gps-hint,.service-form small.booking-hint{color:#5d7180}
 .vac-copy{margin:0;color:#5d7180;font-size:13px;line-height:1.45}
 .vac-copy a,.field.full > a.vac-copy{color:#1a6b7a;font-weight:700}
 .vac-picked{margin:0 0 8px;padding:0;list-style:none;display:grid;gap:6px}

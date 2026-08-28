@@ -21,7 +21,14 @@ import {
   withBookingIdentity,
 } from "./bookingFor";
 import DateMonthYearFields from "./DateMonthYearFields";
-import { isoDateToday, isoDateYearsAhead, maskMobile } from "./personFields";
+import { isoDateToday, maskMobile } from "./personFields";
+import {
+  appointmentDateError,
+  appointmentSlotError,
+  bookingMaxDate,
+  isOpenAppointmentSlot,
+  openAppointmentSlots,
+} from "./appointmentSlot";
 import { paymentMethodSummary } from "./paymentMethods";
 
 const STORAGE_KEY = "mediHomeStepDownBookings";
@@ -153,7 +160,7 @@ function centreMatches(centre, query, focus) {
 function StepDownCare() {
   const profile = useMemo(() => readProfile(), []);
   const today = isoDateToday();
-  const maxVisit = isoDateYearsAhead(1);
+  const maxVisit = bookingMaxDate();
   const [tab, setTab] = useState("find");
   const [query, setQuery] = useState("");
   const [focus, setFocus] = useState("all");
@@ -176,6 +183,10 @@ function StepDownCare() {
   const [payQuote, setPayQuote] = useState(null);
   const busyWait = useBusyOverlay(submitting, "stepdown");
   const stayTotal = Math.max(1, Number(form.durationDays) || 1) * STEPDOWN_DAY_RATE;
+  const openSlots = useMemo(
+    () => openAppointmentSlots(TIME_SLOTS, form.date),
+    [form.date]
+  );
 
   const selectedCentre = CENTRES.find((item) => item.id === form.centreId) || null;
   const centres = CENTRES.filter((centre) => centreMatches(centre, query, focus));
@@ -186,7 +197,18 @@ function StepDownCare() {
       name === "mobile" || name === "pinCode" || name === "durationDays"
         ? value.replace(/\D/g, "")
         : value;
-    setForm((prev) => ({ ...prev, [name]: next }));
+    setForm((prev) => {
+      const patched = { ...prev, [name]: next };
+      if (
+        (name === "date" || name === "timeSlot") &&
+        patched.date &&
+        patched.timeSlot &&
+        !isOpenAppointmentSlot(patched.timeSlot, patched.date)
+      ) {
+        patched.timeSlot = "";
+      }
+      return patched;
+    });
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -201,8 +223,14 @@ function StepDownCare() {
     if (!form.centreId) next.centreId = "Select a step-down care centre.";
     Object.assign(next, validateBookingDetails(form, profile));
     if (!form.serviceType) next.serviceType = "Select a care type.";
-    if (!form.date) next.date = "Please select a date.";
-    if (!form.timeSlot) next.timeSlot = "Please select a time slot.";
+    if (!form.date) {
+      next.date = "Please select a date.";
+    } else {
+      const dateError = appointmentDateError(form.date);
+      if (dateError) next.date = dateError;
+    }
+    const slotError = appointmentSlotError(form.timeSlot, form.date, TIME_SLOTS);
+    if (slotError) next.timeSlot = slotError;
     const days = Number(form.durationDays);
     if (!days || days < 1 || days > 90) {
       next.durationDays = "Enter stay or visit days between 1 and 90.";
@@ -648,6 +676,7 @@ function StepDownCare() {
                     label="Start Date"
                     onChange={handleChange}
                   />
+                  <small className="lab-hint">Today or up to 7 days ahead.</small>
                 </div>
                 <div className="lab-field">
                   <label htmlFor="sd-slot">
@@ -660,13 +689,19 @@ function StepDownCare() {
                     onChange={handleChange}
                   >
                     <option value="">Select a slot</option>
-                    {TIME_SLOTS.map((slot) => (
+                    {openSlots.map((slot) => (
                       <option key={slot} value={slot}>
                         {slot}
                       </option>
                     ))}
                   </select>
-                  {errors.timeSlot ? <small className="lab-error">{errors.timeSlot}</small> : null}
+                  {form.date && openSlots.length === 0 ? (
+                    <small className="lab-error">
+                      No time slots left today. Choose a later date.
+                    </small>
+                  ) : errors.timeSlot ? (
+                    <small className="lab-error">{errors.timeSlot}</small>
+                  ) : null}
                 </div>
                 <div className="lab-field">
                   <label htmlFor="sd-days">
@@ -779,6 +814,7 @@ const styles = `
 .lab-field textarea{height:auto;min-height:64px;resize:vertical}
 .lab-field{margin-top:12px}
 .lab-error{display:block;margin-top:6px;color:#d84b4b;font-size:12px}
+.lab-hint{display:block;margin-top:6px;color:#5d7180;font-size:12px}
 .sd-filters{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
 .sd-filters button{border:1px solid #d7e2e9;background:#fff;color:#34546b;border-radius:999px;padding:6px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
 .sd-filters button.is-on{background:#1a6b7a;border-color:#1a6b7a;color:#fff}
