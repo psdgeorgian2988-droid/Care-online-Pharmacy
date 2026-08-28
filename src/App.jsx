@@ -28,24 +28,12 @@ import MedicineSearchTools from "./MedicineSearchTools";
 import { reviewStats } from "./reviewStore";
 import CareChat from "./CareChat";
 import { CARE_WHATSAPP } from "./careChat";
-import AddressFields from "./AddressFields";
-import PersonFields from "./PersonFields";
-import {
-  emptyAddress,
-  readUserProfile,
-  validateAddress,
-  withFormattedAddress,
-} from "./addressFields";
-import {
-  emptyPerson,
-  pickFamilyMembers,
-  pickPerson,
-  validatePerson,
-} from "./personFields";
-import { useFeatures } from "./featureFlags";
-import { pausedServiceTitle, routeEnabled } from "./salesReport";
 import ComingSoon from "./ComingSoon";
 import ErrorBoundary from "./ErrorBoundary";
+import AuthPage from "./AuthPage";
+import { logoutSession, useLoginSession } from "./authSession";
+import { useFeatures } from "./featureFlags";
+import { pausedServiceTitle, routeEnabled } from "./salesReport";
 import { goToHash, parseAppHash } from "./hashRoute";
 
 const NAV_LINKS = [
@@ -83,8 +71,6 @@ const OPS_LINKS = [
 const HOME_WHATSAPP_URL = `https://wa.me/${CARE_WHATSAPP}?text=${encodeURIComponent(
   "Hi MediHome, I would like to order medicines."
 )}`;
-const PROFILE_KEY = "mediHomeUser";
-const LOGIN_SESSION_KEY = "mediHomeLoggedIn";
 
 function openWhatsAppUrl(url, event) {
   if (event) {
@@ -119,241 +105,6 @@ function hashLinkActive(linkHref, route, scanStep) {
     return true;
   }
   return false;
-}
-
-function readLoginSession() {
-  try {
-    if (sessionStorage.getItem(LOGIN_SESSION_KEY) !== "1") return null;
-    const saved = readUserProfile();
-    return saved.mobile ? saved : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeLoginSession(user) {
-  try {
-    if (user?.mobile) sessionStorage.setItem(LOGIN_SESSION_KEY, "1");
-    else sessionStorage.removeItem(LOGIN_SESSION_KEY);
-  } catch {
-    /* ignore quota / private mode */
-  }
-}
-
-function HomeAuthCard() {
-  const [tab, setTab] = useState("login");
-  const [login, setLogin] = useState({ mobile: "", pinCode: "" });
-  const [register, setRegister] = useState({
-    name: "",
-    mobile: "",
-    ...emptyPerson(),
-    ...emptyAddress(),
-  });
-  const [errors, setErrors] = useState({});
-  const [status, setStatus] = useState({ type: "", text: "" });
-  const [loggedInUser, setLoggedInUser] = useState(readLoginSession);
-
-  const digitsOnly = (value) => value.replace(/\D/g, "");
-
-  const handleLoginChange = (event) => {
-    const { name, value } = event.target;
-    setLogin((prev) => ({ ...prev, [name]: digitsOnly(value) }));
-    setStatus({ type: "", text: "" });
-  };
-
-  const handleRegisterChange = (event) => {
-    const { name, value } = event.target;
-    const nextValue =
-      name === "mobile" || name === "pinCode"
-        ? digitsOnly(String(value || ""))
-        : value;
-    setRegister((prev) => ({ ...prev, [name]: nextValue }));
-    setErrors((prev) => ({ ...prev, [name]: "" }));
-    setStatus({ type: "", text: "" });
-  };
-
-  const switchTab = (nextTab) => {
-    setTab(nextTab);
-    setErrors({});
-    setStatus({ type: "", text: "" });
-  };
-
-  const handleLogin = (event) => {
-    event.preventDefault();
-    const saved = readUserProfile();
-    if (!/^[6-9]\d{9}$/.test(login.mobile)) {
-      setStatus({
-        type: "error",
-        text: "Enter a valid 10-digit mobile number.",
-      });
-      return;
-    }
-    if (!/^\d{6}$/.test(login.pinCode)) {
-      setStatus({ type: "error", text: "Enter your 6-digit PIN." });
-      return;
-    }
-    if (!saved.mobile) {
-      setStatus({
-        type: "error",
-        text: "No account found. Please register first.",
-      });
-      return;
-    }
-    if (saved.mobile !== login.mobile || saved.pinCode !== login.pinCode) {
-      setStatus({
-        type: "error",
-        text: "Mobile or PIN does not match your saved profile.",
-      });
-      return;
-    }
-    setLoggedInUser(saved);
-    writeLoginSession(saved);
-    setStatus({
-      type: "success",
-      text: saved.name ? `Welcome back, ${saved.name}.` : "Logged in successfully.",
-    });
-  };
-
-  const handleRegister = (event) => {
-    event.preventDefault();
-    const nextErrors = {};
-    if (!register.name.trim()) nextErrors.name = "Full name is required.";
-    if (!/^[6-9]\d{9}$/.test(register.mobile)) {
-      nextErrors.mobile = "Enter a valid 10-digit mobile number.";
-    }
-    Object.assign(nextErrors, validatePerson(register));
-    Object.assign(nextErrors, validateAddress(register));
-    setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
-
-    const existing = readUserProfile();
-    const sameAccount = existing.mobile === register.mobile.trim();
-    const profile = {
-      name: register.name.trim(),
-      mobile: register.mobile.trim(),
-      ...pickPerson(register),
-      familyMembers: sameAccount ? pickFamilyMembers(existing) : [],
-      ...withFormattedAddress(register),
-    };
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-    setLoggedInUser(null);
-    writeLoginSession(null);
-    setTab("login");
-    setLogin({ mobile: profile.mobile, pinCode: profile.pinCode || "" });
-    setStatus({
-      type: "success",
-      text: "Account saved. Please log in.",
-    });
-  };
-
-  return (
-    <aside className="home-auth-card" aria-label="Login or register">
-      <div className="home-auth-tabs" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "login"}
-          className={tab === "login" ? "active" : undefined}
-          onClick={() => switchTab("login")}
-        >
-          Login
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "register"}
-          className={tab === "register" ? "active" : undefined}
-          onClick={() => switchTab("register")}
-        >
-          Register
-        </button>
-      </div>
-
-      {tab === "login" ? (
-        <form className="home-auth-form" onSubmit={handleLogin}>
-          <div className="home-auth-field">
-            <label htmlFor="home-login-mobile">Mobile number <span>*</span></label>
-            <input
-              id="home-login-mobile"
-              name="mobile"
-              type="tel"
-              inputMode="numeric"
-              maxLength="10"
-              placeholder="10-digit mobile"
-              value={login.mobile}
-              onChange={handleLoginChange}
-            />
-          </div>
-          <div className="home-auth-field">
-            <label htmlFor="home-login-pin">PIN <span>*</span></label>
-            <input
-              id="home-login-pin"
-              name="pinCode"
-              type="password"
-              inputMode="numeric"
-              maxLength="6"
-              placeholder="6-digit PIN"
-              value={login.pinCode}
-              onChange={handleLoginChange}
-            />
-          </div>
-          <button type="submit">Login</button>
-        </form>
-      ) : (
-        <form className="home-auth-form" onSubmit={handleRegister}>
-          <div className="home-auth-field">
-            <label htmlFor="home-register-name">Full name <span>*</span></label>
-            <input
-              id="home-register-name"
-              name="name"
-              placeholder="Your full name"
-              value={register.name}
-              onChange={handleRegisterChange}
-            />
-            {errors.name && <small className="home-auth-error">{errors.name}</small>}
-          </div>
-          <div className="home-auth-field">
-            <label htmlFor="home-register-mobile">Mobile number <span>*</span></label>
-            <input
-              id="home-register-mobile"
-              name="mobile"
-              type="tel"
-              inputMode="numeric"
-              maxLength="10"
-              placeholder="10-digit mobile"
-              value={register.mobile}
-              onChange={handleRegisterChange}
-            />
-            {errors.mobile && (
-              <small className="home-auth-error">{errors.mobile}</small>
-            )}
-          </div>
-          <PersonFields
-            idPrefix="home-register"
-            values={register}
-            errors={errors}
-            onChange={handleRegisterChange}
-          />
-          <AddressFields
-            idPrefix="home-register"
-            values={register}
-            errors={errors}
-            onChange={handleRegisterChange}
-          />
-          <button type="submit">Create account</button>
-        </form>
-      )}
-
-      {status.text && (
-        <p className={`home-auth-status ${status.type}`}>{status.text}</p>
-      )}
-      {loggedInUser && tab === "login" ? (
-        <a className="home-auth-family-btn" href="#profile">
-          Add Family Members
-        </a>
-      ) : null}
-    </aside>
-  );
 }
 
 function LogoMark() {
@@ -392,6 +143,7 @@ function HomeReviewsTeaser() {
 
 function HomePage() {
   const features = useFeatures();
+  const user = useLoginSession();
   const [query, setQuery] = useState("");
 
   const applyMedicineQuery = (value) => {
@@ -460,7 +212,33 @@ function HomePage() {
             </p>
           </div>
 
-          <HomeAuthCard />
+          <aside className="home-account-card" aria-label="Account">
+            {user ? (
+              <>
+                <p className="home-account-kicker">Welcome Back</p>
+                <p className="home-account-name">Hi, {user.name || "there"}</p>
+                <a className="home-account-btn is-primary" href="#profile">
+                  Profile
+                </a>
+                <a className="home-account-btn" href="#profile">
+                  Add Family Members
+                </a>
+              </>
+            ) : (
+              <>
+                <p className="home-account-kicker">Your Account</p>
+                <p className="home-account-copy">
+                  Login or register for year-round offers and MediHome points.
+                </p>
+                <a className="home-account-btn" href="#login">
+                  Login
+                </a>
+                <a className="home-account-btn is-primary" href="#register">
+                  Register
+                </a>
+              </>
+            )}
+          </aside>
         </div>
 
         <section className="home-services" aria-label="Services">
@@ -555,6 +333,7 @@ function PausedService({ route, features }) {
 function App() {
   const [hash, setHash] = useState(window.location.hash);
   const [careOpen, setCareOpen] = useState(false);
+  const user = useLoginSession();
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -619,6 +398,10 @@ function App() {
         return <Admin />;
       case "#partner":
         return <Partner />;
+      case "#login":
+        return <AuthPage mode="login" />;
+      case "#register":
+        return <AuthPage mode="register" />;
       case "#home":
       default:
         return <HomePage />;
@@ -698,17 +481,45 @@ function App() {
           </nav>
 
           <nav className="sidebar-account" aria-label="Account">
-            {ACCOUNT_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className={
-                  hashLinkActive(link.href, route, scanStep) ? "active" : undefined
-                }
-              >
-                {link.label}
-              </a>
-            ))}
+            {user ? (
+              <>
+                {ACCOUNT_LINKS.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className={
+                      hashLinkActive(link.href, route, scanStep) ? "active" : undefined
+                    }
+                  >
+                    {link.label}
+                  </a>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    logoutSession();
+                    goToHash("#home");
+                  }}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <a
+                  href="#login"
+                  className={route === "#login" ? "active" : undefined}
+                >
+                  Login
+                </a>
+                <a
+                  href="#register"
+                  className={route === "#register" ? "active" : undefined}
+                >
+                  Register
+                </a>
+              </>
+            )}
           </nav>
 
           <div className="sidebar-bottom">

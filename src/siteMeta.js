@@ -99,9 +99,13 @@ const PAGE_META = {
     title: "Save Health Reports | MediHome",
     description: "Keep lab PDFs on this device for clinic visits with MediHome Reports.",
   },
-  profile: {
-    title: "Your Profile | MediHome",
-    description: "Save your name, mobile, address, and PIN for faster MediHome bookings.",
+  login: {
+    title: "Login | MediHome",
+    description: "Log in to MediHome with your registered mobile and PIN.",
+  },
+  register: {
+    title: "Create Account | MediHome",
+    description: "Register with MediHome to save your details for faster bookings.",
   },
   myorders: {
     title: "My Orders | MediHome",

@@ -1,4 +1,5 @@
 import { bookingForOptions, findBookingFor, SELF_BOOKING_ID } from "./bookingFor";
+import GuestRegisterPrompt from "./GuestRegisterPrompt";
 
 export default function BookingForFields({
   idPrefix = "booked-for",
@@ -13,7 +14,9 @@ export default function BookingForFields({
   return (
     <>
       <style>{styles}</style>
-      <div className="book-for">
+      <div className="book-for-wrap">
+        <GuestRegisterPrompt />
+        <div className="book-for">
         <label htmlFor={selectId}>
           Who Is This Booking For? <span>*</span>
         </label>
@@ -32,13 +35,15 @@ export default function BookingForFields({
           ))}
         </select>
         {error ? <small className="book-for-error">{error}</small> : null}
+        </div>
       </div>
     </>
   );
 }
 
 const styles = `
-.book-for{display:flex;flex-direction:column;min-width:0;width:100%;grid-column:1/-1}
+.book-for-wrap{display:grid;gap:10px;width:100%;grid-column:1/-1}
+.book-for{display:flex;flex-direction:column;min-width:0;width:100%}
 .book-for label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .book-for label span{color:#e34d4d}
 .book-for select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px}

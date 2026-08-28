@@ -3655,8 +3655,8 @@ body,
 
 .home-landing .home-hero-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 320px);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
+  gap: 18px;
   align-items: start;
 }
 
@@ -3666,156 +3666,67 @@ body,
   min-width: 0;
 }
 
-.home-landing .home-auth-card {
-  padding: 14px;
-  background: #f7fbfe;
-  border: 1px solid #d3e6f3;
-  border-radius: 12px;
-  box-sizing: border-box;
-}
-
-.home-landing .home-auth-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin-bottom: 14px;
-  padding: 4px;
-  background: #e7f2fa;
-  border-radius: 8px;
-}
-
-.home-landing .home-auth-tabs button {
-  height: 34px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: #5d7180;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.home-landing .home-auth-tabs button.active {
-  background: #ffffff;
-  color: #1a6b7a;
-  box-shadow: 0 1px 4px rgba(20, 50, 70, 0.08);
-}
-
-.home-landing .home-auth-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 10px 12px;
-  align-items: start;
-}
-
-.home-landing .home-auth-field {
+.home-landing .home-account-card {
   display: flex;
   flex-direction: column;
-  min-width: 0;
-}
-
-.home-landing .home-auth-form label {
-  margin: 0 0 5px;
-  color: #34546b;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.home-landing .home-auth-form label span {
-  color: #e34d4d;
-}
-
-.home-landing .home-auth-form input:not([type="radio"]):not([type="checkbox"]),
-.home-landing .home-auth-form select,
-.home-landing .home-auth-form textarea {
-  width: 100%;
+  justify-content: center;
+  gap: 10px;
+  min-height: 168px;
+  padding: 18px 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #eef8fb 100%);
+  border: 1px solid #c5e0ea;
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgba(26, 107, 122, 0.12);
   box-sizing: border-box;
-  height: 38px;
-  min-height: 38px;
-  padding: 8px 10px;
-  border: 1px solid #d7e2e9;
-  border-radius: 8px;
-  background: #fff;
-  color: #143246;
-  font-size: 13px;
-  font-family: inherit;
-  outline: none;
-  resize: vertical;
 }
 
-.home-landing .home-auth-form textarea {
-  height: auto;
-  min-height: 56px;
-}
-
-.home-landing .home-auth-form input:focus,
-.home-landing .home-auth-form select:focus,
-.home-landing .home-auth-form textarea:focus {
-  border-color: #1a6b7a;
-}
-
-.home-landing .home-auth-form .person-fields,
-.home-landing .home-auth-form .addr-fields,
-.home-landing .home-auth-form button[type="submit"] {
-  grid-column: 1 / -1;
-}
-
-.home-landing .home-auth-form button[type="submit"] {
-  margin-top: 8px;
-  height: 38px;
-  border: none;
-  border-radius: 8px;
-  background: #1a6b7a;
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-@media (max-width: 800px) {
-  .home-landing .home-auth-form {
-    grid-template-columns: 1fr;
-  }
-}
-
-.home-landing .home-auth-error {
-  color: #d84b4b;
+.home-landing .home-account-kicker {
+  margin: 0;
+  color: #1a6b7a;
   font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.home-landing .home-auth-status {
-  margin: 10px 0 0;
-  font-size: 12px;
-  font-weight: 600;
+.home-landing .home-account-name {
+  margin: 0 0 4px;
+  color: #123b59;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.home-landing .home-account-copy {
+  margin: 0 0 4px;
+  color: #34546b;
+  font-size: 13px;
   line-height: 1.4;
 }
 
-.home-landing .home-auth-status.success {
-  color: #1c9b61;
-}
-
-.home-landing .home-auth-status.error {
-  color: #d84b4b;
-}
-
-.home-landing .home-auth-family-btn {
-  display: block;
-  margin-top: 10px;
-  height: 38px;
-  line-height: 38px;
-  border-radius: 8px;
-  background: #1e8a73;
-  color: #ffffff;
-  font-size: 13px;
+.home-landing .home-account-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  border-radius: 10px;
+  border: 2px solid #1a6b7a;
+  background: #ffffff;
+  color: #1a6b7a;
+  font-size: 15px;
   font-weight: 800;
-  text-align: center;
   text-decoration: none;
 }
 
-@media (max-width: 960px) {
-  .home-landing .home-hero-row {
-    grid-template-columns: 1fr;
-  }
+.home-landing .home-account-btn.is-primary {
+  background: #1e8a73;
+  border-color: #1e8a73;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(30, 138, 115, 0.25);
+}
+
+.home-landing .home-account-btn:hover {
+  filter: brightness(1.05);
 }
 
 .home-landing .home-intro {
@@ -5466,6 +5377,7 @@ a.order-details-btn {
 
 .sidebar-nav a,
 .sidebar-account a,
+.sidebar-account button,
 .sidebar-bottom a,
 .sidebar-bottom button {
   appearance: none;
@@ -5507,6 +5419,7 @@ a.order-details-btn {
 
 .sidebar-nav a:hover,
 .sidebar-account a:hover,
+.sidebar-account button:hover,
 .sidebar-bottom a:hover,
 .sidebar-bottom button:hover {
   border: none !important;

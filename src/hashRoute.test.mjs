@@ -8,6 +8,11 @@ test("empty and home hashes open the home page", () => {
   }
 });
 
+test("login and register hashes open their own pages", () => {
+  assert.equal(parseAppHash("#login").route, "#login");
+  assert.equal(parseAppHash("#register").route, "#register");
+});
+
 test("service hashes stay on their own pages", () => {
   assert.equal(parseAppHash("#labs").route, "#labs");
   assert.equal(parseAppHash("#medicine-search?q=dolo").route, "#medicine-search");
