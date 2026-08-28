@@ -1,3 +1,5 @@
+import { isOnlinePayment } from "./paymentMethods.js";
+
 export const TZ = "Asia/Kolkata";
 
 export const FEATURE_CATALOG = [
@@ -262,7 +264,7 @@ export function groupByOutlet(orders, limit = 8) {
 
 export function groupByPayment(orders) {
   return groupMap(orders, (row) => {
-    const online = String(row.paymentMethod || "").toLowerCase() === "online";
+    const online = isOnlinePayment(row.paymentMethod);
     return { key: online ? "online" : "cod", label: online ? "Online" : "COD" };
   });
 }

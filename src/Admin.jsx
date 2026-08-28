@@ -67,6 +67,7 @@ import {
 } from "./orderStatus";
 import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateToday, isoDateYearsAgo } from "./personFields";
+import { paymentMethodLabel } from "./paymentMethods";
 
 function personName(order) {
   return (
@@ -899,7 +900,7 @@ function Admin() {
                         ) : null}
                       </td>
                       <td>
-                        {order.paymentMethod === "online" ? "Online" : "COD"}
+                        {paymentMethodLabel(order.paymentMethod, "COD")}
                         {order.paymentStatus ? ` · ${order.paymentStatus}` : ""}
                         {order.split ? (
                           <span className="admin-outlet-area">

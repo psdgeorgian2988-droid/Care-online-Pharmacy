@@ -7,6 +7,7 @@ import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import { buildIndiaCombos } from "./indiaMedicineCombos";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
+import { paymentMethodSummary } from "./paymentMethods";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import MedicineSearchTools from "./MedicineSearchTools";
@@ -3665,6 +3666,7 @@ function Medicines({ initialSearch = "" }) {
             method={payMethod}
             onMethodChange={setPayMethod}
             onQuoteChange={setPayQuote}
+            cashLabel="Cash On Delivery"
             guestDetails={{
               name: fullName,
               mobile: mobileNumber,
@@ -3716,7 +3718,7 @@ function Medicines({ initialSearch = "" }) {
           </p>
           <p>
             <strong>Payment:</strong>{" "}
-            {confirmedOrder.paymentMethod === "online" ? "Paid online" : "Cash on delivery"}
+            {paymentMethodSummary(confirmedOrder.paymentMethod, "Cash on delivery")}
           </p>
           <p>
             <strong>Delivery Address:</strong> {confirmedOrder.deliveryAddress}

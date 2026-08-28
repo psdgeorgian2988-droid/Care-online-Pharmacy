@@ -1,4 +1,10 @@
 import { splitPayment } from "./paymentSplit.js";
+import { isOnlinePayment, validatePaymentDetails } from "./paymentMethods.js";
+import {
+  clearSensitiveInstrument,
+  getCheckoutInstrument,
+} from "./paymentInstrument.js";
+import { savePaymentInstrument } from "./savedPayments.js";
 
 function loadScript(src) {
   return new Promise((resolve, reject) => {
@@ -83,14 +89,19 @@ export async function settleCheckoutPayment({
   reference,
   description,
 }) {
+  const instrument = getCheckoutInstrument();
+  const detailError = validatePaymentDetails(method, instrument.details);
+  if (detailError) {
+    throw new Error(detailError);
+  }
   const split = splitPayment(kind, amountRupees, pin, {
     saleRupees: saleRupees ?? amountRupees,
     payableRupees: amountRupees,
     couponCode,
   });
-  if (method !== "online") {
+  if (!isOnlinePayment(method)) {
     return {
-      paymentMethod: "cod",
+      paymentMethod: method || "cod",
       paymentStatus: "cod",
       paymentId: "",
       razorpayPaymentId: "",
@@ -102,8 +113,9 @@ export async function settleCheckoutPayment({
     };
   }
   if (Number(amountRupees) <= 0) {
+    maybeSaveInstrument(mobile, method, instrument);
     return {
-      paymentMethod: "online",
+      paymentMethod: method || "online",
       paymentStatus: "paid",
       paymentId: "",
       razorpayPaymentId: "",
@@ -125,8 +137,9 @@ export async function settleCheckoutPayment({
     reference,
     description,
   });
+  maybeSaveInstrument(mobile, method, instrument);
   return {
-    paymentMethod: "online",
+    paymentMethod: method || "online",
     paymentStatus: paid.paymentStatus || "paid",
     paymentId: paid.paymentId || "",
     razorpayPaymentId: paid.razorpayPaymentId || "",
@@ -136,6 +149,16 @@ export async function settleCheckoutPayment({
     discountRupees: (paid.split || split).discountRupees,
     split: paid.split || split,
   };
+}
+
+function maybeSaveInstrument(mobile, method, instrument) {
+  try {
+    savePaymentInstrument(mobile, method, instrument.details, {
+      consent: instrument.save,
+    });
+  } finally {
+    clearSensitiveInstrument();
+  }
 }
 
 export async function takeOnlinePayment({

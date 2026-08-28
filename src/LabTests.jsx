@@ -9,6 +9,7 @@ import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
 import { DIAGNOSTIC_LABS, IMAGING_CENTRES } from "./diagnosticPartners";
+import { paymentMethodSummary } from "./paymentMethods";
 import BookingFlow from "./BookingFlow";
 import {
   addressFromUnknown,
@@ -534,7 +535,7 @@ function LabTests() {
               <div className="confirm-row">
                 <span>Payment</span>
                 <strong>
-                  {booking.paymentMethod === "online" ? "Paid online" : "Pay on visit / collection"}
+                  {paymentMethodSummary(booking.paymentMethod, "Pay on visit / collection")}
                 </strong>
               </div>
             </div>

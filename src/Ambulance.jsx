@@ -9,6 +9,7 @@ import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
 import BookingFlow from "./BookingFlow";
+import { paymentMethodSummary } from "./paymentMethods";
 import {
   applyResolvedPin,
   pickAddress,
@@ -163,9 +164,7 @@ function Ambulance() {
               <div className="confirm-row">
                 <span>Payment</span>
                 <strong>
-                  {request.paymentMethod === "online"
-                    ? "Paid online"
-                    : "Cash on arrival"}
+                  {paymentMethodSummary(request.paymentMethod, "Cash on arrival")}
                 </strong>
               </div>
               <div className="confirm-row">

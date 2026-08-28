@@ -9,6 +9,7 @@ import {
 import PinGpsBlock from "./PinGpsBlock";
 import { BillButton } from "./OrderBill";
 import OrderFeedbackCta from "./OrderFeedbackCta";
+import { paymentMethodSummary } from "./paymentMethods";
 
 function typeLabel(order) {
   return kindLabel(order?.kind || order?.orderType);
@@ -311,9 +312,10 @@ function MyOrders() {
             {selectedOrder.paymentMethod ? (
               <p>
                 <strong>Payment:</strong>{" "}
-                {selectedOrder.paymentMethod === "online"
-                  ? "Paid online"
-                  : "Cash on delivery / visit"}
+                {paymentMethodSummary(
+                  selectedOrder.paymentMethod,
+                  "Cash on delivery / visit"
+                )}
               </p>
             ) : null}
             <PinGpsBlock record={selectedOrder} compact />
@@ -421,7 +423,10 @@ function MyOrders() {
                   {order.paymentMethod ? (
                     <p>
                       <strong>Payment:</strong>{" "}
-                      {order.paymentMethod === "online" ? "Online" : "Cash on delivery"}
+                      {paymentMethodSummary(
+                        order.paymentMethod,
+                        "Cash on delivery"
+                      )}
                     </p>
                   ) : null}
                   <p>

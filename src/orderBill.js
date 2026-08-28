@@ -1,5 +1,6 @@
 import { DEFAULT_OUTLET, outletForPin } from "./deliveryOutlets.js";
 import { MEDIHOME_BILLING, findDiagnosticParty } from "./diagnosticPartners.js";
+import { paymentMethodSummary } from "./paymentMethods.js";
 
 function money(value) {
   const n = Number(value || 0);
@@ -177,8 +178,10 @@ export function buildOrderBill(order) {
     seller,
     buyer: buyerFrom(order),
     date: order?.date || order?.bookedAt || order?.requestedAt || "",
-    payment:
-      order?.paymentMethod === "online" ? "Paid online" : "Cash on delivery / visit",
+    payment: paymentMethodSummary(
+      order?.paymentMethod,
+      "Cash on delivery / visit"
+    ),
     couponCode: order?.couponCode || "",
     lines,
     sale,

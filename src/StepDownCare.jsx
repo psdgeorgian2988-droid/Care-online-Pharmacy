@@ -22,6 +22,7 @@ import {
 } from "./bookingFor";
 import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateToday, isoDateYearsAhead } from "./personFields";
+import { paymentMethodSummary } from "./paymentMethods";
 
 const STORAGE_KEY = "mediHomeStepDownBookings";
 const AMBULANCE_STORAGE_KEY = "mediHomeAmbulanceRequests";
@@ -407,9 +408,7 @@ function StepDownCare() {
               <div className="confirm-row">
                 <span>Payment</span>
                 <strong>
-                  {booking.paymentMethod === "online"
-                    ? "Paid online"
-                    : "Pay at centre"}
+                  {paymentMethodSummary(booking.paymentMethod, "Pay at centre")}
                 </strong>
               </div>
               <div className="confirm-row">

@@ -9,6 +9,7 @@ import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
 import BookingFlow from "./BookingFlow";
+import { paymentMethodSummary } from "./paymentMethods";
 import {
   applyResolvedPin,
   pickAddress,
@@ -207,7 +208,7 @@ function Psychologist() {
               <div className="confirm-row">
                 <span>Payment</span>
                 <strong>
-                  {booking.paymentMethod === "online" ? "Paid online" : "Pay at session"}
+                  {paymentMethodSummary(booking.paymentMethod, "Pay at session")}
                 </strong>
               </div>
               <div className="confirm-row">

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { listOrders, patchOrder, upsertOrder } from "./store.mjs";
 import { splitPayment } from "../src/paymentSplit.js";
+import { isOnlinePayment } from "../src/paymentMethods.js";
 import { openTrafficFromOrders } from "../src/partnerQueue.js";
 import {
   createRazorpayOrder,
@@ -96,7 +97,7 @@ function enrichOrder(body) {
   }
   if (!next.paymentMethod) next.paymentMethod = "cod";
   if (!next.paymentStatus) {
-    next.paymentStatus = next.paymentMethod === "online" ? "paid" : "cod";
+    next.paymentStatus = isOnlinePayment(next.paymentMethod) ? "paid" : "cod";
   }
   return next;
 }
