@@ -9,7 +9,7 @@ import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
 import { DIAGNOSTIC_LABS, IMAGING_CENTRES } from "./diagnosticPartners";
-import AddressFields from "./AddressFields";
+import BookingContactFields from "./BookingContactFields";
 import BookingForFields from "./BookingForFields";
 import {
   addressFromUnknown,
@@ -17,12 +17,12 @@ import {
   emptyAddress,
   pickAddress,
   readUserProfile,
-  validateAddress,
 } from "./addressFields";
 import {
   bookingForPatch,
   initialBookingFor,
-  validateBookingFor,
+  validateBookingDetails,
+  withBookingIdentity,
 } from "./bookingFor";
 
 const PREP_LABEL = {
@@ -349,7 +349,7 @@ function LabTests() {
   };
 
   const validate = () => {
-    const newErrors = {};
+    const newErrors = validateBookingDetails(form, profile);
     if (serviceType === "lab") {
       if (!selectedLabId) newErrors.lab = "Please select a preferred lab.";
       if (selectedTests.length === 0) newErrors.test = "Please add at least one test.";
@@ -358,10 +358,6 @@ function LabTests() {
       if (selectedImagingTests.length === 0) newErrors.imaging = "Please add at least one imaging study.";
     }
 
-    if (!form.patientName.trim()) newErrors.patientName = "Patient name is required.";
-    if (!/^[6-9]\d{9}$/.test(form.mobile)) newErrors.mobile = "Enter a valid 10-digit mobile number.";
-    Object.assign(newErrors, validateAddress(form));
-    Object.assign(newErrors, validateBookingFor(form, profile));
     if (!form.date) newErrors.date = "Please select a date.";
     if (!form.timeSlot) newErrors.timeSlot = "Please select a time slot.";
 
@@ -377,16 +373,17 @@ function LabTests() {
     try {
       const kind = serviceType === "radiology" ? "radiology" : "lab";
       const queue = await holdForPartnerQueue(kind);
-      const gps = await resolvePinLocation(form.pinCode);
-      const addr = applyResolvedPin(form, gps);
+      const booked = withBookingIdentity(form, profile);
+      const gps = await resolvePinLocation(booked.pinCode);
+      const addr = applyResolvedPin(booked, gps);
       const pay = paymentFromQuote(payQuote, total);
       const payment = await settleCheckoutPayment({
         method: payMethod,
         ...pay,
         kind,
         pin: gps.pinCode,
-        name: form.patientName,
-        mobile: form.mobile,
+        name: booked.patientName,
+        mobile: booked.mobile,
         reference: `${kind}-${Date.now()}`,
         description:
           kind === "radiology"
@@ -412,6 +409,7 @@ function LabTests() {
         discountRupees: pay.discountRupees,
         highTrafficWait: queue.busy || queue.waited,
         ...form,
+        ...booked,
         ...addr,
         pin: gps.pin,
         lat: gps.lat,
@@ -451,6 +449,7 @@ function LabTests() {
     setSelectedImagingTests([]);
     setForm({
       ...EMPTY_FORM,
+      ...initialBookingFor(profile),
       ...(registeredProfile
         ? {
           patientName: registeredProfile.name,
@@ -734,46 +733,15 @@ function LabTests() {
                 }}
               />
             </div>
-            <div className="lab-field">
-              <label htmlFor="patientName">
-                Patient name <em>*</em>
-              </label>
-              <input
-                id="patientName"
-                name="patientName"
-                placeholder="Full name"
-                value={form.patientName}
-                onChange={handleChange}
-              />
-              {errors.patientName ? <small className="lab-error">{errors.patientName}</small> : null}
-            </div>
-
-            <div className="lab-field">
-              <label htmlFor="mobile">
-                Mobile <em>*</em>
-              </label>
-              <input
-                id="mobile"
-                name="mobile"
-                type="tel"
-                inputMode="numeric"
-                maxLength="10"
-                placeholder="10-digit mobile"
-                value={form.mobile}
-                onChange={handleChange}
-              />
-              {errors.mobile ? <small className="lab-error">{errors.mobile}</small> : null}
-            </div>
-
-            <div className="lab-field lab-span">
-              <AddressFields
-                idPrefix="lab"
-                values={form}
-                errors={errors}
-                onChange={handleChange}
-                pinHint="Select the Village / Sector / Mohalla attached to this PIN."
-              />
-            </div>
+            <BookingContactFields
+              idPrefix="lab"
+              layout="lab"
+              profile={profile}
+              values={form}
+              errors={errors}
+              onChange={handleChange}
+              pinHint="Select the Village / Sector / Mohalla attached to this PIN."
+            />
 
             <div className="lab-field">
               <label htmlFor="date">

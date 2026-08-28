@@ -23,8 +23,9 @@ import {
 } from "./vaccinationBooking";
 import SelectedVaccinesFields from "./SelectedVaccinesFields";
 import BookingForFields from "./BookingForFields";
-import { OTHER_BOOKING_ID, findBookingFor } from "./bookingFor";
+import { OTHER_BOOKING_ID, findBookingFor, isRegisteredMember } from "./bookingFor";
 import { useLoginSession } from "./authSession";
+import { readUserProfile } from "./addressFields";
 import DateMonthYearFields from "./DateMonthYearFields";
 
 function personFromOption(option = {}) {
@@ -40,8 +41,8 @@ function personFromOption(option = {}) {
 function Vaccination() {
   const today = new Date().toISOString().split("T")[0];
   const session = useLoginSession();
-  const profile = session || {};
-  const isSignedIn = Boolean(session?.mobile);
+  const profile = session?.mobile ? session : readUserProfile();
+  const isRegistered = isRegisteredMember(profile);
   const [store, setStore] = useState(() => loadVaccinationStore());
   const [booking, setBooking] = useState(() => loadVaccinationBooking());
   const [recordForm, setRecordForm] = useState(() => ({
@@ -61,11 +62,12 @@ function Vaccination() {
   const reminders = savedReminders(store);
   const soon = dueSoonReminders(store, 21);
   const scheduleGuide = useMemo(() => fullVaccinationSchedule(), []);
-  const selectedPerson = isSignedIn
+  const selectedPerson = isRegistered
     ? findBookingFor(profile, recordForm.bookedFor)
     : null;
-  const isGuestBooking =
-    !isSignedIn || selectedPerson?.id === OTHER_BOOKING_ID;
+  const isSomeoneElse = selectedPerson?.id === OTHER_BOOKING_ID;
+  const showGuestDetails = !isRegistered || isSomeoneElse;
+  const showGender = showGuestDetails;
   const bookHref = nurseBookingHref(carePlanForGroup(booking.group));
 
   useEffect(() => {
@@ -96,17 +98,17 @@ function Vaccination() {
   const saveRecordPerson = (event) => {
     event.preventDefault();
     const next = {};
-    if (isSignedIn && !recordForm.bookedFor) {
+    if (isRegistered && !recordForm.bookedFor) {
       next.bookedFor = "Select a name.";
     }
-    if (isGuestBooking) {
+    if (showGuestDetails) {
       if (!recordForm.name.trim()) next.name = "Name is required.";
-      if (!recordForm.gender) next.gender = "Select Male or Female.";
+      if (showGender && !recordForm.gender) next.gender = "Select Male or Female.";
       if (!recordForm.dob) next.dob = "Select Date Of Birth.";
     }
     setRecordErrors(next);
     if (Object.keys(next).length) return;
-    const household = isSignedIn && selectedPerson && selectedPerson.id !== OTHER_BOOKING_ID;
+    const household = isRegistered && selectedPerson && !isSomeoneElse;
     const name = (household ? selectedPerson.name : recordForm.name).trim();
     const gender = household ? selectedPerson.gender : recordForm.gender;
     const dob = household
@@ -121,7 +123,7 @@ function Vaccination() {
       requiredIds: booking.vaccineIds,
     });
     setStore(loadVaccinationStore());
-    if (!isSignedIn) {
+    if (!isRegistered) {
       setRecordForm({
         id: "",
         bookedFor: "",
@@ -210,7 +212,7 @@ function Vaccination() {
         <section className="service-form vac-record">
           <form className="vac-record-form" onSubmit={saveRecordPerson}>
             <p className="vac-section-title">Save Record And Due Dates</p>
-            {isSignedIn ? (
+            {isRegistered ? (
               <div className="field full">
                 <BookingForFields
                   idPrefix="vac"
@@ -218,7 +220,7 @@ function Vaccination() {
                   selectedId={recordForm.bookedFor}
                   error={recordErrors.bookedFor || recordErrors.name}
                   onSelect={choosePerson}
-                  label="Name"
+                  label="Select Name"
                 />
               </div>
             ) : (
@@ -234,21 +236,22 @@ function Vaccination() {
                 {recordErrors.name ? <small>{recordErrors.name}</small> : null}
               </div>
             )}
-            {isGuestBooking ? (
+            {showGuestDetails ? (
               <>
-                {isSignedIn ? (
+                {isRegistered ? (
                   <div className="field">
-                    <label htmlFor="vac-rec-name">
+                    <label htmlFor="vac-rec-other-name">
                       Name <span>*</span>
                     </label>
                     <input
-                      id="vac-rec-name"
+                      id="vac-rec-other-name"
                       value={recordForm.name}
                       onChange={(event) => updateGuestField("name", event.target.value)}
                     />
                     {recordErrors.name ? <small>{recordErrors.name}</small> : null}
                   </div>
                 ) : null}
+                {showGender ? (
                 <div className="field">
                   <label htmlFor="vac-rec-gender">
                     Male / Female <span>*</span>
@@ -264,6 +267,7 @@ function Vaccination() {
                   </select>
                   {recordErrors.gender ? <small>{recordErrors.gender}</small> : null}
                 </div>
+                ) : null}
                 <div className="field full">
                   <DateMonthYearFields
                     idPrefix="vac-rec-dob"

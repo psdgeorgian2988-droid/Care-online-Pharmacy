@@ -7,7 +7,10 @@ import {
   bookingForPatch,
   bookingForSelectLabel,
   findBookingFor,
+  isRegisteredMember,
   shouldAskBookingContact,
+  shouldAskBookingName,
+  validateBookingDetails,
 } from "./bookingFor.js";
 
 const profile = {
@@ -28,11 +31,11 @@ const profile = {
   ],
 };
 
-test("dropdown lists Self, each family member, then Someone Else", () => {
+test("dropdown lists registered names, then Someone Else last", () => {
   const options = bookingForOptions(profile);
   assert.deepEqual(
     options.map((row) => bookingForSelectLabel(row)),
-    ["Self", "Aarav Sharma", "Riya Sharma", "Someone Else"]
+    ["Anita Sharma", "Aarav Sharma", "Riya Sharma", "Someone Else"]
   );
   assert.equal(options[0].id, SELF_BOOKING_ID);
   assert.equal(options.at(-1).id, OTHER_BOOKING_ID);
@@ -61,14 +64,40 @@ test("selecting a family member fills that person's name, gender and age, and th
   assert.equal(patch.society, "Green Park");
 });
 
-test("Someone Else clears contact so address and mobile are asked again", () => {
+test("Someone Else asks for name, age, sex, mobile and address", () => {
   const option = findBookingFor(profile, OTHER_BOOKING_ID);
   const patch = bookingForPatch(option, profile);
   assert.equal(patch.bookedFor, OTHER_BOOKING_ID);
   assert.equal(patch.patientName, "");
   assert.equal(patch.mobile, "");
   assert.equal(patch.pinCode, "");
+  assert.equal(shouldAskBookingName(patch, profile), true);
   assert.equal(shouldAskBookingContact(patch, profile), true);
+  assert.equal(shouldAskBookingName({ bookedFor: "self" }, profile), false);
   assert.equal(shouldAskBookingContact({ bookedFor: "self" }, profile), false);
+  assert.equal(shouldAskBookingName({ bookedFor: "fam-1" }, profile), false);
   assert.equal(shouldAskBookingContact({ bookedFor: "fam-1" }, profile), false);
+  const errors = validateBookingDetails(patch, profile);
+  assert.equal(errors.patientName, "Patient name is required.");
+  assert.equal(errors.gender, "Select Male or Female.");
+  assert.equal(errors.age, "Enter age in years.");
+});
+
+test("guests are asked name, age, sex, mobile and address", () => {
+  const guest = {};
+  assert.equal(isRegisteredMember(guest), false);
+  assert.equal(shouldAskBookingName({}, guest), true);
+  assert.equal(shouldAskBookingContact({}, guest), true);
+  const errors = validateBookingDetails({ patientName: "", mobile: "" }, guest);
+  assert.equal(errors.patientName, "Patient name is required.");
+  assert.equal(errors.gender, "Select Male or Female.");
+  assert.equal(errors.age, "Enter age in years.");
+  assert.match(errors.mobile, /mobile/i);
+});
+
+test("registered Self or family does not require typed name, mobile or address", () => {
+  const errors = validateBookingDetails({ bookedFor: "self" }, profile);
+  assert.equal(errors.patientName, undefined);
+  assert.equal(errors.mobile, undefined);
+  assert.equal(errors.pinCode, undefined);
 });

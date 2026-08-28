@@ -8,18 +8,18 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
-import AddressFields from "./AddressFields";
+import BookingContactFields from "./BookingContactFields";
 import BookingForFields from "./BookingForFields";
 import {
   applyResolvedPin,
   pickAddress,
   readUserProfile,
-  validateAddress,
 } from "./addressFields";
 import {
   bookingForPatch,
   initialBookingFor,
-  validateBookingFor,
+  validateBookingDetails,
+  withBookingIdentity,
 } from "./bookingFor";
 
 const PLANS = [
@@ -76,13 +76,7 @@ function Psychologist() {
   };
 
   const validate = () => {
-    const next = {};
-    if (!form.patientName.trim()) next.patientName = "Patient name is required.";
-    if (!/^[6-9]\d{9}$/.test(form.mobile)) {
-      next.mobile = "Enter a valid 10-digit mobile number.";
-    }
-    Object.assign(next, validateAddress(form));
-    Object.assign(next, validateBookingFor(form, profile));
+    const next = validateBookingDetails(form, profile);
     if (!form.carePlan) next.carePlan = "Select a session.";
     if (!form.date) next.date = "Please select a session date.";
     if (!form.timeSlot) next.timeSlot = "Please select a time slot.";
@@ -96,25 +90,26 @@ function Psychologist() {
 
     setSubmitting(true);
     try {
+      const booked = withBookingIdentity(form, profile);
       const queue = await holdForPartnerQueue("psychologist");
-      const gps = await resolvePinLocation(form.pinCode);
-      const addr = applyResolvedPin(form, gps);
+      const gps = await resolvePinLocation(booked.pinCode);
+      const addr = applyResolvedPin(booked, gps);
       const pay = paymentFromQuote(payQuote, plan.price);
       const payment = await settleCheckoutPayment({
         method: payMethod,
         ...pay,
         kind: "psychologist",
         pin: gps.pinCode,
-        name: form.patientName.trim(),
-        mobile: form.mobile,
+        name: booked.patientName,
+        mobile: booked.mobile,
         reference: `psy-${Date.now()}`,
         description: "MediHome Psychologist Consultation",
       });
 
       const bookingDetails = {
         bookingId: "MH-PSY-" + Math.floor(100000 + Math.random() * 900000),
-        patientName: form.patientName.trim(),
-        mobile: form.mobile,
+        patientName: booked.patientName,
+        mobile: booked.mobile,
         ...addr,
         pin: gps.pin,
         lat: gps.lat,
@@ -166,6 +161,7 @@ function Psychologist() {
       patientName: profile.name,
       mobile: profile.mobile,
       ...pickAddress(profile),
+      ...initialBookingFor(profile),
       carePlan: "video-45",
       date: "",
       timeSlot: "",
@@ -295,46 +291,14 @@ function Psychologist() {
               }}
             />
           </div>
-          <div className="field">
-            <label htmlFor="psy-name">
-              Patient name <span>*</span>
-            </label>
-            <input
-              id="psy-name"
-              name="patientName"
-              value={form.patientName}
-              onChange={handleChange}
-              placeholder="Full name"
-            />
-            {errors.patientName && <small>{errors.patientName}</small>}
-          </div>
-
-          <div className="field">
-            <label htmlFor="psy-mobile">
-              Mobile <span>*</span>
-            </label>
-            <input
-              id="psy-mobile"
-              name="mobile"
-              type="tel"
-              inputMode="numeric"
-              maxLength="10"
-              value={form.mobile}
-              onChange={handleChange}
-              placeholder="10-digit mobile"
-            />
-            {errors.mobile && <small>{errors.mobile}</small>}
-          </div>
-
-          <div className="field full">
-            <AddressFields
-              idPrefix="psy"
-              values={form}
-              errors={errors}
-              onChange={handleChange}
-              pinHint="City, District and State fill from this PIN."
-            />
-          </div>
+          <BookingContactFields
+            idPrefix="psy"
+            profile={profile}
+            values={form}
+            errors={errors}
+            onChange={handleChange}
+            pinHint="City, District and State fill from this PIN."
+          />
 
           <div className="field full">
             <label htmlFor="psy-plan">

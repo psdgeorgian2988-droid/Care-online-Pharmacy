@@ -2,6 +2,7 @@ import {
   bookingForOptions,
   bookingForSelectLabel,
   findBookingFor,
+  isRegisteredMember,
 } from "./bookingFor";
 
 export default function BookingForFields({
@@ -10,8 +11,9 @@ export default function BookingForFields({
   selectedId = "",
   error = "",
   onSelect,
-  label = "Who Is This Booking For?",
+  label = "Select Name",
 }) {
+  if (!isRegisteredMember(profile)) return null;
   const options = bookingForOptions(profile);
   const selectId = `${idPrefix}-who`;
 
@@ -27,7 +29,7 @@ export default function BookingForFields({
           name="bookedFor"
           value={selectedId || ""}
           onChange={(event) => onSelect?.(findBookingFor(profile, event.target.value))}
-          aria-label="Who is this booking for"
+          aria-label="Select name"
         >
           <option value="">Select name</option>
           {options.map((option) => (

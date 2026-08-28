@@ -3,7 +3,7 @@ import {
   pickAddress,
   validateAddress,
 } from "./addressFields.js";
-import { pickFamilyMembers } from "./personFields.js";
+import { normalizeAge, normalizeGender, pickFamilyMembers } from "./personFields.js";
 
 export const SELF_BOOKING_ID = "self";
 export const OTHER_BOOKING_ID = "other";
@@ -12,6 +12,12 @@ function registeredMobile(profile = {}) {
   return String(profile.mobile || profile.mobileNumber || "")
     .replace(/\D/g, "")
     .slice(0, 10);
+}
+
+export function isRegisteredMember(profile = {}) {
+  const name = String(profile.name || "").trim();
+  const mobile = registeredMobile(profile);
+  return Boolean(name && /^[6-9]\d{9}$/.test(mobile));
 }
 
 export function profileHasBookingContact(profile = {}) {
@@ -39,7 +45,7 @@ export function bookingForOptions(profile = {}) {
     age: profile.age || "",
     dob: profile.dob || "",
     mobile: registeredMobile(profile),
-    label: "Self",
+    label: selfName,
   };
   const members = pickFamilyMembers(profile)
     .filter((row) => row.name)
@@ -70,9 +76,8 @@ export function bookingForOptions(profile = {}) {
 
 export function bookingForSelectLabel(option) {
   if (!option) return "";
-  if (option.id === SELF_BOOKING_ID) return "Self";
   if (option.id === OTHER_BOOKING_ID) return "Someone Else";
-  return option.name || "Family member";
+  return option.name || "Registered member";
 }
 
 export function findBookingFor(profile, id) {
@@ -91,25 +96,95 @@ export function isHouseholdBooking(source = {}, profile = {}) {
   );
 }
 
+export function shouldAskBookingDetails(source = {}, profile = {}) {
+  if (!isRegisteredMember(profile)) return true;
+  return isOtherBooking(source);
+}
+
+export function shouldAskBookingName(source = {}, profile = {}) {
+  return shouldAskBookingDetails(source, profile);
+}
+
 export function shouldAskBookingContact(source = {}, profile = {}) {
-  if (isOtherBooking(source)) return true;
-  if (isHouseholdBooking(source, profile) || !source.bookedFor) {
-    return !profileHasBookingContact(profile);
-  }
-  return true;
+  return shouldAskBookingDetails(source, profile);
+}
+
+export function withBookingIdentity(source = {}, profile = {}) {
+  const option = findBookingFor(profile, source.bookedFor);
+  const household =
+    option && option.id !== OTHER_BOOKING_ID
+      ? bookingForPatch(option, profile)
+      : {};
+  const askContact = shouldAskBookingContact(source, profile);
+  const contact = askContact
+    ? {
+        mobile: String(source.mobile || "")
+          .replace(/\D/g, "")
+          .slice(0, 10),
+        ...pickAddress(source),
+      }
+    : {
+        mobile:
+          registeredMobile(profile) ||
+          String(source.mobile || "")
+            .replace(/\D/g, "")
+            .slice(0, 10),
+        ...pickAddress(profile),
+        addressConfirmed: "yes",
+      };
+  const askDetails = shouldAskBookingDetails(source, profile);
+  const patientName = askDetails
+    ? String(source.patientName || "").trim()
+    : String(
+        household.patientName || source.patientName || profile.name || ""
+      ).trim();
+  return {
+    ...source,
+    ...household,
+    ...contact,
+    patientName,
+    gender: askDetails
+      ? normalizeGender(source.gender)
+      : household.gender || source.gender || profile.gender || "",
+    age: askDetails
+      ? normalizeAge(source.age)
+      : household.age || source.age || profile.age || "",
+    dob: askDetails ? source.dob || "" : household.dob || source.dob || "",
+  };
 }
 
 export function validateBookingContact(source = {}, profile = {}) {
+  const contact = withBookingIdentity(source, profile);
   const errors = {};
-  const mobile = String(source.mobile || "").replace(/\D/g, "");
+  const mobile = String(contact.mobile || "").replace(/\D/g, "");
   if (!/^[6-9]\d{9}$/.test(mobile)) {
     errors.mobile = "Enter a valid 10-digit mobile number.";
   }
   const ask = shouldAskBookingContact(source, profile);
   Object.assign(
     errors,
-    validateAddress(ask ? source : { ...source, addressConfirmed: "yes" })
+    validateAddress(ask ? contact : { ...contact, addressConfirmed: "yes" })
   );
+  return errors;
+}
+
+export function validateBookingDetails(source = {}, profile = {}) {
+  const errors = {
+    ...validateBookingFor(source, profile),
+  };
+  if (!shouldAskBookingDetails(source, profile)) return errors;
+  const identity = withBookingIdentity(source, profile);
+  if (!identity.patientName) {
+    errors.patientName = "Patient name is required.";
+  }
+  if (!normalizeGender(identity.gender || source.gender)) {
+    errors.gender = "Select Male or Female.";
+  }
+  const age = Number(normalizeAge(identity.age || source.age));
+  if (!Number.isInteger(age) || String(source.age || identity.age || "") === "" || age < 0 || age > 120) {
+    errors.age = "Enter age in years.";
+  }
+  Object.assign(errors, validateBookingContact(source, profile));
   return errors;
 }
 
@@ -160,15 +235,11 @@ export function bookingForPatch(option, profile = {}) {
 }
 
 export function initialBookingFor(profile = {}) {
-  const options = bookingForOptions(profile);
-  const hasFamily = options.some(
-    (row) => row.id !== SELF_BOOKING_ID && row.id !== OTHER_BOOKING_ID
-  );
-  if (hasFamily) return bookingForPatch(null, profile);
-  return bookingForPatch(options[0], profile);
+  return bookingForPatch(null, profile);
 }
 
 export function validateBookingFor(source = {}, profile = {}) {
+  if (!isRegisteredMember(profile)) return {};
   const options = bookingForOptions(profile);
   if (!source.bookedFor || !options.some((row) => row.id === source.bookedFor)) {
     return {

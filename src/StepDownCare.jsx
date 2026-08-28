@@ -8,18 +8,18 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
-import AddressFields from "./AddressFields";
+import BookingContactFields from "./BookingContactFields";
 import BookingForFields from "./BookingForFields";
 import {
   applyResolvedPin,
   pickAddress,
   readUserProfile,
-  validateAddress,
 } from "./addressFields";
 import {
   bookingForPatch,
   initialBookingFor,
-  validateBookingFor,
+  validateBookingDetails,
+  withBookingIdentity,
 } from "./bookingFor";
 
 const STORAGE_KEY = "mediHomeStepDownBookings";
@@ -196,12 +196,7 @@ function StepDownCare() {
   const validate = () => {
     const next = {};
     if (!form.centreId) next.centreId = "Select a step-down care centre.";
-    if (!form.patientName.trim()) next.patientName = "Patient name is required.";
-    if (!/^[6-9]\d{9}$/.test(form.mobile)) {
-      next.mobile = "Enter a valid 10-digit mobile number.";
-    }
-    Object.assign(next, validateAddress(form));
-    Object.assign(next, validateBookingFor(form, profile));
+    Object.assign(next, validateBookingDetails(form, profile));
     if (!form.serviceType) next.serviceType = "Select a care type.";
     if (!form.date) next.date = "Please select a date.";
     if (!form.timeSlot) next.timeSlot = "Please select a time slot.";
@@ -225,9 +220,10 @@ function StepDownCare() {
 
     setSubmitting(true);
     try {
+      const booked = withBookingIdentity(form, profile);
       const queue = await holdForPartnerQueue("stepdown");
-      const gps = await resolvePinLocation(form.pinCode);
-      const addr = applyResolvedPin(form, gps);
+      const gps = await resolvePinLocation(booked.pinCode);
+      const addr = applyResolvedPin(booked, gps);
       const bookingId = "MH-SD-" + Math.floor(100000 + Math.random() * 900000);
       const wantsAmbulance = form.needAmbulance === "yes";
       let ambulanceRequestId = "";
@@ -238,8 +234,8 @@ function StepDownCare() {
         ...pay,
         kind: "stepdown",
         pin: gps.pinCode,
-        name: form.patientName.trim(),
-        mobile: form.mobile,
+        name: booked.patientName,
+        mobile: booked.mobile,
         reference: bookingId,
         description: "MediHome step-down stay",
       });
@@ -252,8 +248,9 @@ function StepDownCare() {
         bookingId,
         orderType: "stepdown",
         ...form,
+        ...booked,
         ...addr,
-        patientName: form.patientName.trim(),
+        patientName: booked.patientName,
         pin: gps.pin,
         lat: gps.lat,
         lng: gps.lng,
@@ -283,8 +280,8 @@ function StepDownCare() {
           amountRupees: TRANSFER_FEE,
           kind: "ambulance",
           pin: gps.pinCode,
-          name: form.patientName.trim(),
-          mobile: form.mobile,
+          name: booked.patientName,
+          mobile: booked.mobile,
           reference: ambulanceRequestId,
           description: "Transfer to step-down centre",
         });
@@ -292,8 +289,8 @@ function StepDownCare() {
           withTracking(
             {
               requestId: ambulanceRequestId,
-              patientName: form.patientName.trim(),
-              mobile: form.mobile,
+              patientName: booked.patientName,
+              mobile: booked.mobile,
               pickupAddress: addr.pickupAddress,
               pinCode: gps.pinCode,
               pin: gps.pin,
@@ -332,6 +329,7 @@ function StepDownCare() {
       patientName: profile.name,
       mobile: profile.mobile,
       ...pickAddress(profile),
+      ...initialBookingFor(profile),
       serviceType: "post-icu",
       date: "",
       timeSlot: "",
@@ -618,44 +616,15 @@ function StepDownCare() {
                     }}
                   />
                 </div>
-                <div className="lab-field">
-                  <label htmlFor="sd-name">
-                    Patient name <em>*</em>
-                  </label>
-                  <input
-                    id="sd-name"
-                    name="patientName"
-                    value={form.patientName}
-                    onChange={handleChange}
-                    placeholder="Full name"
-                  />
-                  {errors.patientName ? <small className="lab-error">{errors.patientName}</small> : null}
-                </div>
-                <div className="lab-field">
-                  <label htmlFor="sd-mobile">
-                    Mobile <em>*</em>
-                  </label>
-                  <input
-                    id="sd-mobile"
-                    name="mobile"
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength="10"
-                    value={form.mobile}
-                    onChange={handleChange}
-                    placeholder="10-digit mobile"
-                  />
-                  {errors.mobile ? <small className="lab-error">{errors.mobile}</small> : null}
-                </div>
-                <div className="lab-field sd-full">
-                  <AddressFields
-                    idPrefix="sd"
-                    values={form}
-                    errors={errors}
-                    onChange={handleChange}
-                    pinHint="Select the Village / Sector / Mohalla attached to this PIN."
-                  />
-                </div>
+                <BookingContactFields
+                  idPrefix="sd"
+                  layout="lab"
+                  profile={profile}
+                  values={form}
+                  errors={errors}
+                  onChange={handleChange}
+                  pinHint="Select the Village / Sector / Mohalla attached to this PIN."
+                />
                 <div className="lab-field">
                   <label htmlFor="sd-type">
                     Care type <em>*</em>

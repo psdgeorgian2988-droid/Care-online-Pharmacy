@@ -398,6 +398,7 @@ footer p {
 }
 
 .checkout-panel input,
+.checkout-panel select,
 .checkout-panel textarea {
   width: 100%;
   padding: 12px;

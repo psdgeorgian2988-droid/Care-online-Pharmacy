@@ -8,18 +8,18 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
-import AddressFields from "./AddressFields";
+import BookingContactFields from "./BookingContactFields";
 import BookingForFields from "./BookingForFields";
 import {
   applyResolvedPin,
   pickAddress,
   readUserProfile,
-  validateAddress,
 } from "./addressFields";
 import {
   bookingForPatch,
   initialBookingFor,
-  validateBookingFor,
+  validateBookingDetails,
+  withBookingIdentity,
 } from "./bookingFor";
 
 const STORAGE_KEY = "mediHomeAmbulanceRequests";
@@ -60,13 +60,7 @@ function Ambulance() {
   };
 
   const validate = () => {
-    const next = {};
-    if (!form.patientName.trim()) next.patientName = "Patient name is required.";
-    if (!/^[6-9]\d{9}$/.test(form.mobile)) {
-      next.mobile = "Enter a valid 10-digit mobile number.";
-    }
-    Object.assign(next, validateAddress(form));
-    Object.assign(next, validateBookingFor(form, profile));
+    const next = validateBookingDetails(form, profile);
     if (!form.emergencyType) next.emergencyType = "Select emergency type.";
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -78,10 +72,11 @@ function Ambulance() {
 
     setSubmitting(true);
     try {
+      const booked = withBookingIdentity(form, profile);
       const urgent = form.emergencyType === "emergency";
       const queue = await holdForPartnerQueue("ambulance", { urgent });
-      const gps = await resolvePinLocation(form.pinCode);
-      const addr = applyResolvedPin(form, gps);
+      const gps = await resolvePinLocation(booked.pinCode);
+      const addr = applyResolvedPin(booked, gps);
       const total = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
       const method =
         form.emergencyType === "emergency" ? "cod" : payMethod;
@@ -91,16 +86,16 @@ function Ambulance() {
         ...pay,
         kind: "ambulance",
         pin: gps.pinCode,
-        name: form.patientName.trim(),
-        mobile: form.mobile,
+        name: booked.patientName,
+        mobile: booked.mobile,
         reference: `amb-${Date.now()}`,
         description: "MediHome ambulance",
       });
 
       const requestDetails = {
         requestId: "MH-AMB-" + Math.floor(100000 + Math.random() * 900000),
-        patientName: form.patientName.trim(),
-        mobile: form.mobile,
+        patientName: booked.patientName,
+        mobile: booked.mobile,
         ...addr,
         emergencyType: form.emergencyType,
         notes: form.notes.trim(),
@@ -129,6 +124,7 @@ function Ambulance() {
       patientName: profile.name,
       mobile: profile.mobile,
       ...pickAddress(profile),
+      ...initialBookingFor(profile),
       emergencyType: "emergency",
       notes: "",
     });
@@ -254,46 +250,14 @@ function Ambulance() {
               }}
             />
           </div>
-          <div className="field">
-            <label htmlFor="amb-name">
-              Patient name <span>*</span>
-            </label>
-            <input
-              id="amb-name"
-              name="patientName"
-              value={form.patientName}
-              onChange={handleChange}
-              placeholder="Full name"
-            />
-            {errors.patientName && <small>{errors.patientName}</small>}
-          </div>
-
-          <div className="field">
-            <label htmlFor="amb-mobile">
-              Mobile <span>*</span>
-            </label>
-            <input
-              id="amb-mobile"
-              name="mobile"
-              type="tel"
-              inputMode="numeric"
-              maxLength="10"
-              value={form.mobile}
-              onChange={handleChange}
-              placeholder="10-digit mobile"
-            />
-            {errors.mobile && <small>{errors.mobile}</small>}
-          </div>
-
-          <div className="field full">
-            <AddressFields
-              idPrefix="amb"
-              values={form}
-              errors={errors}
-              onChange={handleChange}
-              pinHint="Select the Village / Sector / Mohalla attached to this PIN."
-            />
-          </div>
+          <BookingContactFields
+            idPrefix="amb"
+            profile={profile}
+            values={form}
+            errors={errors}
+            onChange={handleChange}
+            pinHint="Select the Village / Sector / Mohalla attached to this PIN."
+          />
 
           <div className="field">
             <label htmlFor="amb-type">

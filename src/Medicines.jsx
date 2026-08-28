@@ -10,19 +10,19 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import MedicineSearchTools from "./MedicineSearchTools";
-import AddressFields from "./AddressFields";
+import BookingContactFields from "./BookingContactFields";
 import BookingForFields from "./BookingForFields";
 import {
   addressFromUnknown,
   applyResolvedPin,
   emptyAddress,
   pickAddress,
-  validateAddress,
 } from "./addressFields";
 import {
   bookingForPatch,
   initialBookingFor,
-  validateBookingFor,
+  validateBookingDetails,
+  withBookingIdentity,
 } from "./bookingFor";
 
 function readHomeMedicineSearch() {
@@ -3301,29 +3301,47 @@ function Medicines({ initialSearch = "" }) {
       return;
     }
 
-    if (!fullName.trim()) {
-      alert("Please enter your Full Name.");
+    const profile = savedProfile || {};
+    const source = {
+      ...whoFor,
+      patientName: fullName,
+      mobile: mobileNumber,
+      ...delivery,
+    };
+    const detailsErrors = validateBookingDetails(source, profile);
+    if (detailsErrors.bookedFor) {
+      alert(detailsErrors.bookedFor);
       return;
     }
-
-    const bookedForError = validateBookingFor(whoFor, savedProfile || {});
-    if (bookedForError.bookedFor) {
-      alert(bookedForError.bookedFor);
+    if (detailsErrors.patientName) {
+      alert(detailsErrors.patientName);
       return;
     }
-
-    if (!mobileNumber.trim()) {
-      alert("Please enter your Mobile Number.");
+    if (detailsErrors.gender) {
+      alert(detailsErrors.gender);
       return;
     }
-
-    const nextAddressErrors = validateAddress(delivery);
-    if (Object.keys(nextAddressErrors).length) {
-      setDeliveryErrors(nextAddressErrors);
-      alert(Object.values(nextAddressErrors)[0]);
+    if (detailsErrors.age) {
+      alert(detailsErrors.age);
+      return;
+    }
+    if (detailsErrors.mobile) {
+      alert(detailsErrors.mobile);
+      return;
+    }
+    const addressErrors = { ...detailsErrors };
+    delete addressErrors.bookedFor;
+    delete addressErrors.patientName;
+    delete addressErrors.gender;
+    delete addressErrors.age;
+    delete addressErrors.mobile;
+    if (Object.keys(addressErrors).length) {
+      setDeliveryErrors(addressErrors);
+      alert(Object.values(addressErrors)[0]);
       return;
     }
     setDeliveryErrors({});
+    const booked = withBookingIdentity(source, profile);
 
     if (cartNeedsPrescription && !prescriptionFile) {
       alert("Please upload your prescription.");
@@ -3333,16 +3351,16 @@ function Medicines({ initialSearch = "" }) {
     setPlacingOrder(true);
     try {
       const queue = await holdForPartnerQueue("medicine");
-      const gps = await resolvePinLocation(delivery.pinCode);
-      const addr = applyResolvedPin(delivery, gps);
+      const gps = await resolvePinLocation(booked.pinCode);
+      const addr = applyResolvedPin(booked, gps);
       const pay = paymentFromQuote(payQuote, cartTotal);
       const payment = await settleCheckoutPayment({
         method: payMethod,
         ...pay,
         kind: "medicine",
         pin: gps.pinCode,
-        name: fullName.trim(),
-        mobile: mobileNumber.trim(),
+        name: booked.patientName,
+        mobile: booked.mobile,
         reference: `med-${Date.now()}`,
         description: "MediHome medicines",
       });
@@ -3368,9 +3386,10 @@ function Medicines({ initialSearch = "" }) {
         highTrafficWait: queue.busy || queue.waited,
         status: "Order Placed",
         date: new Date().toLocaleString(),
-        fullName: fullName.trim(),
+        fullName: booked.patientName,
         ...whoFor,
-        mobileNumber: mobileNumber.trim(),
+        ...booked,
+        mobileNumber: booked.mobile,
         prescription: prescriptionFile ? prescriptionFile.name : "",
         ...addr,
         ...payment,
@@ -3579,32 +3598,56 @@ function Medicines({ initialSearch = "" }) {
             idPrefix="med-who"
             profile={savedProfile || {}}
             selectedId={whoFor.bookedFor}
+            error=""
             onSelect={(option) => {
               const patch = bookingForPatch(option, savedProfile || {});
               setWhoFor(patch);
-              if (patch.patientName) setFullName(patch.patientName);
-              if (patch.mobile) setMobileNumber(patch.mobile);
-              if (patch.pinCode || patch.houseNo || patch.society) {
-                setDelivery((current) => ({
-                  ...current,
-                  ...pickAddress(patch),
-                }));
-              }
+              setFullName(patch.patientName || "");
+              setMobileNumber(patch.mobile || "");
+              setDelivery({
+                ...emptyAddress(),
+                ...pickAddress(patch),
+              });
             }}
           />
 
-          <input
-            type="text"
-            placeholder="Full Name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-          />
-
-          <input
-            type="text"
-            placeholder="Mobile Number"
-            value={mobileNumber}
-            onChange={(e) => setMobileNumber(e.target.value)}
+          <BookingContactFields
+            idPrefix="med-checkout"
+            layout="checkout"
+            profile={savedProfile || {}}
+            values={{
+              ...whoFor,
+              patientName: fullName,
+              mobile: mobileNumber,
+              ...delivery,
+            }}
+            errors={{
+              patientName: deliveryErrors.patientName,
+              gender: deliveryErrors.gender,
+              age: deliveryErrors.age,
+              mobile: deliveryErrors.mobile,
+              ...deliveryErrors,
+            }}
+            onChange={(event) => {
+              const { name, value } = event.target;
+              if (name === "patientName") {
+                setFullName(value);
+                return;
+              }
+              if (name === "mobile") {
+                setMobileNumber(value);
+                setDeliveryErrors((prev) => ({ ...prev, mobile: "" }));
+                return;
+              }
+              if (name === "gender" || name === "age" || name === "dob") {
+                setWhoFor((prev) => ({ ...prev, [name]: value }));
+                setDeliveryErrors((prev) => ({ ...prev, [name]: "" }));
+                return;
+              }
+              setDelivery((prev) => ({ ...prev, [name]: value }));
+              setDeliveryErrors((prev) => ({ ...prev, [name]: "" }));
+            }}
+            pinHint="Select the Village / Sector / Mohalla attached to this PIN."
           />
 
           {cartNeedsPrescription && (
@@ -3622,17 +3665,6 @@ function Medicines({ initialSearch = "" }) {
             </div>
           )}
 
-          <AddressFields
-            idPrefix="med-checkout"
-            values={delivery}
-            errors={deliveryErrors}
-            onChange={(event) => {
-              const { name, value } = event.target;
-              setDelivery((prev) => ({ ...prev, [name]: value }));
-              setDeliveryErrors((prev) => ({ ...prev, [name]: "" }));
-            }}
-            pinHint="Select the Village / Sector / Mohalla attached to this PIN."
-          />
           <PaymentBlock
             kind="medicine"
             amount={cartTotal}

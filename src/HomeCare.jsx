@@ -8,18 +8,18 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill";
-import AddressFields from "./AddressFields";
+import BookingContactFields from "./BookingContactFields";
 import BookingForFields from "./BookingForFields";
 import {
   applyResolvedPin,
   pickAddress,
   readUserProfile,
-  validateAddress,
 } from "./addressFields";
 import {
   bookingForPatch,
   initialBookingFor,
-  validateBookingFor,
+  validateBookingDetails,
+  withBookingIdentity,
 } from "./bookingFor";
 import { HOME_VISIT_FEE } from "./vaccinationSchedule";
 import {
@@ -193,13 +193,7 @@ function HomeCare() {
   };
 
   const validate = () => {
-    const next = {};
-    if (!form.patientName.trim()) next.patientName = "Patient name is required.";
-    if (!/^[6-9]\d{9}$/.test(form.mobile)) {
-      next.mobile = "Enter a valid 10-digit mobile number.";
-    }
-    Object.assign(next, validateAddress(form));
-    Object.assign(next, validateBookingFor(form, profile));
+    const next = validateBookingDetails(form, profile);
     if (!form.serviceType) next.serviceType = "Select a service type.";
     if (!form.carePlan) next.carePlan = "Select a care plan.";
     if (form.carePlan === "nurse-other") {
@@ -233,9 +227,10 @@ function HomeCare() {
 
     setSubmitting(true);
     try {
+      const booked = withBookingIdentity(form, profile);
       const queue = await holdForPartnerQueue("homecare");
-      const gps = await resolvePinLocation(form.pinCode);
-      const addr = applyResolvedPin(form, gps);
+      const gps = await resolvePinLocation(booked.pinCode);
+      const addr = applyResolvedPin(booked, gps);
       const vaccines = selectedBookingVaccines(vaxBooking);
       const total =
         plan.value === "nurse-other"
@@ -249,8 +244,8 @@ function HomeCare() {
         ...pay,
         kind: "homecare",
         pin: gps.pinCode,
-        name: form.patientName.trim(),
-        mobile: form.mobile,
+        name: booked.patientName,
+        mobile: booked.mobile,
         reference: `hc-${Date.now()}`,
         description: "MediHome Home Care",
       });
@@ -258,8 +253,9 @@ function HomeCare() {
       const bookingDetails = {
         bookingId: "MH-HC-" + Math.floor(100000 + Math.random() * 900000),
         ...form,
+        ...booked,
         ...addr,
-        patientName: form.patientName.trim(),
+        patientName: booked.patientName,
         pin: gps.pin,
         lat: gps.lat,
         lng: gps.lng,
@@ -318,6 +314,7 @@ function HomeCare() {
       patientName: profile.name,
       mobile: profile.mobile,
       ...pickAddress(profile),
+      ...initialBookingFor(profile),
       serviceType: "caregiver",
       carePlan: "visit",
       date: "",
@@ -461,46 +458,14 @@ function HomeCare() {
               }}
             />
           </div>
-          <div className="field">
-            <label htmlFor="hc-name">
-              Patient name <span>*</span>
-            </label>
-            <input
-              id="hc-name"
-              name="patientName"
-              value={form.patientName}
-              onChange={handleChange}
-              placeholder="Full name"
-            />
-            {errors.patientName && <small>{errors.patientName}</small>}
-          </div>
-
-          <div className="field">
-            <label htmlFor="hc-mobile">
-              Mobile <span>*</span>
-            </label>
-            <input
-              id="hc-mobile"
-              name="mobile"
-              type="tel"
-              inputMode="numeric"
-              maxLength="10"
-              value={form.mobile}
-              onChange={handleChange}
-              placeholder="10-digit mobile"
-            />
-            {errors.mobile && <small>{errors.mobile}</small>}
-          </div>
-
-          <div className="field full">
-            <AddressFields
-              idPrefix="hc"
-              values={form}
-              errors={errors}
-              onChange={handleChange}
-              pinHint="Select the Village / Sector / Mohalla attached to this PIN."
-            />
-          </div>
+          <BookingContactFields
+            idPrefix="hc"
+            profile={profile}
+            values={form}
+            errors={errors}
+            onChange={handleChange}
+            pinHint="Select the Village / Sector / Mohalla attached to this PIN."
+          />
 
           <div className="field">
             <label htmlFor="hc-service">
