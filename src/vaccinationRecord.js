@@ -73,7 +73,6 @@ function newId(prefix) {
 }
 
 function eligibleVaccine(vaccine, person) {
-  if (vaccine.endemicOnly && !person.includeEndemic) return false;
   if (vaccine.girlsOnly) {
     const g = String(person.gender || "").toLowerCase();
     if (g && g !== "f" && g !== "female") return false;
@@ -114,7 +113,9 @@ export function normalizePerson(source = {}) {
     group: ageGroupFromYears(years) || source.group || "",
     keepRecord: keepRecord || remindersOn,
     remindersOn,
-    includeEndemic: Boolean(source.includeEndemic),
+    requiredIds: Array.isArray(source.requiredIds)
+      ? source.requiredIds.map((id) => String(id || "").trim()).filter(Boolean)
+      : [],
   };
 }
 
@@ -148,11 +149,19 @@ export function buildRemindersForPerson(person, store, today = new Date()) {
   if (!person?.remindersOn || !person.dob) return [];
   const todayIso = toIsoDate(today);
   const group = personGroup(person);
-  const list = group === "senior" ? SENIOR_VACCINES : CHILD_VACCINES;
+  const wanted = Array.isArray(person.requiredIds)
+    ? person.requiredIds.map(String).filter(Boolean)
+    : [];
+  const list = wanted.length
+    ? ALL_VACCINES.filter((vaccine) => wanted.includes(vaccine.id))
+    : group === "senior"
+      ? SENIOR_VACCINES
+      : CHILD_VACCINES;
   const years = Number(person.ageYears || ageYearsFromDob(person.dob, today) || 0);
   return list
     .filter((vaccine) => eligibleVaccine(vaccine, person))
     .filter((vaccine) => {
+      if (wanted.length) return true;
       if (group === "senior") return years >= Number(vaccine.minAgeYears || 0);
       return true;
     })
@@ -161,18 +170,17 @@ export function buildRemindersForPerson(person, store, today = new Date()) {
         return null;
       }
       const last = lastGivenOn(store, person.id, vaccine.id);
-      const dueOn =
-        group === "senior"
-          ? dueDateForSenior(vaccine, { dob: person.dob, lastGivenOn: last, today })
-          : dueDateFromBirth(person.dob, vaccine);
+      const isAdult = vaccine.minAgeYears != null;
+      const dueOn = isAdult
+        ? dueDateForSenior(vaccine, { dob: person.dob, lastGivenOn: last, today })
+        : dueDateFromBirth(person.dob, vaccine);
       if (!dueOn) return null;
       if (vaccine.recurring && last && dueOn && last >= dueOn) return null;
-      const windowEndOn =
-        group === "senior"
-          ? vaccine.recurring === "yearly"
-            ? dueOn
-            : ""
-          : windowEndFromBirth(person.dob, vaccine);
+      const windowEndOn = isAdult
+        ? vaccine.recurring === "yearly"
+          ? dueOn
+          : ""
+        : windowEndFromBirth(person.dob, vaccine);
       const status = reminderStatus(dueOn, windowEndOn, todayIso);
       return {
         id: `${person.id}:${vaccine.id}:${dueOn}`,

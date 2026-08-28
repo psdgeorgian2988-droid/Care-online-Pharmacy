@@ -19,6 +19,50 @@ export function pad2(value) {
   return String(value).padStart(2, "0");
 }
 
+export const MONTH_OPTIONS = [
+  { value: "1", label: "January" },
+  { value: "2", label: "February" },
+  { value: "3", label: "March" },
+  { value: "4", label: "April" },
+  { value: "5", label: "May" },
+  { value: "6", label: "June" },
+  { value: "7", label: "July" },
+  { value: "8", label: "August" },
+  { value: "9", label: "September" },
+  { value: "10", label: "October" },
+  { value: "11", label: "November" },
+  { value: "12", label: "December" },
+];
+
+export function daysInMonth(month, year) {
+  const m = Number(month);
+  const y = Number(year);
+  if (!m || m < 1 || m > 12) return 31;
+  if (!y) {
+    return [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+  }
+  return new Date(y, m, 0).getDate();
+}
+
+export function splitIsoDate(value) {
+  const date = parseIsoDate(value);
+  if (!date) return { day: "", month: "", year: "" };
+  return {
+    day: String(date.getDate()),
+    month: String(date.getMonth() + 1),
+    year: String(date.getFullYear()),
+  };
+}
+
+export function joinIsoDate(day, month, year) {
+  const d = Number(day);
+  const m = Number(month);
+  const y = Number(year);
+  if (!d || !m || !y) return "";
+  const iso = `${y}-${pad2(m)}-${pad2(d)}`;
+  return parseIsoDate(iso) ? iso : "";
+}
+
 export function toIsoDate(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;

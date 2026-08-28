@@ -17,18 +17,24 @@ export function parseAppHash(rawHash) {
   let q = "";
   let id = "";
   let step = "";
+  let plan = "";
+  let service = "";
   try {
     const params = new URLSearchParams(query);
     q = (params.get("q") || "").trim();
     id = (params.get("id") || "").trim();
     step = (params.get("step") || "").trim();
+    plan = (params.get("plan") || "").trim();
+    service = (params.get("service") || "").trim();
   } catch {
     q = "";
     id = "";
     step = "";
+    plan = "";
+    service = "";
   }
   const route = !path || path === "home" ? "#home" : `#${path}`;
-  return { route, q, id, step };
+  return { route, q, id, step, plan, service };
 }
 
 export function goToHash(nextHash) {

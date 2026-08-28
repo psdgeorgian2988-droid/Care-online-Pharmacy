@@ -30,6 +30,23 @@ test("saving a child record stores due dates for remaining UIP doses", () => {
   assert.equal(store.reminders.some((row) => row.vaccineId === "je-1"), false);
 });
 
+test("required child or adult vaccines limit saved due dates to the selected doses", () => {
+  resetVaccinationStore();
+  const { store } = upsertVaccinationPerson(
+    {
+      name: "Anita",
+      gender: "F",
+      dob: "1960-01-01",
+      keepRecord: true,
+      remindersOn: true,
+      requiredIds: ["influenza-ncdc", "td-16"],
+    },
+    new Date(2026, 0, 20)
+  );
+  const ids = store.reminders.map((row) => row.vaccineId).sort();
+  assert.deepEqual(ids, ["influenza-ncdc", "td-16"]);
+});
+
 test("given doses drop off the saved reminder list and the next due date stays saved", () => {
   resetVaccinationStore();
   const { person } = upsertVaccinationPerson(

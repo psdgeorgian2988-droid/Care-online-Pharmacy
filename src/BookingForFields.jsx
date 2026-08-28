@@ -10,6 +10,7 @@ export default function BookingForFields({
   selectedId = "",
   error = "",
   onSelect,
+  label = "Who Is This Booking For?",
 }) {
   const options = bookingForOptions(profile);
   const selectId = `${idPrefix}-who`;
@@ -19,7 +20,7 @@ export default function BookingForFields({
       <style>{styles}</style>
       <div className="book-for">
         <label htmlFor={selectId}>
-          Who Is This Booking For? <span>*</span>
+          {label} <span>*</span>
         </label>
         <select
           id={selectId}

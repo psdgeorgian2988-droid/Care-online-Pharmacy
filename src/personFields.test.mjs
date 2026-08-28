@@ -2,7 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   ageFromDob,
+  daysInMonth,
+  joinIsoDate,
   pickPerson,
+  splitIsoDate,
   validateFamilyMembers,
   validatePerson,
 } from "./personFields.js";
@@ -16,6 +19,18 @@ function yearsAgoIso(years, extraDays = 0) {
   );
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
+
+test("date, month and year join into an ISO date of birth", () => {
+  assert.deepEqual(splitIsoDate("2018-08-28"), {
+    day: "28",
+    month: "8",
+    year: "2018",
+  });
+  assert.equal(joinIsoDate("28", "8", "2018"), "2018-08-28");
+  assert.equal(joinIsoDate("31", "2", "2026"), "");
+  assert.equal(daysInMonth("2", "2024"), 29);
+  assert.equal(daysInMonth("2", "2025"), 28);
+});
 
 test("gender and date of birth are required on register", () => {
   const errors = validatePerson({});

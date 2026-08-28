@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
@@ -21,6 +21,20 @@ import {
   initialBookingFor,
   validateBookingFor,
 } from "./bookingFor";
+import { HOME_VISIT_FEE } from "./vaccinationSchedule";
+import {
+  BOOKING_EVENT,
+  isVaccinationPlan,
+  loadVaccinationBooking,
+  selectedBookingVaccines,
+  setBookingGroup,
+  toggleBookingVaccine,
+  vaccinationOrderItems,
+  vaccinationVisitTotal,
+} from "./vaccinationBooking";
+import SelectedVaccinesFields from "./SelectedVaccinesFields";
+import DateMonthYearFields from "./DateMonthYearFields";
+import { isoDateToday } from "./personFields";
 
 const LEGACY_STORAGE_KEY = "mediHomeHomeCareBookings";
 const SERVICE_TYPES = [
@@ -39,6 +53,8 @@ const CAREGIVER_PLANS = [
 const NURSING_PLANS = [
   { value: "im-inj", label: "IM injection", price: 249 },
   { value: "iv-inj", label: "IV injection", price: 349 },
+  { value: "vaccination", label: "Adult Vaccination", price: HOME_VISIT_FEE },
+  { value: "vaccination-child", label: "Children Vaccination", price: HOME_VISIT_FEE },
   { value: "cannula", label: "Cannula", price: 499 },
   { value: "dress-small", label: "Dressing small", price: 299 },
   { value: "dress-medium", label: "Dressing medium", price: 499 },
@@ -75,27 +91,79 @@ function readProfile() {
   return readUserProfile();
 }
 
-function HomeCare() {
-  const profile = useMemo(() => readProfile(), []);
-  const today = new Date().toISOString().split("T")[0];
-  const [form, setForm] = useState({
+function homeCareFromHash(profile) {
+  const hash = typeof window !== "undefined" ? window.location.hash : "";
+  const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
+  let service = "";
+  let plan = "";
+  try {
+    const params = new URLSearchParams(query);
+    service = (params.get("service") || "").trim();
+    plan = (params.get("plan") || "").trim();
+  } catch {
+    service = "";
+    plan = "";
+  }
+  const serviceType =
+    service === "nurse" || service === "caregiver" || service === "physiotherapy"
+      ? service
+      : isVaccinationPlan(plan)
+        ? "nurse"
+        : "caregiver";
+  const plans = plansFor(serviceType);
+  const carePlan = plans.some((row) => row.value === plan) ? plan : plans[0].value;
+  return {
     patientName: profile.name,
     mobile: profile.mobile,
     ...pickAddress(profile),
     ...initialBookingFor(profile),
-    serviceType: "caregiver",
-    carePlan: "visit",
+    serviceType,
+    carePlan,
     date: "",
     timeSlot: "",
     otherNote: "",
     otherRate: "999",
-  });
+  };
+}
+
+function HomeCare() {
+  const profile = useMemo(() => readProfile(), []);
+  const today = isoDateToday();
+  const maxVisit = isoDateToday(
+    new Date(new Date().getFullYear() + 1, new Date().getMonth(), new Date().getDate())
+  );
+  const [form, setForm] = useState(() => homeCareFromHash(profile));
+  const [vaxBooking, setVaxBooking] = useState(() => loadVaccinationBooking());
   const [errors, setErrors] = useState({});
   const [booking, setBooking] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
   const busyWait = useBusyOverlay(submitting, "homecare");
+
+  useEffect(() => {
+    const applyHash = () => {
+      setForm((prev) => {
+        const next = homeCareFromHash(profile);
+        if (next.serviceType === prev.serviceType && next.carePlan === prev.carePlan) {
+          return prev;
+        }
+        return {
+          ...prev,
+          serviceType: next.serviceType,
+          carePlan: next.carePlan,
+        };
+      });
+    };
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
+  }, [profile]);
+
+  useEffect(() => {
+    const refresh = () => setVaxBooking(loadVaccinationBooking());
+    window.addEventListener(BOOKING_EVENT, refresh);
+    return () => window.removeEventListener(BOOKING_EVENT, refresh);
+  }, []);
 
   const activePlans = plansFor(form.serviceType);
 
@@ -119,6 +187,9 @@ function HomeCare() {
     }
     setForm((prev) => ({ ...prev, [name]: next }));
     setErrors((prev) => ({ ...prev, [name]: "" }));
+    if (name === "carePlan" && isVaccinationPlan(next)) {
+      setVaxBooking(setBookingGroup(next === "vaccination-child" ? "child" : "adult"));
+    }
   };
 
   const validate = () => {
@@ -165,10 +236,13 @@ function HomeCare() {
       const queue = await holdForPartnerQueue("homecare");
       const gps = await resolvePinLocation(form.pinCode);
       const addr = applyResolvedPin(form, gps);
+      const vaccines = selectedBookingVaccines(vaxBooking);
       const total =
         plan.value === "nurse-other"
           ? Number(form.otherRate) || plan.price
-          : plan.price;
+          : isVaccinationPlan(plan.value)
+            ? vaccinationVisitTotal(vaxBooking)
+            : plan.price;
       const pay = paymentFromQuote(payQuote, total);
       const payment = await settleCheckoutPayment({
         method: payMethod,
@@ -204,6 +278,7 @@ function HomeCare() {
         highTrafficWait: queue.busy || queue.waited,
         bookedAt: new Date().toLocaleString(),
         bookedAtMs: Date.now(),
+        vaccineNames: vaccines.map((row) => row.name),
         ...payment,
       };
 
@@ -211,12 +286,14 @@ function HomeCare() {
         withTracking(
           {
             ...bookingDetails,
-            items: [
-              {
-                name: `${serviceLabel} · ${plan.label}`,
-                price: bookingDetails.total,
-              },
-            ],
+            items: isVaccinationPlan(plan.value)
+              ? vaccinationOrderItems(vaxBooking, plan.label, bookingDetails.total)
+              : [
+                  {
+                    name: `${serviceLabel} · ${plan.label}`,
+                    price: bookingDetails.total,
+                  },
+                ],
           },
           "homecare"
         )
@@ -278,6 +355,12 @@ function HomeCare() {
                 <span>Plan</span>
                 <strong>{booking.carePlanLabel}</strong>
               </div>
+              {booking.vaccineNames?.length ? (
+                <div className="confirm-row">
+                  <span>Vaccines</span>
+                  <strong>{booking.vaccineNames.join(", ")}</strong>
+                </div>
+              ) : null}
               {booking.carePlan === "nurse-other" && booking.otherNote ? (
                 <div className="confirm-row">
                   <span>Job</span>
@@ -328,6 +411,11 @@ function HomeCare() {
             </div>
             <AssignedAgent record={booking} />
             <div className="confirm-actions">
+              {isVaccinationPlan(booking.carePlan) ? (
+                <a className="service-submit" href="#vaccination">
+                  Save Vaccination Record
+                </a>
+              ) : null}
               <BillButton order={booking} />
               <button
                 type="button"
@@ -452,6 +540,19 @@ function HomeCare() {
             {errors.carePlan ? <small>{errors.carePlan}</small> : null}
           </div>
 
+          {isVaccinationPlan(form.carePlan) ? (
+            <div className="field full">
+              <SelectedVaccinesFields
+                booking={vaxBooking}
+                onToggle={(id) => setVaxBooking(toggleBookingVaccine(id))}
+                idPrefix="hc-vac"
+              />
+              <a className="vac-copy" href="#vaccination">
+                Vaccination Record
+              </a>
+            </div>
+          ) : null}
+
           {form.carePlan === "nurse-other" ? (
             <>
               <div className="field full">
@@ -485,22 +586,22 @@ function HomeCare() {
             </>
           ) : null}
 
-          <div className="field">
-            <label htmlFor="hc-date">
-              {usesVisitDate(form.serviceType, form.carePlan)
-                ? "Visit date"
-                : "Start date"}{" "}
-              <span>*</span>
-            </label>
-            <input
-              id="hc-date"
+          <div className="field full">
+            <DateMonthYearFields
+              idPrefix="hc-date"
               name="date"
-              type="date"
-              min={today}
               value={form.date}
+              min={today}
+              max={maxVisit}
+              required
+              error={errors.date || ""}
+              label={
+                usesVisitDate(form.serviceType, form.carePlan)
+                  ? "Visit Date"
+                  : "Start Date"
+              }
               onChange={handleChange}
             />
-            {errors.date && <small>{errors.date}</small>}
           </div>
 
           {!isLongDuty(form.carePlan) ? (
@@ -531,7 +632,9 @@ function HomeCare() {
               amount={
                 form.carePlan === "nurse-other"
                   ? Number(form.otherRate) || 999
-                  : activePlans.find((item) => item.value === form.carePlan)?.price || 0
+                  : isVaccinationPlan(form.carePlan)
+                    ? vaccinationVisitTotal(vaxBooking)
+                    : activePlans.find((item) => item.value === form.carePlan)?.price || 0
               }
               pin={form.pinCode}
               method={payMethod}
@@ -547,8 +650,10 @@ function HomeCare() {
               : `Confirm booking · ${formatRupee(
                   form.carePlan === "nurse-other"
                     ? Number(form.otherRate) || 999
-                    : activePlans.find((item) => item.value === form.carePlan)
-                        ?.price || 0
+                    : isVaccinationPlan(form.carePlan)
+                      ? vaccinationVisitTotal(vaxBooking)
+                      : activePlans.find((item) => item.value === form.carePlan)
+                          ?.price || 0
                 )}`}
           </button>
         </form>
@@ -573,9 +678,14 @@ const styles = `
 .service-form input:focus,.service-form select:focus,.service-form textarea:focus{border-color:#1a6b7a}
 .service-form small{margin-top:4px;color:#d84b4b;font-size:12px}
 .service-form small.pin-gps-hint{color:#5d7180}
+.vac-copy{margin:0;color:#5d7180;font-size:13px;line-height:1.45}
+.vac-copy a,.field.full > a.vac-copy{color:#1a6b7a;font-weight:700}
+.vac-picked{margin:0 0 8px;padding:0;list-style:none;display:grid;gap:6px}
+.vac-picked li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e4ecef;border-radius:8px;background:#fff;font-size:13px}
+.vac-picked button{border:0;background:none;color:#b64b4b;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
 .service-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:40px;cursor:pointer;font-family:inherit}
 .confirm-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
-.confirm-actions .service-submit{grid-column:auto;min-width:180px}
+.confirm-actions .service-submit{grid-column:auto;min-width:180px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
 .service-confirm{max-width:640px;margin:12px auto;text-align:center}
 .success-icon{width:52px;height:52px;margin:0 auto 10px;border-radius:50%;background:#e5f8ee;color:#1c9b61;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
 .service-confirm h1{margin:0 0 6px;font-size:22px}

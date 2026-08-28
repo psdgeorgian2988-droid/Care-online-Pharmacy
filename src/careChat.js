@@ -101,15 +101,18 @@ export function replyTo(rawText) {
 
   if (/\b(vaccin|immunis|immuniz|bcg|polio|pentavalent)\b/.test(q)) {
     return {
-      text: "Vaccination suggestions follow the Government of India Universal Immunisation Programme. You can keep a record and save the date each due vaccine should be given.",
+      text: "Vaccination records and due dates follow the Government of India schedule. Book a nurse vaccination visit from Home Care.",
       needsStaff: false,
-      links: [{ href: "#vaccination", label: "Vaccination Schedule" }],
+      links: [
+        { href: "#vaccination", label: "Vaccination Record" },
+        { href: "#homecare?service=nurse&plan=vaccination", label: "Book Nurse Visit" },
+      ],
     };
   }
 
   if (/\b(nurse|physiotherapy|physio|caregiver|home care|homecare)\b/.test(q)) {
     return {
-      text: "Home Care covers nurse, caregiver, and physiotherapy visits at your PIN.",
+      text: "Home Care covers nurse, caregiver, and physiotherapy visits at your PIN. Adult Vaccination and Children Vaccination are in the nurse dropdown.",
       needsStaff: false,
       links: [{ href: "#homecare", label: "Book Home Care" }],
     };

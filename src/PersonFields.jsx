@@ -4,6 +4,7 @@ import {
   isoDateToday,
   isoDateYearsAgo,
 } from "./personFields";
+import DateMonthYearFields from "./DateMonthYearFields";
 
 export default function PersonFields({
   idPrefix = "person",
@@ -12,7 +13,6 @@ export default function PersonFields({
   onChange,
 }) {
   const genderId = `${idPrefix}-gender`;
-  const dobId = `${idPrefix}-dob`;
   const age = values.dob ? ageFromDob(values.dob) : "";
 
   return (
@@ -43,30 +43,18 @@ export default function PersonFields({
           {errors.gender ? <small className="person-error">{errors.gender}</small> : null}
         </div>
 
-        <div className="person-field">
-          <label htmlFor={dobId} className="person-label">
-            Date Of Birth <span>*</span>
-          </label>
-          <input
-            id={dobId}
+        <div className="person-field person-dob">
+          <DateMonthYearFields
+            idPrefix={`${idPrefix}-dob`}
             name="dob"
-            type="date"
+            value={values.dob || ""}
             max={isoDateToday()}
             min={isoDateYearsAgo(120)}
-            value={values.dob || ""}
-            onChange={(event) =>
-              onChange?.({
-                target: {
-                  name: "dob",
-                  value: event.target.value || "",
-                },
-              })
-            }
             required
+            error={errors.dob || ""}
+            onChange={onChange}
           />
-          {errors.dob ? (
-            <small className="person-error">{errors.dob}</small>
-          ) : age !== "" ? (
+          {!errors.dob && age !== "" ? (
             <small className="person-age">{age} years</small>
           ) : null}
         </div>
@@ -76,7 +64,7 @@ export default function PersonFields({
 }
 
 const styles = `
-.person-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 16px;width:100%;grid-column:1/-1}
+.person-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:10px 16px;width:100%;grid-column:1/-1}
 .person-field{display:flex;flex-direction:column;min-width:0}
 .person-label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .person-label span{color:#e34d4d}

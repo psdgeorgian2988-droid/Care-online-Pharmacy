@@ -18,4 +18,7 @@ test("service hashes stay on their own pages", () => {
   assert.equal(parseAppHash("#medicine-search?q=dolo").route, "#medicine-search");
   assert.equal(parseAppHash("#medicine-search?q=dolo").q, "dolo");
   assert.equal(parseAppHash("#scan?step=deliver").step, "deliver");
+  assert.equal(parseAppHash("#homecare?service=nurse&plan=vaccination").route, "#homecare");
+  assert.equal(parseAppHash("#homecare?service=nurse&plan=vaccination").service, "nurse");
+  assert.equal(parseAppHash("#homecare?service=nurse&plan=vaccination-child").plan, "vaccination-child");
 });

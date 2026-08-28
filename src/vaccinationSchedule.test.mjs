@@ -60,11 +60,12 @@ test("a 9-month-old is due measles-rubella (MR), not MMR", () => {
   assert.equal(due.includes("mmr"), false);
 });
 
-test("JE is suggested only for notified endemic districts", () => {
-  const without = suggestChildVaccines(9).map((row) => row.id);
-  const withJe = suggestChildVaccines(9, { includeEndemic: true }).map((row) => row.id);
-  assert.equal(without.includes("je-1"), false);
-  assert.equal(withJe.includes("je-1"), true);
+test("JE-endemic vaccines are not on the child list", () => {
+  const ids = CHILD_VACCINES.map((row) => row.id);
+  assert.equal(ids.includes("je-1"), false);
+  assert.equal(ids.includes("je-2"), false);
+  const nineMonth = suggestChildVaccines(9).map((row) => row.id);
+  assert.equal(nineMonth.includes("je-1"), false);
 });
 
 test("child suggestions stay on the Government of India UIP list", () => {

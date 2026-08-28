@@ -13,6 +13,8 @@ export const SERVICE_KIND_OPTIONS = [
 export const HOMECARE_BUILTIN = [
   { id: "homecare:im-inj", kind: "homecare", group: "nurse", name: "Nurse · IM injection", price: 249 },
   { id: "homecare:iv-inj", kind: "homecare", group: "nurse", name: "Nurse · IV injection", price: 349 },
+  { id: "homecare:vaccination", kind: "homecare", group: "nurse", name: "Nurse · Adult Vaccination", price: 499 },
+  { id: "homecare:vaccination-child", kind: "homecare", group: "nurse", name: "Nurse · Children Vaccination", price: 499 },
   { id: "homecare:cannula", kind: "homecare", group: "nurse", name: "Nurse · Cannula", price: 499 },
   { id: "homecare:dress-small", kind: "homecare", group: "nurse", name: "Nurse · Dressing small", price: 299 },
   { id: "homecare:dress-medium", kind: "homecare", group: "nurse", name: "Nurse · Dressing medium", price: 499 },

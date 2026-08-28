@@ -25,11 +25,9 @@ export const CHILD_VACCINES = [
   { id: "pcv-2", name: "Pneumococcal Conjugate Vaccine (PCV) — 2", dueAgeWeeks: 14, dueAgeMonths: 3.5, windowEndMonths: 6, catchUp: true, catchUpUntilMonths: 12, price: 0, note: "14 weeks. Second primary dose (UIP does not give PCV at 10 weeks)." },
   { id: "mr-1", name: "MR-1 (Measles–Rubella)", dueAgeMonths: 9, windowEndMonths: 12, catchUp: true, catchUpUntilMonths: 60, price: 0, note: "9–12 months. Government schedule uses MR, not MMR." },
   { id: "pcv-b", name: "PCV Booster", dueAgeMonths: 9, windowEndMonths: 12, catchUp: true, catchUpUntilMonths: 24, price: 0, note: "9–12 months." },
-  { id: "je-1", name: "Japanese Encephalitis (JE) — 1", dueAgeMonths: 9, windowEndMonths: 12, catchUp: true, catchUpUntilMonths: 24, endemicOnly: true, price: 0, note: "9–12 months. Only in JE-endemic districts notified by the Government of India." },
   { id: "mr-2", name: "MR-2 (Measles–Rubella)", dueAgeMonths: 16, windowEndMonths: 24, catchUp: true, catchUpUntilMonths: 60, price: 0, note: "16–24 months." },
   { id: "dpt-b1", name: "DPT Booster-1", dueAgeMonths: 16, windowEndMonths: 24, catchUp: true, catchUpUntilMonths: 36, price: 0, note: "16–24 months." },
   { id: "opv-b", name: "OPV Booster", dueAgeMonths: 16, windowEndMonths: 24, catchUp: true, catchUpUntilMonths: 36, price: 0, note: "16–24 months." },
-  { id: "je-2", name: "Japanese Encephalitis (JE) — 2", dueAgeMonths: 16, windowEndMonths: 24, catchUp: true, catchUpUntilMonths: 36, endemicOnly: true, price: 0, note: "16–24 months. Only in JE-endemic districts." },
   { id: "dpt-b2", name: "DPT Booster-2", dueAgeMonths: 60, windowEndMonths: 72, catchUp: true, catchUpUntilMonths: 84, price: 0, note: "5–6 years." },
   { id: "td-10", name: "Td (Tetanus and Adult Diphtheria) — 10 Years", dueAgeMonths: 120, windowEndMonths: 132, catchUp: true, catchUpUntilMonths: 180, price: 0, note: "10 years. Replaces TT in UIP." },
   { id: "td-16", name: "Td — 16 Years", dueAgeMonths: 192, windowEndMonths: 204, catchUp: true, catchUpUntilMonths: 216, price: 0, note: "16 years." },
@@ -73,7 +71,7 @@ export const ALL_VACCINES = [...CHILD_VACCINES, ...SENIOR_VACCINES];
 export const SLOTS = ["09:00–11:00", "11:00–13:00", "15:00–17:00", "17:00–19:00"];
 
 export const UIP_DISCLAIMER =
-  "Suggestions and due dates follow the Government of India Universal Immunisation Programme (National Immunization Schedule, Ministry of Health & Family Welfare / National Health Mission). Japanese Encephalitis is only for notified endemic districts. HPV is shown for eligible girls where UIP introduction is underway — confirm state rollout. Older-person suggestions follow MoHFW, NCDC and NPHCE guidance, not private schedules. A government ANM, medical officer or treating doctor must confirm doses, catch-up and contra-indications. This is not a prescription.";
+  "Suggestions and due dates follow the Government of India Universal Immunisation Programme (National Immunization Schedule, Ministry of Health & Family Welfare / National Health Mission). HPV is shown for eligible girls where UIP introduction is underway — confirm state rollout. Older-person suggestions follow MoHFW, NCDC and NPHCE guidance, not private schedules. A government ANM, medical officer or treating doctor must confirm doses, catch-up and contra-indications. This is not a prescription.";
 
 export function vaccineById(id) {
   return ALL_VACCINES.find((row) => row.id === id) || null;
@@ -238,11 +236,10 @@ function genderAllows(vaccine, gender) {
   return g === "f" || g === "female";
 }
 
-export function suggestChildVaccines(ageMonths, { includeEndemic = false, gender = "" } = {}) {
+export function suggestChildVaccines(ageMonths, { gender = "" } = {}) {
   const months = Number(ageMonths);
   if (!Number.isFinite(months) || months < 0) return [];
   return CHILD_VACCINES.filter((vaccine) => {
-    if (vaccine.endemicOnly && !includeEndemic) return false;
     if (!genderAllows(vaccine, gender)) return false;
     return Boolean(inWindow(months, vaccine));
   }).map((vaccine) => ({
@@ -262,13 +259,13 @@ export function suggestSeniorVaccines(ageYears) {
   }));
 }
 
-export function suggestVaccines({ group, ageYears, ageMonths, includeEndemic, gender }) {
+export function suggestVaccines({ group, ageYears, ageMonths, gender }) {
   if (group === "child") {
     const months =
       ageMonths != null && ageMonths !== ""
         ? Number(ageMonths)
         : yearsToMonths(ageYears, 0);
-    return suggestChildVaccines(months, { includeEndemic, gender });
+    return suggestChildVaccines(months, { gender });
   }
   if (group === "senior") return suggestSeniorVaccines(ageYears);
   return [];
@@ -313,7 +310,6 @@ export function fullVaccinationSchedule() {
       id: vaccine.id,
       name: vaccine.name,
       note: vaccine.note,
-      endemicOnly: Boolean(vaccine.endemicOnly),
       girlsOnly: Boolean(vaccine.girlsOnly),
     });
   }
@@ -326,7 +322,6 @@ export function fullVaccinationSchedule() {
       id: vaccine.id,
       name: vaccine.name,
       note: vaccine.note,
-      endemicOnly: false,
       girlsOnly: false,
     });
   }
