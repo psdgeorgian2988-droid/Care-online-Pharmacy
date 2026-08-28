@@ -722,14 +722,14 @@ function LabTests() {
               </p>
             </div>
             <div className="lab-fields">
-            <div className="lab-field lab-field-full">
+            <div className="lab-field lab-span">
               <BookingForFields
                 idPrefix="lab"
                 profile={profile}
                 selectedId={form.bookedFor}
                 error={errors.bookedFor}
                 onSelect={(option) => {
-                  setForm((prev) => ({ ...prev, ...bookingForPatch(option) }));
+                  setForm((prev) => ({ ...prev, ...bookingForPatch(option, profile) }));
                   setErrors((prev) => ({ ...prev, bookedFor: "" }));
                 }}
               />
@@ -942,8 +942,8 @@ const styles = `
 .lab-tabs button{border:0;background:transparent;color:#3d5a6c;font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
 .lab-tabs button.is-on{background:#fff;color:#1a6b7a;box-shadow:0 1px 3px rgba(20,50,70,.08)}
 .lab-tabs span{min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#1a6b7a;color:#fff;font-size:11px;line-height:18px;text-align:center}
-.lab-shell{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.9fr);gap:16px;align-items:start}
-.lab-card{background:#fff;border:1px solid #e4ecef;border-radius:12px;padding:16px 18px;min-width:0}
+.lab-shell{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:stretch}
+.lab-card{background:#fff;border:1px solid #e4ecef;border-radius:12px;padding:16px 18px;min-width:0;height:100%;box-sizing:border-box}
 .lab-card-head{margin:0 0 14px;padding-bottom:12px;border-bottom:1px solid #eef3f6}
 .lab-card-head h2{margin:0;font-size:16px;font-weight:700;color:#143246}
 .lab-card-head p{margin:4px 0 0;font-size:13px;color:#5d7180;line-height:1.4}
@@ -971,10 +971,10 @@ const styles = `
 .lab-card-foot{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid #eef3f6;font-size:13px;color:#5d7180}
 .lab-card-foot strong{margin-left:auto;font-size:15px;color:#143246}
 .lab-clear{border:0;background:none;padding:0;color:#b64b4b;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
-.lab-book{position:sticky;top:8px}
-.lab-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.lab-book{position:relative;top:auto}
+.lab-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px 16px;align-items:start}
 .lab-field{display:flex;flex-direction:column;min-width:0}
-.lab-field.lab-span{grid-column:1/-1}
+.lab-field.lab-span,.lab-field.lab-field-full,.lab-field:has(.book-for),.lab-field:has(.addr-fields){grid-column:1/-1}
 .lab-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .visit-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .visit-card{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border:1px solid #e4ecef;border-radius:8px;background:#f7fbfe;cursor:pointer}

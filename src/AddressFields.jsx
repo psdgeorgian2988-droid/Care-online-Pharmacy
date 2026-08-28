@@ -298,30 +298,36 @@ export default function AddressFields({
 }
 
 const styles = `
-.addr-fields{display:grid;grid-template-columns:1fr;gap:10px;width:100%}
+.addr-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 16px;width:100%;grid-column:1/-1}
 .addr-field{display:flex;flex-direction:column;min-width:0}
+.addr-field:has(.addr-pin-row),
+.addr-field.addr-select,
+.addr-confirm{grid-column:1/-1}
 .addr-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .addr-field label span{color:#e34d4d}
 .addr-field label em{font-style:normal;font-weight:600;color:#7a8a92}
 .addr-field input,
-.addr-field select{width:100%;box-sizing:border-box;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#29455a;font:inherit;font-size:13px}
+.addr-field select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#29455a;font:inherit;font-size:13px}
 .addr-field input:focus,
-.addr-field select:focus{outline:none;border-color:#35a8d2;box-shadow:0 0 0 2px rgba(53,168,210,.1)}
+.addr-field select:focus{outline:none;border-color:#1a6b7a;box-shadow:none}
 .addr-field.addr-auto input{background:#f3f7fa;color:#3a5568;border-color:#d3e0e8;cursor:default}
-.addr-field.addr-select select{background:#fff;cursor:pointer}
+.addr-field.addr-select select{background:#fff;cursor:pointer;height:38px}
 .addr-field.addr-select select:disabled{background:#f3f7fa;color:#7a8a92;cursor:default}
-.addr-pin-row{display:flex;gap:8px;align-items:stretch}
-.addr-pin-row input{flex:1;min-width:0}
-.addr-locate-btn{flex:0 0 auto;padding:8px 10px;border:1px solid #1e8a73;border-radius:8px;background:#1e8a73;color:#fff;font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.addr-pin-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.addr-pin-row input{flex:1;min-width:0;height:38px}
+.addr-locate-btn{box-sizing:border-box;height:38px;min-height:38px;padding:0 12px;border:1px solid #1a6b7a;border-radius:8px;background:#1a6b7a;color:#fff;font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 .addr-locate-btn:disabled{opacity:.7;cursor:wait}
 .addr-error{margin-top:4px;color:#d84b4b;font-size:11px}
 .addr-hint{margin-top:4px;color:#5d7180;font-size:11px}
-.addr-confirm{padding:12px;border:1px solid #d7e2e9;border-radius:10px;background:#f7fbfc}
+.addr-confirm{padding:12px;border:1px solid #d3e6f3;border-radius:12px;background:#f7fbfe}
 .addr-confirm-title{margin:0 0 8px;font-size:13px;font-weight:800;color:#29455a}
-.addr-confirm dl{margin:0;display:grid;gap:6px}
-.addr-confirm dl > div{display:grid;grid-template-columns:minmax(120px,38%) 1fr;gap:8px;align-items:start}
+.addr-confirm dl{margin:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 16px}
+.addr-confirm dl > div{display:grid;gap:2px;align-items:start}
 .addr-confirm dt{font-size:11px;font-weight:700;color:#5d7180}
 .addr-confirm dd{margin:0;font-size:13px;font-weight:700;color:#29455a;word-break:break-word}
 .addr-confirm-check{display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:13px;font-weight:700;color:#29455a}
-.addr-confirm-check input{width:16px;height:16px;margin-top:2px;flex:0 0 auto;accent-color:#1e8a73}
+.addr-confirm-check input{width:16px;height:16px;margin-top:2px;flex:0 0 auto;accent-color:#1a6b7a}
+@media (max-width:800px){
+  .addr-fields,.addr-confirm dl{grid-template-columns:1fr}
+}
 `;

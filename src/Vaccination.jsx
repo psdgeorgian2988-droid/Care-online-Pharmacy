@@ -162,7 +162,7 @@ function Vaccination() {
     const years = Number(option.age || 0);
     setForm((prev) => ({
       ...prev,
-      ...bookingForPatch(option),
+      ...bookingForPatch(option, profile),
       gender: option.gender || prev.gender,
       ageYears: option.age || prev.ageYears,
       group: ageGroupFromYears(years) || prev.group,

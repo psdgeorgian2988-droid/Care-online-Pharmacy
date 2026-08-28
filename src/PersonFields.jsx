@@ -75,7 +75,7 @@ export default function PersonFields({
 }
 
 const styles = `
-.person-fields{display:grid;grid-template-columns:1fr;gap:10px;width:100%}
+.person-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 16px;width:100%;grid-column:1/-1}
 .person-field{display:flex;flex-direction:column;min-width:0}
 .person-label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .person-label span{color:#e34d4d}
@@ -87,4 +87,5 @@ const styles = `
 .person-field input:focus{outline:none;border-color:#35a8d2;box-shadow:0 0 0 2px rgba(53,168,210,.1)}
 .person-error{margin-top:4px;color:#d84b4b;font-size:11px}
 .person-hint{margin-top:4px;color:#5d7180;font-size:11px}
+@media (max-width:800px){.person-fields{grid-template-columns:1fr}}
 `;

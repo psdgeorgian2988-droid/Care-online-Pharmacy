@@ -3580,9 +3580,16 @@ function Medicines({ initialSearch = "" }) {
             profile={savedProfile || {}}
             selectedId={whoFor.bookedFor}
             onSelect={(option) => {
-              const patch = bookingForPatch(option);
+              const patch = bookingForPatch(option, savedProfile || {});
               setWhoFor(patch);
               if (patch.patientName) setFullName(patch.patientName);
+              if (patch.mobile) setMobileNumber(patch.mobile);
+              if (patch.pinCode || patch.houseNo || patch.society) {
+                setDelivery((current) => ({
+                  ...current,
+                  ...pickAddress(patch),
+                }));
+              }
             }}
           />
 

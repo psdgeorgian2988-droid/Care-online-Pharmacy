@@ -613,7 +613,7 @@ function StepDownCare() {
                     selectedId={form.bookedFor}
                     error={errors.bookedFor}
                     onSelect={(option) => {
-                      setForm((prev) => ({ ...prev, ...bookingForPatch(option) }));
+                      setForm((prev) => ({ ...prev, ...bookingForPatch(option, profile) }));
                       setErrors((prev) => ({ ...prev, bookedFor: "" }));
                     }}
                   />

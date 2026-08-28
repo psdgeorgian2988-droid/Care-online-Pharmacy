@@ -5739,9 +5739,10 @@ body,
 .app:not(.app-ops) .info-stack,
 .app:not(.app-ops) .report-list,
 .app:not(.app-ops) .service-confirm {
-  max-width: 760px !important;
+  max-width: none !important;
+  width: 100% !important;
   margin-left: 0 !important;
-  margin-right: auto !important;
+  margin-right: 0 !important;
 }
 
 .app:not(.app-ops) .service-form input,
@@ -5874,4 +5875,216 @@ body,
 .page-error a {
   color: #1a6b7a;
   font-weight: 700;
+}
+
+/* One public canvas: Home, Medicines, and every other page share gutters and cards */
+.app:not(.app-ops) > main > .home-content,
+.app:not(.app-ops) > main > .medicines-page,
+.app:not(.app-ops) > main > .service-page,
+.app:not(.app-ops) > main > .lab-page,
+.app:not(.app-ops) > main > .profile-page,
+.app:not(.app-ops) > main > .reports-page,
+.app:not(.app-ops) > main > .info-page,
+.app:not(.app-ops) > main > .my-orders-page,
+.app:not(.app-ops) > main > .placeholder-page {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 12px 18px 20px 14px !important;
+  box-sizing: border-box !important;
+  background: transparent !important;
+}
+
+.home-content.home-landing,
+.medicines-page {
+  padding: 12px 18px 20px 14px !important;
+}
+
+.app:not(.app-ops) .lab-head,
+.app:not(.app-ops) .medicines-title-row,
+.app:not(.app-ops) .orders-page-header,
+.app:not(.app-ops) .service-hero,
+.app:not(.app-ops) .profile-hero {
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  flex-wrap: wrap !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 0 14px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  text-align: left !important;
+}
+
+.app:not(.app-ops) .lab-head > div,
+.app:not(.app-ops) .service-hero > div,
+.app:not(.app-ops) .profile-hero > div,
+.app:not(.app-ops) .orders-page-header > div:first-child,
+.app:not(.app-ops) .medicines-title-row > div:first-child {
+  flex: 1 1 280px;
+  min-width: 0;
+  text-align: left !important;
+}
+
+.app:not(.app-ops) .service-form,
+.app:not(.app-ops) .profile-card,
+.app:not(.app-ops) .profile-points-card,
+.app:not(.app-ops) .profile-refer-wrap,
+.app:not(.app-ops) .info-stack,
+.app:not(.app-ops) .service-confirm,
+.app:not(.app-ops) .report-list,
+.app:not(.app-ops) .vac-record,
+.app:not(.app-ops) .vac-banner,
+.app:not(.app-ops) .coming-soon,
+.app:not(.app-ops) .live-track-wrap,
+.app:not(.app-ops) .order-details-page,
+.app:not(.app-ops) .lab-shell,
+.app:not(.app-ops) .scan-panel {
+  max-width: none !important;
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.app:not(.app-ops) .service-form,
+.app:not(.app-ops) .profile-card {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 12px 16px !important;
+  padding: 16px !important;
+  align-items: start;
+}
+
+.app:not(.app-ops) .service-form .field.full,
+.app:not(.app-ops) .service-form .service-submit,
+.app:not(.app-ops) .service-form .pay-block,
+.app:not(.app-ops) .profile-card > .person-fields,
+.app:not(.app-ops) .profile-card > .addr-fields,
+.app:not(.app-ops) .profile-card > .family-fields,
+.app:not(.app-ops) .profile-card > .profile-success,
+.app:not(.app-ops) .profile-card > .profile-save-btn {
+  grid-column: 1 / -1 !important;
+}
+
+.app:not(.app-ops) .info-stack {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 12px !important;
+}
+
+.app:not(.app-ops) .info-panel {
+  margin: 0 !important;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.app:not(.app-ops) .info-footnote {
+  grid-column: 1 / -1;
+}
+
+.app:not(.app-ops) .lab-shell {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.9fr) !important;
+  gap: 16px !important;
+  align-items: start !important;
+}
+
+.app:not(.app-ops) .home-services,
+.app:not(.app-ops) .orders-grid {
+  width: 100% !important;
+}
+
+.app:not(.app-ops) .service-confirm {
+  text-align: left !important;
+}
+
+.app:not(.app-ops) .success-icon,
+.app:not(.app-ops) .confirm-actions {
+  margin-left: 0 !important;
+}
+
+.app:not(.app-ops) .confirm-actions {
+  justify-content: flex-start !important;
+}
+
+.app:not(.app-ops) .coming-soon {
+  text-align: left !important;
+  padding: 16px !important;
+  border-radius: 12px !important;
+  background: #f7fbfe !important;
+  border: 1px solid #d3e6f3 !important;
+  box-shadow: none !important;
+}
+
+.app:not(.app-ops) .coming-soon-glow,
+.app:not(.app-ops) .coming-soon-pulse {
+  display: none !important;
+}
+
+.app:not(.app-ops) .coming-soon-lead,
+.app:not(.app-ops) .coming-soon-thanks {
+  margin-left: 0 !important;
+  max-width: none !important;
+}
+
+.app:not(.app-ops) .coming-soon-actions {
+  justify-content: flex-start !important;
+}
+
+.app:not(.app-ops) .coming-soon-actions a {
+  border-radius: 8px !important;
+}
+
+.app:not(.app-ops) .lab-tabs,
+.app:not(.app-ops) .vac-tabs,
+.app:not(.app-ops) .edu-tabs {
+  display: inline-flex !important;
+  padding: 4px !important;
+  border-radius: 10px !important;
+  background: #e7f2fa !important;
+  gap: 4px !important;
+}
+
+.app:not(.app-ops) .edu-tabs {
+  margin: 0 0 14px !important;
+}
+
+.app:not(.app-ops) .edu-tab,
+.app:not(.app-ops) .lab-tabs button,
+.app:not(.app-ops) .vac-tabs button {
+  border: 0 !important;
+  border-radius: 8px !important;
+  padding: 8px 14px !important;
+  font-weight: 700 !important;
+}
+
+.app:not(.app-ops) .edu-tab.is-active {
+  background: #ffffff !important;
+  color: #1a6b7a !important;
+}
+
+.app:not(.app-ops) .vac-banner {
+  margin: 0 0 14px !important;
+  padding: 14px 16px !important;
+  background: #f7fbfe !important;
+  border: 1px solid #d3e6f3 !important;
+  border-radius: 12px !important;
+}
+
+.app:not(.app-ops) .pay-block {
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+@media (max-width: 800px) {
+  .app:not(.app-ops) .service-form,
+  .app:not(.app-ops) .profile-card,
+  .app:not(.app-ops) .info-stack,
+  .app:not(.app-ops) .lab-shell {
+    grid-template-columns: 1fr !important;
+  }
 }
