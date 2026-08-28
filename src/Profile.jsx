@@ -86,13 +86,23 @@ function Profile() {
             <span className="profile-label">MEDIHOME ACCOUNT</span>
             <h1>Your Profile</h1>
             <p>
-              Save your details once. They will be used for medicine checkout and
-              Diagnostics “Myself” bookings.
+              Save your details once. After you register and log in, add family
+              members here for medicine and service bookings.
             </p>
           </div>
         </section>
 
-        <form className="profile-card" onSubmit={handleSave}>
+        <form className="profile-form" onSubmit={handleSave}>
+          <section className="profile-card" aria-label="Add family members">
+            <FamilyMembersFields
+              idPrefix="profile-family"
+              members={form.familyMembers}
+              errors={errors}
+              onChange={handleChange}
+            />
+          </section>
+
+          <section className="profile-card">
           <div className="profile-field">
             <label htmlFor="name">
               Full Name <span>*</span>
@@ -141,13 +151,6 @@ function Profile() {
             pinHint="Select the Village / Sector / Mohalla attached to this PIN. It is also used to sign in."
           />
 
-          <FamilyMembersFields
-            idPrefix="profile-family"
-            members={form.familyMembers}
-            errors={errors}
-            onChange={handleChange}
-          />
-
           {saved ? (
             <p className="profile-success">
               {typeof saved === "string"
@@ -159,6 +162,7 @@ function Profile() {
           <button type="submit" className="profile-save-btn">
             Save Profile
           </button>
+          </section>
         </form>
 
         <section className="profile-points-card">
@@ -206,7 +210,9 @@ const styles = `
   .profile-points-chip{flex-shrink:0;min-width:118px;padding:10px 12px;border-radius:12px;background:#1a6b7a;color:#fff;text-decoration:none;text-align:center}
   .profile-points-chip strong{display:block;font-size:22px;line-height:1.1}
   .profile-points-chip span{display:block;margin-top:4px;font-size:11px;font-weight:800}
-  .profile-points-card,.profile-refer-wrap{max-width:760px;margin:0 auto 14px}
+  .profile-points-card,.profile-refer-wrap,.profile-form{max-width:760px;margin:0 auto 14px}
+  .profile-form{display:grid;gap:14px}
+  .profile-card{padding:18px;background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.06);display:grid;gap:12px}
   .profile-points-card{padding:16px 18px;background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.06)}
   .profile-points-card h2{margin:0 0 6px;font-size:18px;color:#123b59}
   .profile-points-card p{margin:0 0 10px;color:#607589;font-size:13px}
@@ -214,7 +220,6 @@ const styles = `
   .profile-ledger li{display:flex;gap:10px;padding:6px 0;border-top:1px solid #edf1f3;font-size:13px;color:#34546b}
   .profile-ledger strong{min-width:36px;color:#1a6b7a}
   .profile-ledger-empty a{color:#1a6b7a;font-weight:700;text-decoration:none}
-  .profile-card{max-width:760px;margin:0 auto;padding:18px;background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.06);display:grid;gap:12px}
   .profile-field{display:flex;flex-direction:column}
   .profile-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
   .profile-field label span{color:#e34d4d}

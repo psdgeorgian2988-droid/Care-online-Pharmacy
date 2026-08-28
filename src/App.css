@@ -3752,7 +3752,7 @@ body,
 
 .home-landing .home-auth-form .person-fields,
 .home-landing .home-auth-form .addr-fields,
-.home-landing .home-auth-form .family-fields,
+.home-landing .home-auth-form .home-auth-family-note,
 .home-landing .home-auth-form button[type="submit"] {
   grid-column: 1 / -1;
 }
@@ -3793,6 +3793,27 @@ body,
 
 .home-landing .home-auth-status.error {
   color: #d84b4b;
+}
+
+.home-landing .home-auth-family-note {
+  margin: 0;
+  color: #5d7180;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.home-landing .home-auth-family-btn {
+  display: block;
+  margin-top: 10px;
+  height: 38px;
+  line-height: 38px;
+  border-radius: 8px;
+  background: #1e8a73;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
 }
 
 @media (max-width: 960px) {

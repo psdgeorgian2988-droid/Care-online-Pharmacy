@@ -35,9 +35,10 @@ export default function FamilyMembersFields({
       <div className="family-fields">
         <div className="family-head">
           <div>
-            <p className="family-title">Family Members</p>
+            <p className="family-title">Add Family Members</p>
             <p className="family-copy">
-              Optional. Each complete member adds 10 credit points once.
+              Available after you register and log in. Each complete member adds
+              10 credit points once.
             </p>
           </div>
           <button type="button" className="family-add" onClick={addMember}>

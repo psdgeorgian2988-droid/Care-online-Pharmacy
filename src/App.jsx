@@ -30,7 +30,6 @@ import CareChat from "./CareChat";
 import { CARE_WHATSAPP } from "./careChat";
 import AddressFields from "./AddressFields";
 import PersonFields from "./PersonFields";
-import FamilyMembersFields from "./FamilyMembersFields";
 import {
   emptyAddress,
   readUserProfile,
@@ -41,10 +40,8 @@ import {
   emptyPerson,
   pickFamilyMembers,
   pickPerson,
-  validateFamilyMembers,
   validatePerson,
 } from "./personFields";
-import { awardFamilyMemberPoints } from "./pointsStore";
 import { useFeatures } from "./featureFlags";
 import { pausedServiceTitle, routeEnabled } from "./salesReport";
 import ComingSoon from "./ComingSoon";
@@ -87,6 +84,7 @@ const HOME_WHATSAPP_URL = `https://wa.me/${CARE_WHATSAPP}?text=${encodeURICompon
   "Hi MediHome, I would like to order medicines."
 )}`;
 const PROFILE_KEY = "mediHomeUser";
+const LOGIN_SESSION_KEY = "mediHomeLoggedIn";
 
 function openWhatsAppUrl(url, event) {
   if (event) {
@@ -123,8 +121,23 @@ function hashLinkActive(linkHref, route, scanStep) {
   return false;
 }
 
-function readStoredUser() {
-  return readUserProfile();
+function readLoginSession() {
+  try {
+    if (sessionStorage.getItem(LOGIN_SESSION_KEY) !== "1") return null;
+    const saved = readUserProfile();
+    return saved.mobile ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLoginSession(user) {
+  try {
+    if (user?.mobile) sessionStorage.setItem(LOGIN_SESSION_KEY, "1");
+    else sessionStorage.removeItem(LOGIN_SESSION_KEY);
+  } catch {
+    /* ignore quota / private mode */
+  }
 }
 
 function HomeAuthCard() {
@@ -134,11 +147,11 @@ function HomeAuthCard() {
     name: "",
     mobile: "",
     ...emptyPerson(),
-    familyMembers: [],
     ...emptyAddress(),
   });
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState({ type: "", text: "" });
+  const [loggedInUser, setLoggedInUser] = useState(readLoginSession);
 
   const digitsOnly = (value) => value.replace(/\D/g, "");
 
@@ -150,12 +163,6 @@ function HomeAuthCard() {
 
   const handleRegisterChange = (event) => {
     const { name, value } = event.target;
-    if (name === "familyMembers") {
-      setRegister((prev) => ({ ...prev, familyMembers: value }));
-      setErrors((prev) => ({ ...prev, familyMembers: "" }));
-      setStatus({ type: "", text: "" });
-      return;
-    }
     const nextValue =
       name === "mobile" || name === "pinCode" || name === "age"
         ? digitsOnly(String(value || ""))
@@ -173,7 +180,7 @@ function HomeAuthCard() {
 
   const handleLogin = (event) => {
     event.preventDefault();
-    const saved = readStoredUser();
+    const saved = readUserProfile();
     if (!/^[6-9]\d{9}$/.test(login.mobile)) {
       setStatus({
         type: "error",
@@ -199,11 +206,13 @@ function HomeAuthCard() {
       });
       return;
     }
+    setLoggedInUser(saved);
+    writeLoginSession(saved);
     setStatus({
       type: "success",
       text: saved.name
-        ? `Welcome back, ${saved.name}.`
-        : "Logged in successfully.",
+        ? `Welcome back, ${saved.name}. Add family members from Profile.`
+        : "Logged in successfully. Add family members from Profile.",
     });
   };
 
@@ -216,24 +225,26 @@ function HomeAuthCard() {
     }
     Object.assign(nextErrors, validatePerson(register));
     Object.assign(nextErrors, validateAddress(register));
-    Object.assign(nextErrors, validateFamilyMembers(register));
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
+    const existing = readUserProfile();
+    const sameAccount = existing.mobile === register.mobile.trim();
     const profile = {
       name: register.name.trim(),
       mobile: register.mobile.trim(),
       ...pickPerson(register),
-      familyMembers: pickFamilyMembers(register),
+      familyMembers: sameAccount ? pickFamilyMembers(existing) : [],
       ...withFormattedAddress(register),
     };
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-    const points = awardFamilyMemberPoints(profile.familyMembers);
+    setLoggedInUser(null);
+    writeLoginSession(null);
+    setTab("login");
+    setLogin({ mobile: profile.mobile, pinCode: profile.pinCode || "" });
     setStatus({
       type: "success",
-      text: points.count
-        ? `Account saved. +${points.awarded} credit points for ${points.count} family member${points.count === 1 ? "" : "s"}.`
-        : "Account saved. Profile can now use these details.",
+      text: "Account saved. Log in, then add family members from Profile.",
     });
   };
 
@@ -332,12 +343,9 @@ function HomeAuthCard() {
             onChange={handleRegisterChange}
             pinHint="Or tap Use My Location."
           />
-          <FamilyMembersFields
-            idPrefix="home-register-family"
-            members={register.familyMembers}
-            errors={errors}
-            onChange={handleRegisterChange}
-          />
+          <p className="home-auth-family-note">
+            After you register and log in, add family members from Profile.
+          </p>
           <button type="submit">Create account</button>
         </form>
       )}
@@ -345,6 +353,11 @@ function HomeAuthCard() {
       {status.text && (
         <p className={`home-auth-status ${status.type}`}>{status.text}</p>
       )}
+      {loggedInUser && tab === "login" ? (
+        <a className="home-auth-family-btn" href="#profile">
+          Add Family Members
+        </a>
+      ) : null}
     </aside>
   );
 }
