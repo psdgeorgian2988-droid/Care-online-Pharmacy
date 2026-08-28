@@ -1,6 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateToday, isoDateYearsAgo } from "./personFields";
+import { readUserProfile } from "./addressFields";
+import { useLoginSession } from "./authSession";
+import {
+  householdReportPeople,
+  personLabel,
+  reportBelongsTo,
+} from "./reportPeople";
 import {
   ADD_UNLISTED_TEST,
   LABORATORY_TESTS,
@@ -63,9 +70,15 @@ function loadReports() {
 function Reports() {
   const today = isoDateToday();
   const minReport = isoDateYearsAgo(20);
+  const session = useLoginSession();
+  const people = useMemo(
+    () => householdReportPeople(readUserProfile(), session),
+    [session]
+  );
   const [reports, setReports] = useState(() => loadReports());
   const [customTests, setCustomTests] = useState(() => loadCustomReportTests());
   const [form, setForm] = useState({
+    memberId: people[0]?.id || "",
     testName: "",
     name: "",
     date: today,
@@ -74,21 +87,37 @@ function Reports() {
     fileType: "",
     fileData: "",
   });
+  const [filterMember, setFilterMember] = useState(people[0]?.id || "");
   const [filterTest, setFilterTest] = useState("");
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("");
   const [addingTest, setAddingTest] = useState(false);
   const [draftTest, setDraftTest] = useState("");
 
+  useEffect(() => {
+    if (!people.length) return;
+    if (!people.some((row) => row.id === form.memberId)) {
+      setForm((prev) => ({ ...prev, memberId: people[0].id }));
+    }
+    if (!people.some((row) => row.id === filterMember)) {
+      setFilterMember(people[0].id);
+    }
+  }, [people, form.memberId, filterMember]);
+
   const sorted = useMemo(() => {
     const list = [...reports].sort((a, b) =>
       String(b.date || "").localeCompare(String(a.date || ""))
     );
-    if (!filterTest) return list;
-    return list.filter(
+    const forMember = list.filter((item) => reportBelongsTo(item, filterMember));
+    if (!filterTest) return forMember;
+    return forMember.filter(
       (item) => item.testName === filterTest || item.name === filterTest
     );
-  }, [reports, filterTest]);
+  }, [reports, filterTest, filterMember]);
+
+  const selectedPerson =
+    people.find((row) => row.id === (form.memberId || filterMember)) || people[0];
+  const filterPerson = people.find((row) => row.id === filterMember) || people[0];
 
   const persist = (next) => {
     setReports(next);
@@ -208,6 +237,7 @@ function Reports() {
 
   const validate = () => {
     const next = {};
+    if (!form.memberId) next.memberId = "Select whose report this is.";
     if (addingTest) next.testName = "Add the new test name, or pick one from the list.";
     else if (!form.testName.trim() || form.testName === ADD_UNLISTED_TEST) {
       next.testName = "Please select a test name.";
@@ -222,8 +252,11 @@ function Reports() {
     if (!validate()) return;
 
     const testName = form.testName.trim();
+    const person = people.find((row) => row.id === form.memberId) || selectedPerson;
     const record = {
       id: "MH-RPT-" + Date.now(),
+      memberId: person?.id || form.memberId,
+      memberName: person?.name || "",
       testName,
       name: form.name.trim() || testName,
       date: form.date,
@@ -235,7 +268,9 @@ function Reports() {
     };
 
     persist([record, ...reports]);
+    setFilterMember(record.memberId);
     setForm({
+      memberId: record.memberId,
       testName: "",
       name: "",
       date: today,
@@ -261,11 +296,34 @@ function Reports() {
           <div>
             <span className="service-kicker">MediHome Reports</span>
             <h1>Save Health Reports</h1>
-            <p>Keep Lab PDFs or Images on this device. Nothing is Uploaded to a Server.</p>
+            <p>Keep Lab PDFs or Images on this device, by family member. Nothing is Uploaded to a Server.</p>
           </div>
         </section>
 
         <form className="service-form" onSubmit={handleSubmit}>
+          <div className="field full">
+            <label htmlFor="rpt-member">
+              Whose report <span>*</span>
+            </label>
+            <select
+              id="rpt-member"
+              name="memberId"
+              value={form.memberId}
+              onChange={(event) => {
+                handleChange(event);
+                setFilterMember(event.target.value);
+              }}
+            >
+              <option value="">Select name</option>
+              {people.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {personLabel(person)}
+                </option>
+              ))}
+            </select>
+            {errors.memberId && <small>{errors.memberId}</small>}
+          </div>
+
           <div className="field full">
             <label htmlFor="rpt-test-name">
               Test name <span>*</span>
@@ -386,25 +444,42 @@ function Reports() {
         <section className="report-list" aria-label="Saved reports">
           <div className="report-list-head">
             <h2>Saved Reports</h2>
-            <div className="field filter-field">
-              <label htmlFor="rpt-filter">Filter by test</label>
-              <select
-                id="rpt-filter"
-                name="filterTest"
-                value={filterTest}
-                onChange={(event) => setFilterTest(event.target.value)}
-              >
-                <TestNameOptions
-                  placeholder="All tests"
-                  customTests={customTests}
-                />
-              </select>
+            <div className="report-filters">
+              <div className="field filter-field">
+                <label htmlFor="rpt-filter-member">Whose reports</label>
+                <select
+                  id="rpt-filter-member"
+                  name="filterMember"
+                  value={filterMember}
+                  onChange={(event) => setFilterMember(event.target.value)}
+                >
+                  {people.map((person) => (
+                    <option key={person.id} value={person.id}>
+                      {personLabel(person)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field filter-field">
+                <label htmlFor="rpt-filter">Filter by test</label>
+                <select
+                  id="rpt-filter"
+                  name="filterTest"
+                  value={filterTest}
+                  onChange={(event) => setFilterTest(event.target.value)}
+                >
+                  <TestNameOptions
+                    placeholder="All tests"
+                    customTests={customTests}
+                  />
+                </select>
+              </div>
             </div>
           </div>
           {sorted.length === 0 ? (
             <p className="empty">
-              {reports.length === 0
-                ? "No reports saved yet."
+              {reports.filter((item) => reportBelongsTo(item, filterMember)).length === 0
+                ? `No reports saved yet for ${filterPerson?.name || "this person"}.`
                 : "No reports match this test name."}
             </p>
           ) : (
@@ -413,9 +488,12 @@ function Reports() {
                 <li key={item.id}>
                   <div>
                     <strong>{item.testName || item.name}</strong>
-                    {item.testName && item.name && item.name !== item.testName && (
-                      <span>{item.name}</span>
-                    )}
+                    <span>
+                      {item.memberName || filterPerson?.name || ""}
+                      {item.testName && item.name && item.name !== item.testName
+                        ? ` · ${item.name}`
+                        : ""}
+                    </span>
                     <span>{item.date}</span>
                     {item.fileName && <em>{item.fileName}</em>}
                     {item.notes && <p>{item.notes}</p>}
@@ -464,7 +542,8 @@ const styles = `
 .report-list{max-width:760px;margin:16px auto 0}
 .report-list-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:8px;flex-wrap:wrap}
 .report-list h2{margin:0;font-size:16px}
-.report-list .filter-field{min-width:220px;flex:1;max-width:320px}
+.report-filters{display:flex;gap:12px;flex-wrap:wrap;flex:1;justify-content:flex-end}
+.report-list .filter-field{min-width:200px;flex:1;max-width:280px}
 .report-list .filter-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .report-list .filter-field select{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;height:38px;min-height:38px;background:#fff}
 .report-list .filter-field select:focus{border-color:#1a6b7a}
