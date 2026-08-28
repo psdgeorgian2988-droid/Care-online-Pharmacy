@@ -27,6 +27,13 @@ import {
 } from "./bookingFor";
 import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateToday, isoDateYearsAhead } from "./personFields";
+import {
+  LAB_TIME_SLOTS,
+  appointmentDateError,
+  appointmentSlotError,
+  isOpenAppointmentSlot,
+  openAppointmentSlots,
+} from "./appointmentSlot";
 
 const PREP_LABEL = {
   fasting: "Fasting required",
@@ -226,6 +233,10 @@ function LabTests() {
   const total = activeTests.reduce((sum, test) => sum + test.price, 0);
   const today = isoDateToday();
   const maxVisit = isoDateYearsAhead(1);
+  const openSlots = useMemo(
+    () => openAppointmentSlots(LAB_TIME_SLOTS, form.date),
+    [form.date]
+  );
   const prepSummaryTests = serviceType === "lab" ? selectedTests : selectedImagingTests;
   const fastingSelected = prepSummaryTests.filter((test) => test.prepType === "fasting");
   const imagingFastingSelected = prepSummaryTests.filter(
@@ -308,8 +319,20 @@ function LabTests() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const next = name === "mobile" || name === "pinCode" ? value.replace(/\D/g, "") : value;
-    setForm((prev) => ({ ...prev, [name]: next }));
+    const nextValue =
+      name === "mobile" || name === "pinCode" ? value.replace(/\D/g, "") : value;
+    setForm((prev) => {
+      const next = { ...prev, [name]: nextValue };
+      if (
+        (name === "date" || name === "timeSlot") &&
+        next.date &&
+        next.timeSlot &&
+        !isOpenAppointmentSlot(next.timeSlot, next.date)
+      ) {
+        next.timeSlot = "";
+      }
+      return next;
+    });
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -362,8 +385,10 @@ function LabTests() {
       if (selectedImagingTests.length === 0) newErrors.imaging = "Please add at least one imaging study.";
     }
 
-    if (!form.date) newErrors.date = "Please select a date.";
-    if (!form.timeSlot) newErrors.timeSlot = "Please select a time slot.";
+    const dateError = appointmentDateError(form.date);
+    if (dateError) newErrors.date = dateError;
+    const slotError = appointmentSlotError(form.timeSlot, form.date);
+    if (slotError) newErrors.timeSlot = slotError;
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -758,13 +783,19 @@ function LabTests() {
               </label>
               <select id="timeSlot" name="timeSlot" value={form.timeSlot} onChange={handleChange}>
                 <option value="">Select a slot</option>
-                <option value="7:00 AM - 9:00 AM">7:00 AM - 9:00 AM</option>
-                <option value="9:00 AM - 11:00 AM">9:00 AM - 11:00 AM</option>
-                <option value="11:00 AM - 1:00 PM">11:00 AM - 1:00 PM</option>
-                <option value="2:00 PM - 4:00 PM">2:00 PM - 4:00 PM</option>
-                <option value="4:00 PM - 6:00 PM">4:00 PM - 6:00 PM</option>
+                {openSlots.map((slot) => (
+                  <option key={slot} value={slot}>
+                    {slot}
+                  </option>
+                ))}
               </select>
-              {errors.timeSlot ? <small className="lab-error">{errors.timeSlot}</small> : null}
+              {form.date && openSlots.length === 0 ? (
+                <small className="lab-error">
+                  No time slots left today. Choose a later date.
+                </small>
+              ) : errors.timeSlot ? (
+                <small className="lab-error">{errors.timeSlot}</small>
+              ) : null}
             </div>
 
             <div className="lab-field lab-span">

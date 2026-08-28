@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  MONTH_OPTIONS,
   daysInMonth,
   isoDateToday,
   isoDateYearsAgo,
   joinIsoDate,
   splitIsoDate,
 } from "./personFields";
+import { clampIsoDate, daysInRange, monthsInRange } from "./dateMonthYear";
 
 function yearRange(minIso, maxIso) {
   const maxYear = Number(splitIsoDate(maxIso).year || new Date().getFullYear());
@@ -29,7 +29,14 @@ export default function DateMonthYearFields({
 }) {
   const [parts, setParts] = useState(() => splitIsoDate(value));
   const years = useMemo(() => yearRange(min, max), [min, max]);
-  const dayCount = daysInMonth(parts.month, parts.year);
+  const months = useMemo(
+    () => monthsInRange(min, max, parts.year),
+    [min, max, parts.year]
+  );
+  const days = useMemo(
+    () => daysInRange(min, max, parts.year, parts.month),
+    [min, max, parts.year, parts.month]
+  );
 
   useEffect(() => {
     if (!value) return;
@@ -45,11 +52,14 @@ export default function DateMonthYearFields({
     const next = { ...parts, ...patch };
     const maxDay = daysInMonth(next.month, next.year);
     if (next.day && Number(next.day) > maxDay) next.day = String(maxDay);
-    setParts(next);
+    const joined = joinIsoDate(next.day, next.month, next.year);
+    const clamped = clampIsoDate(joined, min, max);
+    const synced = clamped ? splitIsoDate(clamped) : next;
+    setParts(synced);
     onChange?.({
       target: {
         name,
-        value: joinIsoDate(next.day, next.month, next.year),
+        value: clamped,
       },
     });
   };
@@ -73,7 +83,7 @@ export default function DateMonthYearFields({
             onChange={(event) => emit({ day: event.target.value })}
           >
             <option value="">Date</option>
-            {Array.from({ length: dayCount }, (_, index) => index + 1).map((day) => (
+            {days.map((day) => (
               <option key={day} value={String(day)}>
                 {day}
               </option>
@@ -87,7 +97,7 @@ export default function DateMonthYearFields({
             onChange={(event) => emit({ month: event.target.value })}
           >
             <option value="">Month</option>
-            {MONTH_OPTIONS.map((option) => (
+            {months.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
