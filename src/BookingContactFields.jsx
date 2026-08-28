@@ -1,6 +1,7 @@
 import AddressFields from "./AddressFields";
 import { shouldAskBookingDetails } from "./bookingFor";
 import { GENDER_OPTIONS, normalizeAge } from "./personFields";
+import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 
 const LAYOUT = {
   service: {
@@ -62,6 +63,7 @@ export default function BookingContactFields({
           value={values[nameKey] || ""}
           onChange={onChange}
           placeholder="Full name"
+          {...noContactNameProps}
         />
         {errors[nameKey] ? (
           <small className={skin.errorClass}>{errors[nameKey]}</small>
@@ -113,14 +115,13 @@ export default function BookingContactFields({
         <input
           id={mobileId}
           name="mobile"
-          type="tel"
-          inputMode="numeric"
           maxLength="10"
           value={values.mobile || ""}
           onChange={(event) =>
             emit("mobile", event.target.value.replace(/\D/g, "").slice(0, 10))
           }
           placeholder="10-digit mobile"
+          {...noContactMobileProps}
         />
         {errors.mobile ? (
           <small className={skin.errorClass}>{errors.mobile}</small>

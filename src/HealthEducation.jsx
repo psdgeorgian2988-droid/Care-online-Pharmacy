@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import ReferFamily from "./ReferFamily";
 import { awardOnce, POINT_VALUES, useWallet } from "./pointsStore";
+import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 
 const GUIDES = [
   {
@@ -448,6 +449,7 @@ function WebinarsPanel() {
                       setForm((prev) => ({ ...prev, name: event.target.value }));
                       setErrors((prev) => ({ ...prev, name: "" }));
                     }}
+                    {...noContactNameProps}
                   />
                   {errors.name ? <span>{errors.name}</span> : null}
                 </label>
@@ -455,7 +457,6 @@ function WebinarsPanel() {
                   Mobile (WhatsApp)
                   <input
                     name="mobile"
-                    inputMode="numeric"
                     maxLength={10}
                     value={form.mobile}
                     onChange={(event) => {
@@ -465,6 +466,7 @@ function WebinarsPanel() {
                       }));
                       setErrors((prev) => ({ ...prev, mobile: "" }));
                     }}
+                    {...noContactMobileProps}
                   />
                   {errors.mobile ? <span>{errors.mobile}</span> : null}
                 </label>

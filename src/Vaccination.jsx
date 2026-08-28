@@ -27,6 +27,7 @@ import { OTHER_BOOKING_ID, findBookingFor, hasHouseholdProfile } from "./booking
 import { useLoginSession } from "./authSession";
 import { readUserProfile } from "./addressFields";
 import DateMonthYearFields from "./DateMonthYearFields";
+import { noContactNameProps } from "./noContactAutofill";
 
 function personFromOption(option = {}) {
   return {
@@ -233,6 +234,7 @@ function Vaccination() {
                   id="vac-rec-name"
                   value={recordForm.name}
                   onChange={(event) => updateGuestField("name", event.target.value)}
+                  {...noContactNameProps}
                 />
                 {recordErrors.name ? <small>{recordErrors.name}</small> : null}
               </div>
@@ -248,6 +250,7 @@ function Vaccination() {
                       id="vac-rec-other-name"
                       value={recordForm.name}
                       onChange={(event) => updateGuestField("name", event.target.value)}
+                      {...noContactNameProps}
                     />
                     {recordErrors.name ? <small>{recordErrors.name}</small> : null}
                   </div>

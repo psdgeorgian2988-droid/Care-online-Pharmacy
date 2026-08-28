@@ -23,6 +23,7 @@ import {
   writeLoginSession,
 } from "./authSession";
 import { goToHash } from "./hashRoute";
+import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 
 function digitsOnly(value) {
   return String(value || "").replace(/\D/g, "");
@@ -149,7 +150,7 @@ export default function AuthPage({ mode = "login" }) {
           <h1>{editingAccount ? "Edit Account" : isRegister ? "Create Account" : "Login"}</h1>
 
           {isRegister ? (
-            <form className="auth-form" onSubmit={handleRegister}>
+            <form className="auth-form" onSubmit={handleRegister} autoComplete="off">
               <div className="auth-field">
                 <label htmlFor="auth-register-name">
                   Full name <span>*</span>
@@ -160,6 +161,7 @@ export default function AuthPage({ mode = "login" }) {
                   placeholder="Your full name"
                   value={register.name}
                   onChange={handleRegisterChange}
+                  {...noContactNameProps}
                 />
                 {errors.name ? <small className="auth-error">{errors.name}</small> : null}
               </div>
@@ -170,12 +172,11 @@ export default function AuthPage({ mode = "login" }) {
                 <input
                   id="auth-register-mobile"
                   name="mobile"
-                  type="tel"
-                  inputMode="numeric"
                   maxLength="10"
                   placeholder="10-digit mobile"
                   value={register.mobile}
                   onChange={handleRegisterChange}
+                  {...noContactMobileProps}
                 />
                 {errors.mobile ? (
                   <small className="auth-error">{errors.mobile}</small>
@@ -205,7 +206,7 @@ export default function AuthPage({ mode = "login" }) {
               </button>
             </form>
           ) : (
-            <form className="auth-form auth-form-login" onSubmit={handleLogin}>
+            <form className="auth-form auth-form-login" onSubmit={handleLogin} autoComplete="off">
               <div className="auth-field">
                 <label htmlFor="auth-login-mobile">
                   Mobile number <span>*</span>
@@ -213,12 +214,11 @@ export default function AuthPage({ mode = "login" }) {
                 <input
                   id="auth-login-mobile"
                   name="mobile"
-                  type="tel"
-                  inputMode="numeric"
                   maxLength="10"
                   placeholder="10-digit mobile"
                   value={login.mobile}
                   onChange={handleLoginChange}
+                  {...noContactMobileProps}
                 />
               </div>
               <div className="auth-field">

@@ -6,6 +6,7 @@ import {
   memberSummary,
   normalizeMobile,
 } from "./personFields";
+import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 
 export default function FamilyMembersFields({
   idPrefix = "family",
@@ -134,6 +135,7 @@ export default function FamilyMembersFields({
                       onChange={(event) =>
                         updateMember(index, { name: event.target.value })
                       }
+                      {...noContactNameProps}
                     />
                     {errors[`familyMembers.${index}.name`] ? (
                       <small className="family-error">
@@ -168,8 +170,6 @@ export default function FamilyMembersFields({
                     </label>
                     <input
                       id={`${idPrefix}-${index}-mobile`}
-                      type="tel"
-                      inputMode="numeric"
                       maxLength="10"
                       placeholder="10-digit mobile"
                       value={usesAccount ? account : member.mobile || ""}
@@ -181,6 +181,7 @@ export default function FamilyMembersFields({
                           useAccountMobile: false,
                         })
                       }
+                      {...noContactMobileProps}
                     />
                     <label className="family-use-account">
                       <input

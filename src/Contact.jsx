@@ -6,6 +6,7 @@ import {
   CARE_PHONE_TEL,
   CARE_WHATSAPP,
 } from "./careChat";
+import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 
 function openWhatsAppUrl(url, event) {
   if (event) {
@@ -120,6 +121,7 @@ function Contact() {
                 value={form.name}
                 onChange={handleChange}
                 placeholder="Full name"
+                {...noContactNameProps}
               />
               {errors.name ? <small>{errors.name}</small> : null}
             </div>
@@ -130,12 +132,11 @@ function Contact() {
               <input
                 id="contact-mobile"
                 name="mobile"
-                type="tel"
-                inputMode="numeric"
                 maxLength="10"
                 value={form.mobile}
                 onChange={handleChange}
                 placeholder="10-digit mobile"
+                {...noContactMobileProps}
               />
               {errors.mobile ? <small>{errors.mobile}</small> : null}
             </div>

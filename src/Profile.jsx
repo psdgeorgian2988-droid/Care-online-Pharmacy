@@ -15,6 +15,7 @@ import {
   validateFamilyMembers,
   validatePerson,
 } from "./personFields";
+import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 
 const PROFILE_KEY = "mediHomeUser";
 
@@ -89,7 +90,7 @@ function Profile() {
           </div>
         </section>
 
-        <form className="profile-form" onSubmit={handleSave}>
+        <form className="profile-form" onSubmit={handleSave} autoComplete="off">
           <section className="profile-card" aria-label="Add family members">
             <FamilyMembersFields
               idPrefix="profile-family"
@@ -111,6 +112,7 @@ function Profile() {
               placeholder="Enter your full name"
               value={form.name}
               onChange={handleChange}
+              {...noContactNameProps}
             />
             {errors.name && <small className="profile-error">{errors.name}</small>}
           </div>
@@ -122,12 +124,11 @@ function Profile() {
             <input
               id="mobile"
               name="mobile"
-              type="tel"
-              inputMode="numeric"
               maxLength="10"
               placeholder="10-digit mobile number"
               value={form.mobile}
               onChange={handleChange}
+              {...noContactMobileProps}
             />
             {errors.mobile && (
               <small className="profile-error">{errors.mobile}</small>

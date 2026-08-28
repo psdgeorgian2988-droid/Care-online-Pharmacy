@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { RELATION_OPTIONS } from "./personFields";
+import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import {
   POINT_VALUES,
   referralShareText,
@@ -93,13 +94,13 @@ function ReferFamily() {
                 setForm((prev) => ({ ...prev, name: event.target.value }));
                 setErrors((prev) => ({ ...prev, name: "", points: "" }));
               }}
+              {...noContactNameProps}
             />
             {errors.name ? <span>{errors.name}</span> : null}
           </label>
           <label>
             Their mobile
             <input
-              inputMode="numeric"
               maxLength={10}
               value={form.mobile}
               onChange={(event) => {
@@ -109,6 +110,7 @@ function ReferFamily() {
                 }));
                 setErrors((prev) => ({ ...prev, mobile: "", points: "" }));
               }}
+              {...noContactMobileProps}
             />
             {errors.mobile ? <span>{errors.mobile}</span> : null}
           </label>
