@@ -230,12 +230,23 @@ function HomePage() {
                 <a className="home-account-btn is-primary" href="#register">
                   Register
                 </a>
+                <button
+                  type="button"
+                  className="home-account-btn is-guest"
+                  onClick={() => {
+                    document
+                      .getElementById("home-services")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                >
+                  Order As Guest
+                </button>
               </>
             )}
           </aside>
         </div>
 
-        <section className="home-services" aria-label="Services">
+        <section className="home-services" id="home-services" aria-label="Services">
           {features.medicine !== false ? (
             <a className="home-service-card" href="#medicine-search">
               <h2>Medicines</h2>
