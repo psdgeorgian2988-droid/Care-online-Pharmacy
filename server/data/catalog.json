@@ -1,0 +1,13 @@
+{
+  "medicines": [],
+  "hiddenMedicineIds": [],
+  "services": [],
+  "hiddenServiceIds": [],
+  "purchases": [],
+  "batches": [],
+  "coupons": [],
+  "app": {
+    "ticker": "",
+    "headline": ""
+  }
+}
