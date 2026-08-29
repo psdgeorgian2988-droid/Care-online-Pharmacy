@@ -1,3 +1,5 @@
+import { SITE } from "./siteMeta.js";
+
 export const CHECKPOINT_STEPS = [
   {
     key: "pack",
@@ -254,7 +256,7 @@ function paramsFromText(text) {
     return new URLSearchParams(query);
   }
   try {
-    return new URL(text, "https://medihome.in/").searchParams;
+    return new URL(text, `${SITE.url}/`).searchParams;
   } catch {
     return new URLSearchParams();
   }

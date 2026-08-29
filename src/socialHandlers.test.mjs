@@ -83,11 +83,11 @@ test("copyHandle writes the official username", async () => {
 test("shareMediHome copies the site name and URL when share is unavailable", async () => {
   const { env, calls } = mockEnv();
   const payload = sharePayload();
-  assert.equal(payload.url, "https://medihome.in");
+  assert.equal(payload.url, "https://medihome.co.in");
   assert.equal(await shareMediHome(env), "copied");
   assert.equal(calls[0][0], "copy");
   assert.match(calls[0][1], /MediHome/);
-  assert.match(calls[0][1], /medihome\.in/);
+  assert.match(calls[0][1], /medihome\.co\.in/);
 });
 
 test("every published social item has a handle and https link", () => {

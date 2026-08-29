@@ -11,6 +11,10 @@ test("QR payload and URL parsing recover the order id", () => {
   assert.equal(orderQrPath("MH-HC-123"), "#scan?id=MH-HC-123");
   assert.equal(parseOrderQr("MHQR:MH-LAB-55"), "MH-LAB-55");
   assert.equal(
+    parseOrderQr("https://medihome.co.in/#scan?id=MH-AMB-9"),
+    "MH-AMB-9"
+  );
+  assert.equal(
     parseOrderQr("https://medihome.in/#scan?id=MH-AMB-9"),
     "MH-AMB-9"
   );

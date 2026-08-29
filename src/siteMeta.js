@@ -3,8 +3,8 @@ export const SITE = {
   tagline: "Your complete health partner at your doorstep",
   description:
     "Order generic medicines, book lab tests and radiology, Home Care, psychologist consultation, step-down recovery, and ambulance in Delhi NCR. Cash on delivery and live PIN tracking.",
-  url: "https://medihome.in",
-  appDownloadUrl: "https://medihome.in",
+  url: "https://medihome.co.in",
+  appDownloadUrl: "https://medihome.co.in",
   locale: "en_IN",
   phoneDisplay: "+91 72920 94000",
   phoneTel: "+917292094000",

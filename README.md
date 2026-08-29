@@ -30,7 +30,7 @@ docker run --rm -p 3001:3001 medihome
 1. Copy `.env.example` to `.env`.
 2. Set Razorpay keys if you want live online pay. Without keys, checkout uses local test pay.
 3. Change the staff password. Default staff login is `admin` / `MediHome@26` unless you set `MEDIHOME_ADMIN_USER` and `MEDIHOME_ADMIN_PASSWORD`.
-4. Point **medihome.in** (or your host) at this server and put HTTPS in front of port 3001.
+4. Point **medihome.co.in** at this server and put HTTPS in front of port 3001.
 
 ## Demo logins
 
