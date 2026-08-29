@@ -126,6 +126,11 @@ const PAGE_META = {
     description:
       "Practical guides, live webinars, and short quizzes for chronic care at home from MediHome.",
   },
+  apps: {
+    title: "MediHome Apps | Customer, Staff And Partner",
+    description:
+      "Open the MediHome customer app, staff operations desk, or partner jobs desk.",
+  },
   about: {
     title: "About MediHome | Chronic Care At Your Doorstep",
     description:

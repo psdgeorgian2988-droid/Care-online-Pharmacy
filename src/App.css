@@ -12,6 +12,9 @@ body {
 
 .app {
   min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* HEADER */
@@ -6362,6 +6365,20 @@ body,
   min-height: 32px !important;
   padding: 0 14px !important;
   font-size: 13px !important;
+}
+
+.app:not(.app-ops) .app-picker-card {
+  width: 100%;
+  border: 1px solid #d3e6f3;
+  background: #f7fbfe;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.app:not(.app-ops) .app-picker-card:hover {
+  border-color: #7eb6d6;
+  background: #eef7fc;
 }
 
 @media (max-width: 800px) {

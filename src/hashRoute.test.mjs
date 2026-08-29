@@ -13,6 +13,9 @@ test("social and staff aliases open the live pages", () => {
   assert.equal(parseAppHash("#staff").route, "#admin");
   assert.equal(parseAppHash("#ops").route, "#admin");
   assert.equal(parseAppHash("#partners").route, "#partner");
+  assert.equal(parseAppHash("#customer").route, "#home");
+  assert.equal(parseAppHash("#app").route, "#apps");
+  assert.equal(parseAppHash("#apps").route, "#apps");
 });
 
 test("login, register and forgot hashes open their own pages", () => {

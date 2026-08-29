@@ -34,6 +34,13 @@ import { logoutSession, useLoginSession } from "./authSession";
 import { useFeatures } from "./featureFlags";
 import { pausedServiceTitle, routeEnabled } from "./salesReport";
 import { goToHash, parseAppHash } from "./hashRoute";
+import AppPicker from "./AppPicker";
+import {
+  isInstalledApp,
+  launchHashForRole,
+  readAppRole,
+  shouldShowAppPicker,
+} from "./appRuntime";
 
 const NAV_LINKS = [
   { href: "#home", label: "Home" },
@@ -57,6 +64,7 @@ const ACCOUNT_LINKS = [
 const BOTTOM_LINKS = [
   { href: "#about", label: "About" },
   { href: "#contact", label: "Contact" },
+  { href: "#apps", label: "Apps" },
 ];
 
 const OPS_LINKS = [
@@ -364,7 +372,16 @@ function App() {
     if (route === "#social") goToHash("#contact");
   }, [route]);
 
+  useEffect(() => {
+    if (!isInstalledApp()) return;
+    const next = launchHashForRole(readAppRole(), route);
+    if (next) goToHash(next);
+  }, [route]);
+
   const renderPage = () => {
+    if (shouldShowAppPicker(route)) {
+      return <AppPicker />;
+    }
     if (!routeEnabled(route, features)) {
       return <PausedService route={route} features={features} />;
     }
@@ -414,6 +431,8 @@ function App() {
         return <AuthPage mode="register" />;
       case "#forgot":
         return <AuthPage mode="forgot" />;
+      case "#apps":
+        return <AppPicker />;
       case "#home":
       default:
         return <HomePage />;

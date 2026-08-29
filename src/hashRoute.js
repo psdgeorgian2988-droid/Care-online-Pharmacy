@@ -38,6 +38,8 @@ export function parseAppHash(rawHash) {
     staff: "admin",
     ops: "admin",
     partners: "partner",
+    customer: "home",
+    app: "apps",
   };
   const mapped = HASH_ALIASES[path] || path;
   const route = !mapped || mapped === "home" ? "#home" : `#${mapped}`;

@@ -1,4 +1,7 @@
+import { isNativeRuntime } from "./appRuntime.js";
 import { SITE, SOCIAL } from "./siteMeta.js";
+
+export { isNativeRuntime };
 
 export function socialById(id) {
   return SOCIAL.find((item) => item.id === id) || null;
@@ -44,14 +47,6 @@ export function nativeAppUrl(item) {
     }
     default:
       return "";
-  }
-}
-
-export function isNativeRuntime(env = globalThis) {
-  try {
-    return Boolean(env.Capacitor?.isNativePlatform?.() || env.Capacitor?.isNative);
-  } catch {
-    return false;
   }
 }
 

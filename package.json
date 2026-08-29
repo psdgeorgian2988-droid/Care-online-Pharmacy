@@ -11,12 +11,19 @@
     "start": "node server/index.mjs",
     "lint": "oxlint",
     "test": "node --test src/*.test.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "app:sync": "npm run build && npx cap sync",
+    "app:android": "npx cap open android",
+    "app:ios": "npx cap open ios"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
     "@vitejs/plugin-react": "^6.0.4",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",
@@ -24,6 +31,9 @@
     "vite": "^8.2.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "oxlint": "^1.75.0"

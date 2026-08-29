@@ -60,3 +60,24 @@ A free preview is private (GoDaddy login). Publishing on the domain needs a GoDa
 - `npm test` — unit tests
 - `npm run build` — production website into `dist/`
 - `npm start` — website + API together
+- `npm run app:sync` — build the website and copy it into the Android / iOS projects
+
+## Phone apps (Customer, Staff, Partner)
+
+The website is the working app. Open **Apps** in the sidebar (or `/#apps`) and pick:
+
+- **Customer App** — home, medicines, bookings, account
+- **Staff App** — operations desk
+- **Partner App** — assigned jobs
+
+Install from the phone browser with Add To Home Screen, or wrap the same site with Capacitor:
+
+```bash
+npm run build
+npx cap sync
+# Android emulator talking to this laptop:
+MEDIHOME_APP_SERVER=http://10.0.2.2:3001 npx cap sync
+npx cap open android
+```
+
+The packaged app loads `https://medihome.co.in` unless you set `MEDIHOME_APP_SERVER`.
