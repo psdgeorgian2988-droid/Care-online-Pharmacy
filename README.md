@@ -16,6 +16,13 @@ npm start
 
 Then open http://localhost:3001/
 
+On a public server (Render, Railway, a VPS, or Docker), set `PORT` if the host assigns one, then use the same `npm run build` and `npm start` commands. Docker:
+
+```bash
+docker build -t medihome .
+docker run --rm -p 3001:3001 medihome
+```
+
 `npm start` serves the built website and the API from one Node process. That is the same command to use when you put the site online.
 
 ## Before going live
