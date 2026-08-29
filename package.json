@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "server/index.mjs",
   "scripts": {
     "dev": "node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js",
     "server": "node server/index.mjs",
@@ -16,15 +17,15 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@vitejs/plugin-react": "^6.0.4",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "vite": "^8.2.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.4",
-    "oxlint": "^1.75.0",
-    "vite": "^8.2.0"
+    "oxlint": "^1.75.0"
   }
 }

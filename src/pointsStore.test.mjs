@@ -52,10 +52,10 @@ test("WhatsApp invite includes the app download link", () => {
   const referral = { name: "Asha", mobile: "9876543210", id: "MH-FAM-1234" };
   const text = referralShareText(referral, "Anita");
   assert.match(text, /Asha/);
-  assert.match(text, /https:\/\/medihome\.in/);
+  assert.match(text, /https:\/\/medihome\.co\.in/);
   assert.match(text, /Download the MediHome app/);
   assert.doesNotMatch(text, /spouse|relation/i);
   const href = referralWhatsAppHref(referral, "Anita");
   assert.match(href, /^https:\/\/wa\.me\/919876543210\?text=/);
-  assert.match(href, /medihome\.in/);
+  assert.match(href, /medihome\.co\.in/);
 });
