@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { DEFAULT_FEATURES, mergeFeatures } from "./salesReport";
+import { cacheWebinars, readCachedWebinars, WEBINAR_EVENT } from "./webinars";
 
 const EVENT = "medihome-features";
 
@@ -25,6 +26,7 @@ export async function fetchPublicFeatures() {
   const data = await fetch("/api/features").then((res) => res.json());
   const features = mergeFeatures(data.features);
   cacheFeatures(features);
+  cacheWebinars(data.webinars);
   return features;
 }
 
@@ -37,6 +39,17 @@ export function useFeatures() {
     return () => window.removeEventListener(EVENT, onUpdate);
   }, []);
   return features;
+}
+
+export function useScheduledWebinars() {
+  const [webinars, setWebinars] = useState(readCachedWebinars);
+  useEffect(() => {
+    fetchPublicFeatures().catch(() => {});
+    const onUpdate = (event) => setWebinars(Array.isArray(event.detail) ? event.detail : []);
+    window.addEventListener(WEBINAR_EVENT, onUpdate);
+    return () => window.removeEventListener(WEBINAR_EVENT, onUpdate);
+  }, []);
+  return webinars;
 }
 
 export { cacheFeatures };

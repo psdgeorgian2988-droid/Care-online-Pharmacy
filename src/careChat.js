@@ -75,6 +75,14 @@ export function replyTo(rawText) {
     };
   }
 
+  if (/\b(webinar|education|quiz|health education)\b/.test(q)) {
+    return {
+      text: "Live webinar seats open only after MediHome schedules a session. The app shows a notice when a date is set. Open Health Education to book.",
+      needsStaff: false,
+      links: [{ href: "#education?service=webinars", label: "Webinars" }],
+    };
+  }
+
   if (/\b(lab|blood|sample|test|thyroid|cbc)\b/.test(q)) {
     return {
       text: "You can book home sample collection for lab tests. Choose the test and a PIN, then we assign a collection executive.",

@@ -1,8 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ReferFamily from "./ReferFamily";
 import { awardOnce, POINT_VALUES, useWallet } from "./pointsStore";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import { maskMobile } from "./personFields";
+import { useScheduledWebinars } from "./featureFlags";
+import { parseAppHash } from "./hashRoute";
+import {
+  WEBINAR_SIGNUP_KEY,
+  formatWebinarDate,
+  isWebinarBookable,
+} from "./webinars";
 
 const GUIDES = [
   {
@@ -59,39 +66,6 @@ const GUIDES = [
       "If a brand looks different, check the salt and strength on the pack before taking it.",
       "Use Search Medicine to match a web brand with a MediHome alternative of the same combination.",
     ],
-  },
-];
-
-const WEBINARS = [
-  {
-    id: "wb-diabetes",
-    title: "Diabetes At Home: Medicines, Meals, And HbA1c",
-    date: "Saturday, 5 Sep 2026",
-    time: "11:00 AM – 12:00 PM",
-    host: "MediHome clinical educators",
-    format: "Live online (link by WhatsApp)",
-    summary:
-      "How to take diabetes medicines on time, what to eat around doses, and which tests to book.",
-  },
-  {
-    id: "wb-bp",
-    title: "Blood Pressure: Home Readings That Doctors Trust",
-    date: "Wednesday, 16 Sep 2026",
-    time: "6:30 PM – 7:15 PM",
-    host: "MediHome nursing team",
-    format: "Live online (link by WhatsApp)",
-    summary:
-      "Correct cuff use, when a high reading is an emergency, and why BP tablets continue even on good days.",
-  },
-  {
-    id: "wb-meds",
-    title: "Medicine Safety For Caregivers",
-    date: "Sunday, 27 Sep 2026",
-    time: "10:00 AM – 10:45 AM",
-    host: "MediHome pharmacy desk",
-    format: "Live online (link by WhatsApp)",
-    summary:
-      "Storage, missed doses, look-alike packs, and when to call before giving an extra tablet.",
   },
 ];
 
@@ -227,7 +201,6 @@ const QUIZZES = [
   },
 ];
 
-const WEBINAR_KEY = "mediHomeWebinarSignups";
 const TABS = [
   { id: "guides", label: "Guides" },
   { id: "webinars", label: "Webinars" },
@@ -252,7 +225,7 @@ function readProfile() {
 
 function loadSignups() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(WEBINAR_KEY) || "[]");
+    const parsed = JSON.parse(localStorage.getItem(WEBINAR_SIGNUP_KEY) || "[]");
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
@@ -261,7 +234,7 @@ function loadSignups() {
 
 function saveSignup(entry) {
   const next = [...loadSignups(), entry];
-  localStorage.setItem(WEBINAR_KEY, JSON.stringify(next));
+  localStorage.setItem(WEBINAR_SIGNUP_KEY, JSON.stringify(next));
   return next;
 }
 
@@ -323,6 +296,7 @@ function GuidesPanel() {
 
 function WebinarsPanel() {
   const wallet = useWallet();
+  const scheduled = useScheduledWebinars();
   const profile = useMemo(() => readProfile(), []);
   const [signups, setSignups] = useState(loadSignups);
   const [activeId, setActiveId] = useState("");
@@ -335,6 +309,11 @@ function WebinarsPanel() {
   const [attendAward, setAttendAward] = useState(null);
 
   const registeredIds = new Set(signups.map((row) => row.webinarId));
+  const openSessions = scheduled.filter((row) => isWebinarBookable(row));
+  const mySessions = scheduled.filter(
+    (row) => registeredIds.has(row.id) && !openSessions.some((item) => item.id === row.id)
+  );
+  const visible = [...openSessions, ...mySessions];
 
   const claimAttend = (webinar) => {
     setAttendAward(
@@ -348,6 +327,7 @@ function WebinarsPanel() {
 
   const handleRegister = (event, webinar) => {
     event.preventDefault();
+    if (!isWebinarBookable(webinar)) return;
     const nextErrors = {};
     if (!form.name.trim()) nextErrors.name = "Name is required.";
     if (!/^[6-9]\d{9}$/.test(form.mobile)) {
@@ -392,21 +372,35 @@ function WebinarsPanel() {
     );
   }
 
+  if (!visible.length) {
+    return (
+      <article className="edu-panel-card">
+        <p className="edu-badge">Not scheduled</p>
+        <h2>No live webinar is scheduled yet</h2>
+        <p>
+          Booking opens only after MediHome sets a date and time. You will see a
+          notification in this app as soon as a session is scheduled.
+        </p>
+      </article>
+    );
+  }
+
   return (
     <div className="edu-grid">
       {attendAward ? <PointsEarnedBanner result={attendAward} label="webinar" /> : null}
-      {WEBINARS.map((webinar) => {
+      {visible.map((webinar) => {
         const registered = registeredIds.has(webinar.id);
+        const bookable = isWebinarBookable(webinar);
         const open = activeId === webinar.id;
         const attended = Boolean(wallet.earned[`webinar:${webinar.id}`]);
         return (
           <article key={webinar.id} className="edu-panel-card">
-            <p className="edu-badge">Live webinar</p>
+            <p className="edu-badge">{bookable ? "Scheduled" : "Session ended"}</p>
             <h2>{webinar.title}</h2>
             <p>{webinar.summary}</p>
             <ul className="edu-meta">
               <li>
-                <strong>Date</strong> {webinar.date}
+                <strong>Date</strong> {formatWebinarDate(webinar.date)}
               </li>
               <li>
                 <strong>Time</strong> {webinar.time}
@@ -436,7 +430,7 @@ function WebinarsPanel() {
                   </button>
                 )}
               </>
-            ) : open ? (
+            ) : bookable && open ? (
               <form
                 className="edu-form"
                 onSubmit={(event) => handleRegister(event, webinar)}
@@ -484,7 +478,7 @@ function WebinarsPanel() {
                   </button>
                 </div>
               </form>
-            ) : (
+            ) : bookable ? (
               <button
                 type="button"
                 className="edu-btn edu-btn-primary"
@@ -492,6 +486,8 @@ function WebinarsPanel() {
               >
                 Register free
               </button>
+            ) : (
+              <p className="edu-note">Booking is closed. This webinar is no longer scheduled.</p>
             )}
           </article>
         );
@@ -668,7 +664,19 @@ function QuizPanel() {
 }
 
 function HealthEducation() {
-  const [tab, setTab] = useState("guides");
+  const [tab, setTab] = useState(() => {
+    const { service } = parseAppHash(window.location.hash);
+    return service === "webinars" ? "webinars" : "guides";
+  });
+
+  useEffect(() => {
+    const syncTab = () => {
+      const { service } = parseAppHash(window.location.hash);
+      if (service === "webinars") setTab("webinars");
+    };
+    window.addEventListener("hashchange", syncTab);
+    return () => window.removeEventListener("hashchange", syncTab);
+  }, []);
 
   return (
     <div className="service-page info-page edu-page">

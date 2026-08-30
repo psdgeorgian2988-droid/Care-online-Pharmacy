@@ -13,6 +13,8 @@ import {
   staffToken,
 } from "./adminApi";
 import { cacheFeatures } from "./featureFlags";
+import AdminWebinars from "./AdminWebinars";
+import { cacheWebinars } from "./webinars";
 import {
   TRACK_STEPS,
   doneLabel,
@@ -101,6 +103,7 @@ function Admin() {
   const [chatDraft, setChatDraft] = useState("");
   const [partners, setPartners] = useState([]);
   const [features, setFeatures] = useState(DEFAULT_FEATURES);
+  const [webinars, setWebinars] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -127,6 +130,9 @@ function Admin() {
       const nextFeatures = mergeFeatures(settings.features);
       setFeatures(nextFeatures);
       cacheFeatures(nextFeatures);
+      const nextWebinars = Array.isArray(settings.webinars) ? settings.webinars : [];
+      setWebinars(nextWebinars);
+      cacheWebinars(nextWebinars);
     } catch (err) {
       setError(err.message || "Could Not Load Orders.");
       if (String(err.message || "").toLowerCase().includes("login")) {
@@ -265,6 +271,13 @@ function Admin() {
     } catch (err) {
       setError(err.message || "Could Not Send Care Reply.");
     }
+  };
+
+  const saveWebinars = async (next) => {
+    const saved = await patchStaffSettings({ webinars: next });
+    const rows = Array.isArray(saved.webinars) ? saved.webinars : next;
+    setWebinars(rows);
+    cacheWebinars(rows);
   };
 
   const toggleFeature = async (key) => {
@@ -541,6 +554,12 @@ function Admin() {
             ))}
           </div>
         </section>
+
+        <AdminWebinars
+          webinars={webinars}
+          onChange={saveWebinars}
+          onError={setError}
+        />
 
         <AdminPartnerLogins partners={partners} onChange={setPartners} />
 

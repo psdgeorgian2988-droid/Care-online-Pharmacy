@@ -35,6 +35,7 @@ import { useFeatures } from "./featureFlags";
 import { pausedServiceTitle, routeEnabled } from "./salesReport";
 import { goToHash, parseAppHash } from "./hashRoute";
 import AppPicker from "./AppPicker";
+import WebinarNotice from "./WebinarNotice";
 import {
   isInstalledApp,
   launchHashForRole,
@@ -571,6 +572,7 @@ function App() {
       </aside>
 
       <main>
+        <WebinarNotice />
         <ErrorBoundary key={route}>
           <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
         </ErrorBoundary>
