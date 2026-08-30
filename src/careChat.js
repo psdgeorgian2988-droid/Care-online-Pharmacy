@@ -50,12 +50,9 @@ export function replyTo(rawText) {
 
   if (/\b(qr|scan|pickup|received|barcode)\b/.test(q)) {
     return {
-      text: "Scan Delivery stays on the menu. If staff switch it off, it opens Coming Soon. When it is on, use it while receiving a medicine order.",
+      text: "Scan Delivery is not on the customer app menu. Open My Orders when your medicine order is arriving, then use Scan Delivery to accept it.",
       needsStaff: false,
-      links: [
-        { href: "#scan?step=deliver", label: "Scan Delivery" },
-        { href: "#myorders", label: "My Orders" },
-      ],
+      links: [{ href: "#myorders", label: "My Orders" }],
     };
   }
 

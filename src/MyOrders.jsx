@@ -11,7 +11,7 @@ import { BillButton } from "./OrderBill";
 import OrderFeedbackCta from "./OrderFeedbackCta";
 import { paymentMethodSummary } from "./paymentMethods";
 import { maskMobile } from "./personFields";
-import { scanHref } from "./orderQr";
+import { canShowCustomerScanDelivery, scanHref } from "./orderQr";
 
 function typeLabel(order) {
   return kindLabel(order?.kind || order?.orderType);
@@ -344,12 +344,14 @@ function MyOrders() {
             <a className="order-details-btn" href={trackHref(selectedOrder.id)}>
               Open full live track
             </a>
-            <a
-              className="order-details-btn"
-              href={scanHref({ id: selectedOrder.id, step: "deliver", order: selectedOrder })}
-            >
-              Scan Delivery
-            </a>
+            {canShowCustomerScanDelivery(selectedOrder) ? (
+              <a
+                className="order-details-btn"
+                href={scanHref({ id: selectedOrder.id, step: "deliver", order: selectedOrder })}
+              >
+                Scan Delivery
+              </a>
+            ) : null}
             {selectedOrder.ambulanceRequestId ? (
               <a
                 className="order-details-btn"
@@ -452,12 +454,14 @@ function MyOrders() {
                     <a className="order-track-btn" href={trackHref(order.id)}>
                       Track live
                     </a>
-                    <a
-                      className="order-track-btn"
-                      href={scanHref({ id: order.id, step: "deliver", order })}
-                    >
-                      Scan Delivery
-                    </a>
+                    {canShowCustomerScanDelivery(order) ? (
+                      <a
+                        className="order-track-btn"
+                        href={scanHref({ id: order.id, step: "deliver", order })}
+                      >
+                        Scan Delivery
+                      </a>
+                    ) : null}
                     {order.trackCompleted ? (
                       <OrderFeedbackCta order={order} />
                     ) : null}

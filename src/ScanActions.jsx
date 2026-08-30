@@ -8,6 +8,7 @@ export default function ScanActions({
 }) {
   const id = orderIdOf(order);
   const links = scanLinksForApp(app, order || {}, partner);
+  if (!links.length) return null;
   return (
     <>
       <style>{styles}</style>

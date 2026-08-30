@@ -522,8 +522,8 @@ function Admin() {
           <h2>Turn Features On Or Off</h2>
           <p>
             Off Services Stay On The Menu And Show Coming Soon Until You Turn Them Back On.
-            Scan Delivery Buttons Stay Visible. When This Switch Is Off, A Customer Click
-            Opens Coming Soon.
+            Scan Delivery Is Hidden On The Customer App Until A Medicine Order Is Being
+            Received. When This Switch Is Off, That Receive Option Opens Coming Soon.
           </p>
           <div className="admin-switches">
             {FEATURE_CATALOG.map((row) => (

@@ -40,7 +40,7 @@ test("first scan is partner pickup, second scan is customer delivery", () => {
   assert.equal(delivered.patch.status, "Delivered");
 });
 
-test("Scan Delivery links stay on customer receive, rider retailer receive, and admin", () => {
+test("Scan Delivery is only offered to a customer while receiving medicine", () => {
   const waitingPickup = { id: "MH-1", kind: "medicine", trackStatus: "confirmed" };
   const waitingReceive = {
     id: "MH-1",
@@ -70,14 +70,8 @@ test("Scan Delivery links stay on customer receive, rider retailer receive, and 
     scanLinksForApp("customer", waitingReceive).map((row) => row.label),
     ["Scan Delivery"]
   );
-  assert.deepEqual(
-    scanLinksForApp("customer", waitingPickup).map((row) => row.label),
-    ["Scan Delivery"]
-  );
-  assert.deepEqual(
-    scanLinksForApp("customer", labOnTheWay).map((row) => row.label),
-    ["Scan Delivery"]
-  );
+  assert.deepEqual(scanLinksForApp("customer", waitingPickup), []);
+  assert.deepEqual(scanLinksForApp("customer", labOnTheWay), []);
   assert.deepEqual(
     scanLinksForApp("partner", waitingPickup, rider).map((row) => [row.step, row.label]),
     [["pickup", "Scan Delivery"]]

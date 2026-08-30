@@ -264,6 +264,7 @@ export function scanLinksForApp(app, order, partner) {
     if (order && orderIdOf(order) && !isMedicineOrder(order)) return [];
     return [{ step: "pickup", label: "Scan Delivery" }];
   }
+  if (!canShowCustomerScanDelivery(order)) return [];
   return [{ step: "deliver", label: "Scan Delivery" }];
 }
 
