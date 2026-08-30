@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import {
   CHECKPOINT_STEPS,
+  checkpointLabel,
   checkpointState,
   nextQrScanAction,
   orderIdOf,
@@ -12,6 +13,7 @@ import {
 export function CheckpointStrip({ order }) {
   const checks = checkpointState(order);
   const next = nextQrScanAction(order);
+  const kind = order?.kind || order?.orderType || "";
   return (
     <ol className="order-checks">
       {CHECKPOINT_STEPS.map((step, index) => {
@@ -23,7 +25,7 @@ export function CheckpointStrip({ order }) {
             className={`order-check${done ? " is-done" : ""}${current ? " is-current" : ""}`}
           >
             <span>{done ? "✓" : index + 1}</span>
-            <p>{step.label}</p>
+            <p>{checkpointLabel(step.key, kind)}</p>
           </li>
         );
       })}
@@ -83,9 +85,13 @@ export default function OrderQr({ order, compact = false }) {
           </p>
         ) : null}
         <p>
-          Scan Delivery is used when the rider receives this medicine order from
-          the retailer, and again when the customer receives it. Staff can open
-          the same checks from the admin desk.
+          {order?.kind === "radiology"
+            ? "Scan this QR at the assigned imaging centre before the test starts."
+            : order?.kind === "lab"
+              ? "The collection partner scans this QR when the sample is taken, then Scan Sample Received confirms handover."
+              : order?.kind === "homecare"
+                ? "Scan when the home-care partner arrives and serves you, then again when the visit is complete."
+                : "Scan Delivery is used when the rider receives this medicine order from the retailer, and again when the customer receives it. Staff can open the same checks from the admin desk."}
         </p>
         <p>
           Next check:{" "}
