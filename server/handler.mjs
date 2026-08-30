@@ -30,6 +30,7 @@ import {
 } from "./chats.mjs";
 import { readSettings, writeSettings } from "./settings.mjs";
 import { lookupPin, nearestPin } from "./pincodes.mjs";
+import { RELEASE } from "./release.mjs";
 
 const ADMIN_USER = process.env.MEDIHOME_ADMIN_USER || "admin";
 const ADMIN_PASSWORD = process.env.MEDIHOME_ADMIN_PASSWORD || "MediHome@26";
@@ -138,6 +139,16 @@ export async function handleApi(req, res) {
   }
 
   try {
+    if (pathname === "/api/version" && req.method === "GET") {
+      send(res, 200, {
+        ok: true,
+        app: "MediHome",
+        release: RELEASE.id,
+        partnerLogin: "loginId",
+      });
+      return true;
+    }
+
     if (pathname === "/api/payments/config" && req.method === "GET") {
       send(res, 200, publicPaymentConfig());
       return true;
