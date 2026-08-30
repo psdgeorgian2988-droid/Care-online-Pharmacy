@@ -4,7 +4,7 @@ import { partnerSettlementNote, splitModeLabel } from "./paymentSplit";
 import { shareSettlement } from "./shareSettlement";
 import { isOnlinePayment } from "./paymentMethods";
 import { fetchPartnerJobs, partnerLogin, partnerLogout, partnerSession, patchPartnerJob } from "./partnerApi";
-import { canShowRiderRetailerScan, isMedicineRiderPartner, scanHref } from "./orderQr";
+import { canShowRiderRetailerScan, scanHref } from "./orderQr";
 
 export default function Partner() {
   const session = partnerSession();
@@ -65,6 +65,8 @@ export default function Partner() {
       setError(err.message || "Login Failed.");
     }
   };
+
+  const showScanCol = jobs.some((job) => canShowRiderRetailerScan(job, partner));
 
   if (!token || !partner) {
     return (
@@ -149,13 +151,13 @@ export default function Partner() {
                 <th>Pay</th>
                 <th>Your Share</th>
                 <th>Status</th>
-                {isMedicineRiderPartner(partner) ? <th>Scan Delivery</th> : null}
+                {showScanCol ? <th>Scan Delivery</th> : null}
               </tr>
             </thead>
             <tbody>
               {jobs.length === 0 ? (
                 <tr>
-                  <td colSpan={isMedicineRiderPartner(partner) ? 7 : 6}>
+                  <td colSpan={showScanCol ? 7 : 6}>
                     {loading
                       ? "Loading…"
                       : "No Jobs Yet. Staff Assign Work From #admin."}
@@ -240,7 +242,7 @@ export default function Partner() {
                         ) : null}
                       </td>
                       <td>{job.status || job.trackStatus || "—"}</td>
-                      {isMedicineRiderPartner(partner) ? (
+                      {showScanCol ? (
                         <td>
                           {canShowRiderRetailerScan(job, partner) ? (
                             <a
