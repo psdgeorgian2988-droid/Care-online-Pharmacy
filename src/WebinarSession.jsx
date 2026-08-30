@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { awardOnce, hasEarned, POINT_VALUES, useWallet } from "./pointsStore";
+import { awardOnce, POINT_VALUES, useWallet } from "./pointsStore";
 import { parseAppHash } from "./hashRoute";
 import {
   WEBINAR_AWAY_MS,
@@ -205,9 +205,9 @@ export default function WebinarSession({ webinar, registered, onBack }) {
 
       {outcome === "complete" || credited ? (
         <p className="edu-points-earned" role="status">
-          {award?.already || hasEarned(`webinar:${webinar.id}`)
-            ? `Attendance complete. Your total is ${wallet.balance} MediHome points.`
-            : `+${POINT_VALUES.webinar} MediHome points credited for full attendance. Total ${wallet.balance} points.`}
+          {award && !award.already
+            ? `+${POINT_VALUES.webinar} MediHome points credited for full attendance. Total ${wallet.balance} points.`
+            : `Attendance complete. Your total is ${wallet.balance} MediHome points.`}
         </p>
       ) : null}
 

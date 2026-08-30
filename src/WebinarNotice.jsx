@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { isoDateToday } from "./personFields";
 import { useScheduledWebinars } from "./featureFlags";
 import {
@@ -11,7 +11,12 @@ import {
 export default function WebinarNotice() {
   const webinars = useScheduledWebinars();
   const [seenId, setSeenId] = useState(readSeenWebinarNotice);
-  const notice = webinarNotice(webinars, seenId, isoDateToday(), Date.now());
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const notice = webinarNotice(webinars, seenId, isoDateToday(), nowMs);
 
   if (!notice) return null;
 
