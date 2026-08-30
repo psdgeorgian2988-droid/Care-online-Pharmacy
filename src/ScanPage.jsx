@@ -183,7 +183,7 @@ export default function ScanPage({ scanId, scanStep }) {
       const stage = nextQrScanAction(result.order);
       if (matched && requestedStep && stage !== "already_done" && stage !== requestedStep) {
         setError(
-          `This ${scanStepTitle(result.order.kind, requestedStep, result.order.serviceType)} is for a different checkpoint. Current check is ${checkpointLabel(stage)}.`
+          `This ${scanStepTitle(result.order.kind, requestedStep, result.order.serviceType)} is for a different checkpoint. Current check is ${checkpointLabel(stage, result.order.kind)}.`
         );
         return;
       }
@@ -370,7 +370,9 @@ export default function ScanPage({ scanId, scanStep }) {
               {result.action === "pack"
                 ? " — packing confirmed. Next scan is pickup."
                 : result.action === "pickup"
-                  ? " — pickup confirmed. Tracking is live until delivery."
+                  ? kind === "radiology"
+                    ? " — check-in confirmed. Stay at the assigned centre until the test is finished."
+                    : " — pickup confirmed. Tracking is live until delivery."
                   : result.action === "deliver"
                     ? " — delivery confirmed. This order is complete."
                     : result.action === "mismatch"
@@ -388,7 +390,7 @@ export default function ScanPage({ scanId, scanStep }) {
                 : next === "already_done"
                   ? "All three checks are already complete."
                   : stepMismatch
-                    ? `This screen is ${scanStepTitle(kind, requestedStep, serviceType)}. Current check is ${checkpointLabel(next)}.`
+                    ? `This screen is ${scanStepTitle(kind, requestedStep, serviceType)}. Current check is ${checkpointLabel(next, kind)}.`
                     : scanCheckpointPrompt(kind, next, serviceType)}
             </p>
           )}
@@ -397,7 +399,7 @@ export default function ScanPage({ scanId, scanStep }) {
           {Number(result.order.redeliveryCount || 0) > 0 ? (
             <p className="scan-redeliver">
               Redelivery #{result.order.redeliveryCount}. Previous mismatch at{" "}
-              {checkpointLabel(result.order.lastMismatchStage) || "a checkpoint"}.
+              {checkpointLabel(result.order.lastMismatchStage, kind) || "a checkpoint"}.
             </p>
           ) : null}
 
@@ -427,7 +429,7 @@ export default function ScanPage({ scanId, scanStep }) {
                   disabled={busy}
                   onClick={() => applyDecision(true)}
                 >
-                  Matches Order — Confirm {checkpointLabel(next)}
+                  Matches Order — Confirm {checkpointLabel(next, kind)}
                 </button>
               ) : null}
               <button
@@ -436,7 +438,9 @@ export default function ScanPage({ scanId, scanStep }) {
                 disabled={busy}
                 onClick={() => applyDecision(false)}
               >
-                Mismatch — Stop And Redeliver
+                {kind === "radiology"
+                  ? "Mismatch — Stop Check-In"
+                  : "Mismatch — Stop And Redeliver"}
               </button>
             </div>
           ) : null}

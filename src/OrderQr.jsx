@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import {
   CHECKPOINT_STEPS,
+  checkpointLabel,
   checkpointState,
   nextQrScanAction,
   orderIdOf,
@@ -12,6 +13,7 @@ import {
 export function CheckpointStrip({ order }) {
   const checks = checkpointState(order);
   const next = nextQrScanAction(order);
+  const kind = order?.kind || order?.orderType || "";
   return (
     <ol className="order-checks">
       {CHECKPOINT_STEPS.map((step, index) => {
@@ -23,7 +25,7 @@ export function CheckpointStrip({ order }) {
             className={`order-check${done ? " is-done" : ""}${current ? " is-current" : ""}`}
           >
             <span>{done ? "✓" : index + 1}</span>
-            <p>{step.label}</p>
+            <p>{checkpointLabel(step.key, kind)}</p>
           </li>
         );
       })}

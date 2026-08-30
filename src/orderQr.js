@@ -656,7 +656,23 @@ export function scanActionLabel(action) {
   return "Scanned";
 }
 
-export function checkpointLabel(key) {
+export function checkpointLabel(key, kind = "") {
+  const service = String(kind || "").toLowerCase();
+  if (service === "radiology") {
+    if (key === "pack") return "Booking QR";
+    if (key === "pickup") return "Check-In";
+    if (key === "deliver") return "Imaging Complete";
+  }
+  if (service === "homecare") {
+    if (key === "pack") return "Visit QR";
+    if (key === "pickup") return "Visit Start";
+    if (key === "deliver") return "Visit Complete";
+  }
+  if (service === "lab") {
+    if (key === "pack") return "Booking QR";
+    if (key === "pickup") return "Collection";
+    if (key === "deliver") return "Sample Received";
+  }
   return CHECKPOINT_STEPS.find((step) => step.key === key)?.label || "Checkpoint";
 }
 
