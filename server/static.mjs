@@ -18,10 +18,23 @@ const MIME = {
   ".woff2": "font/woff2",
 };
 
+export function cacheControlFor(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const base = path.basename(filePath);
+  if (ext === ".html" || ext === ".webmanifest" || base === "sw.js") {
+    return "no-store, no-cache, must-revalidate";
+  }
+  if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+    return "public, max-age=31536000, immutable";
+  }
+  return "no-cache";
+}
+
 function sendFile(filePath, res) {
   const ext = path.extname(filePath).toLowerCase();
   res.statusCode = 200;
   res.setHeader("Content-Type", MIME[ext] || "application/octet-stream");
+  res.setHeader("Cache-Control", cacheControlFor(filePath));
   createReadStream(filePath).pipe(res);
   return true;
 }

@@ -10,20 +10,19 @@ Save this project on your laptop in a folder named **medihome**.
 cd medihome
 npm ci
 npm test
-npm run build
 npm start
 ```
 
 Then open http://localhost:3001/
 
-On a public server (Render, Railway, a VPS, or Docker), set `PORT` if the host assigns one, then use the same `npm run build` and `npm start` commands. Docker:
+On a public server (Render, Railway, a VPS, or Docker), set `PORT` if the host assigns one. GoDaddy should use `npm start`. Docker builds during the image build and skips a second compile at boot.
 
 ```bash
 docker build -t medihome .
 docker run --rm -p 3001:3001 medihome
 ```
 
-`npm start` serves the built website and the API from one Node process. That is the same command to use when you put the site online.
+`npm start` builds the website from the latest source, then serves it with the API. That is the command GoDaddy should run after a GitHub pull, so an old `dist/` folder is not left on the domain.
 
 ## Before going live
 
@@ -34,7 +33,7 @@ docker run --rm -p 3001:3001 medihome
 
 ### GoDaddy Node.js Hosting (same account as the domain)
 
-The domain is already at GoDaddy. This app is set up for [GoDaddy Node.js Hosting](https://www.godaddy.com/hosting/nodejs): `npm run build` then `npm start`, `PORT` from the host, Vite in `dependencies` so production install can build.
+The domain is already at GoDaddy. This app is set up for [GoDaddy Node.js Hosting](https://www.godaddy.com/hosting/nodejs): start command `npm start` (this rebuilds the site from source), `PORT` from the host, Vite in `dependencies` so production install can build. After every GitHub pull, click **Publish Now** (or restart) so `medihome.co.in` is rebuilt. Check `https://medihome.co.in/api/version` — it should say `"release":"partner-login-id"`.
 
 1. Merge this repo’s latest `main` (or connect the branch that has these hosting fixes).
 2. Open [godaddy.com/hosting/nodejs](https://www.godaddy.com/hosting/nodejs) while logged into the account that owns **medihome.co.in**.
@@ -57,7 +56,7 @@ Staff create each partner’s first **Login ID** and **password** on the Staff D
 - `npm run dev` — Vite customer site on port 5173 (API via the Vite plugin)
 - `npm test` — unit tests
 - `npm run build` — production website into `dist/`
-- `npm start` — website + API together
+- `npm start` — rebuild website from source, then serve website + API
 - `npm run app:sync` — build the website and copy it into the Android / iOS projects
 
 ## Phone apps (Customer, Staff, Partner)
