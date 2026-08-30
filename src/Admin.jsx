@@ -70,6 +70,7 @@ import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateToday, isoDateYearsAgo } from "./personFields";
 import { paymentMethodLabel } from "./paymentMethods";
 import { settlementOpsNote } from "./paymentSplit";
+import { scanHref, scanLinksForApp } from "./orderQr";
 
 function personName(order) {
   return (
@@ -379,8 +380,9 @@ function Admin() {
             <h1>Staff Desk</h1>
             <p>
               Sales, Feature Switches, Growth Charts, And Partner Assignment.
-              Scan Delivery Controls Stay On This Desk. Customers And Riders Only
-              See Scan Delivery While Receiving A Medicine Order.
+              Scan Delivery Controls Stay On This Desk. Customers See Scan Delivery
+              Only At The Right Moment: Medicine Receive, Home Care Visit, Lab After
+              Collection, Or Radiology Check-In At The Assigned Centre.
             </p>
           </div>
           <div className="admin-hero-actions">
@@ -522,8 +524,10 @@ function Admin() {
           <h2>Turn Features On Or Off</h2>
           <p>
             Off Services Stay On The Menu And Show Coming Soon Until You Turn Them Back On.
-            Scan Delivery Is Hidden On The Customer App Until A Medicine Order Is Being
-            Received. When This Switch Is Off, That Receive Option Opens Coming Soon.
+            Scan Delivery Is Hidden On The Customer App Until It Is Needed For
+            Medicine Receive, A Home Care Visit, Lab Sample Handover, Or Radiology
+            Centre Check-In Before The Test. When This Switch Is Off, That Option
+            Opens Coming Soon.
           </p>
           <div className="admin-switches">
             {FEATURE_CATALOG.map((row) => (
@@ -976,16 +980,14 @@ function Admin() {
                       </td>
                       <td>
                         <a href={trackHref(id)}>Live Track</a>
-                        {String(kind) === "medicine" ? (
-                          <>
+                        {scanLinksForApp("admin", order).map((link) => (
+                          <span key={link.step}>
                             {" · "}
-                            <a href={`#scan?id=${encodeURIComponent(id)}&step=pack`}>Scan Packing</a>
-                            {" · "}
-                            <a href={`#scan?id=${encodeURIComponent(id)}&step=pickup`}>Scan Pickup</a>
-                            {" · "}
-                            <a href={`#scan?id=${encodeURIComponent(id)}&step=deliver`}>Scan Delivery</a>
-                          </>
-                        ) : null}
+                            <a href={scanHref({ id, step: link.step, order })}>
+                              {link.label}
+                            </a>
+                          </span>
+                        ))}
                       </td>
                     </tr>
                   );

@@ -4,12 +4,14 @@ import {
   canShowCustomerScanDelivery,
   canShowRiderRetailerScan,
   canUseScanDelivery,
+  customerScanLink,
   nextQrScanAction,
   parseOrderQr,
   qrScanPatch,
   orderQrPath,
   scanActorFromSessions,
   scanLinksForApp,
+  scanStepTitle,
 } from "./orderQr.js";
 
 test("QR payload and URL parsing recover the order id", () => {
@@ -40,7 +42,7 @@ test("first scan is partner pickup, second scan is customer delivery", () => {
   assert.equal(delivered.patch.status, "Delivered");
 });
 
-test("Scan Delivery is only offered to a customer while receiving medicine", () => {
+test("Scan Delivery is only offered to a customer at the service moment", () => {
   const waitingPickup = { id: "MH-1", kind: "medicine", trackStatus: "confirmed" };
   const waitingReceive = {
     id: "MH-1",
@@ -49,6 +51,12 @@ test("Scan Delivery is only offered to a customer while receiving medicine", () 
     qrPickedAt: 1,
     trackStatus: "on_the_way",
   };
+  const labWaitingCollection = {
+    id: "MH-LAB-0",
+    kind: "lab",
+    trackStatus: "assigned",
+    partnerId: "lab-1",
+  };
   const labOnTheWay = {
     id: "MH-LAB-1",
     kind: "lab",
@@ -56,36 +64,125 @@ test("Scan Delivery is only offered to a customer while receiving medicine", () 
     qrPickedAt: 1,
     trackStatus: "on_the_way",
   };
+  const radiologyWaiting = {
+    id: "MH-RAD-1",
+    kind: "radiology",
+    trackStatus: "assigned",
+    partnerId: "centre-1",
+    partner: "NCR Imaging Centre",
+  };
+  const radiologyNoCentre = {
+    id: "MH-RAD-2",
+    kind: "radiology",
+    trackStatus: "confirmed",
+  };
+  const radiologyCheckedIn = {
+    id: "MH-RAD-1",
+    kind: "radiology",
+    partnerId: "centre-1",
+    checkPickupAt: 1,
+    qrPickedAt: 1,
+    trackStatus: "on_the_way",
+  };
+  const homeCareBooked = {
+    id: "MH-HC-1",
+    kind: "homecare",
+    serviceType: "nurse",
+    trackStatus: "assigned",
+    partnerId: "nurse-1",
+  };
+  const homeCareArriving = {
+    id: "MH-HC-1",
+    kind: "homecare",
+    serviceType: "nurse",
+    trackStatus: "arriving",
+  };
+  const homeCareServing = {
+    id: "MH-HC-1",
+    kind: "homecare",
+    serviceType: "nurse",
+    checkPickupAt: 1,
+    qrPickedAt: 1,
+    trackStatus: "on_the_way",
+  };
   const rider = { id: "p1", role: "Medicine rider", kinds: ["medicine"] };
   const labPartner = { id: "p2", role: "Lab", kinds: ["lab"] };
+  const homePartner = { id: "p3", role: "Home Care", kinds: ["homecare"] };
+  const radiologyPartner = { id: "p4", role: "Imaging Centre", kinds: ["radiology"] };
 
   assert.equal(canShowRiderRetailerScan(waitingPickup, rider), true);
   assert.equal(canShowCustomerScanDelivery(waitingPickup), false);
   assert.equal(canShowCustomerScanDelivery(waitingReceive), true);
   assert.equal(canShowRiderRetailerScan(waitingReceive, rider), false);
-  assert.equal(canShowCustomerScanDelivery(labOnTheWay), false);
+  assert.equal(canShowCustomerScanDelivery(labWaitingCollection), false);
+  assert.equal(canShowCustomerScanDelivery(labOnTheWay), true);
   assert.equal(canShowRiderRetailerScan(waitingPickup, labPartner), false);
+
+  assert.deepEqual(customerScanLink(radiologyWaiting), {
+    step: "pickup",
+    label: "Scan Centre Check-In",
+  });
+  assert.equal(customerScanLink(radiologyNoCentre), null);
+  assert.equal(customerScanLink(radiologyCheckedIn), null);
+  assert.equal(customerScanLink(homeCareBooked), null);
+  assert.deepEqual(customerScanLink(homeCareArriving), {
+    step: "pickup",
+    label: "Scan Nurse Visit Start",
+  });
+  assert.deepEqual(customerScanLink(homeCareServing), {
+    step: "deliver",
+    label: "Scan Nursing Complete",
+  });
+  assert.deepEqual(customerScanLink(labOnTheWay), {
+    step: "deliver",
+    label: "Scan Sample Received",
+  });
 
   assert.deepEqual(
     scanLinksForApp("customer", waitingReceive).map((row) => row.label),
     ["Scan Delivery"]
   );
   assert.deepEqual(scanLinksForApp("customer", waitingPickup), []);
-  assert.deepEqual(scanLinksForApp("customer", labOnTheWay), []);
+  assert.deepEqual(
+    scanLinksForApp("customer", labOnTheWay).map((row) => [row.step, row.label]),
+    [["deliver", "Scan Sample Received"]]
+  );
+  assert.deepEqual(
+    scanLinksForApp("customer", radiologyWaiting).map((row) => [row.step, row.label]),
+    [["pickup", "Scan Centre Check-In"]]
+  );
+  assert.deepEqual(scanLinksForApp("customer", radiologyNoCentre), []);
   assert.deepEqual(
     scanLinksForApp("partner", waitingPickup, rider).map((row) => [row.step, row.label]),
     [["pickup", "Scan Delivery"]]
   );
+  assert.deepEqual(scanLinksForApp("partner", waitingReceive, rider), []);
   assert.deepEqual(
-    scanLinksForApp("partner", waitingReceive, rider).map((row) => row.label),
-    ["Scan Delivery"]
+    scanLinksForApp("partner", labWaitingCollection, labPartner).map((row) => [
+      row.step,
+      row.label,
+    ]),
+    [["pickup", "Scan Collection Start"]]
+  );
+  assert.deepEqual(scanLinksForApp("partner", labOnTheWay, labPartner), []);
+  assert.deepEqual(scanLinksForApp("partner", radiologyWaiting, radiologyPartner), []);
+  assert.deepEqual(
+    scanLinksForApp("partner", homeCareArriving, homePartner).map((row) => row.label),
+    ["Scan Nurse Visit Start"]
   );
   assert.deepEqual(scanLinksForApp("admin", waitingPickup).map((row) => row.step), [
     "pack",
     "pickup",
     "deliver",
   ]);
-  assert.deepEqual(scanLinksForApp("admin", labOnTheWay), []);
+  assert.deepEqual(
+    scanLinksForApp("admin", labOnTheWay).map((row) => row.label),
+    ["Scan Service Prep", "Scan Collection Start", "Scan Sample Received"]
+  );
+  assert.equal(
+    scanStepTitle("radiology", "pickup"),
+    "Scan Centre Check-In"
+  );
 
   assert.equal(
     canUseScanDelivery({ app: "customer", order: waitingReceive, step: "deliver" }),
@@ -93,6 +190,22 @@ test("Scan Delivery is only offered to a customer while receiving medicine", () 
   );
   assert.equal(
     canUseScanDelivery({ app: "customer", order: waitingPickup, step: "deliver" }),
+    false
+  );
+  assert.equal(
+    canUseScanDelivery({
+      app: "customer",
+      order: radiologyWaiting,
+      step: "pickup",
+    }),
+    true
+  );
+  assert.equal(
+    canUseScanDelivery({
+      app: "customer",
+      order: radiologyWaiting,
+      step: "deliver",
+    }),
     false
   );
   assert.equal(

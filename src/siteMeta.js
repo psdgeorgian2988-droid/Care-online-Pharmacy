@@ -119,7 +119,7 @@ const PAGE_META = {
   scan: {
     title: "Scan Delivery | MediHome",
     description:
-      "Scan Delivery is used when a customer receives medicines or a rider receives an order from the retailer.",
+      "Scan Delivery is used for medicine receive, home-care visit checks, lab sample handover, and radiology centre check-in before the test.",
   },
   education: {
     title: "Health Education | MediHome",

@@ -45,7 +45,7 @@ function ScanDeliveryComingSoon() {
     <div className="service-page">
       <ComingSoon
         name="Scan Delivery"
-        lead="Scan Delivery will assist you when you receive a medicine order. We are preparing this with extra care."
+        lead="Scan Delivery will assist you when you receive medicines, start a home-care visit, confirm a lab sample, or check in at an imaging centre. We are preparing this with extra care."
         thanks="Thank you for your patience. MediHome will open Scan Delivery as soon as it is set up for you."
       />
     </div>
@@ -54,12 +54,12 @@ function ScanDeliveryComingSoon() {
 
 function scanBlockedCopy(app) {
   if (app === "partner") {
-    return "Scan Delivery is only available while you receive a medicine order from the retailer.";
+    return "Scan Delivery is only available for retailer medicine pickup, home-care visit scans, or lab collection start.";
   }
   if (app === "admin") {
-    return "Scan Delivery controls on this page are for staff packing, rider retailer pickup, and customer medicine receipt.";
+    return "Scan Delivery controls on this page are for staff packing, partner checkpoints, medicine receipt, home-care visits, lab samples, and radiology centre check-in.";
   }
-  return "Scan Delivery is only available while you receive a medicine order. Open that order from My Orders.";
+  return "Scan Delivery opens from My Orders at the right moment: when a medicine order is arriving, a home-care partner is serving you, a lab sample has been collected, or you check in at the assigned imaging centre before the test.";
 }
 
 async function resolveOrder(id) {

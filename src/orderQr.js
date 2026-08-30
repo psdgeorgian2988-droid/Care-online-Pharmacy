@@ -193,12 +193,31 @@ export function scanStepTitle(kind, step, serviceType) {
 
 export function scanStepHint(kind, step, serviceType) {
   const checkpoint = normalizeScanStep(step) || step;
+  const service = String(kind || "medicine");
   const title = scanStepTitle(kind, checkpoint, serviceType);
   if (checkpoint === "pack") {
     return `${title}: the same QR is created when the order is placed and shown to the retailer or service provider.`;
   }
   if (checkpoint === "pickup") {
+    if (service === "radiology") {
+      return `${title}: scan this QR at the assigned imaging centre before your test starts. If the QR cannot be scanned, enter the check-in OTP.`;
+    }
+    if (service === "homecare") {
+      return `${title}: scan when the home-care partner arrives and starts the visit. If the QR cannot be scanned, enter the visit OTP.`;
+    }
+    if (service === "lab") {
+      return `${title}: the collection partner scans this QR when the sample is taken. If the QR cannot be scanned, enter the collection OTP.`;
+    }
     return `${title}: the pickup partner scans the retailer or service-provider QR to take the goods. If that QR cannot be scanned, enter the pickup OTP.`;
+  }
+  if (service === "radiology") {
+    return `${title}: scan after the imaging study is finished. If the QR cannot be scanned, enter the completion OTP.`;
+  }
+  if (service === "homecare") {
+    return `${title}: scan when the home visit is finished. If the QR cannot be scanned, enter the completion OTP.`;
+  }
+  if (service === "lab") {
+    return `${title}: scan when the collected sample has been received. If the QR cannot be scanned, enter the receipt OTP.`;
   }
   return `${title}: the delivery partner scans the customer's QR to complete handover. If that QR cannot be scanned, enter the delivery OTP.`;
 }
@@ -210,9 +229,35 @@ export function scanPageHeading(step, kind, serviceType) {
 }
 
 export function isMedicineOrder(order) {
+  return orderServiceKind(order) === "medicine";
+}
+
+export function orderServiceKind(order) {
   const kind = String(order?.kind || order?.orderType || "").toLowerCase();
-  if (!kind) return Boolean(orderIdOf(order));
-  return kind === "medicine";
+  if (
+    kind === "lab" ||
+    kind === "radiology" ||
+    kind === "homecare" ||
+    kind === "vaccination" ||
+    kind === "psychologist" ||
+    kind === "stepdown" ||
+    kind === "ambulance" ||
+    kind === "medicine"
+  ) {
+    return kind;
+  }
+  const service = String(order?.serviceType || "").toLowerCase();
+  if (service === "radiology") return "radiology";
+  if (service === "lab") return "lab";
+  if (
+    service === "nurse" ||
+    service === "physiotherapy" ||
+    service === "physio" ||
+    service === "caregiver"
+  ) {
+    return "homecare";
+  }
+  return orderIdOf(order) ? "medicine" : "";
 }
 
 export function isMedicineRiderPartner(partner) {
@@ -220,6 +265,56 @@ export function isMedicineRiderPartner(partner) {
   const kinds = Array.isArray(partner.kinds) ? partner.kinds : [];
   const role = String(partner.role || "").toLowerCase();
   return kinds.includes("medicine") || role.includes("medicine") || /\brider\b/.test(role);
+}
+
+export function partnerServesKind(partner, kind) {
+  const want = String(kind || "").toLowerCase();
+  if (!want) return false;
+  if (!partner || typeof partner !== "object") return true;
+  const kinds = Array.isArray(partner.kinds)
+    ? partner.kinds.map((row) => String(row || "").toLowerCase())
+    : [];
+  if (kinds.includes(want)) return true;
+  const role = String(partner.role || "").toLowerCase();
+  if (want === "medicine") return isMedicineRiderPartner(partner);
+  if (want === "lab") {
+    return role.includes("lab") || role.includes("phlebo") || role.includes("collection");
+  }
+  if (want === "homecare") {
+    return (
+      role.includes("homecare") ||
+      role.includes("home care") ||
+      role.includes("nurse") ||
+      role.includes("physio") ||
+      role.includes("caregiver")
+    );
+  }
+  return false;
+}
+
+export function partnerUsesScanColumn(partner) {
+  if (!partner) return false;
+  return (
+    isMedicineRiderPartner(partner) ||
+    partnerServesKind(partner, "lab") ||
+    partnerServesKind(partner, "homecare")
+  );
+}
+
+export function hasAssignedCentre(order) {
+  return [
+    order?.partnerId,
+    order?.partner,
+    order?.outletName,
+    order?.centreName,
+    order?.imagingCentre,
+  ].some((value) => String(value || "").trim());
+}
+
+function homeCareVisitActive(order) {
+  const status = String(order?.trackStatus || "").toLowerCase();
+  if (status === "on_the_way" || status === "arriving") return true;
+  return Boolean(order?.checkPickupAt || order?.qrPickedAt);
 }
 
 export function scanActorFromSessions({ staffToken = "", partner = null } = {}) {
@@ -230,42 +325,106 @@ export function scanActorFromSessions({ staffToken = "", partner = null } = {}) 
   return "customer";
 }
 
+export function customerScanLink(order) {
+  if (!orderIdOf(order)) return null;
+  const kind = orderServiceKind(order);
+  const next = nextQrScanAction(order);
+  if (!kind || next === "already_done") return null;
+  const serviceType = order?.serviceType;
+
+  if (kind === "medicine") {
+    if (next !== "deliver") return null;
+    return { step: "deliver", label: scanStepTitle("medicine", "deliver") };
+  }
+
+  if (kind === "homecare") {
+    if (!homeCareVisitActive(order)) return null;
+    if (next !== "pickup" && next !== "deliver") return null;
+    return { step: next, label: scanStepTitle("homecare", next, serviceType) };
+  }
+
+  if (kind === "lab") {
+    if (next !== "deliver") return null;
+    return { step: "deliver", label: scanStepTitle("lab", "deliver") };
+  }
+
+  if (kind === "radiology") {
+    if (next !== "pickup" || !hasAssignedCentre(order)) return null;
+    return { step: "pickup", label: scanStepTitle("radiology", "pickup") };
+  }
+
+  return null;
+}
+
 export function canShowCustomerScanDelivery(order) {
-  return Boolean(orderIdOf(order)) && isMedicineOrder(order) && nextQrScanAction(order) === "deliver";
+  return Boolean(customerScanLink(order));
+}
+
+export function partnerScanLink(order, partner) {
+  if (!orderIdOf(order)) return null;
+  const kind = orderServiceKind(order);
+  const next = nextQrScanAction(order);
+  if (!kind || next === "already_done") return null;
+  const serviceType = order?.serviceType;
+
+  if (kind === "medicine") {
+    if (partner && !isMedicineRiderPartner(partner)) return null;
+    if (next !== "pickup") return null;
+    return { step: "pickup", label: "Scan Delivery" };
+  }
+
+  if (kind === "homecare") {
+    if (partner && !partnerServesKind(partner, "homecare")) return null;
+    if (!homeCareVisitActive(order)) return null;
+    if (next !== "pickup" && next !== "deliver") return null;
+    return { step: next, label: scanStepTitle("homecare", next, serviceType) };
+  }
+
+  if (kind === "lab") {
+    if (partner && !partnerServesKind(partner, "lab")) return null;
+    if (next !== "pickup") return null;
+    return { step: "pickup", label: scanStepTitle("lab", "pickup") };
+  }
+
+  return null;
 }
 
 export function canShowRiderRetailerScan(order, partner) {
-  if (partner && !isMedicineRiderPartner(partner)) return false;
-  return Boolean(orderIdOf(order)) && isMedicineOrder(order) && nextQrScanAction(order) === "pickup";
+  const link = partnerScanLink(order, partner);
+  return Boolean(link) && orderServiceKind(order) === "medicine" && link.step === "pickup";
 }
 
 export function canUseScanDelivery({ app = "customer", order, step, partner } = {}) {
   const checkpoint = normalizeScanStep(step);
   if (app === "admin") return true;
-  if (app === "partner") {
-    if (!canShowRiderRetailerScan(order, partner)) return false;
-    return !checkpoint || checkpoint === "pickup";
-  }
-  if (!canShowCustomerScanDelivery(order)) return false;
-  return !checkpoint || checkpoint === "deliver";
+  const link =
+    app === "partner" ? partnerScanLink(order, partner) : customerScanLink(order);
+  if (!link) return false;
+  return !checkpoint || checkpoint === link.step;
+}
+
+function adminScanLinks(order) {
+  const kind = order && orderIdOf(order) ? orderServiceKind(order) || "medicine" : "medicine";
+  const serviceType = order?.serviceType;
+  return [
+    { step: "pack", label: scanStepTitle(kind, "pack", serviceType) },
+    { step: "pickup", label: scanStepTitle(kind, "pickup", serviceType) },
+    { step: "deliver", label: scanStepTitle(kind, "deliver", serviceType) },
+  ];
 }
 
 export function scanLinksForApp(app, order, partner) {
-  if (app === "admin") {
-    if (order && orderIdOf(order) && !isMedicineOrder(order)) return [];
-    return [
-      { step: "pack", label: "Scan Packing" },
-      { step: "pickup", label: "Scan Pickup" },
-      { step: "deliver", label: "Scan Delivery" },
-    ];
-  }
+  if (app === "admin") return adminScanLinks(order);
   if (app === "partner") {
-    if (partner && !isMedicineRiderPartner(partner)) return [];
-    if (order && orderIdOf(order) && !isMedicineOrder(order)) return [];
-    return [{ step: "pickup", label: "Scan Delivery" }];
+    if (!order) {
+      if (partner && !partnerUsesScanColumn(partner)) return [];
+      return [{ step: "pickup", label: "Scan Delivery" }];
+    }
+    const link = partnerScanLink(order, partner);
+    return link ? [link] : [];
   }
-  if (!canShowCustomerScanDelivery(order)) return [];
-  return [{ step: "deliver", label: "Scan Delivery" }];
+  const link = customerScanLink(order);
+  return link ? [link] : [];
 }
 
 export function trackQrPath(id) {
