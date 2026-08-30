@@ -57,6 +57,7 @@ const NAV_LINKS = [
 
 const ACCOUNT_LINKS = [
   { href: "#myorders", label: "My Orders" },
+  { href: "#scan?step=deliver", label: "Scan Delivery" },
   { href: "#profile", label: "Profile" },
 ];
 
@@ -303,6 +304,11 @@ function HomePage() {
               <span>Request now</span>
             </a>
           ) : null}
+          <a className="home-service-card" href="#scan?step=deliver">
+            <h2>Scan Delivery</h2>
+            <p>Scan the order QR when medicines arrive.</p>
+            <span>Open scanner</span>
+          </a>
           {features.reports !== false ? (
             <a className="home-service-card" href="#reports">
               <h2>Reports</h2>

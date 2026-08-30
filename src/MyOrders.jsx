@@ -11,7 +11,7 @@ import { BillButton } from "./OrderBill";
 import OrderFeedbackCta from "./OrderFeedbackCta";
 import { paymentMethodSummary } from "./paymentMethods";
 import { maskMobile } from "./personFields";
-import { canShowCustomerScanDelivery, scanHref } from "./orderQr";
+import { scanHref } from "./orderQr";
 
 function typeLabel(order) {
   return kindLabel(order?.kind || order?.orderType);
@@ -97,7 +97,6 @@ function MyOrders() {
             order={selectedOrder}
             onOrderChange={handleSelectedChange}
             compact
-            showScan={canShowCustomerScanDelivery(selectedOrder)}
           />
 
           <h3>
@@ -345,14 +344,12 @@ function MyOrders() {
             <a className="order-details-btn" href={trackHref(selectedOrder.id)}>
               Open full live track
             </a>
-            {canShowCustomerScanDelivery(selectedOrder) ? (
-              <a
-                className="order-details-btn"
-                href={scanHref({ id: selectedOrder.id, step: "deliver", order: selectedOrder })}
-              >
-                Scan Delivery
-              </a>
-            ) : null}
+            <a
+              className="order-details-btn"
+              href={scanHref({ id: selectedOrder.id, step: "deliver", order: selectedOrder })}
+            >
+              Scan Delivery
+            </a>
             {selectedOrder.ambulanceRequestId ? (
               <a
                 className="order-details-btn"
@@ -455,14 +452,12 @@ function MyOrders() {
                     <a className="order-track-btn" href={trackHref(order.id)}>
                       Track live
                     </a>
-                    {canShowCustomerScanDelivery(order) ? (
-                      <a
-                        className="order-track-btn"
-                        href={scanHref({ id: order.id, step: "deliver", order })}
-                      >
-                        Scan Delivery
-                      </a>
-                    ) : null}
+                    <a
+                      className="order-track-btn"
+                      href={scanHref({ id: order.id, step: "deliver", order })}
+                    >
+                      Scan Delivery
+                    </a>
                     {order.trackCompleted ? (
                       <OrderFeedbackCta order={order} />
                     ) : null}

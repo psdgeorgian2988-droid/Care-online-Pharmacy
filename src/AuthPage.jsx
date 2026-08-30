@@ -518,8 +518,7 @@ function ForgotPinPage() {
               {sent ? (
                 <form className="auth-otp-form" onSubmit={verifyOtp} autoComplete="off">
                   <p className="auth-otp-demo">
-                    OTP sent to {sentLabels.join(" and ")}. Demo OTP:{" "}
-                    <strong>{sent.code}</strong>
+                    OTP sent to {sentLabels.join(" and ")}.
                   </p>
                   <label htmlFor="auth-forgot-otp">
                     Enter OTP <span>*</span>

@@ -260,10 +260,10 @@ export function scanLinksForApp(app, order, partner) {
     ];
   }
   if (app === "partner") {
-    if (!canShowRiderRetailerScan(order, partner)) return [];
+    if (partner && !isMedicineRiderPartner(partner)) return [];
+    if (order && orderIdOf(order) && !isMedicineOrder(order)) return [];
     return [{ step: "pickup", label: "Scan Delivery" }];
   }
-  if (!canShowCustomerScanDelivery(order)) return [];
   return [{ step: "deliver", label: "Scan Delivery" }];
 }
 

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { staffToken } from "./adminApi";
+import ComingSoon from "./ComingSoon";
+import { useFeatures } from "./featureFlags";
 import { LiveTrackingPanel } from "./LiveTracking";
 import { CheckpointStrip } from "./OrderQr";
 import {
@@ -25,6 +27,7 @@ import {
   scanStepHint,
   scanStepTitle,
 } from "./orderQr";
+import { featureEnabled } from "./salesReport";
 
 function currentScanContext() {
   const partner = partnerSession().partner;
@@ -35,6 +38,18 @@ function currentScanContext() {
     }),
     partner,
   };
+}
+
+function ScanDeliveryComingSoon() {
+  return (
+    <div className="service-page">
+      <ComingSoon
+        name="Scan Delivery"
+        lead="Scan Delivery will assist you when you receive a medicine order. We are preparing this with extra care."
+        thanks="Thank you for your patience. MediHome will open Scan Delivery as soon as it is set up for you."
+      />
+    </div>
+  );
 }
 
 function scanBlockedCopy(app) {
@@ -54,6 +69,8 @@ async function resolveOrder(id) {
 export default function ScanPage({ scanId, scanStep }) {
   const requestedStep = normalizeScanStep(scanStep);
   const { app, partner } = currentScanContext();
+  const features = useFeatures();
+  const featureOn = featureEnabled(features, "scanDelivery");
   const [manual, setManual] = useState("");
   const [hint, setHint] = useState("");
   const [error, setError] = useState("");
@@ -276,6 +293,17 @@ export default function ScanPage({ scanId, scanStep }) {
   const backHref = app === "partner" ? "#partner" : app === "admin" ? "#admin" : "#myorders";
   const backLabel =
     app === "partner" ? "Partner Desk" : app === "admin" ? "Staff Desk" : "My Orders";
+  const showComingSoon =
+    app !== "admin" &&
+    !busy &&
+    (!featureOn ||
+      result?.blocked ||
+      (!scanId && !result?.order) ||
+      Boolean(result?.order && !accessOk && !result.decided));
+
+  if (showComingSoon) {
+    return <ScanDeliveryComingSoon />;
+  }
 
   return (
     <div className="my-orders-page live-track-page">

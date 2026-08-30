@@ -14,10 +14,12 @@ import {
 } from "./payments.mjs";
 import {
   assignPartnerToOrder,
+  createPartner,
   listPartnerJobs,
   listPartners,
   partnerIdFromToken,
   partnerLogin,
+  setPartnerLogin,
 } from "./partners.mjs";
 import {
   appendCustomerMessage,
@@ -290,9 +292,9 @@ export async function handleApi(req, res) {
 
     if (pathname === "/api/partner/login" && req.method === "POST") {
       const body = await readJson(req);
-      const result = await partnerLogin(body.mobile, body.pin);
+      const result = await partnerLogin(body.loginId || body.user, body.password);
       if (!result) {
-        send(res, 401, { error: "Wrong partner mobile or PIN." });
+        send(res, 401, { error: "Wrong login ID or password. Ask MediHome staff to create your first login." });
         return true;
       }
       send(res, 200, result);
@@ -315,6 +317,31 @@ export async function handleApi(req, res) {
     if (pathname === "/api/admin/partners" && req.method === "GET") {
       if (!requireStaff(req, res)) return true;
       send(res, 200, { partners: await listPartners() });
+      return true;
+    }
+
+    if (pathname === "/api/admin/partners" && req.method === "POST") {
+      if (!requireStaff(req, res)) return true;
+      const body = await readJson(req);
+      const created = await createPartner(body);
+      if (!created.ok) {
+        send(res, 400, { error: created.error });
+        return true;
+      }
+      send(res, 200, { partner: created.partner, partners: await listPartners() });
+      return true;
+    }
+
+    const partnerLoginMatch = pathname.match(/^\/api\/admin\/partners\/([^/]+)\/login$/);
+    if (partnerLoginMatch && req.method === "PATCH") {
+      if (!requireStaff(req, res)) return true;
+      const body = await readJson(req);
+      const updated = await setPartnerLogin(decodeURIComponent(partnerLoginMatch[1]), body);
+      if (!updated.ok) {
+        send(res, 400, { error: updated.error });
+        return true;
+      }
+      send(res, 200, { partner: updated.partner, partners: await listPartners() });
       return true;
     }
 

@@ -70,13 +70,22 @@ test("Scan Delivery links stay on customer receive, rider retailer receive, and 
     scanLinksForApp("customer", waitingReceive).map((row) => row.label),
     ["Scan Delivery"]
   );
-  assert.deepEqual(scanLinksForApp("customer", waitingPickup), []);
-  assert.deepEqual(scanLinksForApp("customer", labOnTheWay), []);
+  assert.deepEqual(
+    scanLinksForApp("customer", waitingPickup).map((row) => row.label),
+    ["Scan Delivery"]
+  );
+  assert.deepEqual(
+    scanLinksForApp("customer", labOnTheWay).map((row) => row.label),
+    ["Scan Delivery"]
+  );
   assert.deepEqual(
     scanLinksForApp("partner", waitingPickup, rider).map((row) => [row.step, row.label]),
     [["pickup", "Scan Delivery"]]
   );
-  assert.deepEqual(scanLinksForApp("partner", waitingReceive, rider), []);
+  assert.deepEqual(
+    scanLinksForApp("partner", waitingReceive, rider).map((row) => row.label),
+    ["Scan Delivery"]
+  );
   assert.deepEqual(scanLinksForApp("admin", waitingPickup).map((row) => row.step), [
     "pack",
     "pickup",
