@@ -34,12 +34,12 @@ async function parseResponse(response) {
   return data;
 }
 
-export async function partnerLogin(mobile, pin) {
+export async function partnerLogin(loginId, password) {
   const data = await parseResponse(
     await fetch("/api/partner/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mobile, pin }),
+      body: JSON.stringify({ loginId, password }),
     })
   );
   setPartnerSession(data.token, data.partner);

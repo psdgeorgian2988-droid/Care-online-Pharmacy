@@ -50,9 +50,12 @@ export function replyTo(rawText) {
 
   if (/\b(qr|scan|pickup|received|barcode)\b/.test(q)) {
     return {
-      text: "Scan Delivery appears only when you receive a medicine order, or when a rider receives that order from the retailer. Open the live order from My Orders. Staff can still open the scan controls from the admin desk.",
+      text: "Scan Delivery stays on the menu. If staff switch it off, it opens Coming Soon. When it is on, use it while receiving a medicine order.",
       needsStaff: false,
-      links: [{ href: "#myorders", label: "My Orders" }],
+      links: [
+        { href: "#scan?step=deliver", label: "Scan Delivery" },
+        { href: "#myorders", label: "My Orders" },
+      ],
     };
   }
 

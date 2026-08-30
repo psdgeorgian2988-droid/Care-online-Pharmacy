@@ -4,14 +4,14 @@ import { partnerSettlementNote, splitModeLabel } from "./paymentSplit";
 import { shareSettlement } from "./shareSettlement";
 import { isOnlinePayment } from "./paymentMethods";
 import { fetchPartnerJobs, partnerLogin, partnerLogout, partnerSession, patchPartnerJob } from "./partnerApi";
-import { canShowRiderRetailerScan, scanHref } from "./orderQr";
+import { isMedicineRiderPartner, scanHref } from "./orderQr";
 
 export default function Partner() {
   const session = partnerSession();
   const [token, setToken] = useState(session.token);
   const [partner, setPartner] = useState(session.partner);
-  const [mobile, setMobile] = useState("");
-  const [pin, setPin] = useState("");
+  const [loginId, setLoginId] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -57,16 +57,16 @@ export default function Partner() {
     event.preventDefault();
     setError("");
     try {
-      const data = await partnerLogin(mobile.trim(), pin.trim());
+      const data = await partnerLogin(loginId, password);
       setToken(data.token);
       setPartner(data.partner);
-      setPin("");
+      setPassword("");
     } catch (err) {
       setError(err.message || "Login Failed.");
     }
   };
 
-  const showScanCol = jobs.some((job) => canShowRiderRetailerScan(job, partner));
+  const showScanCol = isMedicineRiderPartner(partner);
 
   if (!token || !partner) {
     return (
@@ -76,33 +76,31 @@ export default function Partner() {
           <section className="service-hero">
             <span className="service-kicker">Partner Operations</span>
             <h1>Partner Login</h1>
-            <p>See Only Jobs Assigned To You By MediHome Staff.</p>
+            <p>Use The Login ID And Password Created For You By MediHome Staff.</p>
           </section>
           <form className="service-form admin-login" onSubmit={handleLogin}>
             <div className="field">
-              <label htmlFor="partner-mobile">Mobile</label>
+              <label htmlFor="partner-login-id">Login ID</label>
               <input
-                id="partner-mobile"
-                inputMode="numeric"
-                value={mobile}
-                onChange={(e) =>
-                  setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))
-                }
+                id="partner-login-id"
+                autoComplete="username"
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
               />
             </div>
             <div className="field">
-              <label htmlFor="partner-pin">PIN</label>
+              <label htmlFor="partner-password">Password</label>
               <input
-                id="partner-pin"
+                id="partner-password"
                 type="password"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
             {error ? <p className="admin-error">{error}</p> : null}
             <p className="admin-hint">
-              Demo: 9654222901–2906, PIN 1111 (rider, lab, radiology, Home Care,
-              ambulance, step-down).
+              First-Time Login ID And Password Are Created On The Staff Desk.
             </p>
             <button type="submit" className="service-submit">
               Sign In
@@ -244,16 +242,12 @@ export default function Partner() {
                       <td>{job.status || job.trackStatus || "—"}</td>
                       {showScanCol ? (
                         <td>
-                          {canShowRiderRetailerScan(job, partner) ? (
-                            <a
-                              className="partner-scan-link"
-                              href={scanHref({ id, step: "pickup", order: job })}
-                            >
-                              Scan Delivery
-                            </a>
-                          ) : (
-                            "—"
-                          )}
+                          <a
+                            className="partner-scan-link"
+                            href={scanHref({ id, step: "pickup", order: job })}
+                          >
+                            Scan Delivery
+                          </a>
                         </td>
                       ) : null}
                     </tr>

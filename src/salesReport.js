@@ -13,6 +13,7 @@ export const FEATURE_CATALOG = [
   { key: "ambulance", label: "Ambulance", href: "#ambulance" },
   { key: "reports", label: "Reports", href: "#reports" },
   { key: "education", label: "Health Education", href: "#education" },
+  { key: "scanDelivery", label: "Scan Delivery", href: "#scan?step=deliver" },
 ];
 
 export const DEFAULT_FEATURES = Object.fromEntries(

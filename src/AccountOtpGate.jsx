@@ -54,9 +54,7 @@ export default function AccountOtpGate({
         </div>
         {sent ? (
           <form className="otp-form" onSubmit={confirmOtp}>
-            <p className="otp-demo">
-              OTP sent. Demo OTP: <strong>{sent.code}</strong>
-            </p>
+            <p className="otp-demo">OTP sent. Enter the code on this mobile.</p>
             <label htmlFor="account-edit-otp">
               Enter OTP <span>*</span>
             </label>

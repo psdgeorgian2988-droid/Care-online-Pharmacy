@@ -69,6 +69,32 @@ export async function fetchStaffPartners() {
   );
 }
 
+export async function createStaffPartner(body) {
+  return parseResponse(
+    await fetch("/api/admin/partners", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${staffToken()}`,
+      },
+      body: JSON.stringify(body),
+    })
+  );
+}
+
+export async function setStaffPartnerLogin(id, body) {
+  return parseResponse(
+    await fetch(`/api/admin/partners/${encodeURIComponent(id)}/login`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${staffToken()}`,
+      },
+      body: JSON.stringify(body),
+    })
+  );
+}
+
 export async function fetchPublicFeatures() {
   return parseResponse(await fetch("/api/features"));
 }

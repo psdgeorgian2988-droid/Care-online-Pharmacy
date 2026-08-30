@@ -16,6 +16,7 @@ export const DEFAULT_FEATURES = {
   ambulance: true,
   reports: true,
   education: true,
+  scanDelivery: true,
 };
 
 function normalizeFeatures(raw) {

@@ -4,7 +4,12 @@ import {
   CARE_WHATSAPP_URL,
 } from "./careChat";
 
-export default function ComingSoon({ name = "This service", compact = false }) {
+export default function ComingSoon({
+  name = "This service",
+  compact = false,
+  lead,
+  thanks,
+}) {
   const title = `${name} Is Coming Soon`;
   return (
     <>
@@ -19,12 +24,12 @@ export default function ComingSoon({ name = "This service", compact = false }) {
         <p className="coming-soon-kicker">Almost ready</p>
         <h1>{title}</h1>
         <p className="coming-soon-lead">
-          We are preparing this service with extra care, so it is ready when you
-          need it.
+          {lead ||
+            "We are preparing this service with extra care, so it is ready when you need it."}
         </p>
         <p className="coming-soon-thanks">
-          Thank you for your patience. MediHome will open {name.toLowerCase()} as
-          soon as it is set up for you.
+          {thanks ||
+            `Thank you for your patience. MediHome will open ${name.toLowerCase()} as soon as it is set up for you.`}
         </p>
         <div className="coming-soon-actions">
           <a href="#home">Browse other services</a>

@@ -48,11 +48,9 @@ A free preview is private (GoDaddy login). Publishing on the domain needs a GoDa
 
 [Deploy to Render](https://render.com/deploy?repo=https://github.com/psdgeorgian2988-droid/Care-online-Pharmacy) using `render.yaml`, then add custom domain `medihome.co.in` in Render. That still needs an A/CNAME change in GoDaddy DNS and Website Builder turned off.
 
-## Demo logins
+## Partner login
 
-- Staff: `admin` / `MediHome@26`
-- Partner mobiles: `9654222901`–`9654222907`, PIN `1111`
-- Care WhatsApp: `7292094000`
+Staff create each partner’s first **Login ID** and **password** on the Staff Desk. Partners sign in at `#partner` with those details. Demo mobiles and PINs are not shown on the website.
 
 ## Scripts
 

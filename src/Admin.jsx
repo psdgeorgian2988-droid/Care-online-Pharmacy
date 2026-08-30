@@ -52,6 +52,7 @@ import {
   yoySnapshot,
 } from "./salesReport";
 import { OrderStatusTrack } from "./adminStatus";
+import AdminPartnerLogins from "./AdminPartnerLogins";
 import {
   BarList,
   CompareBars,
@@ -91,7 +92,7 @@ function downloadCsv(filename, text) {
 
 function Admin() {
   const [token, setToken] = useState(() => staffToken());
-  const [user, setUser] = useState("admin");
+  const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [orders, setOrders] = useState([]);
@@ -362,10 +363,6 @@ function Admin() {
             <button type="submit" className="service-submit">
               Sign In
             </button>
-            <p className="admin-hint">
-              Local Staff User: <strong>admin</strong> · Password:{" "}
-              <strong>MediHome@26</strong>
-            </p>
           </form>
         </div>
       </>
@@ -523,7 +520,11 @@ function Admin() {
 
         <section className="admin-panel" aria-label="Feature Switches">
           <h2>Turn Features On Or Off</h2>
-          <p>Off Services Stay On The Menu And Show Coming Soon Until You Turn Them Back On.</p>
+          <p>
+            Off Services Stay On The Menu And Show Coming Soon Until You Turn Them Back On.
+            Scan Delivery Buttons Stay Visible. When This Switch Is Off, A Customer Click
+            Opens Coming Soon.
+          </p>
           <div className="admin-switches">
             {FEATURE_CATALOG.map((row) => (
               <button
@@ -540,6 +541,8 @@ function Admin() {
             ))}
           </div>
         </section>
+
+        <AdminPartnerLogins partners={partners} onChange={setPartners} />
 
         <section className="admin-panel" aria-label="Chart Period">
           <h2>Growth And Degrowth Charts</h2>
@@ -691,7 +694,7 @@ function Admin() {
               >
                 <option value="all">All Services</option>
                 {FEATURE_CATALOG.filter(
-                  (row) => !["reports", "education"].includes(row.key)
+                  (row) => !["reports", "education", "scanDelivery"].includes(row.key)
                 ).map((row) => (
                   <option key={row.key} value={row.key}>
                     {row.label}
@@ -1103,7 +1106,16 @@ const styles = `
 .admin-status-pill.is-arriving{background:#eee8f6;color:#6b5b95}
 .admin-status-pill.is-done{background:#e7f6ef;color:#1a7a45}
 .admin-table tr.is-unassigned{background:#fffaf4}
-.admin-table td select{max-width:140px}
+.admin-table td select,.admin-table td input{max-width:160px}
+.admin-partner-create{margin-top:14px;padding:12px;border:1px solid #e4ecef;border-radius:12px;background:#fff}
+.admin-partner-create h3{margin:0 0 10px;font-size:14px}
+.admin-partner-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.admin-partner-grid label,.admin-partner-grid fieldset{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;color:#34546b;border:0;margin:0;padding:0}
+.admin-partner-grid legend{font-size:12px;font-weight:700;color:#34546b}
+.admin-partner-kinds{display:flex;flex-wrap:wrap;gap:8px;font-weight:600}
+.admin-partner-kinds label{flex-direction:row;align-items:center;gap:6px;font-weight:600}
+.admin-partner-create button{border:1px solid #1a6b7a;border-radius:6px;background:#1a6b7a;color:#fff;font:inherit;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer}
+@media (max-width:800px){.admin-partner-grid{grid-template-columns:1fr}}
 .admin-chat-layout{display:grid;grid-template-columns:220px 1fr;gap:10px}
 .admin-chat-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:240px;overflow:auto}
 .admin-chat-list button{width:100%;border:1px solid #e4ecef;border-radius:8px;background:#f7fafc;padding:8px;text-align:left;font:inherit;cursor:pointer}

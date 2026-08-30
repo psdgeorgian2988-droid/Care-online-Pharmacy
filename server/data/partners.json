@@ -4,67 +4,71 @@
       "id": "P-MED-01",
       "name": "Ravi Kumar",
       "role": "Medicine rider",
-      "kinds": [
-        "medicine"
-      ],
+      "kinds": ["medicine"],
       "mobile": "9654222901",
-      "pin": "1111",
-      "outletId": "MH-OUT-CD"
+      "outletId": "MH-OUT-CD",
+      "loginId": "",
+      "passwordHash": ""
     },
     {
       "id": "P-LAB-01",
       "name": "Neha Sharma",
       "role": "Phlebotomist",
-      "kinds": [
-        "lab"
-      ],
+      "kinds": ["lab"],
       "mobile": "9654222902",
-      "pin": "1111",
-      "outletId": "MH-OUT-CD"
+      "outletId": "MH-OUT-CD",
+      "loginId": "",
+      "passwordHash": ""
     },
     {
       "id": "P-RAD-01",
       "name": "Imaging Desk — Green Park",
       "role": "Radiology centre",
-      "kinds": [
-        "radiology"
-      ],
+      "kinds": ["radiology"],
       "mobile": "9654222903",
-      "pin": "1111",
-      "outletId": "MH-OUT-SD"
+      "outletId": "MH-OUT-SD",
+      "loginId": "",
+      "passwordHash": ""
     },
     {
       "id": "P-HC-01",
       "name": "Priya Singh",
       "role": "Home Care nurse",
-      "kinds": [
-        "homecare"
-      ],
+      "kinds": ["homecare"],
       "mobile": "9654222904",
-      "pin": "1111",
-      "outletId": "MH-OUT-SD"
+      "outletId": "MH-OUT-SD",
+      "loginId": "",
+      "passwordHash": ""
+    },
+    {
+      "id": "P-PSY-01",
+      "name": "Dr. Ananya Mehra",
+      "role": "Psychologist",
+      "kinds": ["psychologist"],
+      "mobile": "9654222907",
+      "outletId": "MH-OUT-SD",
+      "loginId": "",
+      "passwordHash": ""
     },
     {
       "id": "P-AMB-01",
       "name": "Sanjay Ambulance",
       "role": "Ambulance operator",
-      "kinds": [
-        "ambulance"
-      ],
+      "kinds": ["ambulance"],
       "mobile": "9654222905",
-      "pin": "1111",
-      "outletId": "MH-OUT-HQ"
+      "outletId": "MH-OUT-HQ",
+      "loginId": "",
+      "passwordHash": ""
     },
     {
       "id": "P-SD-01",
       "name": "Dwarka Step-Down desk",
       "role": "Step-down centre",
-      "kinds": [
-        "stepdown"
-      ],
+      "kinds": ["stepdown"],
       "mobile": "9654222906",
-      "pin": "1111",
-      "outletId": "MH-OUT-DWK"
+      "outletId": "MH-OUT-DWK",
+      "loginId": "",
+      "passwordHash": ""
     }
   ]
 }
