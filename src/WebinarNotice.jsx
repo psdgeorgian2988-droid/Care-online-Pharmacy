@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isoDateToday } from "./personFields";
 import { useScheduledWebinars } from "./featureFlags";
 import {
   formatWebinarDate,
@@ -10,7 +11,7 @@ import {
 export default function WebinarNotice() {
   const webinars = useScheduledWebinars();
   const [seenId, setSeenId] = useState(readSeenWebinarNotice);
-  const notice = webinarNotice(webinars, seenId);
+  const notice = webinarNotice(webinars, seenId, isoDateToday(), Date.now());
 
   if (!notice) return null;
 

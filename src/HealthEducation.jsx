@@ -4,11 +4,18 @@ import { awardOnce, POINT_VALUES, useWallet } from "./pointsStore";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import { maskMobile } from "./personFields";
 import { useScheduledWebinars } from "./featureFlags";
-import { parseAppHash } from "./hashRoute";
+import { goToHash, parseAppHash } from "./hashRoute";
+import WebinarSession from "./WebinarSession";
 import {
   WEBINAR_SIGNUP_KEY,
+  attendanceOutcome,
+  formatIstClock,
   formatWebinarDate,
   isWebinarBookable,
+  joinWindowState,
+  readAttendance,
+  webinarSessionBounds,
+  webinarSessionHref,
 } from "./webinars";
 
 const GUIDES = [
@@ -294,40 +301,48 @@ function GuidesPanel() {
   );
 }
 
-function WebinarsPanel() {
+function webinarBadge(webinar, nowMs, outcome) {
+  if (outcome === "complete") return "Attendance complete";
+  if (outcome === "left_early") return "Left early";
+  const state = joinWindowState(webinar, nowMs);
+  if (state === "upcoming") return "Scheduled";
+  if (state === "join_open") return "Join now";
+  if (state === "too_late") return "In session";
+  return "Session ended";
+}
+
+function WebinarsPanel({ sessionId }) {
   const wallet = useWallet();
   const scheduled = useScheduledWebinars();
   const profile = useMemo(() => readProfile(), []);
   const [signups, setSignups] = useState(loadSignups);
   const [activeId, setActiveId] = useState("");
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [form, setForm] = useState({
     name: profile.name,
     mobile: profile.mobile,
   });
   const [errors, setErrors] = useState({});
   const [done, setDone] = useState(null);
-  const [attendAward, setAttendAward] = useState(null);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const registeredIds = new Set(signups.map((row) => row.webinarId));
-  const openSessions = scheduled.filter((row) => isWebinarBookable(row));
+  const openSessions = scheduled.filter((row) =>
+    isWebinarBookable(row, undefined, nowMs)
+  );
   const mySessions = scheduled.filter(
     (row) => registeredIds.has(row.id) && !openSessions.some((item) => item.id === row.id)
   );
   const visible = [...openSessions, ...mySessions];
-
-  const claimAttend = (webinar) => {
-    setAttendAward(
-      awardOnce(
-        `webinar:${webinar.id}`,
-        POINT_VALUES.webinar,
-        `Attended webinar: ${webinar.title}`
-      )
-    );
-  };
+  const session = scheduled.find((row) => row.id === sessionId) || null;
 
   const handleRegister = (event, webinar) => {
     event.preventDefault();
-    if (!isWebinarBookable(webinar)) return;
+    if (!isWebinarBookable(webinar, undefined, Date.now())) return;
     const nextErrors = {};
     if (!form.name.trim()) nextErrors.name = "Name is required.";
     if (!/^[6-9]\d{9}$/.test(form.mobile)) {
@@ -344,30 +359,45 @@ function WebinarsPanel() {
       mobile: form.mobile,
       createdAt: new Date().toLocaleString(),
     };
-    const award = awardOnce(
-      `webinar:${webinar.id}`,
-      POINT_VALUES.webinar,
-      `Attended webinar: ${webinar.title}`
-    );
     setSignups(saveSignup(entry));
     setActiveId("");
-    setDone({ ...entry, award });
+    setDone(entry);
   };
 
+  if (session) {
+    return (
+      <WebinarSession
+        webinar={session}
+        registered={registeredIds.has(session.id)}
+        onBack={() => goToHash("education?service=webinars")}
+      />
+    );
+  }
+
   if (done) {
+    const booked = scheduled.find((row) => row.id === done.webinarId);
+    const bounds = booked ? webinarSessionBounds(booked) : null;
     return (
       <article className="edu-panel-card">
         <p className="edu-badge">Seat reserved</p>
         <h2>{done.title}</h2>
-        <PointsEarnedBanner result={done.award} label="webinar" />
         <p>
-          Thank you, {done.name}. We will send the live link to WhatsApp on{" "}
-          <strong>{maskMobile(done.mobile)}</strong> before the session. Reference{" "}
+          Thank you, {done.name}. Join from this app at the session start. You
+          may join up to 5 minutes late. Stay on the session screen until the end
+          to earn {POINT_VALUES.webinar} MediHome points. Registration alone does
+          not add points. We have {maskMobile(done.mobile)} on file. Reference{" "}
           <strong>{done.id}</strong>.
         </p>
-        <button type="button" className="edu-btn edu-btn-primary" onClick={() => setDone(null)}>
-          Browse more webinars
-        </button>
+        <div className="edu-form-actions">
+          {booked ? (
+            <a className="edu-btn edu-btn-primary" href={webinarSessionHref(booked.id)}>
+              {bounds && Date.now() >= bounds.startMs ? "Open session" : "Session checkpoints"}
+            </a>
+          ) : null}
+          <button type="button" className="edu-btn edu-btn-ghost" onClick={() => setDone(null)}>
+            Browse more webinars
+          </button>
+        </div>
       </article>
     );
   }
@@ -379,7 +409,8 @@ function WebinarsPanel() {
         <h2>No live webinar is scheduled yet</h2>
         <p>
           Booking opens only after MediHome sets a date and time. You will see a
-          notification in this app as soon as a session is scheduled.
+          notification in this app as soon as a session is scheduled. MediHome
+          points are credited only after you join on time and stay until the end.
         </p>
       </article>
     );
@@ -387,15 +418,18 @@ function WebinarsPanel() {
 
   return (
     <div className="edu-grid">
-      {attendAward ? <PointsEarnedBanner result={attendAward} label="webinar" /> : null}
       {visible.map((webinar) => {
         const registered = registeredIds.has(webinar.id);
-        const bookable = isWebinarBookable(webinar);
+        const bookable = isWebinarBookable(webinar, undefined, nowMs);
         const open = activeId === webinar.id;
+        const record = readAttendance(webinar.id);
+        const outcome = attendanceOutcome(webinar, record, nowMs);
         const attended = Boolean(wallet.earned[`webinar:${webinar.id}`]);
+        const bounds = webinarSessionBounds(webinar);
+        const state = joinWindowState(webinar, nowMs);
         return (
           <article key={webinar.id} className="edu-panel-card">
-            <p className="edu-badge">{bookable ? "Scheduled" : "Session ended"}</p>
+            <p className="edu-badge">{webinarBadge(webinar, nowMs, outcome)}</p>
             <h2>{webinar.title}</h2>
             <p>{webinar.summary}</p>
             <ul className="edu-meta">
@@ -411,24 +445,39 @@ function WebinarsPanel() {
               <li>
                 <strong>Format</strong> {webinar.format}
               </li>
+              <li>
+                <strong>Points</strong> +{POINT_VALUES.webinar} after full attendance
+              </li>
             </ul>
             {registered ? (
               <>
-                <p className="edu-note">You are registered. The link will arrive on WhatsApp.</p>
-                {attended ? (
+                {attended || outcome === "complete" ? (
                   <p className="edu-points-earned">
                     +{POINT_VALUES.webinar} webinar points collected. Total{" "}
                     {wallet.balance} points.
                   </p>
+                ) : outcome === "left_early" ? (
+                  <p className="edu-note">
+                    You left before the end checkpoint. MediHome points were not credited.
+                  </p>
+                ) : outcome === "missed_join" ? (
+                  <p className="edu-note">
+                    Join closed 5 minutes after start. MediHome points were not credited.
+                  </p>
                 ) : (
-                  <button
-                    type="button"
-                    className="edu-btn edu-btn-primary"
-                    onClick={() => claimAttend(webinar)}
-                  >
-                    I attended — collect {POINT_VALUES.webinar} points
-                  </button>
+                  <p className="edu-note">
+                    You are registered. Join in this app at start (up to 5 minutes late)
+                    and stay until {bounds ? formatIstClock(bounds.endMs) : "the end"} to
+                    earn {POINT_VALUES.webinar} MediHome points.
+                  </p>
                 )}
+                {outcome !== "missed_join" && outcome !== "left_early" && !attended ? (
+                  <a className="edu-btn edu-btn-primary" href={webinarSessionHref(webinar.id)}>
+                    {state === "join_open" || record?.joinedAt
+                      ? "Open session"
+                      : "Session checkpoints"}
+                  </a>
+                ) : null}
               </>
             ) : bookable && open ? (
               <form
@@ -449,7 +498,7 @@ function WebinarsPanel() {
                   {errors.name ? <span>{errors.name}</span> : null}
                 </label>
                 <label>
-                  Mobile (WhatsApp)
+                  Mobile
                   <input
                     name="mobile"
                     maxLength={10}
@@ -487,7 +536,11 @@ function WebinarsPanel() {
                 Register free
               </button>
             ) : (
-              <p className="edu-note">Booking is closed. This webinar is no longer scheduled.</p>
+              <p className="edu-note">
+                {state === "too_late"
+                  ? "This session has started. New joins closed after 5 minutes, and booking is closed."
+                  : "Booking is closed. This webinar is no longer scheduled."}
+              </p>
             )}
           </article>
         );
@@ -668,11 +721,13 @@ function HealthEducation() {
     const { service } = parseAppHash(window.location.hash);
     return service === "webinars" ? "webinars" : "guides";
   });
+  const [sessionId, setSessionId] = useState(() => parseAppHash(window.location.hash).id);
 
   useEffect(() => {
     const syncTab = () => {
-      const { service } = parseAppHash(window.location.hash);
+      const { service, id } = parseAppHash(window.location.hash);
       if (service === "webinars") setTab("webinars");
+      setSessionId(service === "webinars" ? id : "");
     };
     window.addEventListener("hashchange", syncTab);
     return () => window.removeEventListener("hashchange", syncTab);
@@ -708,7 +763,7 @@ function HealthEducation() {
       </div>
 
       {tab === "guides" ? <GuidesPanel /> : null}
-      {tab === "webinars" ? <WebinarsPanel /> : null}
+      {tab === "webinars" ? <WebinarsPanel sessionId={sessionId} /> : null}
       {tab === "quiz" ? <QuizPanel /> : null}
       {tab === "refer" ? <ReferFamily /> : null}
 
@@ -750,7 +805,8 @@ const styles = `
 .edu-meta{margin:0 0 14px;padding:0;list-style:none;color:#34546b;font-size:13px;line-height:1.5}
 .edu-meta li{margin-bottom:4px}
 .edu-meta strong{display:inline-block;min-width:64px;color:#1a6b7a}
-.edu-note{margin:0;padding:10px 12px;border-radius:8px;background:#eaf7ff;color:#143246;font-weight:700}
+.edu-note{margin:0 0 12px;padding:10px 12px;border-radius:8px;background:#eaf7ff;color:#143246;font-weight:700}
+.edu-panel-card > .edu-btn{margin-top:2px}
 .edu-points-earned{margin:0 0 12px;padding:12px 14px;border-radius:10px;background:#0639b8;color:#fff;font-size:15px;font-weight:800;line-height:1.35}
 .edu-form{display:grid;gap:10px}
 .edu-form label{display:grid;gap:4px;font-size:12px;font-weight:700;color:#1a6b7a}
@@ -759,8 +815,20 @@ const styles = `
 .edu-form-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 .edu-btn{appearance:none;min-height:40px;padding:8px 16px;border-radius:10px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
 .edu-btn:disabled{opacity:.45;cursor:not-allowed}
-.edu-btn-primary{border:2px solid #0639b8;background:#0639b8;color:#fff}
+.edu-btn-primary{border:2px solid #0639b8;background:#0639b8;color:#fff;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box}
 .edu-btn-ghost{border:2px solid #1a6b7a;background:#fff;color:#1a6b7a}
+.edu-checks{display:grid;gap:8px;margin:0 0 14px}
+.edu-check{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:10px;background:#e8f4f6}
+.edu-check strong{font-size:12px;letter-spacing:.3px;text-transform:uppercase;color:#1a6b7a}
+.edu-check span{font-size:13px;color:#143246;font-weight:600;line-height:1.4}
+.edu-check.is-done{background:#e8f8ee}
+.edu-check.is-done strong{color:#0f6b3c}
+.edu-check.is-miss{background:#fdecea}
+.edu-check.is-miss strong{color:#b42318}
+.edu-session-room{margin:0 0 14px;padding:16px;border-radius:12px;background:#0b1f3a;color:#fff}
+.edu-session-live{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#9ad7ff}
+.edu-session-room p{color:#d7e8f4}
+.edu-session-clock{margin:10px 0 0;font-size:22px;font-weight:800;color:#fff}
 .edu-prompt{font-size:16px;font-weight:700;color:#143246}
 .edu-options{display:grid;gap:8px;margin-bottom:14px}
 .edu-option{width:100%;padding:12px 14px;border:2px solid #d7e2e9;border-radius:10px;background:#f7fbfc;color:#143246;font:inherit;font-size:14px;font-weight:600;text-align:left;cursor:pointer}

@@ -77,7 +77,7 @@ export function replyTo(rawText) {
 
   if (/\b(webinar|education|quiz|health education)\b/.test(q)) {
     return {
-      text: "Live webinar seats open only after MediHome schedules a session. The app shows a notice when a date is set. Open Health Education to book.",
+      text: "Live webinar seats open only after MediHome schedules a session. Join in the app at start (up to 5 minutes late) and stay until the end to earn MediHome points. Registration alone does not add points.",
       needsStaff: false,
       links: [{ href: "#education?service=webinars", label: "Webinars" }],
     };

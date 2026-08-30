@@ -8,7 +8,9 @@ import {
   cancelWebinar,
   formatWebinarDate,
   isWebinarBookable,
+  joinWindowState,
   scheduleWebinar,
+  webinarSessionBounds,
 } from "./webinars";
 
 export default function AdminWebinars({ webinars, onChange, onError }) {
@@ -46,8 +48,9 @@ export default function AdminWebinars({ webinars, onChange, onError }) {
     <section className="admin-panel" aria-label="Webinar Schedule">
       <h2>Schedule A Live Webinar</h2>
       <p>
-        Customers Can Book A Seat Only After You Set A Date And Time. The App
-        Then Shows A Notification Until They Open Or Dismiss It.
+        Customers Can Book A Seat Only After You Set A Date And Time. They Earn
+        MediHome Points Only If They Join Within 5 Minutes Of Start And Stay
+        Until The Session Ends.
       </p>
       <form className="admin-webinar-form" onSubmit={handleSchedule}>
         <label>
@@ -101,7 +104,17 @@ export default function AdminWebinars({ webinars, onChange, onError }) {
                 <td colSpan="4">No Webinar Is Scheduled. Booking Stays Closed.</td>
               </tr>
             ) : (
-              webinars.map((row) => (
+              webinars.map((row) => {
+                const bounds = webinarSessionBounds(row);
+                const now = Date.now();
+                const bookable = isWebinarBookable(row, today, now);
+                const live =
+                  row.status === "scheduled" &&
+                  bounds &&
+                  now < bounds.endMs &&
+                  !bookable;
+                const state = joinWindowState(row, now);
+                return (
                 <tr key={row.id}>
                   <td>{row.title}</td>
                   <td>
@@ -110,12 +123,16 @@ export default function AdminWebinars({ webinars, onChange, onError }) {
                   <td>
                     {row.status === "cancelled"
                       ? "Cancelled"
-                      : isWebinarBookable(row)
+                      : bookable
                         ? "Open For Booking"
-                        : "Ended"}
+                        : live
+                          ? state === "join_open"
+                            ? "Join Window Open"
+                            : "In Session"
+                          : "Ended"}
                   </td>
                   <td>
-                    {row.status === "scheduled" && isWebinarBookable(row) ? (
+                    {row.status === "scheduled" && bounds && now < bounds.endMs ? (
                       <button
                         type="button"
                         disabled={busy}
@@ -126,7 +143,8 @@ export default function AdminWebinars({ webinars, onChange, onError }) {
                     ) : null}
                   </td>
                 </tr>
-              ))
+              );
+              })
             )}
           </tbody>
         </table>
