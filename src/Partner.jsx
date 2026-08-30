@@ -4,6 +4,7 @@ import { partnerSettlementNote, splitModeLabel } from "./paymentSplit";
 import { shareSettlement } from "./shareSettlement";
 import { isOnlinePayment } from "./paymentMethods";
 import { fetchPartnerJobs, partnerLogin, partnerLogout, partnerSession, patchPartnerJob } from "./partnerApi";
+import { canShowRiderRetailerScan, scanHref } from "./orderQr";
 
 export default function Partner() {
   const session = partnerSession();
@@ -64,6 +65,8 @@ export default function Partner() {
       setError(err.message || "Login Failed.");
     }
   };
+
+  const showScanCol = jobs.some((job) => canShowRiderRetailerScan(job, partner));
 
   if (!token || !partner) {
     return (
@@ -148,12 +151,13 @@ export default function Partner() {
                 <th>Pay</th>
                 <th>Your Share</th>
                 <th>Status</th>
+                {showScanCol ? <th>Scan Delivery</th> : null}
               </tr>
             </thead>
             <tbody>
               {jobs.length === 0 ? (
                 <tr>
-                  <td colSpan="6">
+                  <td colSpan={showScanCol ? 7 : 6}>
                     {loading
                       ? "Loading…"
                       : "No Jobs Yet. Staff Assign Work From #admin."}
@@ -238,6 +242,20 @@ export default function Partner() {
                         ) : null}
                       </td>
                       <td>{job.status || job.trackStatus || "—"}</td>
+                      {showScanCol ? (
+                        <td>
+                          {canShowRiderRetailerScan(job, partner) ? (
+                            <a
+                              className="partner-scan-link"
+                              href={scanHref({ id, step: "pickup", order: job })}
+                            >
+                              Scan Delivery
+                            </a>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                      ) : null}
                     </tr>
                   );
                 })
@@ -280,6 +298,7 @@ const styles = `
 .partner-collect{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .partner-collect button{border:1px solid #1a6b7a;border-radius:6px;background:#1a6b7a;color:#fff;font:inherit;font-size:12px;font-weight:700;padding:4px 8px;cursor:pointer}
 .partner-collect button:disabled{opacity:.6;cursor:wait}
+.partner-scan-link{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:4px 8px;border-radius:6px;background:#1a6b7a;color:#fff;font-size:12px;font-weight:700;text-decoration:none}
 .admin-login{max-width:420px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}

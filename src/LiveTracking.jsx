@@ -18,6 +18,7 @@ import { mapsUrlForPin, normalizePin, osmEmbedUrl } from "./pinLocation";
 import AssignedAgent from "./AssignedAgent";
 import ScanActions from "./ScanActions";
 import OrderFeedbackCta from "./OrderFeedbackCta";
+import { canShowCustomerScanDelivery } from "./orderQr";
 
 function mercatorY(lat) {
   const rad = (lat * Math.PI) / 180;
@@ -175,7 +176,7 @@ function PinCapture({ order, onSaved }) {
   );
 }
 
-export function LiveTrackingPanel({ order, onOrderChange, compact = false, showScan = true }) {
+export function LiveTrackingPanel({ order, onOrderChange, compact = false, showScan }) {
   const [live, setLive] = useState(order);
   const liveRef = useRef(order);
 
@@ -241,7 +242,10 @@ export function LiveTrackingPanel({ order, onOrderChange, compact = false, showS
   return (
     <section className={`live-track${compact ? " is-compact" : ""}`}>
       <AssignedAgent record={live} compact={compact} />
-      {showScan ? <ScanActions order={live} app="customer" /> : null}
+      {showScan === true ||
+      (showScan !== false && canShowCustomerScanDelivery(live)) ? (
+        <ScanActions order={live} app="customer" />
+      ) : null}
       <div className="live-track-head">
         <div>
           <span className="live-kicker">Live tracking</span>

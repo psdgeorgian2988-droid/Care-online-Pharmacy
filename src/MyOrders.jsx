@@ -11,6 +11,7 @@ import { BillButton } from "./OrderBill";
 import OrderFeedbackCta from "./OrderFeedbackCta";
 import { paymentMethodSummary } from "./paymentMethods";
 import { maskMobile } from "./personFields";
+import { canShowCustomerScanDelivery, scanHref } from "./orderQr";
 
 function typeLabel(order) {
   return kindLabel(order?.kind || order?.orderType);
@@ -96,6 +97,7 @@ function MyOrders() {
             order={selectedOrder}
             onOrderChange={handleSelectedChange}
             compact
+            showScan={canShowCustomerScanDelivery(selectedOrder)}
           />
 
           <h3>
@@ -343,12 +345,14 @@ function MyOrders() {
             <a className="order-details-btn" href={trackHref(selectedOrder.id)}>
               Open full live track
             </a>
-            <a
-              className="order-details-btn"
-              href={`#scan?id=${encodeURIComponent(selectedOrder.id)}`}
-            >
-              Scan QR
-            </a>
+            {canShowCustomerScanDelivery(selectedOrder) ? (
+              <a
+                className="order-details-btn"
+                href={scanHref({ id: selectedOrder.id, step: "deliver", order: selectedOrder })}
+              >
+                Scan Delivery
+              </a>
+            ) : null}
             {selectedOrder.ambulanceRequestId ? (
               <a
                 className="order-details-btn"
@@ -451,12 +455,14 @@ function MyOrders() {
                     <a className="order-track-btn" href={trackHref(order.id)}>
                       Track live
                     </a>
-                    <a
-                      className="order-track-btn"
-                      href={`#scan?id=${encodeURIComponent(order.id)}`}
-                    >
-                      Scan QR
-                    </a>
+                    {canShowCustomerScanDelivery(order) ? (
+                      <a
+                        className="order-track-btn"
+                        href={scanHref({ id: order.id, step: "deliver", order })}
+                      >
+                        Scan Delivery
+                      </a>
+                    ) : null}
                     {order.trackCompleted ? (
                       <OrderFeedbackCta order={order} />
                     ) : null}

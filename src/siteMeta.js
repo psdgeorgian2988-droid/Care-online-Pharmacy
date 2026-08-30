@@ -117,9 +117,9 @@ const PAGE_META = {
     description: "Follow your MediHome order or visit on the live PIN map.",
   },
   scan: {
-    title: "Scan Order QR | MediHome",
+    title: "Scan Delivery | MediHome",
     description:
-      "Scan a MediHome order QR to pick up, receive, or open live tracking.",
+      "Scan Delivery is used when a customer receives medicines or a rider receives an order from the retailer.",
   },
   education: {
     title: "Health Education | MediHome",

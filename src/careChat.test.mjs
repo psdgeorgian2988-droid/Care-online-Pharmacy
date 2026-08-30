@@ -16,6 +16,12 @@ test("care replies route medicine, track, ambulance, and human handoff", () => {
     human.links.some((link) => link.href === "tel:+917292094000"),
     true
   );
+  const scanHelp = replyTo("How do I scan the QR?");
+  assert.match(scanHelp.text, /Scan Delivery/);
+  assert.equal(
+    scanHelp.links.some((link) => String(link.href).startsWith("#scan")),
+    false
+  );
   const welcome = welcomeMessage();
   assert.match(welcome.text, /72920 94000/);
   assert.equal(welcome.links[0].href, "tel:+917292094000");

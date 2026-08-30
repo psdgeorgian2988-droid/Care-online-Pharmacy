@@ -57,7 +57,6 @@ const NAV_LINKS = [
 
 const ACCOUNT_LINKS = [
   { href: "#myorders", label: "My Orders" },
-  { href: "#scan?step=deliver", label: "Scan Delivery" },
   { href: "#profile", label: "Profile" },
 ];
 
@@ -70,8 +69,6 @@ const BOTTOM_LINKS = [
 const OPS_LINKS = [
   { href: "#admin", label: "Staff Orders" },
   { href: "#partner", label: "Partner Desk" },
-  { href: "#scan?step=pack", label: "Scan Packing" },
-  { href: "#scan?step=pickup", label: "Scan Pickup" },
 ];
 
 const HOME_WHATSAPP_URL = `https://wa.me/${CARE_WHATSAPP}?text=${encodeURIComponent(
@@ -306,11 +303,6 @@ function HomePage() {
               <span>Request now</span>
             </a>
           ) : null}
-          <a className="home-service-card" href="#scan?step=deliver">
-            <h2>Scan Delivery</h2>
-            <p>Scan the order QR when medicines or a visit arrive.</p>
-            <span>Open scanner</span>
-          </a>
           {features.reports !== false ? (
             <a className="home-service-card" href="#reports">
               <h2>Reports</h2>
