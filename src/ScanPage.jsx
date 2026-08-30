@@ -52,6 +52,39 @@ function ScanDeliveryComingSoon() {
   );
 }
 
+function scanAccessSubtitle(app, kind) {
+  if (app === "partner") {
+    if (kind === "lab") return "Scan when you collect this lab sample.";
+    if (kind === "homecare") return "Scan when you start or complete this home visit.";
+    return "Scan at the retailer to receive this medicine order.";
+  }
+  if (app === "customer") {
+    if (kind === "radiology") {
+      return "Scan this QR at the assigned imaging centre before your test starts.";
+    }
+    if (kind === "lab") return "Scan when the collected sample has been received.";
+    if (kind === "homecare") {
+      return "Scan when the home-care partner arrives and serves you.";
+    }
+    return "Scan when this medicine order is handed to you.";
+  }
+  return "Staff controls for packing, partner checkpoints, and customer handover.";
+}
+
+function scanCheckpointPrompt(kind, next, serviceType) {
+  const title = scanStepTitle(kind, next, serviceType);
+  if (kind === "radiology") {
+    return `Checkpoint ${title} — confirm you are at the assigned imaging centre before the test starts.`;
+  }
+  if (kind === "homecare") {
+    return `Checkpoint ${title} — confirm this home visit matches the booking.`;
+  }
+  if (kind === "lab") {
+    return `Checkpoint ${title} — confirm this sample matches the booking.`;
+  }
+  return `Checkpoint ${title} — confirm the packed medicines match this order.`;
+}
+
 function scanBlockedCopy(app) {
   if (app === "partner") {
     return "Scan Delivery is only available for retailer medicine pickup, home-care visit scans, or lab collection start.";
@@ -314,13 +347,11 @@ export default function ScanPage({ scanId, scanStep }) {
           <h1>{heading}</h1>
           <p className="orders-subtitle">
             {accessOk
-              ? app === "partner"
-                ? "Scan at the retailer to receive this medicine order."
-                : app === "customer"
-                  ? "Scan when this medicine order is handed to you."
-                  : scanStepHint(kind || "medicine", requestedStep || next, serviceType)
+              ? app === "admin"
+                ? scanStepHint(kind || "medicine", requestedStep || next, serviceType)
+                : scanAccessSubtitle(app, kind)
               : app === "admin"
-                ? "Staff controls for packing, retailer pickup, and customer medicine receipt."
+                ? "Staff controls for packing, partner checkpoints, and customer handover."
                 : scanBlockedCopy(app)}
           </p>
         </div>
@@ -358,7 +389,7 @@ export default function ScanPage({ scanId, scanStep }) {
                   ? "All three checks are already complete."
                   : stepMismatch
                     ? `This screen is ${scanStepTitle(kind, requestedStep, serviceType)}. Current check is ${checkpointLabel(next)}.`
-                    : `Checkpoint ${scanStepTitle(kind, next, serviceType)} — confirm the packed medicines match this order.`}
+                    : scanCheckpointPrompt(kind, next, serviceType)}
             </p>
           )}
 
