@@ -5,7 +5,6 @@ import {
   checkpointState,
   nextQrScanAction,
   orderIdOf,
-  orderQrPath,
   orderQrUrl,
   trackQrPath,
 } from "./orderQr";
@@ -84,9 +83,9 @@ export default function OrderQr({ order, compact = false }) {
           </p>
         ) : null}
         <p>
-          Scan this same QR at packing, pickup, and delivery. If the packed
-          medicines or service do not match the order, stop and restart
-          redelivery of the correct items.
+          Scan Delivery is used when the rider receives this medicine order from
+          the retailer, and again when the customer receives it. Staff can open
+          the same checks from the admin desk.
         </p>
         <p>
           Next check:{" "}
@@ -101,7 +100,6 @@ export default function OrderQr({ order, compact = false }) {
         </p>
         <div className="order-qr-links">
           <a href={trackQrPath(id)}>Track live</a>
-          <a href={orderQrPath(id, order)}>Open scan</a>
         </div>
       </aside>
     </>

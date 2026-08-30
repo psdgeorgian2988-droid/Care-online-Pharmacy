@@ -50,12 +50,9 @@ export function replyTo(rawText) {
 
   if (/\b(qr|scan|pickup|received|barcode)\b/.test(q)) {
     return {
-      text: "Every order has a QR. Partners scan it at pickup. Customers scan the same code to receive and to open live tracking.",
+      text: "Scan Delivery appears only when you receive a medicine order, or when a rider receives that order from the retailer. Open the live order from My Orders. Staff can still open the scan controls from the admin desk.",
       needsStaff: false,
-      links: [
-        { href: "#scan", label: "Scan QR" },
-        { href: "#myorders", label: "My Orders" },
-      ],
+      links: [{ href: "#myorders", label: "My Orders" }],
     };
   }
 

@@ -382,11 +382,19 @@ function Admin() {
             <h1>Staff Desk</h1>
             <p>
               Sales, Feature Switches, Growth Charts, And Partner Assignment.
+              Scan Delivery Controls Stay On This Desk. Customers And Riders Only
+              See Scan Delivery While Receiving A Medicine Order.
             </p>
           </div>
           <div className="admin-hero-actions">
             <a className="admin-scan-link" href="#scan?step=pack">
               Scan Packing
+            </a>
+            <a className="admin-scan-link" href="#scan?step=pickup">
+              Scan Pickup
+            </a>
+            <a className="admin-scan-link" href="#scan?step=deliver">
+              Scan Delivery
             </a>
             <button type="button" onClick={loadDesk} disabled={loading}>
               {loading ? "Refreshing…" : "Refresh"}
@@ -965,8 +973,16 @@ function Admin() {
                       </td>
                       <td>
                         <a href={trackHref(id)}>Live Track</a>
-                        {" · "}
-                        <a href={`#scan?id=${encodeURIComponent(id)}&step=pack`}>Scan Packing</a>
+                        {String(kind) === "medicine" ? (
+                          <>
+                            {" · "}
+                            <a href={`#scan?id=${encodeURIComponent(id)}&step=pack`}>Scan Packing</a>
+                            {" · "}
+                            <a href={`#scan?id=${encodeURIComponent(id)}&step=pickup`}>Scan Pickup</a>
+                            {" · "}
+                            <a href={`#scan?id=${encodeURIComponent(id)}&step=deliver`}>Scan Delivery</a>
+                          </>
+                        ) : null}
                       </td>
                     </tr>
                   );

@@ -3,10 +3,11 @@ import { orderIdOf, scanHref, scanLinksForApp } from "./orderQr";
 export default function ScanActions({
   order,
   app = "customer",
+  partner,
   className = "",
 }) {
   const id = orderIdOf(order);
-  const links = scanLinksForApp(app, order || {});
+  const links = scanLinksForApp(app, order || {}, partner);
   return (
     <>
       <style>{styles}</style>

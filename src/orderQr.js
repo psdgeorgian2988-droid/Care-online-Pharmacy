@@ -209,24 +209,62 @@ export function scanPageHeading(step, kind, serviceType) {
   return scanStepTitle(kind, checkpoint, serviceType);
 }
 
-export function scanLinksForApp(app, order) {
-  const kind = String(order?.kind || order?.orderType || "medicine");
-  const serviceType = order?.serviceType || "";
-  const next = nextQrScanAction(order);
-  const title = (step) => scanStepTitle(kind, step, serviceType);
+export function isMedicineOrder(order) {
+  const kind = String(order?.kind || order?.orderType || "").toLowerCase();
+  if (!kind) return Boolean(orderIdOf(order));
+  return kind === "medicine";
+}
+
+export function isMedicineRiderPartner(partner) {
+  if (!partner || typeof partner !== "object") return false;
+  const kinds = Array.isArray(partner.kinds) ? partner.kinds : [];
+  const role = String(partner.role || "").toLowerCase();
+  return kinds.includes("medicine") || role.includes("medicine") || /\brider\b/.test(role);
+}
+
+export function scanActorFromSessions({ staffToken = "", partner = null } = {}) {
+  if (String(staffToken || "").trim()) return "admin";
+  if (partner && (partner.id || partner.role || (Array.isArray(partner.kinds) && partner.kinds.length))) {
+    return "partner";
+  }
+  return "customer";
+}
+
+export function canShowCustomerScanDelivery(order) {
+  return Boolean(orderIdOf(order)) && isMedicineOrder(order) && nextQrScanAction(order) === "deliver";
+}
+
+export function canShowRiderRetailerScan(order, partner) {
+  if (partner && !isMedicineRiderPartner(partner)) return false;
+  return Boolean(orderIdOf(order)) && isMedicineOrder(order) && nextQrScanAction(order) === "pickup";
+}
+
+export function canUseScanDelivery({ app = "customer", order, step, partner } = {}) {
+  const checkpoint = normalizeScanStep(step);
+  if (app === "admin") return true;
+  if (app === "partner") {
+    if (!canShowRiderRetailerScan(order, partner)) return false;
+    return !checkpoint || checkpoint === "pickup";
+  }
+  if (!canShowCustomerScanDelivery(order)) return false;
+  return !checkpoint || checkpoint === "deliver";
+}
+
+export function scanLinksForApp(app, order, partner) {
   if (app === "admin") {
-    return [{ step: "pickup", label: title("pickup") }];
+    if (order && orderIdOf(order) && !isMedicineOrder(order)) return [];
+    return [
+      { step: "pack", label: "Scan Packing" },
+      { step: "pickup", label: "Scan Pickup" },
+      { step: "deliver", label: "Scan Delivery" },
+    ];
   }
   if (app === "partner") {
-    if (next === "already_done") {
-      return [{ step: "deliver", label: "Open Scan" }];
-    }
-    if (next === "pack" || next === "pickup") {
-      return [{ step: "pickup", label: title("pickup") }];
-    }
-    return [{ step: "deliver", label: title("deliver") }];
+    if (!canShowRiderRetailerScan(order, partner)) return [];
+    return [{ step: "pickup", label: "Scan Delivery" }];
   }
-  return [{ step: "deliver", label: title("deliver") }];
+  if (!canShowCustomerScanDelivery(order)) return [];
+  return [{ step: "deliver", label: "Scan Delivery" }];
 }
 
 export function trackQrPath(id) {

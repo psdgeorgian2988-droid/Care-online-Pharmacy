@@ -1,10 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  canShowCustomerScanDelivery,
+  canShowRiderRetailerScan,
+  canUseScanDelivery,
   nextQrScanAction,
   parseOrderQr,
   qrScanPatch,
   orderQrPath,
+  scanActorFromSessions,
+  scanLinksForApp,
 } from "./orderQr.js";
 
 test("QR payload and URL parsing recover the order id", () => {
@@ -33,6 +38,82 @@ test("first scan is partner pickup, second scan is customer delivery", () => {
   assert.equal(delivered.action, "deliver");
   assert.equal(delivered.patch.trackStatus, "done");
   assert.equal(delivered.patch.status, "Delivered");
+});
+
+test("Scan Delivery links stay on customer receive, rider retailer receive, and admin", () => {
+  const waitingPickup = { id: "MH-1", kind: "medicine", trackStatus: "confirmed" };
+  const waitingReceive = {
+    id: "MH-1",
+    kind: "medicine",
+    checkPickupAt: 1,
+    qrPickedAt: 1,
+    trackStatus: "on_the_way",
+  };
+  const labOnTheWay = {
+    id: "MH-LAB-1",
+    kind: "lab",
+    checkPickupAt: 1,
+    qrPickedAt: 1,
+    trackStatus: "on_the_way",
+  };
+  const rider = { id: "p1", role: "Medicine rider", kinds: ["medicine"] };
+  const labPartner = { id: "p2", role: "Lab", kinds: ["lab"] };
+
+  assert.equal(canShowRiderRetailerScan(waitingPickup, rider), true);
+  assert.equal(canShowCustomerScanDelivery(waitingPickup), false);
+  assert.equal(canShowCustomerScanDelivery(waitingReceive), true);
+  assert.equal(canShowRiderRetailerScan(waitingReceive, rider), false);
+  assert.equal(canShowCustomerScanDelivery(labOnTheWay), false);
+  assert.equal(canShowRiderRetailerScan(waitingPickup, labPartner), false);
+
+  assert.deepEqual(
+    scanLinksForApp("customer", waitingReceive).map((row) => row.label),
+    ["Scan Delivery"]
+  );
+  assert.deepEqual(scanLinksForApp("customer", waitingPickup), []);
+  assert.deepEqual(scanLinksForApp("customer", labOnTheWay), []);
+  assert.deepEqual(
+    scanLinksForApp("partner", waitingPickup, rider).map((row) => [row.step, row.label]),
+    [["pickup", "Scan Delivery"]]
+  );
+  assert.deepEqual(scanLinksForApp("partner", waitingReceive, rider), []);
+  assert.deepEqual(scanLinksForApp("admin", waitingPickup).map((row) => row.step), [
+    "pack",
+    "pickup",
+    "deliver",
+  ]);
+  assert.deepEqual(scanLinksForApp("admin", labOnTheWay), []);
+
+  assert.equal(
+    canUseScanDelivery({ app: "customer", order: waitingReceive, step: "deliver" }),
+    true
+  );
+  assert.equal(
+    canUseScanDelivery({ app: "customer", order: waitingPickup, step: "deliver" }),
+    false
+  );
+  assert.equal(
+    canUseScanDelivery({
+      app: "partner",
+      order: waitingPickup,
+      step: "pickup",
+      partner: rider,
+    }),
+    true
+  );
+  assert.equal(
+    canUseScanDelivery({
+      app: "partner",
+      order: waitingReceive,
+      step: "deliver",
+      partner: rider,
+    }),
+    false
+  );
+  assert.equal(canUseScanDelivery({ app: "admin", order: labOnTheWay }), true);
+  assert.equal(scanActorFromSessions({ staffToken: "t" }), "admin");
+  assert.equal(scanActorFromSessions({ partner: rider }), "partner");
+  assert.equal(scanActorFromSessions({}), "customer");
 });
 
 test("home care delivery marks completed, and a done order is not scanned again", () => {

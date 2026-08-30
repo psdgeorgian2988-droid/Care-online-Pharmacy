@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { staffToken } from "./adminApi";
 import { LiveTrackingPanel } from "./LiveTracking";
 import { CheckpointStrip } from "./OrderQr";
 import {
@@ -6,8 +7,10 @@ import {
   persistOrder,
   resolveOrderById,
 } from "./orderTracking";
+import { partnerSession } from "./partnerApi";
 import { normalizePin } from "./pinLocation";
 import {
+  canUseScanDelivery,
   checkpointLabel,
   expectedItems,
   mismatchRedeliveryPatch,
@@ -17,10 +20,32 @@ import {
   qrMatchesOrder,
   qrScanPatch,
   scanActionLabel,
+  scanActorFromSessions,
   scanPageHeading,
   scanStepHint,
   scanStepTitle,
 } from "./orderQr";
+
+function currentScanContext() {
+  const partner = partnerSession().partner;
+  return {
+    app: scanActorFromSessions({
+      staffToken: staffToken(),
+      partner,
+    }),
+    partner,
+  };
+}
+
+function scanBlockedCopy(app) {
+  if (app === "partner") {
+    return "Scan Delivery is only available while you receive a medicine order from the retailer.";
+  }
+  if (app === "admin") {
+    return "Scan Delivery controls on this page are for staff packing, rider retailer pickup, and customer medicine receipt.";
+  }
+  return "Scan Delivery is only available while you receive a medicine order. Open that order from My Orders.";
+}
 
 async function resolveOrder(id) {
   return resolveOrderById(id);
@@ -28,6 +53,7 @@ async function resolveOrder(id) {
 
 export default function ScanPage({ scanId, scanStep }) {
   const requestedStep = normalizeScanStep(scanStep);
+  const { app, partner } = currentScanContext();
   const [manual, setManual] = useState("");
   const [hint, setHint] = useState("");
   const [error, setError] = useState("");
@@ -35,6 +61,7 @@ export default function ScanPage({ scanId, scanStep }) {
   const [result, setResult] = useState(null);
   const videoRef = useRef(null);
   const applied = useRef("");
+  const allowBareScanner = app === "admin";
 
   const loadOrder = async (raw) => {
     const meta = parseOrderQrMeta(raw);
@@ -54,16 +81,26 @@ export default function ScanPage({ scanId, scanStep }) {
         );
         return;
       }
+      const allowed = canUseScanDelivery({
+        app,
+        order: found,
+        step: requestedStep,
+        partner,
+      });
       const match = qrMatchesOrder(found, id, meta.contents);
       applied.current = id;
       setResult({
         order: found,
-        action: match.ok ? "review" : "mismatch",
+        action: allowed ? (match.ok ? "review" : "mismatch") : "blocked",
         scannedId: id,
         scannedSig: meta.contents,
-        autoMismatch: !match.ok,
+        autoMismatch: allowed ? !match.ok : false,
         mismatchReason: match.reason,
+        blocked: !allowed,
       });
+      if (!allowed) {
+        setError(scanBlockedCopy(app));
+      }
       const nextHash = requestedStep
         ? `#scan?id=${encodeURIComponent(id)}&step=${requestedStep}`
         : `#scan?id=${encodeURIComponent(id)}`;
@@ -79,6 +116,17 @@ export default function ScanPage({ scanId, scanStep }) {
 
   const applyDecision = async (matched) => {
     if (!result?.order) return;
+    if (
+      !canUseScanDelivery({
+        app,
+        order: result.order,
+        step: requestedStep,
+        partner,
+      })
+    ) {
+      setError(scanBlockedCopy(app));
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -117,7 +165,7 @@ export default function ScanPage({ scanId, scanStep }) {
   }, [scanId]);
 
   useEffect(() => {
-    if (result?.order || scanId) return undefined;
+    if (result?.order || scanId || !allowBareScanner) return undefined;
     const video = videoRef.current;
     if (!video || !navigator.mediaDevices?.getUserMedia) {
       setHint("Use the file picker or type the order id if the camera is not available.");
@@ -168,12 +216,16 @@ export default function ScanPage({ scanId, scanStep }) {
       window.clearTimeout(timer);
       stream?.getTracks().forEach((track) => track.stop());
     };
-  }, [result?.order, scanId]);
+  }, [result?.order, scanId, allowBareScanner]);
 
   const onFile = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    if (!allowBareScanner) {
+      setError(scanBlockedCopy(app));
+      return;
+    }
     if (typeof window.BarcodeDetector !== "function") {
       setError("This browser cannot read a QR photo. Type the order id instead.");
       return;
@@ -199,32 +251,61 @@ export default function ScanPage({ scanId, scanStep }) {
   const awaitingDecision = Boolean(result?.order && !result?.decided);
   const kind = result?.order?.kind || "";
   const serviceType = result?.order?.serviceType || "";
-  const heading = scanPageHeading(requestedStep, kind, serviceType);
+  const heading =
+    requestedStep || result?.order
+      ? scanPageHeading(requestedStep || next, kind || "medicine", serviceType)
+      : "Scan Delivery";
   const stepMismatch =
     Boolean(requestedStep && next && next !== "already_done" && next !== requestedStep);
-  const canConfirmMatch = awaitingDecision && next !== "already_done" && !result?.autoMismatch && !stepMismatch;
+  const accessOk = Boolean(
+    result?.order &&
+      !result?.blocked &&
+      canUseScanDelivery({
+        app,
+        order: result.order,
+        step: requestedStep,
+        partner,
+      })
+  );
+  const canConfirmMatch =
+    accessOk &&
+    awaitingDecision &&
+    next !== "already_done" &&
+    !result?.autoMismatch &&
+    !stepMismatch;
+  const backHref = app === "partner" ? "#partner" : app === "admin" ? "#admin" : "#myorders";
+  const backLabel =
+    app === "partner" ? "Partner Desk" : app === "admin" ? "Staff Desk" : "My Orders";
 
   return (
     <div className="my-orders-page live-track-page">
       <style>{styles}</style>
       <div className="orders-page-header">
         <div>
-          <span className="orders-eyebrow">QR SCAN</span>
+          <span className="orders-eyebrow">SCAN DELIVERY</span>
           <h1>{heading}</h1>
           <p className="orders-subtitle">
-            {requestedStep
-              ? scanStepHint(kind || "medicine", requestedStep, serviceType)
-              : "Staff scan packing, partners scan pickup, and customers scan delivery. If the medicines or service do not match the order, stop and restart redelivery of the correct items."}
+            {accessOk
+              ? app === "partner"
+                ? "Scan at the retailer to receive this medicine order."
+                : app === "customer"
+                  ? "Scan when this medicine order is handed to you."
+                  : scanStepHint(kind || "medicine", requestedStep || next, serviceType)
+              : app === "admin"
+                ? "Staff controls for packing, retailer pickup, and customer medicine receipt."
+                : scanBlockedCopy(app)}
           </p>
         </div>
-        <a className="orders-home-link" href="#myorders">
-          My Orders
+        <a className="orders-home-link" href={backHref}>
+          {backLabel}
         </a>
       </div>
 
       {result?.order ? (
         <div className="order-details-page live-track-wrap">
-          {result.decided ? (
+          {result.blocked ? (
+            <p className="scan-result is-blocked">{scanBlockedCopy(app)}</p>
+          ) : result.decided ? (
             <p className={`scan-result is-${result.action}`}>
               {scanActionLabel(result.action)}
               {result.action === "pack"
@@ -248,8 +329,8 @@ export default function ScanPage({ scanId, scanStep }) {
                 : next === "already_done"
                   ? "All three checks are already complete."
                   : stepMismatch
-                    ? `This screen is ${scanStepTitle(kind, requestedStep, serviceType)}. Current check is ${checkpointLabel(next)}. Use the matching app: staff packing, partner pickup, customer or service-provider delivery.`
-                    : `Checkpoint ${scanStepTitle(kind, next, serviceType)} — confirm the packed medicines or service match this order.`}
+                    ? `This screen is ${scanStepTitle(kind, requestedStep, serviceType)}. Current check is ${checkpointLabel(next)}.`
+                    : `Checkpoint ${scanStepTitle(kind, next, serviceType)} — confirm the packed medicines match this order.`}
             </p>
           )}
 
@@ -278,7 +359,7 @@ export default function ScanPage({ scanId, scanStep }) {
             )}
           </div>
 
-          {awaitingDecision && next !== "already_done" ? (
+          {accessOk && awaitingDecision && next !== "already_done" ? (
             <div className="scan-decide">
               {canConfirmMatch ? (
                 <button
@@ -310,20 +391,26 @@ export default function ScanPage({ scanId, scanStep }) {
             }
             showScan={false}
           />
-          <button
-            type="button"
-            className="service-submit scan-again"
-            onClick={() => {
-              applied.current = "";
-              setResult(null);
-              window.history.replaceState(null, "", "#scan");
-              window.dispatchEvent(new HashChangeEvent("hashchange"));
-            }}
-          >
-            Scan another QR
-          </button>
+          {allowBareScanner ? (
+            <button
+              type="button"
+              className="service-submit scan-again"
+              onClick={() => {
+                applied.current = "";
+                setResult(null);
+                window.history.replaceState(null, "", "#scan");
+                window.dispatchEvent(new HashChangeEvent("hashchange"));
+              }}
+            >
+              Scan Another QR
+            </button>
+          ) : (
+            <a className="service-submit scan-again" href={backHref}>
+              {backLabel}
+            </a>
+          )}
         </div>
-      ) : (
+      ) : allowBareScanner ? (
         <div className="scan-panel">
           <video ref={videoRef} playsInline muted autoPlay className="scan-video" />
           <p>{busy ? "Opening this order…" : hint || "Point the camera at the order QR."}</p>
@@ -353,6 +440,14 @@ export default function ScanPage({ scanId, scanStep }) {
             </div>
           </form>
         </div>
+      ) : (
+        <div className="scan-panel">
+          <p>{busy ? "Opening this order…" : scanBlockedCopy(app)}</p>
+          {error ? <p className="scan-error">{error}</p> : null}
+          <a className="scan-file" href={backHref}>
+            {backLabel}
+          </a>
+        </div>
       )}
     </div>
   );
@@ -376,7 +471,7 @@ const styles = `
 .scan-result.is-deliver{background:#e5f8ee;color:#1c9b61}
 .scan-result.is-already_done{background:#fff7e8;color:#b36b00}
 .scan-result.is-review{background:#e8f4f6;color:#1a6b7a}
-.scan-result.is-mismatch{background:#fdecec;color:#b42318}
+.scan-result.is-mismatch,.scan-result.is-blocked{background:#fdecec;color:#b42318}
 .scan-redeliver{margin:0 0 10px;color:#b42318;font-weight:700}
 .scan-items{margin:0 0 12px;padding:12px;border:1px solid #e4ecef;border-radius:10px;background:#fff;text-align:left}
 .scan-items h2{margin:0 0 8px;font-size:14px}
@@ -386,5 +481,5 @@ const styles = `
 .scan-match,.scan-mismatch{border:none;border-radius:8px;color:#fff;font:inherit;font-weight:800;padding:10px 12px;cursor:pointer}
 .scan-match{background:#1c9b61}
 .scan-mismatch{background:#b42318}
-.scan-again{display:block;margin:14px auto 0}
+.scan-again{display:block;margin:14px auto 0;width:fit-content;text-decoration:none;text-align:center}
 `;
