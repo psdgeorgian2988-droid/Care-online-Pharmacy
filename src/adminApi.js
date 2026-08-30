@@ -82,17 +82,30 @@ export async function createStaffPartner(body) {
   );
 }
 
-export async function setStaffPartnerLogin(id, body) {
+export async function resetStaffPartnerPassword(id) {
   return parseResponse(
-    await fetch(`/api/admin/partners/${encodeURIComponent(id)}/login`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${staffToken()}`,
-      },
-      body: JSON.stringify(body),
+    await fetch(`/api/admin/partners/${encodeURIComponent(id)}/reset-password`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${staffToken()}` },
     })
   );
+}
+
+export function partnerDocumentUrl(id, kind) {
+  return `/api/admin/partners/${encodeURIComponent(id)}/document/${encodeURIComponent(kind)}`;
+}
+
+export async function openStaffPartnerDocument(id, kind) {
+  const response = await fetch(partnerDocumentUrl(id, kind), {
+    headers: { Authorization: `Bearer ${staffToken()}` },
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || "Document not found.");
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank", "noopener");
 }
 
 export async function fetchPublicFeatures() {
