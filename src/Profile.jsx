@@ -273,8 +273,8 @@ function Profile() {
         <section className="profile-points-card">
           <h2>Your MediHome points</h2>
           <p>
-            Webinar +{POINT_VALUES.webinar} · Quiz +{POINT_VALUES.quiz} · Family
-            member +{POINT_VALUES.familyMember}.
+            Webinar +{POINT_VALUES.webinar} after full attendance · Quiz +
+            {POINT_VALUES.quiz} · Family member +{POINT_VALUES.familyMember}.
           </p>
           {wallet.ledger.length ? (
             <ul className="profile-ledger">
