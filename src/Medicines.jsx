@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
-import { BillButton } from "./OrderBill";
+import { BillButton } from "./OrderBill.jsx";
 import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import { buildIndiaCombos } from "./indiaMedicineCombos";

@@ -1,3 +1,4 @@
+import { apiFetch } from "./apiBase.js";
 import { resolveCollector, splitPayment } from "./paymentSplit.js";
 import { isOnlinePayment, validatePaymentDetails } from "./paymentMethods.js";
 import {
@@ -28,9 +29,9 @@ async function parseResponse(response) {
   return data;
 }
 
-export async function fetchPaymentConfig() {
+export async function apiFetchPaymentConfig() {
   try {
-    return await parseResponse(await fetch("/api/payments/config"));
+    return await parseResponse(await apiFetch("/api/payments/config"));
   } catch {
     return { enabled: false, keyId: "", testMode: true };
   }
@@ -38,7 +39,7 @@ export async function fetchPaymentConfig() {
 
 export async function createPaymentOrder(payload) {
   return parseResponse(
-    await fetch("/api/payments/create-order", {
+    await apiFetch("/api/payments/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -48,7 +49,7 @@ export async function createPaymentOrder(payload) {
 
 export async function verifyPayment(payload) {
   return parseResponse(
-    await fetch("/api/payments/verify", {
+    await apiFetch("/api/payments/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -58,7 +59,7 @@ export async function verifyPayment(payload) {
 
 export async function confirmTestPayment(payload) {
   return parseResponse(
-    await fetch("/api/payments/test-confirm", {
+    await apiFetch("/api/payments/test-confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

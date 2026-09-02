@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import PersonFields from "./PersonFields";
+import PersonFields from "./PersonFields.jsx";
 import {
   PROFILE_KEY,
   useLoginSession,

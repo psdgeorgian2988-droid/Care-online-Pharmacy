@@ -7,7 +7,6 @@ import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
-import { BillButton } from "./OrderBill";
 import { DIAGNOSTIC_LABS, IMAGING_CENTRES } from "./diagnosticPartners";
 import { paymentMethodSummary } from "./paymentMethods";
 import { maskMobile } from "./personFields";
@@ -571,7 +570,6 @@ function LabTests() {
               Save this booking ID. Track the assigned partner live toward your PIN.
             </p>
             <div className="confirm-actions">
-              <BillButton order={booking} />
               <button
                 type="button"
                 className="service-submit"

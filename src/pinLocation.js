@@ -1,3 +1,5 @@
+import { apiFetch } from "./apiBase.js";
+
 const PIN3 = {
   110: [28.6139, 77.209, "New Delhi"],
   121: [28.4089, 77.3178, "Faridabad"],
@@ -300,7 +302,7 @@ export async function lookupPinDirectory(pin) {
   if (!/^\d{6}$/.test(code)) return null;
   if (pinDirectoryCache.has(code)) return pinDirectoryCache.get(code);
   try {
-    const response = await fetch(`/api/pincode/${code}`);
+    const response = await apiFetch(`/api/pincode/${code}`);
     if (!response.ok) {
       pinDirectoryCache.set(code, null);
       return null;
@@ -379,7 +381,7 @@ function readBrowserLocation() {
 
 async function fetchNearestPin(lat, lng) {
   try {
-    const response = await fetch(
+    const response = await apiFetch(
       `/api/pincode/near?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`
     );
     if (!response.ok) return null;

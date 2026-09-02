@@ -7,7 +7,7 @@ import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
-import { BillButton } from "./OrderBill";
+import { BillButton } from "./OrderBill.jsx";
 import BookingFlow from "./BookingFlow";
 import {
   applyResolvedPin,

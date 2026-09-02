@@ -1,3 +1,4 @@
+import { apiFetch } from "./apiBase.js";
 import { useEffect, useState } from "react";
 import { DEFAULT_FEATURES, mergeFeatures } from "./salesReport";
 import { cacheWebinars, readCachedWebinars, WEBINAR_EVENT } from "./webinars";
@@ -23,7 +24,7 @@ function cacheFeatures(features) {
 }
 
 export async function fetchPublicFeatures() {
-  const data = await fetch("/api/features").then((res) => res.json());
+  const data = await apiFetch("/api/features").then((res) => res.json());
   const features = mergeFeatures(data.features);
   cacheFeatures(features);
   cacheWebinars(data.webinars);

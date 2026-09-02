@@ -7,7 +7,7 @@ import {
   trackHref,
 } from "./orderTracking";
 import PinGpsBlock from "./PinGpsBlock";
-import { BillButton } from "./OrderBill";
+import { BillButton } from "./OrderBill.jsx";
 import OrderFeedbackCta from "./OrderFeedbackCta";
 import { paymentMethodSummary } from "./paymentMethods";
 import { maskMobile } from "./personFields";

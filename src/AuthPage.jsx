@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import AddressFields from "./AddressFields";
-import PersonFields from "./PersonFields";
+import AddressFields from "./AddressFields.jsx";
+import PersonFields from "./PersonFields.jsx";
 import {
   emptyAddress,
   pickAddress,

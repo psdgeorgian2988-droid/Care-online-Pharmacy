@@ -3,7 +3,7 @@ import { staffToken } from "./adminApi";
 import ComingSoon from "./ComingSoon";
 import { useFeatures } from "./featureFlags";
 import { LiveTrackingPanel } from "./LiveTracking";
-import { CheckpointStrip } from "./OrderQr";
+import { CheckpointStrip } from "./OrderQr.jsx";
 import {
   ensureTracking,
   persistOrder,

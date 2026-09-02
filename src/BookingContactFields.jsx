@@ -1,4 +1,4 @@
-import AddressFields from "./AddressFields";
+import AddressFields from "./AddressFields.jsx";
 import AutofillTrap from "./AutofillTrap";
 import { isOtherBooking, shouldAskBookingDetails } from "./bookingFor";
 import { GENDER_OPTIONS, normalizeAge } from "./personFields";

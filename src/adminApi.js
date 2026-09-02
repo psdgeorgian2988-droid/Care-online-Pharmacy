@@ -1,3 +1,5 @@
+import { apiFetch } from "./apiBase.js";
+
 const TOKEN_KEY = "mediHomeStaffToken";
 
 export function staffToken() {
@@ -27,7 +29,7 @@ async function parseResponse(response) {
 
 export async function publishOrder(record) {
   try {
-    await fetch("/api/orders", {
+    await apiFetch("/api/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(record),
@@ -39,7 +41,7 @@ export async function publishOrder(record) {
 
 export async function staffLogin(user, password) {
   const data = await parseResponse(
-    await fetch("/api/admin/login", {
+    await apiFetch("/api/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user, password }),
@@ -55,7 +57,7 @@ export function staffLogout() {
 
 export async function fetchStaffOrders() {
   return parseResponse(
-    await fetch("/api/admin/orders", {
+    await apiFetch("/api/admin/orders", {
       headers: { Authorization: `Bearer ${staffToken()}` },
     })
   );
@@ -63,7 +65,7 @@ export async function fetchStaffOrders() {
 
 export async function fetchStaffPartners() {
   return parseResponse(
-    await fetch("/api/admin/partners", {
+    await apiFetch("/api/admin/partners", {
       headers: { Authorization: `Bearer ${staffToken()}` },
     })
   );
@@ -71,7 +73,7 @@ export async function fetchStaffPartners() {
 
 export async function createStaffPartner(body) {
   return parseResponse(
-    await fetch("/api/admin/partners", {
+    await apiFetch("/api/admin/partners", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -84,7 +86,7 @@ export async function createStaffPartner(body) {
 
 export async function setStaffPartnerLogin(id, body) {
   return parseResponse(
-    await fetch(`/api/admin/partners/${encodeURIComponent(id)}/login`, {
+    await apiFetch(`/api/admin/partners/${encodeURIComponent(id)}/login`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -96,12 +98,12 @@ export async function setStaffPartnerLogin(id, body) {
 }
 
 export async function fetchPublicFeatures() {
-  return parseResponse(await fetch("/api/features"));
+  return parseResponse(await apiFetch("/api/features"));
 }
 
 export async function fetchStaffSettings() {
   return parseResponse(
-    await fetch("/api/admin/settings", {
+    await apiFetch("/api/admin/settings", {
       headers: { Authorization: `Bearer ${staffToken()}` },
     })
   );
@@ -109,7 +111,7 @@ export async function fetchStaffSettings() {
 
 export async function patchStaffSettings(patch) {
   return parseResponse(
-    await fetch("/api/admin/settings", {
+    await apiFetch("/api/admin/settings", {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -122,7 +124,7 @@ export async function patchStaffSettings(patch) {
 
 export async function fetchStaffChats() {
   return parseResponse(
-    await fetch("/api/admin/chats", {
+    await apiFetch("/api/admin/chats", {
       headers: { Authorization: `Bearer ${staffToken()}` },
     })
   );
@@ -130,7 +132,7 @@ export async function fetchStaffChats() {
 
 export async function replyStaffChat(sessionId, text) {
   return parseResponse(
-    await fetch(`/api/admin/chats/${encodeURIComponent(sessionId)}`, {
+    await apiFetch(`/api/admin/chats/${encodeURIComponent(sessionId)}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -143,7 +145,7 @@ export async function replyStaffChat(sessionId, text) {
 
 export async function patchStaffOrder(id, patch) {
   return parseResponse(
-    await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
+    await apiFetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

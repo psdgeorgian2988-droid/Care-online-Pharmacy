@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { apiFetch } from "./apiBase.js";
 import {
   CARE_EMAIL,
   CARE_HOURS,
@@ -67,7 +68,7 @@ export default function CareChat({ open, onOpen, onClose }) {
 
   const syncThread = async () => {
     try {
-      const data = await fetch(
+      const data = await apiFetch(
         `/api/care/thread?sessionId=${encodeURIComponent(sessionId)}${open ? "&ack=1" : ""}`
       ).then((res) => res.json());
       if (data?.thread?.messages?.length) {
@@ -122,7 +123,7 @@ export default function CareChat({ open, onOpen, onClose }) {
     writeLocalThread(optimistic);
     try {
       const profile = readProfile();
-      const data = await fetch("/api/care/messages", {
+      const data = await apiFetch("/api/care/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

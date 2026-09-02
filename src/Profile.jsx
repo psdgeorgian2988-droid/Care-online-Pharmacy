@@ -1,8 +1,8 @@
 import { useState } from "react";
 import ReferFamily from "./ReferFamily";
 import { POINT_VALUES, awardFamilyMemberPoints, useWallet } from "./pointsStore";
-import AddressFields from "./AddressFields";
-import PersonFields from "./PersonFields";
+import AddressFields from "./AddressFields.jsx";
+import PersonFields from "./PersonFields.jsx";
 import FamilyMembersFields from "./FamilyMembersFields";
 import FamilyTree from "./FamilyTree";
 import {

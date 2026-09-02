@@ -1,6 +1,6 @@
 import BookingContactFields from "./BookingContactFields";
 import BookingForFields from "./BookingForFields";
-import AddressFields from "./AddressFields";
+import AddressFields from "./AddressFields.jsx";
 import { hasHouseholdProfile, shouldAskBookingDetails } from "./bookingFor";
 
 export default function BookingFlow({

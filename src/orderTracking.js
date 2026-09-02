@@ -1,3 +1,4 @@
+import { apiFetch } from "./apiBase.js";
 import {
   locationFromPinSync,
   normalizePin,
@@ -550,7 +551,7 @@ export async function resolveOrderById(id) {
   const wanted = decodeURIComponent(String(id || "")).trim();
   if (!wanted) return null;
   try {
-    const res = await fetch(`/api/orders/lookup?id=${encodeURIComponent(wanted)}`);
+    const res = await apiFetch(`/api/orders/lookup?id=${encodeURIComponent(wanted)}`);
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.order) return null;
     const kind = data.order.kind || data.order.orderType || "medicine";
