@@ -17,7 +17,7 @@ export const FEATURE_CATALOG = [
 ];
 
 export const DEFAULT_FEATURES = Object.fromEntries(
-  FEATURE_CATALOG.map((row) => [row.key, true])
+  FEATURE_CATALOG.map((row) => [row.key, false])
 );
 
 export const ROUTE_FEATURES = {
@@ -33,12 +33,19 @@ export const ROUTE_FEATURES = {
 };
 
 export function mergeFeatures(raw) {
-  return { ...DEFAULT_FEATURES, ...(raw && typeof raw === "object" ? raw : {}) };
+  const next = { ...DEFAULT_FEATURES };
+  if (!raw || typeof raw !== "object") return next;
+  for (const key of Object.keys(DEFAULT_FEATURES)) {
+    if (Object.prototype.hasOwnProperty.call(raw, key)) {
+      next[key] = Boolean(raw[key]);
+    }
+  }
+  return next;
 }
 
 export function featureEnabled(features, key) {
   if (!key) return true;
-  return features?.[key] !== false;
+  return features?.[key] === true;
 }
 
 export function routeEnabled(route, features) {

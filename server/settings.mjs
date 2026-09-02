@@ -1,24 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_FEATURES } from "../src/salesReport.js";
 import { normalizeWebinars } from "../src/webinars.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataFile = path.join(root, "data", "settings.json");
-
-export const DEFAULT_FEATURES = {
-  medicine: true,
-  lab: true,
-  radiology: true,
-  homecare: true,
-  vaccination: true,
-  psychologist: true,
-  stepdown: true,
-  ambulance: true,
-  reports: true,
-  education: true,
-  scanDelivery: true,
-};
 
 function normalizeFeatures(raw) {
   const next = { ...DEFAULT_FEATURES };
@@ -38,7 +25,7 @@ async function ensureFile() {
   } catch {
     await writeFile(
       dataFile,
-      `${JSON.stringify({ features: DEFAULT_FEATURES }, null, 2)}\n`
+      `${JSON.stringify({ features: { ...DEFAULT_FEATURES } }, null, 2)}\n`
     );
   }
 }

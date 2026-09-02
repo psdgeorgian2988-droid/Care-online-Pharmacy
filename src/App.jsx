@@ -25,14 +25,14 @@ import Seo from "./Seo";
 import SocialLinks from "./SocialLinks";
 import MedicineSearchTools from "./MedicineSearchTools";
 import { reviewStats } from "./reviewStore";
-import CareChat from "./CareChat";
-import { CARE_WHATSAPP } from "./careChat";
+import CareChat from "./CareChat.jsx";
+import { CARE_WHATSAPP } from "./careChat.js";
 import ComingSoon from "./ComingSoon";
 import ErrorBoundary from "./ErrorBoundary";
 import AuthPage from "./AuthPage";
 import { logoutSession, useLoginSession } from "./authSession";
 import { useFeatures } from "./featureFlags";
-import { pausedServiceTitle, routeEnabled } from "./salesReport";
+import { featureEnabled, pausedServiceTitle, routeEnabled } from "./salesReport";
 import { goToHash, parseAppHash } from "./hashRoute";
 import AppPicker from "./AppPicker";
 import WebinarNotice from "./WebinarNotice";
@@ -188,7 +188,7 @@ function HomePage() {
               </p>
             </section>
 
-            {features.medicine !== false ? (
+            {featureEnabled(features, "medicine") ? (
               <>
                 <form className="home-search-form" onSubmit={goToMedicines}>
                   <input
@@ -249,75 +249,77 @@ function HomePage() {
         </div>
 
         <section className="home-services" id="home-services" aria-label="Services">
-          {features.medicine !== false ? (
+          {featureEnabled(features, "medicine") ? (
             <a className="home-service-card" href="#medicine-search">
               <h2>Medicines</h2>
               <p>Doorstep delivery, cash on delivery.</p>
               <span>View medicines</span>
             </a>
           ) : null}
-          {features.lab !== false ? (
+          {featureEnabled(features, "lab") ? (
             <a className="home-service-card" href="#labs">
               <h2>Lab Tests</h2>
               <p>Home sample collection.</p>
               <span>Book a test</span>
             </a>
           ) : null}
-          {features.radiology !== false ? (
+          {featureEnabled(features, "radiology") ? (
             <a className="home-service-card" href="#labs">
               <h2>Radiology</h2>
               <p>Scans at partner centres.</p>
               <span>Book a scan</span>
             </a>
           ) : null}
-          {features.homecare !== false ? (
+          {featureEnabled(features, "homecare") ? (
             <a className="home-service-card" href="#homecare">
               <h2>Home Care</h2>
               <p>Nurse, Caregiver or Physiotherapy at Home.</p>
               <span>Book a visit</span>
             </a>
           ) : null}
-          {features.vaccination !== false ? (
+          {featureEnabled(features, "vaccination") ? (
             <a className="home-service-card" href="#vaccination">
               <h2>Vaccination Record</h2>
               <p>Record, schedule and due-date reminders.</p>
               <span>View record</span>
             </a>
           ) : null}
-          {features.psychologist !== false ? (
+          {featureEnabled(features, "psychologist") ? (
             <a className="home-service-card" href="#psychologist">
               <h2>Psychologist Consultation</h2>
               <p>Video or home visit sessions.</p>
               <span>Book a session</span>
             </a>
           ) : null}
-          {features.stepdown !== false ? (
+          {featureEnabled(features, "stepdown") ? (
             <a className="home-service-card" href="#stepdown">
               <h2>Step-Down Care</h2>
               <p>Find a recovery centre near you.</p>
               <span>Find a centre</span>
             </a>
           ) : null}
-          {features.ambulance !== false ? (
+          {featureEnabled(features, "ambulance") ? (
             <a className="home-service-card" href="#ambulance">
               <h2>Ambulance</h2>
               <p>Emergency or planned pickup.</p>
               <span>Request now</span>
             </a>
           ) : null}
-          <a className="home-service-card" href="#scan?step=deliver">
-            <h2>Scan Delivery</h2>
-            <p>Scan the order QR when medicines arrive.</p>
-            <span>Open scanner</span>
-          </a>
-          {features.reports !== false ? (
+          {featureEnabled(features, "scanDelivery") ? (
+            <a className="home-service-card" href="#scan?step=deliver">
+              <h2>Scan Delivery</h2>
+              <p>Scan the order QR when medicines arrive.</p>
+              <span>Open scanner</span>
+            </a>
+          ) : null}
+          {featureEnabled(features, "reports") ? (
             <a className="home-service-card" href="#reports">
               <h2>Reports</h2>
               <p>Save lab PDFs on this device.</p>
               <span>Save a report</span>
             </a>
           ) : null}
-          {features.education !== false ? (
+          {featureEnabled(features, "education") ? (
             <a className="home-service-card" href="#education">
               <h2>Health Education</h2>
               <p>Guides, live webinars, and quick quizzes.</p>

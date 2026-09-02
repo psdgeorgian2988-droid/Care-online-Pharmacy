@@ -29,6 +29,7 @@ import {
   analysisRange,
   analysisToCsv,
   compareGroups,
+  featureEnabled,
   filterReport,
   formatInr,
   formatPct,
@@ -103,6 +104,8 @@ function Admin() {
   const [chatDraft, setChatDraft] = useState("");
   const [partners, setPartners] = useState([]);
   const [features, setFeatures] = useState(DEFAULT_FEATURES);
+  const [featureDraft, setFeatureDraft] = useState(DEFAULT_FEATURES);
+  const [featureSaving, setFeatureSaving] = useState(false);
   const [webinars, setWebinars] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("all");
@@ -129,6 +132,7 @@ function Admin() {
       setChats(Array.isArray(chatData.threads) ? chatData.threads : []);
       const nextFeatures = mergeFeatures(settings.features);
       setFeatures(nextFeatures);
+      setFeatureDraft(nextFeatures);
       cacheFeatures(nextFeatures);
       const nextWebinars = Array.isArray(settings.webinars) ? settings.webinars : [];
       setWebinars(nextWebinars);
@@ -280,19 +284,37 @@ function Admin() {
     cacheWebinars(rows);
   };
 
-  const toggleFeature = async (key) => {
-    const next = { ...features, [key]: !features[key] };
-    setFeatures(next);
-    cacheFeatures(next);
+  const toggleFeature = (key) => {
+    setFeatureDraft((prev) => ({ ...prev, [key]: !featureEnabled(prev, key) }));
+  };
+
+  const featuresDirty = useMemo(
+    () =>
+      FEATURE_CATALOG.some(
+        (row) => featureEnabled(featureDraft, row.key) !== featureEnabled(features, row.key)
+      ),
+    [featureDraft, features]
+  );
+
+  const saveFeatures = async () => {
+    setFeatureSaving(true);
+    setError("");
     try {
-      const saved = await patchStaffSettings({ features: next });
+      const saved = await patchStaffSettings({ features: featureDraft });
       const merged = mergeFeatures(saved.features);
       setFeatures(merged);
+      setFeatureDraft(merged);
       cacheFeatures(merged);
     } catch (err) {
-      setError(err.message || "Could Not Save Feature Switch.");
+      setError(err.message || "Could Not Save Feature Switches.");
       await loadDesk();
+    } finally {
+      setFeatureSaving(false);
     }
+  };
+
+  const resetFeatureDraft = () => {
+    setFeatureDraft(features);
   };
 
   const generateReport = () => {
@@ -534,24 +556,50 @@ function Admin() {
         <section className="admin-panel" aria-label="Feature Switches">
           <h2>Turn Features On Or Off</h2>
           <p>
-            Off Services Stay On The Menu And Show Coming Soon Until You Turn Them Back On.
-            Scan Delivery Buttons Stay Visible. When This Switch Is Off, A Customer Click
-            Opens Coming Soon.
+            Services stay off until you turn them on and press Save Settings.
+            Off services stay on the menu and show Coming Soon until you turn
+            them back on. Scan Delivery buttons stay visible. When that switch
+            is off, a customer click opens Coming Soon.
           </p>
+          {featuresDirty ? (
+            <p className="admin-feature-note" role="status">
+              You have unsaved switch changes. Customers still see the last
+              saved settings until you save.
+            </p>
+          ) : null}
           <div className="admin-switches">
             {FEATURE_CATALOG.map((row) => (
               <button
                 key={row.key}
                 type="button"
                 role="switch"
-                aria-checked={features[row.key] !== false}
-                className={features[row.key] !== false ? "is-on" : ""}
+                aria-checked={featureEnabled(featureDraft, row.key)}
+                className={featureEnabled(featureDraft, row.key) ? "is-on" : ""}
                 onClick={() => toggleFeature(row.key)}
+                disabled={featureSaving}
               >
                 <span>{row.label}</span>
-                <strong>{features[row.key] !== false ? "On" : "Off"}</strong>
+                <strong>{featureEnabled(featureDraft, row.key) ? "On" : "Off"}</strong>
               </button>
             ))}
+          </div>
+          <div className="admin-feature-actions">
+            <button
+              type="button"
+              className="admin-feature-save"
+              onClick={saveFeatures}
+              disabled={!featuresDirty || featureSaving}
+            >
+              {featureSaving ? "Saving…" : "Save Settings"}
+            </button>
+            <button
+              type="button"
+              className="admin-feature-reset"
+              onClick={resetFeatureDraft}
+              disabled={!featuresDirty || featureSaving}
+            >
+              Discard Changes
+            </button>
           </div>
         </section>
 
@@ -1060,6 +1108,12 @@ const styles = `
 .admin-switches button.is-on{background:#e7f6ef;border-color:#b7e0c8}
 .admin-switches strong{font-size:12px;color:#5d7180}
 .admin-switches button.is-on strong{color:#1a7a45}
+.admin-feature-note{margin:0 0 10px;padding:10px 12px;border-radius:8px;background:#fff7e6;color:#7a4b00;font-size:13px;font-weight:700}
+.admin-feature-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.admin-feature-save,.admin-feature-reset{min-height:38px;padding:8px 14px;border-radius:8px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.admin-feature-save{border:none;background:#1a6b7a;color:#fff}
+.admin-feature-save:disabled,.admin-feature-reset:disabled{opacity:.55;cursor:not-allowed}
+.admin-feature-reset{border:1px solid #d7e2e9;background:#fff;color:#34546b}
 .admin-chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .admin-chart{background:#fff;border:1px solid #e4ecef;border-radius:12px;padding:14px}
 .admin-chart-wide{margin-bottom:14px}
