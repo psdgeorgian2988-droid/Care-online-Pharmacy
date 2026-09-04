@@ -158,6 +158,147 @@ export function nearestPin(lat, lng) {
   };
 }
 
+function areaKey(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function areaHintList(hints = {}) {
+  const values = [
+    hints.area,
+    hints.suburb,
+    hints.neighbourhood,
+    hints.village,
+    hints.hamlet,
+    hints.residential,
+    hints.city_district,
+    hints.quarter,
+    hints.locality,
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  const seen = new Set();
+  const list = [];
+  for (const value of values) {
+    const key = areaKey(value);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    list.push({ name: value, key });
+  }
+  return list;
+}
+
+export function findPinByAreaHints(lat, lng, hints = {}, maxKm = 25) {
+  const hintsList = areaHintList(hints);
+  if (!hintsList.length) return null;
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  const hasCoords = Number.isFinite(latitude) && Number.isFinite(longitude);
+  const data = loadDirectory();
+  let best = null;
+  let bestScore = -Infinity;
+
+  for (const pin of Object.keys(data.pins || {})) {
+    const row = unpack(pin, data.pins[pin]);
+    const names = [row.area, ...(row.areas || [])].filter(Boolean);
+    if (!names.length) continue;
+    const keys = names.map(areaKey);
+    let matchRank = 0;
+    for (const hint of hintsList) {
+      if (keys.some((key) => key === hint.key)) {
+        matchRank = 3;
+        break;
+      }
+      if (hint.key.length >= 5 && keys.some((key) => key.includes(hint.key) || hint.key.includes(key))) {
+        matchRank = Math.max(matchRank, 2);
+      }
+    }
+    if (!matchRank) continue;
+
+    let km = Number.POSITIVE_INFINITY;
+    if (hasCoords && Number.isFinite(row.lat) && Number.isFinite(row.lng)) {
+      km = haversineKm(latitude, longitude, row.lat, row.lng);
+      if (km > maxKm) continue;
+    }
+
+    const score = matchRank * 1000 - (Number.isFinite(km) ? km : 500);
+    if (score > bestScore) {
+      bestScore = score;
+      best = {
+        ...row,
+        distanceKm: Number.isFinite(km) ? Math.round(km * 1000) / 1000 : null,
+        fromLocation: true,
+        source: "area",
+      };
+    }
+  }
+  return best;
+}
+
+/**
+ * Resolve a delivery PIN from GPS + reverse-geocode hints.
+ * Prefer an exact locality/area name match (PIN centroids are often shared),
+ * then a verified directory postcode, then geometric nearest.
+ */
+export function resolvePinFromLocation(lat, lng, hints = {}) {
+  const postcode = normalizePin(hints.postcode || hints.pin || hints.pinCode);
+  const exact =
+    /^\d{6}$/.test(postcode) ? lookupPin(postcode) : null;
+  const exactOk = Boolean(exact && !exact.approximate);
+
+  let distanceKm = null;
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (
+    exactOk &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    Number.isFinite(exact.lat) &&
+    Number.isFinite(exact.lng)
+  ) {
+    distanceKm = Math.round(haversineKm(latitude, longitude, exact.lat, exact.lng) * 1000) / 1000;
+  }
+
+  const hintsList = areaHintList(hints);
+  const postcodeMatchesArea =
+    exactOk &&
+    hintsList.some((hint) =>
+      [exact.area, ...(exact.areas || [])]
+        .map(areaKey)
+        .some(
+          (key) =>
+            key &&
+            (key === hint.key ||
+              (hint.key.length >= 5 && (key.includes(hint.key) || hint.key.includes(key))))
+        )
+    );
+
+  const byArea = findPinByAreaHints(lat, lng, hints);
+  if (byArea && !postcodeMatchesArea) return byArea;
+  if (exactOk && (postcodeMatchesArea || distanceKm == null || distanceKm <= 20)) {
+    return {
+      ...exact,
+      distanceKm,
+      fromLocation: true,
+      source: "postcode",
+    };
+  }
+  if (byArea) return byArea;
+  if (exactOk) {
+    return {
+      ...exact,
+      distanceKm,
+      fromLocation: true,
+      source: "postcode",
+    };
+  }
+
+  const near = nearestPin(lat, lng);
+  if (!near) return null;
+  return { ...near, source: "nearest" };
+}
+
 export function listCityDistrictMismatches() {
   const data = loadDirectory();
   const districtsByState = new Map();

@@ -1,4 +1,5 @@
 import { apiFetch } from "./apiBase.js";
+import { isNativeRuntime } from "./appRuntime.js";
 
 const PIN3 = {
   110: [28.6139, 77.209, "New Delhi"],
@@ -250,11 +251,11 @@ export function pinLocationForDisplay(record) {
   };
 }
 
-async function fetchJson(url, timeoutMs = 2200) {
+async function fetchJson(url, timeoutMs = 2200, headers = {}) {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    const response = await fetch(url, { signal: controller.signal, headers });
     if (!response.ok) return null;
     return await response.json();
   } catch {
@@ -263,6 +264,11 @@ async function fetchJson(url, timeoutMs = 2200) {
     window.clearTimeout(timer);
   }
 }
+
+const OSM_HEADERS = {
+  Accept: "application/json",
+  "User-Agent": "MediHome/1.0 (https://medihome.co.in; care@medihome.in)",
+};
 
 async function fetchPostalLocality(pin) {
   const data = await fetchJson(`https://api.postalpincode.in/pincode/${pin}`);
@@ -273,14 +279,18 @@ async function fetchPostalLocality(pin) {
 
 async function fetchNominatim(pin) {
   const data = await fetchJson(
-    `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&postalcode=${pin}`
+    `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&postalcode=${pin}`,
+    8000,
+    OSM_HEADERS
   );
   let hit = Array.isArray(data) ? data[0] : null;
   if (!hit) {
     const fallback = await fetchJson(
       `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(
         `${pin}, India`
-      )}`
+      )}`,
+      8000,
+      OSM_HEADERS
     );
     hit = Array.isArray(fallback) ? fallback[0] : null;
   }
@@ -342,16 +352,69 @@ export function suggestedAreaFromAddress(address = {}, areas = []) {
   return candidates[0] || "";
 }
 
-export function chooseDetectedPin({ postcode, nearest } = {}) {
+const NEAR_PIN_MAX_KM = 12;
+
+/**
+ * Prefer a verified map postcode over geometric nearest.
+ * PIN centroids in India are often shared across offices, so distance-only
+ * matching frequently picks a neighbouring code.
+ */
+export function chooseDetectedPin({ postcode, nearest, maxNearestKm = NEAR_PIN_MAX_KM } = {}) {
   const code = normalizePin(postcode);
-  if (/^\d{6}$/.test(code)) {
-    return { pin: code, source: "postcode" };
-  }
   const nearPin = normalizePin(nearest?.pin || nearest?.pinCode);
-  if (/^\d{6}$/.test(nearPin)) {
-    return { pin: nearPin, source: "nearest" };
-  }
+  const postOk = /^\d{6}$/.test(code);
+  const nearOk = /^\d{6}$/.test(nearPin);
+  const nearKm = Number(nearest?.distanceKm);
+  const nearClose = nearOk && (!Number.isFinite(nearKm) || nearKm <= maxNearestKm);
+
+  if (postOk) return { pin: code, source: "postcode" };
+  if (nearClose) return { pin: nearPin, source: nearest?.source || "nearest" };
+  if (nearOk) return { pin: nearPin, source: nearest?.source || "nearest" };
   return null;
+}
+
+export function locationErrorMessage(error) {
+  const code = String(error?.code || "");
+  const message = String(error?.message || "");
+  if (
+    code.includes("0007") ||
+    code.includes("0009") ||
+    code.includes("0016") ||
+    /not enabled|location settings|enable location/i.test(message)
+  ) {
+    return "Turn on Location in Android settings, then tap Use My Location.";
+  }
+  if (
+    code.includes("0003") ||
+    /denied|permission|not declared in manifest|0018/i.test(`${code} ${message}`)
+  ) {
+    return "Allow location access to fill the PIN Code.";
+  }
+  if (code.includes("0010") || /timeout|in time/i.test(message)) {
+    return "Could not lock GPS in time. Move outdoors, or enter the PIN Code.";
+  }
+  if (code.includes("0014") || code.includes("0015") || /play services/i.test(message)) {
+    return "Install or update Google Play Services, then try Use My Location again.";
+  }
+  if (code.includes("0017") || /network and location/i.test(message)) {
+    return "Turn on Location and mobile data or Wi-Fi, then try again.";
+  }
+  if (code.includes("0002") || /error trying to obtain the location/i.test(message)) {
+    return "Could not read your location. Please enter the PIN Code.";
+  }
+  if (/emulator|extended controls|no gps fix/i.test(message)) {
+    return message;
+  }
+  return message || "Could not read your location. Please enter the PIN Code.";
+}
+
+function coordsFromPosition(position) {
+  const lat = Number(position?.coords?.latitude);
+  const lng = Number(position?.coords?.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  // Null Island / unset emulator location
+  if (Math.abs(lat) < 0.01 && Math.abs(lng) < 0.01) return null;
+  return { lat, lng };
 }
 
 function readBrowserLocation() {
@@ -362,21 +425,214 @@ function readBrowserLocation() {
     }
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        resolve({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
+        const coords = coordsFromPosition(position);
+        if (!coords) {
+          reject(
+            new Error(
+              "No GPS fix yet. On an Android emulator, set a location under Extended controls → Location, then try again. Or enter the PIN Code."
+            )
+          );
+          return;
+        }
+        resolve(coords);
       },
       (error) => {
         if (error?.code === 1) {
           reject(new Error("Allow location access to fill the PIN Code."));
           return;
         }
+        if (error?.code === 3) {
+          reject(
+            new Error("Could not lock GPS in time. Move outdoors, or enter the PIN Code.")
+          );
+          return;
+        }
+        if (error?.code === 2) {
+          reject(
+            new Error(
+              "Location is unavailable. Turn on Location, or enter the PIN Code."
+            )
+          );
+          return;
+        }
         reject(new Error("Could not read your location. Please enter the PIN Code."));
       },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     );
   });
+}
+
+async function watchNativeLocation(Geolocation, options, waitMs) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let watchId = "";
+    const finish = (error, position) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      if (watchId) Geolocation.clearWatch({ id: watchId }).catch(() => {});
+      if (position) resolve(position);
+      else {
+        reject(
+          error ||
+            new Error(
+              "Could not lock GPS in time. Move outdoors, or enter the PIN Code."
+            )
+        );
+      }
+    };
+    const timer = window.setTimeout(
+      () => finish(new Error("Could not obtain location in time.")),
+      waitMs
+    );
+    Geolocation.watchPosition(options, (position, error) => {
+      if (position) finish(null, position);
+      else if (error) finish(error);
+    })
+      .then((id) => {
+        watchId = id;
+      })
+      .catch((error) => finish(error));
+  });
+}
+
+function hasLocationPermission(status) {
+  return status?.location === "granted" || status?.coarseLocation === "granted";
+}
+
+async function ensureNativeLocationPermission(Geolocation) {
+  let status;
+  try {
+    status = await Geolocation.checkPermissions();
+  } catch (error) {
+    // Throws when system location services are disabled (OS-PLUG-GLOC-0007).
+    throw new Error(locationErrorMessage(error));
+  }
+
+  if (hasLocationPermission(status)) return;
+
+  try {
+    // On Android this requests ACCESS_FINE_LOCATION + ACCESS_COARSE_LOCATION.
+    status = await Geolocation.requestPermissions({
+      permissions: ["location"],
+    });
+  } catch (error) {
+    throw new Error(locationErrorMessage(error));
+  }
+
+  if (hasLocationPermission(status)) return;
+
+  // Android 12+ may grant approximate only; request coarse explicitly.
+  try {
+    status = await Geolocation.requestPermissions({
+      permissions: ["coarseLocation"],
+    });
+  } catch (error) {
+    throw new Error(locationErrorMessage(error));
+  }
+
+  if (!hasLocationPermission(status)) {
+    throw new Error("Allow location access to fill the PIN Code.");
+  }
+}
+
+async function readNativeLocation() {
+  let Geolocation;
+  try {
+    ({ Geolocation } = await import("@capacitor/geolocation"));
+  } catch {
+    throw new Error(
+      "Location plugin is unavailable. Please enter the PIN Code."
+    );
+  }
+
+  await ensureNativeLocationPermission(Geolocation);
+
+  const attempts = [
+    {
+      enableHighAccuracy: true,
+      timeout: 25000,
+      maximumAge: 0,
+      enableLocationFallback: true,
+    },
+    {
+      enableHighAccuracy: false,
+      timeout: 25000,
+      maximumAge: 15000,
+      enableLocationFallback: true,
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 30000,
+      maximumAge: 60000,
+      enableLocationFallback: true,
+    },
+  ];
+
+  let lastError;
+  let sawInvalidCoords = false;
+
+  for (const options of attempts) {
+    try {
+      const position = await Geolocation.getCurrentPosition(options);
+      const coords = coordsFromPosition(position);
+      if (coords) return coords;
+      sawInvalidCoords = true;
+    } catch (error) {
+      lastError = error;
+      const code = String(error?.code || "");
+      // Hard failures: do not keep retrying.
+      if (
+        code.includes("0003") ||
+        code.includes("0007") ||
+        code.includes("0009") ||
+        code.includes("0017") ||
+        code.includes("0018")
+      ) {
+        throw new Error(locationErrorMessage(error));
+      }
+    }
+  }
+
+  try {
+    const position = await watchNativeLocation(
+      Geolocation,
+      {
+        enableHighAccuracy: true,
+        timeout: 30000,
+        maximumAge: 0,
+        enableLocationFallback: true,
+        interval: 2000,
+        minimumUpdateInterval: 1000,
+      },
+      28000
+    );
+    const coords = coordsFromPosition(position);
+    if (coords) return coords;
+    sawInvalidCoords = true;
+  } catch (error) {
+    lastError = error;
+  }
+
+  if (sawInvalidCoords && !lastError) {
+    throw new Error(
+      "No GPS fix yet. On an Android emulator, set a location under Extended controls → Location, then try again. Or enter the PIN Code."
+    );
+  }
+
+  throw new Error(locationErrorMessage(lastError));
+}
+
+async function readDeviceLocation() {
+  // Prefer Capacitor Geolocation on Android/iOS so runtime permissions work.
+  const native =
+    isNativeRuntime() ||
+    Boolean(globalThis.Capacitor?.isNativePlatform?.()) ||
+    Boolean(globalThis.Capacitor?.isNative);
+  if (native) {
+    return readNativeLocation();
+  }
+  return readBrowserLocation();
 }
 
 async function fetchNearestPin(lat, lng) {
@@ -392,48 +648,123 @@ async function fetchNearestPin(lat, lng) {
   }
 }
 
+function normalizeReverseAddress(raw = {}) {
+  return {
+    postcode: normalizePin(raw.postcode || raw.postalCode || raw.zip || ""),
+    suburb: String(raw.suburb || "").trim(),
+    neighbourhood: String(raw.neighbourhood || raw.neighborhood || "").trim(),
+    village: String(raw.village || "").trim(),
+    hamlet: String(raw.hamlet || "").trim(),
+    residential: String(raw.residential || "").trim(),
+    city_district: String(raw.city_district || raw.cityDistrict || "").trim(),
+    quarter: String(raw.quarter || "").trim(),
+    locality: String(raw.locality || raw.city || raw.town || raw.county || "").trim(),
+    area: String(
+      raw.suburb ||
+        raw.neighbourhood ||
+        raw.neighborhood ||
+        raw.village ||
+        raw.hamlet ||
+        raw.residential ||
+        raw.locality ||
+        ""
+    ).trim(),
+  };
+}
+
 async function fetchReverseAddress(lat, lng) {
-  const data = await fetchJson(
+  const nominatim = await fetchJson(
     `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(
       lat
-    )}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`
+    )}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`,
+    10000,
+    OSM_HEADERS
   );
-  return data?.address || null;
+  let address = normalizeReverseAddress(nominatim?.address || {});
+
+  if (!/^\d{6}$/.test(address.postcode) || !address.area) {
+    const cloud = await fetchJson(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${encodeURIComponent(
+        lat
+      )}&longitude=${encodeURIComponent(lng)}&localityLanguage=en`,
+      10000
+    );
+    if (cloud) {
+      const cloudAddress = normalizeReverseAddress({
+        postcode: cloud.postcode,
+        locality: cloud.locality || cloud.city || cloud.localityInfo?.administrative?.[0]?.name,
+        suburb: cloud.localityInfo?.informative?.find?.((row) => /suburb|neighbour|sector|village/i.test(row.description || row.name || ""))?.name,
+        neighbourhood: cloud.locality,
+        village: cloud.locality,
+      });
+      if (!/^\d{6}$/.test(address.postcode) && /^\d{6}$/.test(cloudAddress.postcode)) {
+        address.postcode = cloudAddress.postcode;
+      }
+      if (!address.area && cloudAddress.area) {
+        address = { ...address, ...cloudAddress, postcode: address.postcode || cloudAddress.postcode };
+      } else if (!address.locality && cloudAddress.locality) {
+        address.locality = cloudAddress.locality;
+      }
+    }
+  }
+  return address.postcode || address.area || address.locality ? address : null;
+}
+
+async function resolvePinFromHints(lat, lng, address = {}) {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lng: String(lng),
+  });
+  if (address.postcode) params.set("postcode", address.postcode);
+  if (address.area) params.set("area", address.area);
+  if (address.suburb) params.set("suburb", address.suburb);
+  if (address.neighbourhood) params.set("neighbourhood", address.neighbourhood);
+  if (address.village) params.set("village", address.village);
+  if (address.locality) params.set("locality", address.locality);
+  try {
+    const response = await apiFetch(`/api/pincode/resolve?${params}`);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.pin || data?.pinCode ? data : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function detectPinFromLocation() {
-  const coords = await readBrowserLocation();
-  const [nearest, address] = await Promise.all([
-    fetchNearestPin(coords.lat, coords.lng),
-    fetchReverseAddress(coords.lat, coords.lng),
-  ]);
-  const chosenPostcode = chooseDetectedPin({
-    postcode: address?.postcode,
-    nearest: null,
-  });
-  const chosenNearest = chooseDetectedPin({ nearest });
-  let chosen = chosenPostcode;
-  let directory = chosen ? await lookupPinDirectory(chosen.pin) : null;
-  if (!directory) {
-    chosen = chosenNearest;
-    directory = chosen ? await lookupPinDirectory(chosen.pin) : nearest;
+  const coords = await readDeviceLocation();
+  const address = await fetchReverseAddress(coords.lat, coords.lng);
+  let resolved = await resolvePinFromHints(coords.lat, coords.lng, address || {});
+
+  // Live site may not have /api/pincode/resolve yet — prefer the map postcode
+  // over geometric nearest, because India PIN centroids are often shared/wrong.
+  if (!resolved && address?.postcode) {
+    const byPost = await lookupPinDirectory(address.postcode);
+    if (byPost?.city) {
+      resolved = { ...byPost, source: "postcode", fromLocation: true };
+    }
   }
-  if (!chosen) {
+  if (!resolved) {
+    resolved = await fetchNearestPin(coords.lat, coords.lng);
+  }
+  if (!resolved?.pin && !resolved?.pinCode) {
     throw new Error("Could not detect a PIN Code from this location.");
   }
+  const pin = normalizePin(resolved.pin || resolved.pinCode);
+  const directory = (await lookupPinDirectory(pin)) || resolved;
   return {
-    pin: chosen.pin,
-    pinCode: chosen.pin,
-    source: chosen.source,
+    pin,
+    pinCode: pin,
+    source: resolved.source || "nearest",
     lat: coords.lat,
     lng: coords.lng,
     suggestedArea: suggestedAreaFromAddress(
       address,
-      directory?.areas || nearest?.areas || []
+      directory?.areas || resolved?.areas || []
     ),
-    city: directory?.city || nearest?.city || "",
-    district: directory?.district || nearest?.district || "",
-    state: directory?.state || nearest?.state || "",
+    city: directory?.city || resolved?.city || "",
+    district: directory?.district || resolved?.district || "",
+    state: directory?.state || resolved?.state || "",
   };
 }
 

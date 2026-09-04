@@ -59,9 +59,6 @@ function MyOrders() {
           <a className="orders-nav-btn" href="#vaccination">
             Vaccination Record
           </a>
-          <a className="orders-nav-btn orders-nav-home" href="#home">
-            Back to Home
-          </a>
           {selectedOrder ? (
             <button
               type="button"

@@ -3,7 +3,7 @@ import {
   pickAddress,
   validateAddress,
 } from "./addressFields.js";
-import { normalizeAge, normalizeGender, pickFamilyMembers } from "./personFields.js";
+import { normalizeAge, normalizeGender, pickFamilyMembers, maxDobAgeYears } from "./personFields.js";
 
 export const SELF_BOOKING_ID = "self";
 export const OTHER_BOOKING_ID = "other";
@@ -188,7 +188,7 @@ export function validateBookingDetails(source = {}, profile = {}) {
     errors.gender = "Select Male or Female.";
   }
   const age = Number(normalizeAge(identity.age || source.age));
-  if (!Number.isInteger(age) || String(source.age || identity.age || "") === "" || age < 0 || age > 120) {
+  if (!Number.isInteger(age) || String(source.age || identity.age || "") === "" || age < 0 || age > maxDobAgeYears()) {
     errors.age = "Enter age in years.";
   }
   Object.assign(errors, validateBookingContact(source, profile));

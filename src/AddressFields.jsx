@@ -4,7 +4,7 @@ import {
   addressConfirmRows,
   isAddressConfirmed,
 } from "./addressFields";
-import { lookupPinDirectory, detectPinFromLocation } from "./pinLocation";
+import { lookupPinDirectory, detectPinFromLocation, locationErrorMessage } from "./pinLocation";
 
 function pinAreas(values) {
   return Array.isArray(values.areas) ? values.areas.filter(Boolean) : [];
@@ -117,7 +117,8 @@ export default function AddressFields({
       }
     } catch (error) {
       setPinStatus(
-        error?.message || "Could not detect a PIN Code. Please enter it."
+        locationErrorMessage(error) ||
+          "Could not detect a PIN Code. Please enter it."
       );
     } finally {
       setLocating(false);
@@ -230,7 +231,10 @@ export default function AddressFields({
               ) : field.name === "pinCode" && pinStatus ? (
                 <small
                   className={
-                    pinMissing || /allow location|could not|not available/i.test(pinStatus)
+                    pinMissing ||
+                    /allow location|could not|not available|turn on location|gps|emulator|unavailable/i.test(
+                      pinStatus
+                    )
                       ? "addr-error"
                       : "addr-hint"
                   }

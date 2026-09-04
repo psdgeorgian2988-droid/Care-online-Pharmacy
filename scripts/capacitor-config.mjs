@@ -13,6 +13,9 @@ const config = {
     allowMixedContent: true,
   },
   plugins: {
+    CapacitorHttp: {
+      enabled: true,
+    },
     SplashScreen: {
       launchShowDuration: 400,
       backgroundColor: "#eaf4fb",

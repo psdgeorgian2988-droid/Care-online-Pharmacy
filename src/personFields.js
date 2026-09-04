@@ -107,6 +107,13 @@ export function isoDateToday(today = new Date()) {
   return toIsoDate(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
 }
 
+export const DOB_MIN_YEAR = 1901;
+export const DOB_MIN_ISO = `${DOB_MIN_YEAR}-01-01`;
+
+export function maxDobAgeYears(today = new Date()) {
+  return Math.max(0, today.getFullYear() - DOB_MIN_YEAR);
+}
+
 export function isoDateYearsAgo(years, today = new Date()) {
   return toIsoDate(
     new Date(today.getFullYear() - Number(years || 0), today.getMonth(), today.getDate())
@@ -136,7 +143,7 @@ export function ageFromDob(dob, today = new Date()) {
   if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
     years -= 1;
   }
-  if (years < 0 || years > 120) return "";
+  if (years < 0 || years > maxDobAgeYears(today)) return "";
   return String(years);
 }
 
@@ -256,8 +263,12 @@ export function validatePerson(source = {}) {
     errors.dob = "Select date of birth.";
     return errors;
   }
+  if (person.dob < DOB_MIN_ISO) {
+    errors.dob = "Select a valid date of birth.";
+    return errors;
+  }
   const age = Number(person.age);
-  if (person.age === "" || !Number.isInteger(age) || age < 0 || age > 120) {
+  if (person.age === "" || !Number.isInteger(age) || age < 0 || age > maxDobAgeYears()) {
     errors.dob = "Select a valid date of birth.";
   }
   return errors;

@@ -29,7 +29,7 @@ import {
   staffReply,
 } from "./chats.mjs";
 import { readSettings, writeSettings } from "./settings.mjs";
-import { lookupPin, nearestPin } from "./pincodes.mjs";
+import { lookupPin, nearestPin, resolvePinFromLocation } from "./pincodes.mjs";
 
 const ADMIN_USER = process.env.MEDIHOME_ADMIN_USER || "admin";
 const ADMIN_PASSWORD = process.env.MEDIHOME_ADMIN_PASSWORD || "MediHome@26";
@@ -400,6 +400,27 @@ export async function handleApi(req, res) {
       return true;
     }
 
+    if (pathname === "/api/pincode/resolve" && req.method === "GET") {
+      const found = resolvePinFromLocation(
+        url.searchParams.get("lat"),
+        url.searchParams.get("lng"),
+        {
+          postcode: url.searchParams.get("postcode") || url.searchParams.get("pin"),
+          area: url.searchParams.get("area"),
+          suburb: url.searchParams.get("suburb"),
+          neighbourhood: url.searchParams.get("neighbourhood"),
+          village: url.searchParams.get("village"),
+          locality: url.searchParams.get("locality"),
+        }
+      );
+      if (!found) {
+        send(res, 404, { error: "No PIN Code was found for this location." });
+        return true;
+      }
+      send(res, 200, found);
+      return true;
+    }
+
     const pinMatch = pathname.match(/^\/api\/pincode\/(\d{6})$/);
     if (pinMatch && req.method === "GET") {
       const found = lookupPin(pinMatch[1]);
@@ -504,6 +525,7 @@ export async function handleApi(req, res) {
             existing.split?.saleRupees ?? existing.saleRupees ?? payable,
           payableRupees: existing.split?.payableRupees ?? payable,
           couponCode: existing.split?.couponCode || existing.couponCode || "",
+          platformPercent: existing.split?.platformPercent,
           paymentMethod,
           paidOn,
         });

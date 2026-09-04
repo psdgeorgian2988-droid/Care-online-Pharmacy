@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { applyCoupon, normalizeCouponCode } from "./offers";
+import { loadWallet } from "./pointsStore";
 import { quoteCheckout, resolveCollector } from "./paymentSplit";
 import { useLoginSession } from "./authSession";
 import GuestCheckoutRegister from "./GuestCheckoutRegister";
@@ -51,6 +52,7 @@ export default function PaymentBlock({
   onQuoteChange,
   guestDetails,
   cashLabel = "Cash On Visit",
+  serviceChargeRupees = 0,
 }) {
   const user = useLoginSession();
   const [couponDraft, setCouponDraft] = useState("");
@@ -64,6 +66,7 @@ export default function PaymentBlock({
   const [saveConsent, setSaveConsent] = useState(false);
   const [shareQr, setShareQr] = useState("");
   const [shareNote, setShareNote] = useState("");
+  const [usePoints, setUsePoints] = useState(false);
   const paidOn = "customer";
   const collector = resolveCollector({ method, paidOn });
   const couponInputRef = useRef(null);
@@ -72,6 +75,7 @@ export default function PaymentBlock({
     () => loadSavedPayments(accountMobile, method),
     [accountMobile, method]
   );
+  const walletBalance = useMemo(() => Number(loadWallet()?.balance) || 0, [user, promptOpen]);
 
   const finishGuestPrompt = (nextMethod) => {
     const chosen = nextMethod || pendingMethod;
@@ -107,8 +111,23 @@ export default function PaymentBlock({
         collector,
         paymentMethod: method,
         paidOn,
+        useWallet: usePoints && walletBalance > 0,
+        walletCoins: usePoints ? walletBalance : 0,
+        serviceChargeRupees,
       }),
-    [kind, amount, saleAmount, couponCode, pin, collector, method, paidOn]
+    [
+      kind,
+      amount,
+      saleAmount,
+      couponCode,
+      pin,
+      collector,
+      method,
+      paidOn,
+      usePoints,
+      walletBalance,
+      serviceChargeRupees,
+    ]
   );
 
   useEffect(() => {
@@ -233,7 +252,8 @@ export default function PaymentBlock({
   const hasDiscount =
     quote.offerDiscountRupees > 0 ||
     quote.couponDiscountRupees > 0 ||
-    quote.pointsDiscountRupees > 0;
+    quote.pointsDiscountRupees > 0 ||
+    quote.serviceChargeRupees > 0;
   const showInstrument = isOnlinePayment(method) && method !== "online";
   const usingSavedCard = Boolean(details.savedId) && (method === "credit" || method === "debit");
   const usingSavedBank = Boolean(details.savedId) && method === "bank";
@@ -484,27 +504,58 @@ export default function PaymentBlock({
           </li>
           {quote.offerDiscountRupees > 0 ? (
             <li>
-              <span>Offer discount</span>
+              <span>Offer discount (from MediHome)</span>
               <strong>−{formatRupee(quote.offerDiscountRupees)}</strong>
             </li>
           ) : null}
           {quote.couponDiscountRupees > 0 ? (
             <li>
-              <span>Coupon {quote.couponCode}</span>
+              <span>Coupon {quote.couponCode} (from MediHome)</span>
               <strong>−{formatRupee(quote.couponDiscountRupees)}</strong>
             </li>
           ) : null}
-          {quote.pointsDiscountRupees > 0 ? (
-            <li>
-              <span>
-                Points
-                {quote.pointsUsed ? ` (${quote.pointsUsed} pts)` : ""}
-              </span>
-              <strong>−{formatRupee(quote.pointsDiscountRupees)}</strong>
+          {walletBalance > 0 ? (
+            <li className="pay-points-row">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={usePoints}
+                  onChange={(event) => setUsePoints(event.target.checked)}
+                />
+                <span>
+                  Use MediHome points
+                  {quote.pointsUsed ? ` (${quote.pointsUsed} pts)` : ` (${walletBalance} pts)`}
+                </span>
+              </label>
+              <strong>
+                {quote.pointsDiscountRupees > 0
+                  ? `−${formatRupee(quote.pointsDiscountRupees)}`
+                  : "—"}
+              </strong>
             </li>
           ) : null}
+          {quote.serviceChargeRupees > 0 ? (
+            <li>
+              <span>Service charge (to MediHome)</span>
+              <strong>{formatRupee(quote.serviceChargeRupees)}</strong>
+            </li>
+          ) : null}
+          {quote.split ? (
+            <>
+              <li>
+                <span>
+                  Partner share ({quote.split.partnerPercent}% MRP)
+                </span>
+                <strong>{formatRupee(quote.split.partnerTransferRupees)}</strong>
+              </li>
+              <li>
+                <span>MediHome share after discount/fee</span>
+                <strong>{formatRupee(quote.split.platformSettledRupees)}</strong>
+              </li>
+            </>
+          ) : null}
         </ul>
-        {hasDiscount ? (
+        {hasDiscount || quote.split ? (
           <p className="pay-total">
             <span>Amount payable</span>
             <strong>{formatRupee(quote.payableRupees)}</strong>
@@ -599,6 +650,8 @@ const styles = `
 .pay-save-note{margin:0;font-size:12px;line-height:1.4;color:#5d7180}
 .pay-split{list-style:none;margin:8px 0 0;padding:8px 0 0;border-top:1px solid #edf1f3}
 .pay-split li{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:0;padding:4px 0;font-size:13px;color:#34546b}
+.pay-points-row label{display:flex;align-items:center;gap:8px;margin:0;font-size:13px;font-weight:700;color:#34546b;cursor:pointer}
+.pay-points-row input{width:16px;height:16px;margin:0;accent-color:#1a6b7a;flex:0 0 16px}
 .pay-split li strong,.pay-total strong{display:inline;font-size:13px;color:#143246;text-align:right}
 .pay-total{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:2px 0 0;padding-top:6px;border-top:1px solid #edf1f3;font-size:13px;color:#34546b}
 .pay-total strong{font-size:15px}

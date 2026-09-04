@@ -64,6 +64,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>MediHome uses your location to fill the PIN Code and delivery address.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>MediHome uses your location to fill the PIN Code and delivery address.</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 </dict>

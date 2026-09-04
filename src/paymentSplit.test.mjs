@@ -73,9 +73,45 @@ test("if discount is larger than MediHome share, partner transfer is capped at t
   });
   assert.equal(quote.payableRupees, 0);
   assert.equal(quote.split.partnerRupees, 60);
-  assert.equal(quote.split.platformRupees, -60);
   assert.equal(quote.split.partnerTransferRupees, 0);
   assert.equal(quote.split.platformSettledRupees, 0);
+  assert.equal(quote.split.platformRupees, 0);
+  assert.equal(quote.split.discountFrom, "medihome");
+});
+
+test("MediHome points reduce only the MediHome portion", () => {
+  const split = splitPayment("medicine", 90, "110001", {
+    saleRupees: 100,
+    payableRupees: 90,
+    pointsDiscountRupees: 10,
+    platformPercent: 40,
+  });
+  assert.equal(split.partnerRupees, 60);
+  assert.equal(split.partnerTransferRupees, 60);
+  assert.equal(split.platformSettledRupees, 30);
+  assert.equal(split.pointsDiscountRupees, 10);
+  assert.equal(split.discountFrom, "medihome");
+});
+
+test("service charge / platform fee is credited only to MediHome", () => {
+  const split = splitPayment("lab", 1000, "110001", {
+    saleRupees: 1000,
+    payableRupees: 1050,
+    serviceChargeRupees: 50,
+    platformPercent: 15,
+    paymentMethod: "upi",
+    paidOn: "customer",
+  });
+  assert.equal(split.partnerRupees, 850);
+  assert.equal(split.partnerTransferRupees, 850);
+  assert.equal(split.serviceChargeRupees, 50);
+  assert.equal(split.serviceChargeTo, "medihome");
+  assert.equal(split.platformSettledRupees, 200);
+  assert.equal(split.medihomeAccountRupees, 200);
+  assert.match(
+    split.ledger.at(-1).note,
+    /service charge|platform fee/i
+  );
 });
 
 test("unknown coupon is rejected", () => {

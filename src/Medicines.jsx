@@ -2941,11 +2941,22 @@ function BrandSearchStrip({
   );
 }
 
+function readHomeMedicineCategory() {
+  try {
+    return (sessionStorage.getItem("mediHomeMedicineCategory") || "").trim();
+  } catch {
+    return "";
+  }
+}
+
 function Medicines({ initialSearch = "" }) {
   const [search, setSearch] = useState(
     () => (initialSearch || "").trim() || readHomeMedicineSearch()
   );
-  const [category, setCategory] = useState("All");
+  const [category, setCategory] = useState(() => {
+    const fromHome = readHomeMedicineCategory();
+    return fromHome || "All";
+  });
   const [recentSearches, setRecentSearches] = useState([]);
   const [cart, setCart] = useState([]);
   const [showCart, setShowCart] = useState(false);
@@ -2972,6 +2983,22 @@ function Medicines({ initialSearch = "" }) {
     if (next) {
       setSearch(next);
       setCategory("All");
+      try {
+        sessionStorage.removeItem("mediHomeMedicineCategory");
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    const fromHome = readHomeMedicineCategory();
+    if (fromHome) {
+      setCategory(fromHome);
+      setSearch("");
+      try {
+        sessionStorage.removeItem("mediHomeMedicineCategory");
+      } catch {
+        /* ignore */
+      }
     }
   }, [initialSearch]);
 

@@ -4,6 +4,7 @@ export async function bootstrapNativeShell() {
   if (!isNativeRuntime()) return;
 
   document.documentElement.classList.add("is-native-app");
+  document.body.classList.add("is-native-app");
 
   try {
     const [{ App }, { SplashScreen }, { StatusBar, Style }] = await Promise.all([

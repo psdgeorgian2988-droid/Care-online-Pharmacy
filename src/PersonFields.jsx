@@ -1,8 +1,8 @@
 import {
+  DOB_MIN_ISO,
   GENDER_OPTIONS,
   ageFromDob,
   isoDateToday,
-  isoDateYearsAgo,
 } from "./personFields";
 import DateMonthYearFields from "./DateMonthYearFields";
 
@@ -49,7 +49,7 @@ export default function PersonFields({
             name="dob"
             value={values.dob || ""}
             max={isoDateToday()}
-            min={isoDateYearsAgo(120)}
+            min={DOB_MIN_ISO}
             required
             error={errors.dob || ""}
             onChange={onChange}
