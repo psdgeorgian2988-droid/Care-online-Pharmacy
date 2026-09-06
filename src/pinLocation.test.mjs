@@ -19,13 +19,13 @@ test("GPS nearest PIN is used when the map has no postcode", () => {
   assert.deepEqual(chosen, { pin: "124146", source: "nearest" });
 });
 
-test("Dwarka Sector 13 resolves to 110078 by area name, not Delhi Cantt centroid", () => {
+test("Dwarka Sector 6 resolves to 110075 by India Post area name", () => {
   const found = resolvePinFromLocation(28.5921, 77.046, {
-    area: "Dwarka Sector 13",
-    suburb: "Dwarka Sector 13",
+    area: "Dwarka Sector 6",
+    suburb: "Dwarka Sector 6",
     postcode: "110010",
   });
-  assert.equal(found.pin, "110078");
+  assert.equal(found.pin, "110075");
   assert.equal(found.source, "area");
 });
 

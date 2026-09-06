@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { DELHI_POST_OFFICES } from "./delhiPostOffices.mjs";
 
 const DATA_PATH = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -88,9 +89,13 @@ function unpack(pin, row, extra = {}) {
   const storedAreas = newFormat && Array.isArray(row[6]) ? row[6] : [];
   const district = alignedDistrict(districtRaw);
   const city = alignedCity(cityRaw, district);
+  const delhiOffices = DELHI_POST_OFFICES[pin] || [];
+  // Delhi PINs use only India Post office names for the area dropdown.
   const areas = extra.approximate
     ? uniqueAreas([city])
-    : uniqueAreas(storedAreas, areaRaw);
+    : delhiOffices.length
+      ? uniqueAreas(delhiOffices)
+      : uniqueAreas(storedAreas, areaRaw);
   const area = areas.includes(areaRaw) ? areaRaw : areas[0] || "";
   return {
     pin,

@@ -72,15 +72,26 @@ test("PIN 124146 dropdown is only villages attached to that PIN", () => {
   }
 });
 
-test("PIN 110075 dropdown includes Dwarka Sector 13 and other attached sectors", () => {
+test("PIN 110031 dropdown includes India Post Gandhi Nagar offices", () => {
+  const row = lookupPin("110031");
+  assert.equal(row.city, "New Delhi");
+  for (const name of ["Gandhi Nagar", "Geeta Colony", "Kailash Nagar"]) {
+    assert.equal(
+      row.areas.some((area) => area.toLowerCase() === name.toLowerCase()),
+      true,
+      name
+    );
+  }
+});
+
+test("PIN 110075 dropdown includes India Post Dwarka offices only", () => {
   const row = lookupPin("110075");
   assert.equal(row.city, "New Delhi");
   assert.equal(row.district, "South West Delhi");
   for (const name of [
     "Dwarka Sector 6",
-    "Dwarka Sector 13",
-    "Dwarka Sector 10",
     "Amberhai",
+    "District Court Complex Dwarka",
   ]) {
     assert.equal(
       row.areas.some((area) => area.toLowerCase() === name.toLowerCase()),
@@ -88,6 +99,7 @@ test("PIN 110075 dropdown includes Dwarka Sector 13 and other attached sectors",
       name
     );
   }
+  assert.equal(row.areas.includes("Dwarka Sector 13"), false);
 });
 
 test("PIN 122018 dropdown includes the attached sector", () => {
