@@ -3,7 +3,6 @@ import { createInterface } from "node:readline";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { LOCALITY_OVERLAY } from "./locality-overlay.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const INPUT = process.argv[2] || "/tmp/pincodes/IN.txt";
@@ -293,16 +292,6 @@ for await (const line of createInterface({ input: stream, crlfDelay: Infinity })
   grouped.set(pin, row);
 }
 
-for (const [pin, extras] of Object.entries(LOCALITY_OVERLAY)) {
-  const row = grouped.get(String(pin));
-  if (!row) continue;
-  for (const placeName of extras) {
-    const clean = cleanPlace(placeName);
-    if (!clean) continue;
-    row.places.push({ name: placeName, clean, acc: "3" });
-  }
-}
-
 const pins = {};
 const prefixBuckets = new Map();
 
@@ -362,7 +351,7 @@ await writeFile(
   OUTPUT,
   JSON.stringify({
     source:
-      "GeoNames postal codes for India (CC BY 4.0, https://www.geonames.org) plus locality overlay for sectors, villages and mohallas",
+      "GeoNames postal codes for India (CC BY 4.0, https://www.geonames.org) plus India Post Delhi office names for Village / Sector / Mohalla",
     pins,
     prefix,
   })
