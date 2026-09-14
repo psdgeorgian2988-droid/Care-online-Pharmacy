@@ -508,9 +508,7 @@ function App() {
       <div className={`app app-customer${welcomeGate ? " is-welcome-gate" : ""}`}>
         <Seo route={route} />
         <div className="app-frame">
-          {welcomeGate ? null : (
-            <AppHeader user={user} route={route} />
-          )}
+          <AppHeader user={user} route={route} />
           <main id="app-scroll">
             {welcomeGate ? null : <WebinarNotice />}
             <ErrorBoundary key={route}>

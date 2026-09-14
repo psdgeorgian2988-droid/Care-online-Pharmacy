@@ -6510,54 +6510,54 @@ html:not(.is-native-app):not(.is-customer-app):not(.is-installed-app) #root {
 }
 
 .app-chrome-header {
-  position: sticky;
-  top: 0;
-  z-index: 30;
+  position: relative;
+  flex: 0 0 auto;
+  z-index: 40;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   width: 100%;
   margin: 0;
-  padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 8px;
+  padding: 8px 10px;
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
   box-sizing: border-box;
-  background: rgba(234, 246, 243, 0.94);
-  border-bottom: 1px solid #c5ddd8;
-  backdrop-filter: blur(12px);
+  background: #eaf6f3;
+  border-bottom: 0;
 }
 
 .app-chrome-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
+  width: 52px;
   height: 48px;
   padding: 0;
-  border: 1px solid #c5e0e6;
-  border-radius: 14px;
+  border: 2px solid #1a6b7a;
+  border-radius: 16px;
   background: #fff;
-  color: var(--app-blue);
+  color: #1a6b7a;
   text-decoration: none;
   cursor: pointer;
   box-sizing: border-box;
 }
 
 .app-chrome-btn.is-end {
-  border: 1px solid #c5e0e6;
-  border-radius: 14px;
+  border: 2px solid #1a6b7a;
+  border-radius: 16px;
 }
 
 .app-chrome-btn.is-end.is-login {
   width: auto;
-  min-width: 72px;
-  padding: 0 14px;
-  font-size: 13px;
+  min-width: 76px;
+  padding: 0 16px;
+  font-size: 14px;
   font-weight: 800;
 }
 
 .app-chrome-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 
 .app-chrome-brand-box {
@@ -6568,9 +6568,9 @@ html:not(.is-native-app):not(.is-customer-app):not(.is-installed-app) #root {
   min-width: 0;
   height: 48px;
   padding: 0 12px;
-  border: 1px solid #c5e0e6;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #ffffff 0%, #eef7f8 100%);
+  border: 2px solid #1a6b7a;
+  border-radius: 16px;
+  background: #fff;
   color: #145864;
   text-decoration: none;
   box-sizing: border-box;
@@ -6588,6 +6588,17 @@ html:not(.is-native-app):not(.is-customer-app):not(.is-installed-app) #root {
   font-size: 17px;
   font-weight: 800;
   letter-spacing: -0.03em;
+}
+
+html.is-native-app .app-chrome-header,
+html.is-customer-app .app-chrome-header,
+.app-customer .app-chrome-header {
+  display: grid !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  height: auto !important;
+  min-height: 64px !important;
 }
 
 .app-chrome-brand-block {
@@ -7366,27 +7377,49 @@ html:not(.is-native-app):not(.is-customer-app):not(.is-installed-app) #root {
 
 /* —— App first page: calm healthcare login —— */
 .app-first {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
+  position: relative;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
   margin: 0;
-  padding: calc(28px + env(safe-area-inset-top, 0px)) 24px
-    calc(28px + env(safe-area-inset-bottom, 0px));
-  overflow: hidden;
   color: #143246;
   background:
     radial-gradient(120% 80% at 12% -10%, #ffffff 0%, transparent 42%),
     radial-gradient(90% 70% at 110% 8%, #cfe9ef 0%, transparent 48%),
     radial-gradient(80% 60% at 8% 108%, #d7efe4 0%, transparent 46%),
     linear-gradient(180deg, #eef8f8 0%, #e4f2f4 48%, #dceef2 100%);
+}
+
+.app-first.is-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding: calc(28px + env(safe-area-inset-top, 0px)) 24px
+    calc(28px + env(safe-area-inset-bottom, 0px));
+}
+
+.app-first.is-home,
+.app-first.is-guest {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  width: 100%;
+  height: auto;
+  min-height: calc(100dvh - 72px);
+  overflow: auto;
+  padding: 20px 16px 28px;
+}
+
+.app-first.is-guest {
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 12px 0 28px;
 }
 
 .app-first::before,
@@ -7414,21 +7447,35 @@ html:not(.is-native-app):not(.is-customer-app):not(.is-installed-app) #root {
 }
 
 .app-customer.is-welcome-gate,
-.app-customer.is-welcome-gate .app-frame,
+.app-customer.is-welcome-gate .app-frame {
+  background: #eef8f8 !important;
+  box-shadow: none !important;
+}
+
+.app-customer.is-welcome-gate .app-frame {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  overflow: visible !important;
+  min-height: 100dvh !important;
+}
+
 .app-customer.is-welcome-gate > main,
 .app-customer.is-welcome-gate .app-frame > main,
 .app-customer.is-welcome-gate > main#app-scroll,
 .app-customer.is-welcome-gate .app-frame > main#app-scroll {
   display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: #eef8f8 !important;
+  flex: 1 1 auto !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  background: transparent !important;
   padding: 0 !important;
   margin: 0 !important;
-  overflow: hidden !important;
+  overflow: auto !important;
   width: 100% !important;
   max-width: none !important;
-  min-height: 100dvh !important;
+  min-height: 0 !important;
   box-shadow: none !important;
 }
 

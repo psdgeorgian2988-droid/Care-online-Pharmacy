@@ -14,8 +14,9 @@ export async function bootstrapNativeShell() {
     ]);
 
     try {
-      await StatusBar.setStyle({ style: Style.Light });
-      await StatusBar.setBackgroundColor({ color: "#1a6b7a" });
+      await StatusBar.setOverlaysWebView({ overlay: false });
+      await StatusBar.setBackgroundColor({ color: "#eaf6f3" });
+      await StatusBar.setStyle({ style: Style.Dark });
     } catch {
       /* status bar not available on every device */
     }

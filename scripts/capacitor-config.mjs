@@ -21,6 +21,11 @@ const config = {
       backgroundColor: "#eaf4fb",
       launchAutoHide: false,
     },
+    StatusBar: {
+      overlaysWebView: false,
+      style: "DARK",
+      backgroundColor: "#eaf6f3",
+    },
   },
 };
 

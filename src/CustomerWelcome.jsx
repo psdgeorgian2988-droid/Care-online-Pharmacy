@@ -10,8 +10,6 @@ import {
   writeGuestCheckout,
 } from "./guestCheckout";
 import { SITE } from "./siteMeta.js";
-import LogoMark from "./LogoMark";
-import AppHeader from "./AppHeader";
 import { authEntryHref } from "./authSession";
 
 const FLASH_MS = 2200;
@@ -90,7 +88,6 @@ export default function CustomerWelcome({ onDone } = {}) {
   if (mode === "guest") {
     return (
       <div className="app-first is-guest">
-        <AppHeader user={null} route="#home" />
         <section className="app-first-card" aria-label="Guest delivery details">
           <strong className="app-first-name">{SITE.name}</strong>
           <h2>Guest order</h2>
@@ -149,12 +146,6 @@ export default function CustomerWelcome({ onDone } = {}) {
   return (
     <div className="app-first is-home">
       <div className="app-first-center is-login">
-        <div className="app-first-logo">
-          <span className="app-first-logo-ring">
-            <LogoMark />
-          </span>
-          <strong>MediHome</strong>
-        </div>
         <div className="app-first-actions" aria-label="Get started">
           <a
             className="app-first-btn"
