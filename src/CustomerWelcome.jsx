@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AddressFields from "./AddressFields.jsx";
 import AutofillTrap from "./AutofillTrap";
 import { goToHash } from "./hashRoute";
@@ -10,16 +10,48 @@ import {
   writeGuestCheckout,
 } from "./guestCheckout";
 import { SITE } from "./siteMeta.js";
+import LogoMark from "./LogoMark";
+import AppHeader from "./AppHeader";
+import { authEntryHref } from "./authSession";
 
-export function needsCustomerWelcome(user) {
+const FLASH_MS = 2200;
+const ENTRY_CHOSEN_KEY = "mediHomeEntryChosen";
+
+function entryStore() {
+  try {
+    return globalThis.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+export function markCustomerEntryChosen(store = entryStore()) {
+  try {
+    store?.setItem?.(ENTRY_CHOSEN_KEY, "1");
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+export function needsCustomerWelcome(user, store = entryStore()) {
   if (user) return false;
-  return !guestHasCheckout();
+  try {
+    return store?.getItem?.(ENTRY_CHOSEN_KEY) !== "1";
+  } catch {
+    return true;
+  }
 }
 
 export default function CustomerWelcome({ onDone } = {}) {
-  const [mode, setMode] = useState("choose"); // choose | guest
+  const [mode, setMode] = useState("flash"); // flash | choose | guest
   const [form, setForm] = useState(() => emptyGuestCheckout());
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (mode !== "flash") return undefined;
+    const timer = window.setTimeout(() => setMode("choose"), FLASH_MS);
+    return () => window.clearTimeout(timer);
+  }, [mode]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -33,6 +65,7 @@ export default function CustomerWelcome({ onDone } = {}) {
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
     writeGuestCheckout(form);
+    markCustomerEntryChosen();
     onDone?.();
     try {
       window.dispatchEvent(new Event("mediHomeSession"));
@@ -42,13 +75,26 @@ export default function CustomerWelcome({ onDone } = {}) {
     goToHash("#home");
   };
 
+  if (mode === "flash") {
+    return (
+      <div className="app-first is-flash" role="status" aria-live="polite">
+        <div className="app-first-center is-flash-copy">
+          <p className="app-first-welcome">
+            A Complete Online Healthcare Ecosystem
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (mode === "guest") {
     return (
-      <div className="app-welcome is-gate">
-        <section className="app-welcome-card app-welcome-guest" aria-label="Guest delivery details">
-          <strong className="app-welcome-brand-mark">{SITE.name}</strong>
-          <h1>Guest order</h1>
-          <form className="app-welcome-form" onSubmit={saveGuest}>
+      <div className="app-first is-guest">
+        <AppHeader user={null} route="#home" />
+        <section className="app-first-card" aria-label="Guest delivery details">
+          <strong className="app-first-name">{SITE.name}</strong>
+          <h2>Guest order</h2>
+          <form className="app-first-form" onSubmit={saveGuest}>
             <AutofillTrap />
             <label>
               Name (optional)
@@ -72,7 +118,6 @@ export default function CustomerWelcome({ onDone } = {}) {
               />
               {errors.mobile ? <small>{errors.mobile}</small> : null}
             </label>
-
             <AddressFields
               idPrefix="guest-welcome"
               values={form}
@@ -80,14 +125,13 @@ export default function CustomerWelcome({ onDone } = {}) {
               onChange={handleChange}
               showUseMyLocation
             />
-
-            <div className="app-welcome-actions is-stack">
-              <button type="submit" className="app-welcome-btn">
+            <div className="app-first-actions">
+              <button type="submit" className="app-first-btn">
                 Continue
               </button>
               <button
                 type="button"
-                className="app-welcome-btn is-quiet"
+                className="app-first-btn is-quiet"
                 onClick={() => {
                   setMode("choose");
                   setErrors({});
@@ -103,37 +147,36 @@ export default function CustomerWelcome({ onDone } = {}) {
   }
 
   return (
-    <div className="app-welcome is-gate is-choose">
-      <div className="app-welcome-center">
-        <header className="app-welcome-hero">
-          <span className="app-welcome-logo" aria-hidden="true">
-            <svg viewBox="0 0 40 40">
-              <rect width="40" height="40" rx="9" fill="#1a6b7a" />
-              <path
-                d="M20 8.2 32.4 19.2h-3V31.2H10.6V19.2h-3L20 8.2z"
-                fill="#ffffff"
-              />
-              <path
-                d="M19 17.5h2v3.3h3.3v2H21v3.3h-2v-3.3h-3.3v-2H19v-3.3z"
-                fill="#1a6b7a"
-              />
-            </svg>
+    <div className="app-first is-home">
+      <div className="app-first-center is-login">
+        <div className="app-first-logo">
+          <span className="app-first-logo-ring">
+            <LogoMark />
           </span>
-          <h1 className="app-welcome-brand-mark">{SITE.name}</h1>
-          <p className="app-welcome-tagline">
-            A COMPLETE ONLINE HEALTHCARE ECOSYSTEM
-          </p>
-        </header>
-        <div className="app-welcome-actions is-stack" aria-label="Get started">
-          <a className="app-welcome-btn" href="#login">
-            Login / Register
+          <strong>MediHome</strong>
+        </div>
+        <div className="app-first-actions" aria-label="Get started">
+          <a
+            className="app-first-btn"
+            href={authEntryHref()}
+            onClick={() => markCustomerEntryChosen()}
+          >
+            Login
           </a>
           <button
             type="button"
-            className="app-welcome-btn is-quiet"
-            onClick={() => setMode("guest")}
+            className="app-first-btn is-quiet"
+            onClick={() => {
+              if (guestHasCheckout()) {
+                markCustomerEntryChosen();
+                onDone?.();
+                goToHash("#home");
+                return;
+              }
+              setMode("guest");
+            }}
           >
-            Order as guest
+            Order as Guest
           </button>
         </div>
       </div>

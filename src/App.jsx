@@ -41,11 +41,14 @@ import BackToHome from "./BackToHome";
 import WebinarNotice from "./WebinarNotice";
 import { needsCustomerWelcome } from "./CustomerWelcome";
 import {
+  isAppShell,
   isInstalledApp,
   launchHashForRole,
   readAppRole,
   shouldShowAppPicker,
 } from "./appRuntime";
+import LogoMark from "./LogoMark";
+import AppHeader from "./AppHeader";
 
 const NAV_LINKS = [
   { href: "#home", label: "Home" },
@@ -114,24 +117,6 @@ function hashLinkActive(linkHref, route, scanStep) {
     return true;
   }
   return false;
-}
-
-function LogoMark() {
-  return (
-    <span className="logo-mark" aria-hidden="true">
-      <svg className="logo-house-svg" viewBox="0 0 40 40">
-        <rect width="40" height="40" rx="9" fill="#1a6b7a" />
-        <path
-          d="M20 8.2 32.4 19.2h-3V31.2H10.6V19.2h-3L20 8.2z"
-          fill="#ffffff"
-        />
-        <path
-          d="M19 17.5h2v3.3h3.3v2H21v3.3h-2v-3.3h-3.3v-2H19v-3.3z"
-          fill="#1a6b7a"
-        />
-      </svg>
-    </span>
-  );
 }
 
 function HomeReviewsTeaser() {
@@ -338,9 +323,9 @@ function WebsiteHomePage() {
   );
 }
 
-function HomePage({ onOpenMenu } = {}) {
-  if (isInstalledApp()) {
-    return <CustomerHome onOpenMenu={onOpenMenu} />;
+function HomePage() {
+  if (isAppShell()) {
+    return <CustomerHome />;
   }
   return <WebsiteHomePage />;
 }
@@ -391,7 +376,7 @@ function App() {
   const features = useFeatures();
   const appRole = readAppRole();
   const customerShell =
-    isInstalledApp() && !isOps && appRole !== "staff" && appRole !== "partner";
+    isAppShell() && !isOps && appRole !== "staff" && appRole !== "partner";
 
   useEffect(() => {
     const root = document.documentElement;
@@ -479,7 +464,7 @@ function App() {
         return <AppPicker />;
       case "#home":
       default:
-        return <HomePage onOpenMenu={() => setAppMenuOpen(true)} />;
+        return <HomePage />;
     }
   };
 
@@ -517,85 +502,30 @@ function App() {
   const showBackHome = route !== "#home" && route !== "#apps";
 
   if (customerShell) {
-    const moreLinks = [
-      ...NAV_LINKS.filter((link) => link.href !== "#home"),
-      ...ACCOUNT_LINKS,
-      ...BOTTOM_LINKS,
-    ];
     const welcomeGate =
       route === "#home" && needsCustomerWelcome(user) && sessionTick >= 0;
     return (
       <div className={`app app-customer${welcomeGate ? " is-welcome-gate" : ""}`}>
         <Seo route={route} />
-        <main id="app-scroll">
-          {welcomeGate ? null : <BackToHome show={showBackHome} />}
-          {welcomeGate ? null : <WebinarNotice />}
-          <ErrorBoundary key={route}>
-            <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
-          </ErrorBoundary>
-        </main>
-        {appMenuOpen && !welcomeGate ? (
-          <div className="app-menu-sheet" role="dialog" aria-label="More services">
-            <button
-              type="button"
-              className="app-menu-backdrop"
-              aria-label="Close menu"
-              onClick={() => setAppMenuOpen(false)}
+        <div className="app-frame">
+          {welcomeGate ? null : (
+            <AppHeader user={user} route={route} />
+          )}
+          <main id="app-scroll">
+            {welcomeGate ? null : <WebinarNotice />}
+            <ErrorBoundary key={route}>
+              <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
+            </ErrorBoundary>
+          </main>
+          {welcomeGate ? null : <AppBottomNav route={route} />}
+          {welcomeGate ? null : (
+            <CareChat
+              open={careOpen}
+              onOpen={() => setCareOpen(true)}
+              onClose={() => setCareOpen(false)}
             />
-            <div className="app-menu-panel">
-              <div className="app-menu-head">
-                <strong>MediHome</strong>
-                <button type="button" onClick={() => setAppMenuOpen(false)}>
-                  Close
-                </button>
-              </div>
-              <nav aria-label="More">
-                {moreLinks.map((link) => (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setAppMenuOpen(false)}
-                  >
-                    {link.label}
-                  </a>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAppMenuOpen(false);
-                    setCareOpen(true);
-                  }}
-                >
-                  Customer Care
-                </button>
-                {user ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      logoutSession();
-                      setAppMenuOpen(false);
-                      goToHash("#home");
-                    }}
-                  >
-                    Logout
-                  </button>
-                ) : (
-                  <a href="#login" onClick={() => setAppMenuOpen(false)}>
-                    Login / Register
-                  </a>
-                )}
-              </nav>
-            </div>
-          </div>
-        ) : null}
-        {welcomeGate ? null : <AppBottomNav route={route} />}
-        {welcomeGate ? null : (
-          <CareChat
-            open={careOpen}
-            onOpen={() => setCareOpen(true)}
-            onClose={() => setCareOpen(false)}
-          />
-        )}
+          )}
+        </div>
       </div>
     );
   }

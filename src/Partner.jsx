@@ -124,7 +124,6 @@ export default function Partner() {
           <section className="service-hero">
             <span className="service-kicker">Partner Operations</span>
             <h1>Partner Login</h1>
-            <p>Use The Login ID And Password Created For You By MediHome Staff.</p>
           </section>
           <form className="service-form admin-login" onSubmit={handleLogin}>
             <div className="field">
@@ -147,9 +146,6 @@ export default function Partner() {
               />
             </div>
             {error ? <p className="admin-error">{error}</p> : null}
-            <p className="admin-hint">
-              First-Time Login ID And Password Are Created On The Staff Desk.
-            </p>
             <button type="submit" className="service-submit">
               Sign In
             </button>
@@ -167,10 +163,6 @@ export default function Partner() {
           <div>
             <span className="service-kicker">{partner.role}</span>
             <h1>{partner.name}</h1>
-            <p>
-              Collect payment with the same options as the customer app. Split
-              follows MediHome share rules for each service.
-            </p>
           </div>
           <div className="admin-hero-actions">
             <button type="button" onClick={loadJobs} disabled={loading}>

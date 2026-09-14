@@ -1,5 +1,6 @@
 export const APP_ROLE_KEY = "medihome.appRole";
 export const APP_LAUNCH_KEY = "medihome.launchDone";
+export const APP_PREVIEW_KEY = "medihome.appPreview";
 
 export const APP_ROLES = {
   customer: {
@@ -24,7 +25,17 @@ export const APP_ROLES = {
 
 export function isNativeRuntime(env = globalThis) {
   try {
-    return Boolean(env.Capacitor?.isNativePlatform?.() || env.Capacitor?.isNative);
+    const cap = env.Capacitor;
+    if (typeof cap?.isNativePlatform === "function" && cap.isNativePlatform()) {
+      return true;
+    }
+    if (cap?.isNative === true) return true;
+    const platform = cap?.getPlatform?.() || cap?.platform;
+    if (platform === "android" || platform === "ios") return true;
+    const ua = String(env.navigator?.userAgent || "");
+    if (/Capacitor/i.test(ua)) return true;
+    if (/Android/i.test(ua) && /; wv\)/.test(ua)) return true;
+    return false;
   } catch {
     return false;
   }
@@ -42,6 +53,40 @@ export function isStandaloneDisplay(env = globalThis) {
 
 export function isInstalledApp(env = globalThis) {
   return isNativeRuntime(env) || isStandaloneDisplay(env);
+}
+
+export function isAppPreview(env = globalThis) {
+  try {
+    const params = new URLSearchParams(env.location?.search || "");
+    const flag = params.get("app");
+    if (flag === "1") return true;
+    if (flag === "0") return false;
+    return env.localStorage?.getItem?.(APP_PREVIEW_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function persistAppPreview(env = globalThis) {
+  try {
+    const params = new URLSearchParams(env.location?.search || "");
+    const flag = params.get("app");
+    if (flag === "1") env.localStorage?.setItem?.(APP_PREVIEW_KEY, "1");
+    if (flag === "0") env.localStorage?.removeItem?.(APP_PREVIEW_KEY);
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+export function bootAppPreview(env = globalThis, store) {
+  persistAppPreview(env);
+  if ((isAppPreview(env) || isNativeRuntime(env)) && !readAppRole(store)) {
+    writeAppRole("customer", store);
+  }
+}
+
+export function isAppShell(env = globalThis) {
+  return isInstalledApp(env) || isAppPreview(env);
 }
 
 export function readAppRole(store) {

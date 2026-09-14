@@ -4,8 +4,10 @@ import "./index.css";
 import App from "./App.jsx";
 import ErrorBoundary from "./ErrorBoundary";
 import { bootstrapNativeShell } from "./nativeShell.js";
+import { bootAppPreview } from "./appRuntime.js";
 import { registerPwa } from "./registerPwa";
 
+bootAppPreview();
 registerPwa();
 bootstrapNativeShell();
 

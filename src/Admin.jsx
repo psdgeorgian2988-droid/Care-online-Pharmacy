@@ -372,7 +372,6 @@ function Admin() {
           <section className="service-hero">
             <span className="service-kicker">Operations</span>
             <h1>Staff Login</h1>
-            <p>Assign Partners, Update Status, And See Payment Splits. This Desk Is Separate From The Public Website.</p>
           </section>
           <form className="service-form admin-login" onSubmit={handleLogin}>
             <div className="field">
@@ -412,11 +411,6 @@ function Admin() {
           <div>
             <span className="service-kicker">Operations</span>
             <h1>Staff Desk</h1>
-            <p>
-              Sales, Feature Switches, Growth Charts, And Partner Assignment.
-              Scan Delivery Controls Stay On This Desk. Customers And Riders Only
-              See Scan Delivery While Receiving A Medicine Order.
-            </p>
           </div>
           <div className="admin-hero-actions">
             <a className="admin-scan-link" href="#scan?step=pack">
@@ -930,7 +924,7 @@ function Admin() {
                   <td colSpan="11">
                     {loading
                       ? "Loading…"
-                      : "No Orders In This Status. Place A Booking, Then Refresh, Or Choose All Statuses."}
+                      : "No Orders."}
                   </td>
                 </tr>
               ) : (

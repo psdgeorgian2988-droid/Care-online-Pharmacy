@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  APP_PREVIEW_KEY,
   APP_ROLES,
+  bootAppPreview,
+  isAppPreview,
+  isAppShell,
   launchHashForRole,
   readAppRole,
   shouldShowAppPicker,
@@ -55,4 +59,42 @@ test("staff and partner launch once from home into their desk", () => {
   const session2 = memoryStore();
   assert.equal(launchHashForRole("partner", "#home", session2), "#partner");
   assert.equal(launchHashForRole("customer", "#home", memoryStore()), "");
+});
+
+test("a native Android app opens the customer shell, not the website menu", () => {
+  const store = memoryStore();
+  const env = {
+    Capacitor: { isNativePlatform: () => true },
+    localStorage: store,
+    location: { search: "" },
+  };
+  bootAppPreview(env, store);
+  assert.equal(isAppShell(env), true);
+  assert.equal(readAppRole(store), "customer");
+  assert.equal(shouldShowAppPicker("#home", env, store), false);
+});
+
+test("?app=1 opens the customer app shell in the browser", () => {
+  const store = memoryStore();
+  const env = {
+    location: { search: "?app=1" },
+    localStorage: store,
+  };
+  assert.equal(isAppPreview(env), true);
+  assert.equal(isAppShell(env), true);
+  bootAppPreview(env, store);
+  assert.equal(store.getItem(APP_PREVIEW_KEY), "1");
+  assert.equal(readAppRole(store), "customer");
+  assert.equal(shouldShowAppPicker("#home", env, store), false);
+});
+
+test("?app=0 turns the browser preview off", () => {
+  const store = memoryStore({ [APP_PREVIEW_KEY]: "1" });
+  const env = {
+    location: { search: "?app=0" },
+    localStorage: store,
+  };
+  bootAppPreview(env, store);
+  assert.equal(isAppPreview(env), false);
+  assert.equal(store.getItem(APP_PREVIEW_KEY), null);
 });

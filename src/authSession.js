@@ -6,6 +6,8 @@ import {
   profileForActor,
 } from "./familyAccount";
 
+import { normalizeLoginPin } from "./loginPin";
+
 export const PROFILE_KEY = "mediHomeUser";
 export const LOGIN_SESSION_KEY = "mediHomeLoggedIn";
 export const ACTOR_SESSION_KEY = "mediHomeActor";
@@ -23,6 +25,22 @@ export function readAccountActor() {
 
 export function readHouseholdProfile() {
   return readUserProfile();
+}
+
+export function authEntryHref() {
+  try {
+    const saved = readUserProfile();
+    if (saved?.isGuest) return "#register";
+    const mobile = String(saved?.creatorMobile || saved?.mobile || "").replace(
+      /\D/g,
+      ""
+    );
+    const pin = normalizeLoginPin(saved?.loginPin);
+    if (/^[6-9]\d{9}$/.test(mobile) && pin) return "#login";
+  } catch {
+    /* ignore */
+  }
+  return "#register";
 }
 
 export function readLoginSession() {
