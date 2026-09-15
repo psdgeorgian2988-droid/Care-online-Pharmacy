@@ -21,12 +21,14 @@ export const ORDER_STORAGE = {
 };
 
 export const TRACK_STEPS = [
+  { key: "requested", label: "Awaiting Partner Confirmation" },
   { key: "confirmed", label: "Confirmed" },
   { key: "assigned", label: "Partner Assigned" },
   { key: "packed", label: "Packed" },
   { key: "on_the_way", label: "On The Way" },
   { key: "arriving", label: "Arriving" },
   { key: "done", label: "Delivered" },
+  { key: "declined", label: "Declined" },
 ];
 
 const DURATION_MS = {
@@ -224,6 +226,8 @@ export function partnerCopy(kind) {
 }
 
 export function stepLabel(kind, key) {
+  if (key === "requested") return "Awaiting Partner Confirmation";
+  if (key === "declined") return "Declined By Partner";
   if (key === "done") return doneLabel(kind);
   if (key === "packed") return "Packed";
   return TRACK_STEPS.find((step) => step.key === key)?.label || "Confirmed";

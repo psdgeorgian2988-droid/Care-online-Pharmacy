@@ -4,6 +4,10 @@ import AssignedAgent from "./AssignedAgent";
 import { BillButton } from "./OrderBill.jsx";
 import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import {
+  checkMedicineAvailability,
+  medicineConfirmedFields,
+} from "./orderConfirm";
 import { buildIndiaCombos } from "./indiaMedicineCombos";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
@@ -3205,6 +3209,11 @@ function Medicines({ initialSearch = "" }) {
 
     setPlacingOrder(true);
     try {
+      const availability = checkMedicineAvailability(cart, catalogue);
+      if (!availability.ok) {
+        alert(availability.message);
+        return;
+      }
       const queue = await holdForPartnerQueue("medicine");
       const gps = await resolvePinLocation(booked.pinCode);
       const addr = applyResolvedPin(booked, gps);
@@ -3239,7 +3248,6 @@ function Medicines({ initialSearch = "" }) {
         couponCode: pay.couponCode,
         discountRupees: pay.discountRupees,
         highTrafficWait: queue.busy || queue.waited,
-        status: "Order Placed",
         date: new Date().toLocaleString(),
         fullName: booked.patientName,
         ...whoFor,
@@ -3247,6 +3255,7 @@ function Medicines({ initialSearch = "" }) {
         mobileNumber: booked.mobile,
         prescription: prescriptionFile ? prescriptionFile.name : "",
         ...addr,
+        ...medicineConfirmedFields(availability),
         ...payment,
       };
 
@@ -3584,7 +3593,8 @@ function Medicines({ initialSearch = "" }) {
           <h2>Order Confirmed</h2>
           <PatienceNote kind="medicine" shown={confirmedOrder.highTrafficWait} />
           <p>
-            Thank you, {confirmedOrder.fullName}. Your order has been placed
+            Thank you, {confirmedOrder.fullName}. Your medicine order is confirmed
+            after availability check in the system.
             successfully.
           </p>
           <p>

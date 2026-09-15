@@ -10,12 +10,14 @@ export const SERVICE_ORDER_KINDS = [
 ];
 
 export const TRACK_STATUS_STEPS = [
+  { key: "requested", label: "Awaiting Partner Confirmation" },
   { key: "confirmed", label: "Confirmed" },
   { key: "assigned", label: "Partner Assigned" },
   { key: "packed", label: "Packed" },
   { key: "on_the_way", label: "On The Way" },
   { key: "arriving", label: "Arriving" },
   { key: "done", label: "Done" },
+  { key: "declined", label: "Declined" },
 ];
 
 export function serviceKind(order) {
@@ -23,13 +25,16 @@ export function serviceKind(order) {
 }
 
 export function trackKey(order) {
-  if (order?.trackCompleted) return "done";
+  if (order?.trackCompleted && String(order?.trackStatus || "") !== "declined") {
+    return "done";
+  }
   const key = String(order?.trackStatus || "confirmed");
   return TRACK_STATUS_STEPS.some((step) => step.key === key) ? key : "confirmed";
 }
 
 export function isOpenOrder(order) {
-  return trackKey(order) !== "done";
+  const key = trackKey(order);
+  return key !== "done" && key !== "declined";
 }
 
 export function isUnassigned(order) {
@@ -37,9 +42,11 @@ export function isUnassigned(order) {
 }
 
 export function nextTrackStep(key) {
+  if (key === "done" || key === "declined") return key;
   const index = TRACK_STATUS_STEPS.findIndex((step) => step.key === key);
   if (index < 0) return "assigned";
-  return TRACK_STATUS_STEPS[Math.min(index + 1, TRACK_STATUS_STEPS.length - 1)].key;
+  const next = TRACK_STATUS_STEPS[Math.min(index + 1, TRACK_STATUS_STEPS.length - 1)].key;
+  return next === "declined" ? "done" : next;
 }
 
 export function emptyStepCounts() {
@@ -90,7 +97,12 @@ export function statusMatrix(orders) {
     total: orders.length,
     inProgress: orders.filter((order) => {
       const step = trackKey(order);
-      return step !== "confirmed" && step !== "done";
+      return (
+        step !== "requested" &&
+        step !== "confirmed" &&
+        step !== "done" &&
+        step !== "declined"
+      );
     }).length,
   };
 }
@@ -109,7 +121,12 @@ export function matchesStatusFilter(order, statusFilter) {
   if (statusFilter === "unassigned") return isUnassigned(order);
   if (statusFilter === "progress") {
     const key = trackKey(order);
-    return key !== "confirmed" && key !== "done";
+    return (
+      key !== "requested" &&
+      key !== "confirmed" &&
+      key !== "done" &&
+      key !== "declined"
+    );
   }
   return trackKey(order) === statusFilter;
 }

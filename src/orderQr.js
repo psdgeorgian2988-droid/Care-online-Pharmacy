@@ -503,11 +503,22 @@ export function checkpointLabel(key) {
 export function gatedTrackStatus(order, progressKey = "") {
   const checks = checkpointState(order);
   if (checks.deliver || order?.trackCompleted) return "done";
+  const current = String(order?.trackStatus || "").toLowerCase();
+  if (current === "declined") return "declined";
+  if (
+    (current === "requested" || order?.partnerConfirmStatus === "pending") &&
+    !order?.partnerConfirmed &&
+    !checks.pack &&
+    !checks.pickup
+  ) {
+    return "requested";
+  }
   if (checks.pickup) {
     if (progressKey === "done") return "arriving";
     if (
       !progressKey ||
       progressKey === "confirmed" ||
+      progressKey === "requested" ||
       progressKey === "assigned" ||
       progressKey === "packed"
     ) {
@@ -516,10 +527,15 @@ export function gatedTrackStatus(order, progressKey = "") {
     return progressKey;
   }
   if (
-    order?.partnerId ||
     order?.trackStatus === "assigned" ||
     progressKey === "assigned"
   ) {
+    return "assigned";
+  }
+  if (order?.partnerId && order?.partnerConfirmed) {
+    return "confirmed";
+  }
+  if (order?.partnerId) {
     return "assigned";
   }
   return "confirmed";

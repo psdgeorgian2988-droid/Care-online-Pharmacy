@@ -102,7 +102,12 @@ function readBrowserOrders() {
 
 export function isOpenPartnerJob(order) {
   const status = String(order?.trackStatus || order?.status || "").toLowerCase();
-  return status !== "done" && status !== "delivered" && status !== "completed";
+  return (
+    status !== "done" &&
+    status !== "delivered" &&
+    status !== "completed" &&
+    status !== "declined"
+  );
 }
 
 export function openTrafficFromOrders(orders) {

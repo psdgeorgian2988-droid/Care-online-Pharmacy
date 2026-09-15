@@ -3,6 +3,10 @@ import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import {
+  awaitingPartnerMessage,
+  initialOrderStatus,
+} from "./orderConfirm";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
@@ -162,6 +166,7 @@ function Psychologist() {
         highTrafficWait: queue.busy || queue.waited,
         bookedAt: new Date().toLocaleString(),
         bookedAtMs: Date.now(),
+        ...initialOrderStatus("psychologist"),
         ...payment,
       };
 
@@ -210,9 +215,9 @@ function Psychologist() {
         <div className="service-page">
           <section className="service-confirm">
             <div className="success-icon">✓</div>
-            <h1>Consultation Booked</h1>
+            <h1>Request Submitted</h1>
             <PatienceNote kind="psychologist" shown={booking.highTrafficWait} />
-            <p>Your psychologist session is saved. Share this ID if care calls you.</p>
+            <p>{awaitingPartnerMessage("psychologist")}</p>
             <div className="confirm-card">
               <div className="confirm-head">
                 <h2>Booking Details</h2>
@@ -356,7 +361,7 @@ function Psychologist() {
               order="ymd"
               onChange={handleChange}
             />
-            <small className="booking-hint">Today or up to 7 days ahead.</small>
+            <small className="booking-hint">Today or up to 6 months ahead.</small>
           </div>
 
           <div className="field">

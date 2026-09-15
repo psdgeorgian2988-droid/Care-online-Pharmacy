@@ -22,6 +22,10 @@ import {
   patchPartnerJob,
 } from "./partnerApi";
 import { isMedicineRiderPartner, scanHref } from "./orderQr";
+import {
+  partnerAcceptFields,
+  partnerDeclineFields,
+} from "./orderConfirm";
 
 function formatRupee(amount) {
   return `₹${Number(amount || 0).toLocaleString("en-IN", {
@@ -96,6 +100,29 @@ export default function Partner() {
       await loadJobs();
     } catch (err) {
       setError(err.message || "Could Not Record Collection.");
+    } finally {
+      setCollectingId("");
+    }
+  };
+
+  const decideJob = async (job, decision) => {
+    const id = job.id || job.bookingId || job.requestId;
+    setCollectingId(id);
+    setError("");
+    try {
+      const fields =
+        decision === "accept" ? partnerAcceptFields() : partnerDeclineFields();
+      await patchPartnerJob(id, {
+        trackStatus: fields.trackStatus,
+        status: fields.status,
+        partnerConfirmed: fields.partnerConfirmed,
+        partnerConfirmStatus: fields.partnerConfirmStatus,
+        partnerConfirmedAt: fields.partnerConfirmedAt,
+        trackCompleted: fields.trackCompleted,
+      });
+      await loadJobs();
+    } catch (err) {
+      setError(err.message || "Could Not Update Request.");
     } finally {
       setCollectingId("");
     }
@@ -312,7 +339,31 @@ export default function Partner() {
                           <ShareLedgerButton split={job.split} />
                         ) : null}
                       </td>
-                      <td>{job.status || job.trackStatus || "—"}</td>
+                      <td>
+                        <div>{job.status || job.trackStatus || "—"}</div>
+                        {String(job.trackStatus || "").toLowerCase() ===
+                          "requested" ||
+                        job.partnerConfirmStatus === "pending" ? (
+                          <div className="partner-decide">
+                            <button
+                              type="button"
+                              className="partner-accept"
+                              disabled={collectingId === id}
+                              onClick={() => decideJob(job, "accept")}
+                            >
+                              Accept
+                            </button>
+                            <button
+                              type="button"
+                              className="partner-decline"
+                              disabled={collectingId === id}
+                              onClick={() => decideJob(job, "decline")}
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        ) : null}
+                      </td>
                       {showScanCol ? (
                         <td>
                           <a
@@ -453,6 +504,11 @@ const styles = `
 .partner-split-preview strong{color:#143246;text-align:right}
 .partner-collect-submit{width:100%;margin-top:4px;border:0;border-radius:8px;background:#1a6b7a;color:#fff;font:inherit;font-size:12px;font-weight:800;min-height:36px;padding:8px 10px;cursor:pointer}
 .partner-collect-submit:disabled{opacity:.65;cursor:wait}
+.partner-decide{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.partner-accept,.partner-decline{border:0;border-radius:6px;font:inherit;font-size:12px;font-weight:800;min-height:32px;padding:6px 10px;cursor:pointer}
+.partner-accept{background:#1a6b7a;color:#fff}
+.partner-decline{background:#fff;color:#b64b4b;border:1px solid #e2bcbc}
+.partner-accept:disabled,.partner-decline:disabled{opacity:.65;cursor:wait}
 .partner-scan-link{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:4px 8px;border-radius:6px;background:#1a6b7a;color:#fff;font-size:12px;font-weight:700;text-decoration:none}
 .admin-login{max-width:420px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}

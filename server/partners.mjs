@@ -269,13 +269,38 @@ export function partnerIdFromToken(token) {
   return tokens.get(String(token || "")) || "";
 }
 
+function orderKind(row) {
+  const kind = String(row?.kind || row?.orderType || "").toLowerCase();
+  if (KIND_OPTIONS.includes(kind)) return kind;
+  const service = String(row?.serviceType || "").toLowerCase();
+  if (service === "radiology") return "radiology";
+  if (service === "lab") return "lab";
+  return kind || "medicine";
+}
+
+function isPendingPartnerConfirm(row) {
+  const status = String(row?.trackStatus || "").toLowerCase();
+  return (
+    !row?.partnerConfirmed &&
+    (status === "requested" || row?.partnerConfirmStatus === "pending")
+  );
+}
+
+export function partnerCanAccessJob(partner, row) {
+  if (!partner || !row) return false;
+  if (row.partnerId && row.partnerId === partner.id) return true;
+  if (!isPendingPartnerConfirm(row)) return false;
+  const kinds = Array.isArray(partner.kinds) ? partner.kinds : [];
+  return kinds.includes(orderKind(row));
+}
+
 export async function listPartnerJobs(partnerId, token) {
   const allowed = partnerIdFromToken(token);
   if (!allowed || allowed !== partnerId) return null;
   const partner = await findPartner(partnerId);
   if (!partner) return null;
   const orders = await listOrders();
-  return orders.filter((row) => row.partnerId === partnerId);
+  return orders.filter((row) => partnerCanAccessJob(partner, row));
 }
 
 export async function assignPartnerToOrder(orderId, body) {

@@ -15,8 +15,10 @@ import {
 import {
   assignPartnerToOrder,
   createPartner,
+  findPartner,
   listPartnerJobs,
   listPartners,
+  partnerCanAccessJob,
   partnerIdFromToken,
   partnerLogin,
   setPartnerLogin,
@@ -487,10 +489,15 @@ export async function handleApi(req, res) {
         return true;
       }
       const body = await readJson(req);
+      const partner = await findPartner(partnerId);
+      if (!partner) {
+        send(res, 401, { error: "Partner login required." });
+        return true;
+      }
       const existing = (await listOrders()).find(
         (row) =>
           orderId(row) === decodeURIComponent(partnerJobMatch[1]) &&
-          row.partnerId === partnerId
+          partnerCanAccessJob(partner, row)
       );
       if (!existing) {
         send(res, 404, { error: "Job not found." });
@@ -499,11 +506,37 @@ export async function handleApi(req, res) {
       const patch = {};
       if (body.trackStatus) {
         patch.trackStatus = String(body.trackStatus);
-        patch.trackCompleted = body.trackStatus === "done";
+        patch.trackCompleted =
+          body.trackStatus === "done" ||
+          body.trackStatus === "declined" ||
+          Boolean(body.trackCompleted);
         patch.status =
           body.trackStatus === "done"
             ? "Completed"
-            : String(body.status || existing.status || "Updated");
+            : body.trackStatus === "declined"
+              ? "Declined By Partner"
+              : body.trackStatus === "confirmed"
+                ? String(body.status || "Confirmed")
+                : String(body.status || existing.status || "Updated");
+      }
+      if (Object.prototype.hasOwnProperty.call(body, "partnerConfirmed")) {
+        patch.partnerConfirmed = Boolean(body.partnerConfirmed);
+      }
+      if (body.partnerConfirmStatus) {
+        patch.partnerConfirmStatus = String(body.partnerConfirmStatus);
+      }
+      if (body.partnerConfirmedAt) {
+        patch.partnerConfirmedAt = Number(body.partnerConfirmedAt) || Date.now();
+      }
+      if (
+        body.trackStatus === "confirmed" ||
+        body.partnerConfirmStatus === "accepted"
+      ) {
+        patch.partnerId = partner.id;
+        patch.partnerName = partner.name;
+        patch.partnerMobile = partner.mobile;
+        patch.partnerRole = partner.role;
+        patch.partnerAssignedAt = Date.now();
       }
       if (body.collectPayment) {
         const paymentMethod = isOnlinePayment(body.paymentMethod)

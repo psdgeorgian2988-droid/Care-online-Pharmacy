@@ -3,6 +3,10 @@ import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import {
+  awaitingPartnerMessage,
+  initialOrderStatus,
+} from "./orderConfirm";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
@@ -301,6 +305,7 @@ function HomeCare() {
         bookedAt: new Date().toLocaleString(),
         bookedAtMs: Date.now(),
         vaccineNames: vaccines.map((row) => row.name),
+        ...initialOrderStatus("homecare"),
         ...payment,
       };
 
@@ -359,11 +364,10 @@ function HomeCare() {
         <div className="service-page">
           <section className="service-confirm">
             <div className="success-icon">✓</div>
-            <h1>Home Care Booked</h1>
+            <h1>Request Submitted</h1>
             <PatienceNote kind="homecare" shown={booking.highTrafficWait} />
             <p>
-              Your {booking.serviceLabel || "Home Care"} request has been saved
-              locally.
+              {awaitingPartnerMessage("homecare")}
             </p>
             <div className="confirm-card">
               <div className="confirm-head">
@@ -585,7 +589,7 @@ function HomeCare() {
               order="ymd"
               onChange={handleChange}
             />
-            <small className="booking-hint">Today or up to 7 days ahead.</small>
+            <small className="booking-hint">Today or up to 6 months ahead.</small>
           </div>
 
           {!isLongDuty(form.carePlan) ? (

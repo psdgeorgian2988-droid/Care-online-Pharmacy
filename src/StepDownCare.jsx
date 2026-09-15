@@ -3,6 +3,10 @@ import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import {
+  awaitingPartnerMessage,
+  initialOrderStatus,
+} from "./orderConfirm";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
@@ -301,6 +305,7 @@ function StepDownCare() {
         highTrafficWait: queue.busy || queue.waited,
         bookedAt: new Date().toLocaleString(),
         bookedAtMs: Date.now(),
+        ...initialOrderStatus("stepdown"),
         ...payment,
       };
       const trackedBooking = persistOrder(withTracking(bookingDetails, "stepdown"));
@@ -338,6 +343,7 @@ function StepDownCare() {
               total: TRANSFER_FEE,
               requestedAt: new Date().toLocaleString(),
               requestedAtMs: Date.now(),
+              ...initialOrderStatus("ambulance"),
               ...ambPay,
             },
             "ambulance"
@@ -378,12 +384,12 @@ function StepDownCare() {
         <div className="service-page">
           <section className="service-confirm">
             <div className="success-icon">✓</div>
-            <h1>Step-Down Care Booked</h1>
+            <h1>Request Submitted</h1>
             <PatienceNote kind="stepdown" shown={booking.highTrafficWait} />
             <p>
               {booking.needAmbulance
-                ? "Step-down care is booked and an ambulance has been requested to the centre."
-                : "Your recovery-centre request has been saved locally."}
+                ? `${awaitingPartnerMessage("stepdown")} An ambulance transfer request was also sent for partner acceptance.`
+                : awaitingPartnerMessage("stepdown")}
             </p>
             <div className="confirm-card">
               <div className="confirm-head">
@@ -677,7 +683,7 @@ function StepDownCare() {
                     order="ymd"
                     onChange={handleChange}
                   />
-                  <small className="lab-hint">Today or up to 7 days ahead.</small>
+                  <small className="lab-hint">Today or up to 6 months ahead.</small>
                 </div>
                 <div className="lab-field">
                   <label htmlFor="sd-slot">

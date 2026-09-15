@@ -884,6 +884,7 @@ function Admin() {
             ["open", "Open"],
             ["progress", "In Progress"],
             ["unassigned", "Unassigned"],
+            ["requested", "Awaiting Partner"],
             ["confirmed", "Confirmed"],
             ["assigned", "Assigned"],
             ["on_the_way", "On The Way"],

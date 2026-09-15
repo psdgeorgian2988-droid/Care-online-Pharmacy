@@ -130,6 +130,15 @@ export function isoDateDaysAhead(days, today = new Date()) {
   return toIsoDate(date);
 }
 
+export function isoDateMonthsAhead(months, today = new Date()) {
+  const date = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const day = date.getDate();
+  date.setMonth(date.getMonth() + Number(months || 0));
+  // Keep the same calendar day when the target month is shorter (e.g. Jan 31 → Feb 28).
+  if (date.getDate() < day) date.setDate(0);
+  return toIsoDate(date);
+}
+
 export function normalizeDob(value) {
   return parseIsoDate(value) ? String(value).trim() : "";
 }

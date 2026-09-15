@@ -14,6 +14,10 @@ import {
 } from "./icuHospitals";
 import { noContactFieldProps } from "./noContactAutofill";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import {
+  awaitingPartnerMessage,
+  initialOrderStatus,
+} from "./orderConfirm";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
@@ -197,6 +201,7 @@ function Ambulance() {
         highTrafficWait: queue.busy || queue.waited,
         requestedAt: new Date().toLocaleString(),
         requestedAtMs: Date.now(),
+        ...initialOrderStatus("ambulance"),
         ...payment,
       };
 
@@ -232,9 +237,9 @@ function Ambulance() {
         <div className="service-page">
           <section className="service-confirm">
             <div className="success-icon">✓</div>
-            <h1>Ambulance Requested</h1>
+            <h1>Request Submitted</h1>
             <PatienceNote kind="ambulance" shown={request.highTrafficWait} />
-            <p>Share this request ID if our team calls you to confirm pickup.</p>
+            <p>{awaitingPartnerMessage("ambulance")}</p>
             <div className="confirm-card">
               <div className="confirm-head">
                 <h2>Request Details</h2>

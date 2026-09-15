@@ -3,6 +3,10 @@ import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import {
+  awaitingPartnerMessage,
+  initialOrderStatus,
+} from "./orderConfirm";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
@@ -425,8 +429,8 @@ function LabTests() {
           (serviceType === "lab" ? "MH-LAB-" : "MH-RAD-") +
           Math.floor(100000 + Math.random() * 900000),
         serviceType,
-        partner: activePartner.name,
-        partnerId: activePartner.id,
+        preferredPartner: activePartner.name,
+        preferredPartnerId: activePartner.id,
         partnerGstin: activePartner.gstin,
         partnerDlNo: activePartner.dlNo,
         partnerArea: activePartner.area,
@@ -450,6 +454,7 @@ function LabTests() {
         visitType: serviceType === "radiology" ? "centre" : form.visitType,
         bookedAt: new Date().toLocaleString(),
         bookedAtMs: Date.now(),
+        ...initialOrderStatus(kind),
         ...payment,
       };
 
@@ -498,12 +503,10 @@ function LabTests() {
         <div className="service-page lab-page">
           <section className="service-confirm">
             <div className="success-icon">✓</div>
-            <h1>Booking Confirmed</h1>
+            <h1>Request Submitted</h1>
             <PatienceNote kind={booking.kind || booking.serviceType} shown={booking.highTrafficWait} />
             <p>
-              {booking.serviceType === "lab"
-                ? "Your laboratory test booking has been successfully submitted to MediHome."
-                : "Your radiology appointment booking has been successfully submitted to MediHome."}
+              {awaitingPartnerMessage(booking.kind || booking.serviceType)}
             </p>
             <div className="confirm-card">
               <div className="confirm-head">
@@ -512,7 +515,11 @@ function LabTests() {
               </div>
               <div className="confirm-row">
                 <span>{booking.serviceType === "lab" ? "Preferred lab" : "Imaging partner"}</span>
-                <strong>{booking.preferredLab || booking.partner}</strong>
+                <strong>
+                  {booking.preferredLab ||
+                    booking.preferredPartner ||
+                    booking.partner}
+                </strong>
               </div>
               <div className="tests-confirmation">
                 <div className="booking-row-label">
@@ -567,7 +574,7 @@ function LabTests() {
             </div>
             <AssignedAgent record={booking} />
             <p className="confirm-note">
-              Save this booking ID. Track the assigned partner live toward your PIN.
+              Save this booking ID. The partner must accept your request before the booking is confirmed. Track status from My Orders.
             </p>
             <div className="confirm-actions">
               <button
@@ -775,7 +782,7 @@ function LabTests() {
                 order="ymd"
                 onChange={handleChange}
               />
-              <small className="lab-hint">Today or up to 7 days ahead.</small>
+              <small className="lab-hint">Today or up to 6 months ahead. Slots must start at least 4 hours from now.</small>
             </div>
 
             <div className="lab-field">
