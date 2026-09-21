@@ -8,6 +8,8 @@ import {
 import { publishOrder } from "./adminApi";
 import { withDeliveryOutlet } from "./deliveryOutlets";
 import { checkpointState, ensureOrderCodes, gatedTrackStatus } from "./orderQr";
+import { isAwaitingPartnerConfirm } from "./orderConfirm.js";
+import { diagnosticStepLabel, isDiagnosticKind } from "./labPipeline.js";
 
 export const ORDER_STORAGE = {
   medicine: "mediHomeOrders",
@@ -24,6 +26,8 @@ export const TRACK_STEPS = [
   { key: "requested", label: "Awaiting Partner Confirmation" },
   { key: "confirmed", label: "Confirmed" },
   { key: "assigned", label: "Partner Assigned" },
+  { key: "sample_collected", label: "Sample Collected" },
+  { key: "report_ready", label: "Report Ready" },
   { key: "packed", label: "Packed" },
   { key: "on_the_way", label: "On The Way" },
   { key: "arriving", label: "Arriving" },
@@ -226,6 +230,7 @@ export function partnerCopy(kind) {
 }
 
 export function stepLabel(kind, key) {
+  if (isDiagnosticKind(kind)) return diagnosticStepLabel(key, kind);
   if (key === "requested") return "Awaiting Partner Confirmation";
   if (key === "declined") return "Declined By Partner";
   if (key === "done") return doneLabel(kind);
@@ -394,7 +399,12 @@ export function withTracking(record, kind = recordKind(record)) {
       ? lerpPath(start, { lat: destLat, lng: destLng }, progress, id)
       : { lat: start.lat, lng: start.lng };
   const progressKey = completed ? "done" : statusFromProgress(progress);
-  const statusKey = gatedTrackStatus({ ...record, trackCompleted: completed }, progressKey);
+  const statusKey = isDiagnosticKind(kind)
+    ? gatedTrackStatus(
+        { ...record, trackCompleted: completed },
+        completed ? "done" : String(record.trackStatus || "confirmed")
+      )
+    : gatedTrackStatus({ ...record, trackCompleted: completed }, progressKey);
   const assigned = withAssignedAgent({ ...record, kind }, kind);
   const freezeAtStart = !checks.pickup && !completed;
   return {
@@ -611,6 +621,21 @@ export async function attachPinAndTracking(record, pinValue) {
 
 export function ensureTracking(record) {
   const kind = recordKind(record);
+  if (isAwaitingPartnerConfirm(record)) {
+    return unifyOrder(
+      withTracking(
+        {
+          ...record,
+          trackStatus: "requested",
+          status: record.status || "Awaiting Partner Confirmation",
+          partnerConfirmed: false,
+          partnerConfirmStatus: record.partnerConfirmStatus || "pending",
+        },
+        kind
+      ),
+      kind
+    );
+  }
   const pin = normalizePin(record?.pin || record?.pinCode);
   if (!/^\d{6}$/.test(pin)) return unifyOrder(record, kind);
   const dest = destFromRecord(record);
@@ -621,7 +646,11 @@ export function ensureTracking(record) {
       withTracking({ ...seeded, trackStartedAt: Date.now() }, kind)
     );
   }
-  if (seeded.trackStartedAt && Number.isFinite(Number(seeded.destLat))) {
+  if (
+    seeded.trackStartedAt &&
+    Number.isFinite(Number(seeded.destLat)) &&
+    !isDiagnosticKind(kind)
+  ) {
     return unifyOrder(tickTracking(withTracking(seeded, kind)), kind);
   }
   return persistOrder(withTracking(seeded, kind));

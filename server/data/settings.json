@@ -1,16 +1,16 @@
 {
   "features": {
-    "medicine": false,
-    "lab": false,
-    "radiology": false,
-    "homecare": false,
-    "vaccination": false,
-    "psychologist": false,
-    "stepdown": false,
-    "ambulance": false,
-    "reports": false,
-    "education": false,
-    "scanDelivery": false
+    "medicine": true,
+    "lab": true,
+    "radiology": true,
+    "homecare": true,
+    "vaccination": true,
+    "psychologist": true,
+    "stepdown": true,
+    "ambulance": true,
+    "reports": true,
+    "education": true,
+    "scanDelivery": true
   },
   "webinars": []
 }

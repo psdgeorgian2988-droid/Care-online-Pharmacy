@@ -26,6 +26,14 @@ import {
   partnerAcceptFields,
   partnerDeclineFields,
 } from "./orderConfirm";
+import {
+  assignTechnicianFields,
+  diagnosticCompleteFields,
+  isDiagnosticKind,
+  nextDiagnosticAction,
+  reportReadyFields,
+  sampleCollectedFields,
+} from "./labPipeline";
 
 function formatRupee(amount) {
   return `₹${Number(amount || 0).toLocaleString("en-IN", {
@@ -114,15 +122,39 @@ export default function Partner() {
         decision === "accept" ? partnerAcceptFields() : partnerDeclineFields();
       await patchPartnerJob(id, {
         trackStatus: fields.trackStatus,
-        status: fields.status,
+        status:
+          decision === "accept" &&
+          (job.paymentMethod === "pending" ||
+            job.paymentStatus === "awaiting_partner")
+            ? "Confirmed — payment pending"
+            : fields.status,
         partnerConfirmed: fields.partnerConfirmed,
         partnerConfirmStatus: fields.partnerConfirmStatus,
         partnerConfirmedAt: fields.partnerConfirmedAt,
         trackCompleted: fields.trackCompleted,
+        ...(decision === "accept" &&
+        (job.paymentMethod === "pending" ||
+          job.paymentStatus === "awaiting_partner")
+          ? { paymentStatus: "awaiting_payment" }
+          : {}),
       });
       await loadJobs();
     } catch (err) {
       setError(err.message || "Could Not Update Request.");
+    } finally {
+      setCollectingId("");
+    }
+  };
+
+  const advanceDiagnostic = async (job, fields) => {
+    const id = job.id || job.bookingId || job.requestId;
+    setCollectingId(id);
+    setError("");
+    try {
+      await patchPartnerJob(id, fields);
+      await loadJobs();
+    } catch (err) {
+      setError(err.message || "Could Not Update Lab Job.");
     } finally {
       setCollectingId("");
     }
@@ -341,6 +373,12 @@ export default function Partner() {
                       </td>
                       <td>
                         <div>{job.status || job.trackStatus || "—"}</div>
+                        {job.technicianName ? (
+                          <div className="partner-tech">
+                            Tech: {job.technicianName}
+                            {job.technicianMobile ? ` · ${job.technicianMobile}` : ""}
+                          </div>
+                        ) : null}
                         {String(job.trackStatus || "").toLowerCase() ===
                           "requested" ||
                         job.partnerConfirmStatus === "pending" ? (
@@ -363,6 +401,21 @@ export default function Partner() {
                             </button>
                           </div>
                         ) : null}
+                        {isDiagnosticKind(kind) &&
+                        job.partnerConfirmed &&
+                        String(job.trackStatus || "") !== "done" &&
+                        String(job.trackStatus || "") !== "declined" ? (
+                          <DiagnosticJobPanel
+                            job={job}
+                            busy={collectingId === id}
+                            onAdvance={(fields) => advanceDiagnostic(job, fields)}
+                          />
+                        ) : null}
+                        {job.reportFileName ? (
+                          <p className="partner-report-note">
+                            Report: {job.reportFileName}
+                          </p>
+                        ) : null}
                       </td>
                       {showScanCol ? (
                         <td>
@@ -383,6 +436,147 @@ export default function Partner() {
         </div>
       </div>
     </>
+  );
+}
+
+function DiagnosticJobPanel({ job, busy, onAdvance }) {
+  const action = nextDiagnosticAction(job);
+  const [techName, setTechName] = useState(job.technicianName || job.partnerName || "");
+  const [techMobile, setTechMobile] = useState(job.technicianMobile || job.partnerMobile || "");
+  const [reportName, setReportName] = useState("");
+  const [reportNotes, setReportNotes] = useState("");
+  const [reportFile, setReportFile] = useState(null);
+  const [localError, setLocalError] = useState("");
+
+  if (!action || action === "confirm") return null;
+
+  const readFile = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Could not read file."));
+      reader.readAsDataURL(file);
+    });
+
+  const submitReport = async () => {
+    setLocalError("");
+    if (!reportFile) {
+      setLocalError("Choose a PDF or image report.");
+      return;
+    }
+    if (reportFile.size > 1.5 * 1024 * 1024) {
+      setLocalError("Report must be under 1.5 MB.");
+      return;
+    }
+    try {
+      const data = await readFile(reportFile);
+      const tests = Array.isArray(job.tests)
+        ? job.tests.map((row) => row?.name).filter(Boolean).join(", ")
+        : "";
+      onAdvance(
+        reportReadyFields({
+          fileName: reportFile.name,
+          fileType: reportFile.type || "application/octet-stream",
+          fileData: data,
+          testName: reportName || tests || "Diagnostic report",
+          notes: reportNotes,
+        })
+      );
+    } catch (err) {
+      setLocalError(err.message || "Could not upload report.");
+    }
+  };
+
+  return (
+    <div className="partner-diag-panel">
+      {action === "assign_technician" ? (
+        <>
+          <p className="partner-collect-title">Assign technician</p>
+          <input
+            value={techName}
+            onChange={(event) => setTechName(event.target.value)}
+            placeholder="Technician name"
+            disabled={busy}
+          />
+          <input
+            value={techMobile}
+            onChange={(event) => setTechMobile(event.target.value.replace(/\D/g, "").slice(0, 10))}
+            placeholder="Mobile"
+            inputMode="numeric"
+            disabled={busy}
+          />
+          <button
+            type="button"
+            className="partner-accept"
+            disabled={busy || techName.trim().length < 2}
+            onClick={() =>
+              onAdvance(assignTechnicianFields({ name: techName, mobile: techMobile }))
+            }
+          >
+            Assign Technician
+          </button>
+        </>
+      ) : null}
+
+      {action === "sample_collect" ? (
+        <button
+          type="button"
+          className="partner-accept"
+          disabled={busy}
+          onClick={() => onAdvance(sampleCollectedFields())}
+        >
+          Mark Sample Collected
+        </button>
+      ) : null}
+
+      {action === "collect_payment" ? (
+        <p className="partner-report-note">Collect payment in the Split column, then upload the report.</p>
+      ) : null}
+
+      {action === "upload_report" ? (
+        <>
+          <p className="partner-collect-title">Upload report</p>
+          <input
+            value={reportName}
+            onChange={(event) => setReportName(event.target.value)}
+            placeholder="Test name on report"
+            disabled={busy}
+          />
+          <input
+            value={reportNotes}
+            onChange={(event) => setReportNotes(event.target.value)}
+            placeholder="Notes (optional)"
+            disabled={busy}
+          />
+          <input
+            type="file"
+            accept="application/pdf,image/*"
+            disabled={busy}
+            onChange={(event) => setReportFile(event.target.files?.[0] || null)}
+          />
+          {localError ? <small className="admin-error">{localError}</small> : null}
+          <button
+            type="button"
+            className="partner-accept"
+            disabled={busy}
+            onClick={submitReport}
+          >
+            Upload Report
+          </button>
+        </>
+      ) : null}
+
+      {action === "complete" ? (
+        <button
+          type="button"
+          className="partner-accept"
+          disabled={busy}
+          onClick={() => onAdvance(diagnosticCompleteFields())}
+        >
+          Mark Completed
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -509,6 +703,9 @@ const styles = `
 .partner-accept{background:#1a6b7a;color:#fff}
 .partner-decline{background:#fff;color:#b64b4b;border:1px solid #e2bcbc}
 .partner-accept:disabled,.partner-decline:disabled{opacity:.65;cursor:wait}
+.partner-diag-panel{margin-top:8px;padding:10px;border:1px solid #d2e8ef;border-radius:10px;background:#f7fbfd;display:grid;gap:6px}
+.partner-diag-panel input{width:100%;box-sizing:border-box;min-height:34px;padding:6px 8px;border:1px solid #d7e2e9;border-radius:6px;font:inherit;font-size:12px}
+.partner-tech,.partner-report-note{margin:4px 0 0;font-size:12px;color:#34546b;font-weight:700}
 .partner-scan-link{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:4px 8px;border-radius:6px;background:#1a6b7a;color:#fff;font-size:12px;font-weight:700;text-decoration:none}
 .admin-login{max-width:420px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}

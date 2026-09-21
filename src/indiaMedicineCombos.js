@@ -1255,7 +1255,9 @@ export function buildIndiaCombos(withHouseBrand, startId = 1000) {
     brands: [
       { brand: "Taxim-O", name: "Taxim-O 200", mrp: 128, price: 116 },
       { brand: "Mahacef", name: "Mahacef 200", mrp: 108, price: 98 },
+      { brand: "Cefumax", name: "Cefumax 200", mrp: 118, price: 108 },
     ],
+    aliases: ["Cefumax", "Cefixime"],
   });
   add({
     salt: "Cefixime + Ofloxacin",
@@ -1444,6 +1446,17 @@ export function buildIndiaCombos(withHouseBrand, startId = 1000) {
     mhMrp: 128,
     mhPrice: 92,
     brands: [{ brand: "AB Phylline M", name: "AB Phylline-M", mrp: 178, price: 162 }],
+  });
+  add({
+    salt: "Ambroxol",
+    strength: "30 mg/5 ml",
+    category: "Respiratory",
+    pack: "100 ml syrup",
+    mhMrp: 68,
+    mhPrice: 48,
+    rx: false,
+    brands: [{ brand: "Ambrol", name: "Ambrol Syrup", mrp: 88, price: 80 }],
+    aliases: ["Ambrolite", "Ambrodil", "Mucolite"],
   });
   add({
     salt: "Ambroxol + Guaifenesin + Levosalbutamol",

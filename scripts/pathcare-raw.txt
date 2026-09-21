@@ -1,0 +1,1710 @@
+1	BC001	1, 25-Dihydroxy Vitamin D - Serum	2700	1755
+2	IM001	17-Alpha- Hydroxy Progesterone - Serum	1200	780
+3	BC002	17-OH Ketosteroids - Urine-24 hrs	2500	1625
+4	BC003	25 - Hydroxy Vitamin D - Serum	1400	350
+5	IM002	5-Alpha-Dihydrotestosterone - Serum	2400	1560
+6	BC004	5-OH Indole Acetic Acid (5-HIAA)-Urine-24 hrs	2450	1593
+7	MB003	ABL (9q34)/BCR (22q11)-
+t(9;22)(q34;q11)	3000	1950
+8	MB002	ABL (9q34)/BCR(22q11)-
+t(9;22)(q34;q11)	3000	1950
+9	HM001	Absolute Eosinophil Count	150	98
+10	HM002	Absolute Lymphocyte Count	150	98
+11	HM003	Absolute Neutrophil Count	150	98
+12	HM004	Absolute Reticulocyte Count	150	98
+13	AL001	Acacia	900	585
+14	IM003	Acetyl choline Receptor Antibody - Serum	4500	2925
+15	MI002	Acid Fast Suspectibility - 10 drugs - Mycobacterium Pure Culture - LJ	4500	2925
+16	MI001	Acid Fast Suspectibility - 10 drugs - Mycobacterium Pure Culture -
+MGIT	10500	6825
+17	MI004	Acid Fast Suspectibility - 5 drugs - Mycobacterium Pure Culture - LJ	2500	1625
+18	MI003	Acid Fast Suspectibility - 5 drugs - Mycobacterium Pure Culture -
+MGIT	6000	3900
+19	MB004	Acid Fast Suspectibility (Rifampicin
++ Isoniazid)	3200	2080
+20	MB005	Acid Fast Suspectibility (Rifampicin
++ Isoniazid)	3200	2080
+21	BC005	Acid Phosphatase - Prostatic (PAP) - Serum	600	390
+22	BC006	Acid Phosphatase - Total - Serum	200	130
+23	HM005	Activated Partial Thromboplastin Time (APTT/PTTK)	400	150
+24	BC305	Acylcarnitine Analytes - LCMS	9000	5850
+25	BC007	Adenosine Deaminase - (AF)	550	358
+26	BC008	Adenosine Deaminase - (CSF)	550	358
+27	BC009	Adenosine Deaminase - (PF)	550	358
+28	BC010	Adenosine Deaminase - (PUS)	550	358
+29	BC011	Adenosine Deaminase (Pericardial
+Fluid)	550	358
+30	BC012	Adenosine Deaminase -(Serum)	550	358
+31	BC013	Adreno Corticotrophic Hormone (ACTH) - Plasma-EDTA	1300	845
+32	MI093	AFB Culture (BD MGIT) - Ascitic Fluid	1000	650
+33	MI094	AFB Culture (BD MGIT) - Bronchial Lavage	1000	650
+34	MI096	AFB Culture (BD MGIT) - Pericardial Fluid	1000	650
+35	MI097	AFB Culture (BD MGIT) - Peritoneal Fluid	1000	650
+36	MI095	AFB Culture (BD MGIT) - Pleural Fluid	1000	650
+37	MI009	AFB Culture (BD MGIT) - Pus	1000	650
+38	MI008	AFB Culture (BD MGIT) - Sputum	1000	650
+39	MI098	AFB Culture (BD MGIT) - Synovial Fluid	1000	650
+40	MI007	AFB Culture (BD MGIT) - Tissue	1000	650
+41	MI006	AFB Culture (BD MGIT)- CSF	1000	650
+42	MI005	AFB Culture (BD MGIT)-Body Fluids	1000	650
+43	MI099	AFB Culture (BD MGIT)-Others / Any Samples	1000	650
+44	MI100	AFB Culture (LJ Method) - Ascitic Fluid	650	423
+45	MI101	AFB Culture (LJ Method) - Bronchial Lavage	650	423
+46	MI011	AFB Culture (LJ Method) - CSF	650	423
+47	MI106	AFB Culture (LJ Method) - Others / Any samples	650	423
+48	MI103	AFB Culture (LJ Method) - Pericardial Fluid	650	423
+49	MI104	AFB Culture (LJ Method) - Peritoneal Fluid	650	423
+50	MI102	AFB Culture (LJ Method) - Pleural Fluid	650	423
+51	MI014	AFB Culture (LJ Method) - Pus	650	423
+52	MI013	AFB Culture (LJ Method) - Sputum	650	423
+53	MI105	AFB Culture (LJ Method) - Synovial Fluid	650	423
+54	MI012	AFB Culture (LJ Method) - Tissue	650	423
+55	MI010	AFB Culture (LJ Method)- Body Fluids	650	423
+56	MI015	AFB Culture (LJ Method)-Urine	650	423
+57	MB006	AFB Culture + Acid Fast Suspectibility (Rifampicin +
+Isoniazid)	4000	2600
+58	MB007	AFB Culture + Acid Fast Suspectibility (Rifampicin +
+Isoniazid)	4000	2600
+59	MB008	AFB Culture + Acid Fast Suspectibility (Rifampicin +
+Isoniazid)	4000	2600
+60	MB009	AFB Culture + Acid Fast Suspectibility (Rifampicin +
+Isoniazid)	4000	2600
+61	MB010	AFB Culture + Acid Fast Suspectibility (Rifampicin +
+Isoniazid)	4000	2600
+62	MB011	AFB Culture + Acid Fast
+Suspectibility (Rifampicin + Isoniazid)	4000	2600
+63	MI108	AFB Stain (ZN Stain) - Bronchial Lavage	280	182
+64	MI114	AFB Stain (ZN Stain)- Miscellaneous	280	182
+65	MI113	AFB Stain (ZN Stain)- Others/Any Sample	280	182
+66	MI110	AFB Stain (ZN Stain)- Pericardial Fluid	280	182
+67	MI111	AFB Stain (ZN Stain)- Peritoneal Fluid	280	182
+68	MI107	AFB Stain (ZN Stain)-Ascitic Fluid	280	182
+69	MI018	AFB Stain (ZN Stain)-Body Fluids	280	182
+70	MI019	AFB Stain (ZN Stain)-CSF	280	182
+71	MI109	AFB Stain (ZN Stain)-Pleural Fluid	280	182
+72	MI016	AFB Stain (ZN Stain)-PUS	280	182
+73	MI017	AFB Stain (ZN Stain)-Sputum	280	182
+74	MI112	AFB Stain (ZN Stain)-Synovial Fluid	280	182
+75	MI021	AFB Stain (ZN Stain)-Tissue	280	182
+76	MI020	AFB Stain (ZN Stain)-Urine	280	182
+77	BC014	Alanine Transaminase (ALT/SGPT) - Serum	130	65
+78	MI022	Albert Stain (Diptheria Bacilli)-Throat Swab	250	163
+79	BC015	Albumin - Serum	130	85
+80	BC016	Albumin-Fluid	130	85
+81	BC017	Alcohol-Serum	950	618
+82	BC018	Alcohol-Urine-Random	950	618
+83	AL002	Alder	900	585
+84	BC019	Aldolase - Serum	800	520
+85	IM224	Aldosterone-CLIA	1500	975
+86	BC021	Alkaline Phosphatase (ALP) - Serum	130	85
+87	AL156	Allergen - Latex	1100	715
+88	AL003	Allergy AlaTOP-Adult	850	553
+89	AL004	Allergy AlaTOP-Pediatric	850	553
+90	AL005	Allergy Comprehensive Profile Allergy Screen + 8 Allergy Panels - Inhalents, Dust; Animal, Food, Mold, Tree, Grass and Weed & 48
+Individuals Allergens	6500	4225
+91	AL006	Allergy Drugs	1600	1040
+92	AL007	Allergy Food (Non-Vegetarian)	1000	650
+93	AL008	Allergy Food (Vegetarian)	1800	1170
+94	AL009	Allergy Inhalants	1300	845
+95	AL010	Allergy Post Screening Profile Allergy Screen + 7 Allergy Panels - Inhalents, Dust; Animal, Food, Mold, Tree and Weed & 45
+Individuals Allergens	5800	3770
+96	AL155	Allergy Profile	6500	4225
+97	AL011	Allergy Screen (Includes Total IgE
+and AlaTop)	1500	975
+98	AL012	Almond	900	585
+99	BC023	Alpha Feto Protein (AFP) - Serum	600	390
+100	BC024	Alpha Feto Protein (AFP)-AF	700	455
+101	BC020	Alpha Feto Protein (AFP)-Titre -
+Serum	600	390
+102	AL013	Alterneria tenuis,	900	585
+103	S039	AMH Plus:- LH, FSH, PRL, TESTOSTERONE FREE & TOTAL, TSH, E2,
+PROGESTERONE, AMH	3000	1500
+104	BC026	Aminolevolinic Acid (ALA) - Urine-24 hrs	2750	1788
+105	BC027	Ammonia - Plasma- Na. Heparin	900	585
+106	BC028	Amphetamine - Urine	620	403
+107	BC029	Amylase - Serum	400	150
+108	BC030	Amylase-Body Fluid	400	260
+109	BC031	Amylase-Urine-Random	400	260
+110	P005	ANA BLOT Profile mRNA/Sm, Sm, SS-A, SS_B, RO-52, SCL_70,Jo1, Pm-Scl, ds DNA, PCNA, CENP B, AMA-M2,
+Histones, Nucleosome, Ribosome P
+Protein	5500	3575
+111	BC032	Androstenedione (A4) - Serum	1600	1040
+112	P001	Anemia Profile Ferritin, Folate Serum (Folic Acid), Iron, Iron Binding Capacity - Total (TIBC), Transferrin, Vitamin - B12, % Iron Saturation, Complete Blood Count
+(CBC)	2000	1300
+113	BC033	Angiotensin Converting Enzyme (ACE) - Serum	900	585
+114	AL014	Animal Panel - Cat epithelium; Cow Dander; Dog Dander; Horse Dander	2500	1625
+115	S041	Ante Natal- Extended (Elisa):- CBC, Blood Group BSR, HIV, HCV,  HBsAg, VDRL, Urine R/M TSH, Hb Electrophoresis	1900	700
+116	S040	Ante Natal-Elisa:- CBC, Blood Group BSR, HIV, HCV, HBsAg, VDRL,
+Urine R/M TSH	1400	400
+117	P002	Ante Natel Profile Creatinine, Glucose - Random, Complete Urine Analysis (CUE), BleedingTime, Blood Grouping (A,B,O) and RH Factor, Clotting Time, Complete Blood Count (CBC), Hepatitis B Surface antigen (HBsAg), HIV 1 & 2 Antibody, Rapid Plasma Reagin  (RPR Test)	800	520
+118	P003	Ante Natel Profile Rapid Glucose - Random, Complete Urine Analysis (CUE), Blood Grouping (A B O) and Rh Type, Complete Blood Count (CBC), VDRL- Syphilis Antibodies, HIV 1& 2 (rapid), Hepatitis B Surface Antigen (rapid)	800	520
+119	IM006	Anti - Mullerian Hormone (AMH) -
+Serum	1800	800
+120	IM005	Anti Aquaporin - 4 Anti body -
+Serum	4400	2860
+121	IM182	Anti Aquaporin 4 Antibody -CSF	4400	2860
+122	IM194	Anti Aquaporin-4 Antibody Titer	8000	5200
+123	IM008	Anti ds- DNA Antibody - titre -
+Serum	2750	1788
+124	IM209	Anti ds DNA Antibody-CLIA	800	520
+125	IM010	Anti ds-DNA Antibody - IFA (Qualitative) - Serum	1400	910
+126	IM011	Anti Jo-I antibody - Serum	1300	845
+127	BC034	Anti Microsomal / Thyroperoxidase(AMA)Titer - Serum	1200	780
+128	BC035	Anti Microsomal Antibody(Anti Thyroperoxidase antibody) - Serum	1000	330
+129	IM013	Anti Mitochondrial Antibody - IFA
+(Qualitative)	1500	975
+130	IM012	Anti Mitochondrial Antibody -
+Serum	1400	910
+131	IM014	Anti Neutrophilic Cytoplasmic Antibody - IFA (Qualitative) - Serum	1500	975
+132	IM015	Anti Neutrophilic Cytoplasmic Antibody - Titers	3000	1950
+133	IM017	Anti Nuclear Antibody - IFA-HEP2 (Qualitative)	800	520
+134	IM016	Anti Nuclear Antibody - Serum	550	180
+135	IM018	Anti Nuclear Antibody -Titres -(HEP 2 )- Serum	1400	910
+136	IM019	Anti Phospholipid IgG Antibody - Serum	650	423
+137	IM020	Anti Phospholipid IgM Antibody - Serum	650	423
+138	IM021	Anti Sm Antibody - Serum	1800	1170
+139	IM022	Anti Smooth Muscle Antibody - Titres	2750	1788
+140	IM023	Anti Smooth Muscle Antibody
+(Qualitative)	1500	975
+141	BC036	Anti Soluble Liver Antigen (SLA) - Serum	1300	845
+142	IM024	Anti Sperm Antibody - Serum	700	455
+143	IM025	Anti SS-A (Ro)Antibody - Serum	1800	1170
+144	IM026	Anti SS-B (La) Antibody - Serum	1800	1170
+145	BC037	Anti Streptolysin O (ASO) (Rapid) - Serum	300	195
+146	BC038	Anti Streptolysin O Titres(ASO) - Serum	500	325
+147	BC039	Anti Thrombin III (Antigenic) - Na.
+Citrated Plasma	3000	1950
+148	BC040	Anti Thyroglobulin Antibody (ATG) - Serum	1000	650
+149	BC041	Anti Thyroglobulin Antibody(ATG)Titer - Serum	1200	780
+150	BC329	Anti-CCP	1400	350
+151	P004	Antithyroid Profile Anti Thyroglobulin Antibody (ATG), Anti Microsomal Antibody(TPO)	1900	1235
+152	CP001	Any Fluid-pH	100	65
+153	BC042	Apolipoprotein A-1 (APO-A1) - Serum	400	260
+154	BC043	Apolipoprotein B (APO-B) - Serum	400	260
+155	AL015	Apple	900	585
+156	P006	Arthiritis Profile Alkaline Phosphatase (ALP), ASO Titres (Anti Streptolysin O), Calcium, Complement 4 (C4), C-Reactive Protein (CRP), Phosphorus, Uric Acid, Anti Nuclear Antibody - (ELISA), Rheumatoid Factor (RA	2000	1300
+157	IM028	ASCA (Anti Saccharomyces
+Cerevisiae Antibody) IgA	1950	1268
+158	IM029	ASCA (Anti Saccharomyces
+Cerevisiae Antibody) IgG	1950	1268
+159	BC046	Aspartate Aminotransferase (SGOT)
+- Serum	130	65
+160	IM030	Aspergillus Fumigatus-(IgE) - Serum	1250	813
+161	AL016	Aspergillus fumigatus,	900	585
+162	IM031	Aspergillus IgG Antibody - Serum	1600	1040
+163	IM032	Aspergillus IgM Antibody - Serum	1600	1040
+164	AL017	Asthma/Rhintis Screening Panel - Pediatric: Dermatophatgodies pteronyssinus; Dermatophagoides farinae; House dust; Cockroach; Alterneria tenuis; Aspergillus fumigatus; Candida albicans; Penicillium notatum; Ragweed; Mugwort; Ox-Eye Daisy; Dandelion; Golden Rod; Rice; Egg white; Milk; Cod Fish; Wheat; Soyabean; Peanut	5000	3250
+165	AL018	Asthma/Rhintis Screening Panel: Dermatophatgodies pteronyssinus, Dermatophagoides farinae, House dust, Cockroach, Alterneria tenuis, Aspergillus fumigatus, Candida albicans, Penicillium notatum, Ragweed, Mugwort, Ox-Eye Daisy, Dandelion, Goldenrod	4500	2925
+166	P086	Autoimmune Liver Profile	4400	2860
+167	AL019	Bahia Grass	900	585
+168	AL020	Bakerâs Yeast	900	585
+169	AL021	Banana	900	585
+170	BC047	Barbiturates-Urine-Random	600	390
+171	MB014	BCR - ABL Gene Rearrangement - Qualitative	3500	2275
+172	MB015	BCR - ABL Gene Rearrangement - Qualitative	3500	2275
+173	MB016	BCR - ABL Gene Rearrangement - Quantitative	5700	3705
+174	MB017	BCR - ABL Gene Rearrangement -
+Quantitative	5700	3705
+175	AL022	Beef	900	585
+176	CP002	Bence Jones Protein (BJ Protein)	500	325
+177	BC048	Benzodiazepines - Serum	620	403
+178	BC049	Benzodiazepines-Urine-Random	600	390
+179	AL023	Bermuda Grass	900	585
+180	IM166	Beta 2 - Glycoprotein 1 - IgG - Serum	1000	650
+181	IM165	Beta 2- Glycoprotein 1-IgA - Serum	1000	650
+182	IM167	Beta -2- Glycoprotein 1-IgM - Serum	1000	650
+183	BC050	Beta 2- Microglobulin - Serum	1200	780
+184	BC051	Beta 2- Microglobulin - Urine -
+Random	1200	780
+185	BC052	Beta -HCG - Urine-Random	600	390
+186	BC053	Beta -HCG-Free - Serum	1000	650
+187	BC054	Beta- Human Chorionic
+Gonodotropin Hormone - Serum	600	390
+188	BC055	Beta- Human Chorionic
+Gonodotropin Hormone (Titre)	600	150
+189	BC056	Bicarbonate (HCO3) - Serum	450	293
+190	BC286	Bile -Acids Total	1750	1138
+191	CP025	Bile Salt Bile Pigment	80	52
+192	BC057	Bilirubin (Total + Direct)- Serum	200	130
+193	BC058	Bilirubin Direct - Serum	130	85
+194	BC059	Bilirubin Indirect - Serum	130	85
+195	BC060	Bilirubin Total - Serum	130	85
+196	HP001	Biopsy-AFB/ZN Stain	450	293
+197	HP002	Biopsy-Alcian Blue stain	450	293
+198	HP003	Biopsy-Block and Slide Return	200	130
+199	HP004	Biopsy-Cell Block	500	325
+200	HP005	Biopsy-Cervical Biopsy	500	325
+201	HP006	Biopsy-Endometrial Biopsy	500	325
+202	HP007	Biopsy-Endometrial with Cervical Biopsy	900	585
+203	HP008	Biopsy-Extra Large	1500	975
+204	HP009	Biopsy-Gastric with Special Stain	1000	650
+205	HP030	Biopsy-Large(> 5 cm) Specimen	1000	650
+206	HP010	Biopsy-Large(> 5 cm)-Bone	1500	975
+207	HP012	Biopsy-Medium (upto 5 cm)-Bone	1200	780
+208	HP011	Biopsy-Medium Specimen (upto 5cm)	650	423
+209	HP013	Biopsy-PAS Stain	450	293
+210	HP014	Biopsy-Reticulin Stain	450	293
+211	HP015	Biopsy-Second Opinion	700	455
+212	HP016	Biopsy-Second Opinion	700	455
+213	HP018	BIOPSY-Small Specimen (< 2cm)	500	325
+214	HP017	Biopsy-Small Specimen (< 2cm)-Bone	900	585
+215	HP019	Biopsy-Special Stain	500	325
+216	HP020	Biopsy-Tissue Processing ( 1 Block and 1 Slide )	150	98
+217	HP021	Biopsy-Tissue processing (2 Blocks and 2 Slides)	200	130
+218	HP022	Biopsy-Tissue Processing (3 Blocks and 3 Slides)	300	195
+219	HP023	Biopsy-Tissue Processing (4 Blocks and 4 Slides)	400	260
+220	HP024	Biopsy-Tissue processing (5 Blocks and 5 Slides)	500	325
+221	HP025	Biopsy-Tissue Processing (6 Block and 6 Slides)	600	390
+222	HP026	Biopsy-Uterus Cervix with Both Tubes Only	800	520
+223	HP027	Biopsy-Uterus with both Tubes and Ovaries	900	585
+224	HP028	Biopsy-Uterus with One Tube and Ovary	800	520
+225	HP029	Biopsy-Uterus without Tubes and Ovaries	700	455
+226	S029	Bio-T Plus:- Complete Blood Count (CBC), Glucose - Fasting Complete, Glucose-Urine - Fasting, Kidney Function Test (KFT) - I, Lipid Profile, Liver Function Test (LFT), Thyroid Profile I, Urine Analysis (CUE)	1000	350
+227	MB019	BK Virus (BK Polyoma Virus) -
+Qualitative	4000	2600
+228	MB020	BK Virus (BK Polyoma Virus) -
+Qualitative	4000	2600
+229	MB021	BK Virus (BK Polyoma Virus) -
+Qualitative	4000	2600
+230	MB135	BK Virus (BK Polyoma Virus) - Qualitative	4000	2600
+231	HM006	BleedingTime	150	98
+232	IH001	Block and Slide Return	200	130
+233	HM007	Blood Grouping (A B O) and Rh Type	120	60
+234	HM008	Blood Picture - Peripheral Smear Examination	120	78
+235	BC320	Blood Sugar (After 2Hr. 75 gm
+Glucose)	70	46
+236	BC061	Blood Urea Nitrogen (BUN) - Serum	130	85
+237	BC298	Blood Urea Nitrogen(BUN)-24 Hrs
+Urine	130	85
+238	AL024	Blue Mussel	900	585
+239	P007	Body Profile New Complete Urine Analysis (CUE), Complete Blood Count (CBC), Erythrocyte Sedimentation Rate (ESR), Lipid Profile, Liver Function Test, Tyriod Profile-I, Kidney Function Test (KFT)-	1400	910
+240	P008	Body Profile Thyroid Profile-I, Lipid
+Profile, Liver Function Test, Kidney Function Test (KFT)-I	1250	813
+241	P009	BOH Panel Thyroid Stimulating Hormone (TSH), Lupus Anticoagulant, Anti Nuclear Antibody, Anti Phospholipid IgG Antibody, Cardiolipin IgG Antibody, Cytomegalovirus IgG Antibody, Cytomegalovirus IgM Antibody, Herpes Simplex Virus 1 IgG, Herpes Simplex Virus 1 IgM, Herpes Simplex Virus 2 IgG, Herpes Simplex Virus 2 IgM, Rubellavirus IgG Antibody, Rubellavirus IgM Antibody, Toxoplasma gondii IgG Antibody, Toxoplasma gondii IgM
+Antibody	3800	2470
+242	HM009	Bone Marrow Smear - Iron Stain	600	390
+243	HM010	Bone Marrow Smear Examination	450	293
+244	AL025	Brazil Nut	900	585
+245	P010	Breast Carcinoma Prognosis Profile
+Estrogen/Progesterone Receptor (ER/PR), HER-2/neu	3000	1950
+246	AL026	Brinjal	900	585
+247	IM033	Brucella Antibody (B abortus & B
+melitensis)	600	390
+248	MB022	Brucella DNA PCR - Qualitative	3000	1950
+249	IM034	Brucella IgG Antibody - Serum	950	618
+250	IM035	Brucella IgM Antibody - Serum	950	618
+251	AL027	Buckwheat	900	585
+252	CG009	Burkittâs Lymphoma t(8; 14)-FISH	4500	2925
+253	IM169	C.Difficile Toxin A & B & GDH Stool	3100	2015
+254	BC062	CA 125 (cancer antigen 125) (Titer)-
+Serum	1000	650
+255	BC065	CA 125 (cancer antigen 125)-Serum	1000	300
+256	BC063	CA 15.3-Breast Cancer Marker
+(Titer) - Serum	1000	650
+257	BC064	CA 72-4 Cancer Marker - Serum	1800	1170
+258	BC066	CA15.3 - Breast Cancer Marker -
+Serum	1000	650
+259	BC067	CA19.9 - Pancreatic Cancer Marker -
+Serum	1000	650
+260	BC068	CA19.9 - Pancreatic Cancer Marker
+(Titer) - Serum	1000	650
+261	AL028	Cabbage	900	585
+262	BC071	Calcitonin - Serum	1900	1235
+263	BC072	Calcium - Serum	150	60
+264	BC073	Calcium - Spot Urine-Random	200	130
+265	BC074	Calcium - Urine-24 hrs	200	130
+266	BC279	Calcium /Creatinine Ratio - Urine - Spot	400	260
+267	BC075	Calcium-Ionized - Serum	500	325
+268	IM036	Calprotectin - Stool	4800	3120
+269	IM037	c-ANCA (PR3) - Serum	1400	910
+270	P085	Cancer Screening â Female	6050	3933
+271	P084	Cancer Screening â Male	3200	2080
+272	AL029	Candida albicans	900	585
+273	BC076	Carbamazepine (Tegretol) - Serum	725	471
+274	BC077	Carcino Embryonic Antigen (CEA) -
+Serum	600	390
+275	BC078	Carcino Embryonic Antigen(CEA)
+Titer - Serum	600	390
+276	P011	Cardiac Profile Aspartate Aminotransferase (AST/SGOT), Creatine Kinase MB (CK-MB), Creatinine Kinase (CPK), Lactate
+Dehydrogenase (LDH)	850	553
+277	IM038	Cardiolipin IgA Antibody - Serum	700	455
+278	IM039	Cardiolipin IgG Antibody - Serum	700	455
+279	IM207	Cardiolipin IgG Antibody-CLIA	700	455
+280	IM040	Cardiolipin IgM Antibody - Serum	700	455
+281	IM205	Cardiolipin IgM Antibody-CLIA	700	455
+282	P012	Cardiolipin Profile I Lupus Anticoagulant, Anti Phospholipid Antibody IgG, Cardiolipin IgG
+Antibody	2500	1625
+283	P013	Cardiolipin Profile II Cardiolipin IgA Antibody, Cardiolipin IgG Antibody, Cardiolipin IgM Antibody	1800	1170
+284	P088	Cardiolipin Profile III - CLIA	1800	1170
+285	P089	Cardiolipin Profile IV - CLIA	2500	1625
+286	AL030	Carrot	900	585
+287	AL031	Casein	900	585
+288	AL032	Cashew nut	900	585
+289	AL033	Cat Epithelium	900	585
+290	BC079	Catecholamines- Urine-24 hrs	3000	1950
+291	P014	CBC Profile Complete Blood Count (CBC), Erythrocyte Sedimentation Rate (ESR), Peripheral Smear
+Examination	350	228
+292	FC067	CD3 Absolute Count	1400	910
+293	FC068	CD3/CD4/CD8	1800	1170
+294	FC073	CD4 Absolute Count	1400	910
+295	FC074	CD45 / LCA (Leucocyte Common Antigen)	1800	1170
+296	FC075	CD45 / LCA (Leucocyte Common Antigen)	1800	1170
+297	FC088	CD8 (Suppressor T-Cell Marker)	1800	1170
+298	FC089	CD8 (Suppressor T-Cell Marker)	1800	1170
+299	AL034	Celery	900	585
+300	IM041	Centromere IgG Antibody - Serum	1400	910
+301	AL035	Cereal Panel - Wheat; Oat; Corn; Sesame Seed; Buckwheat; Rice;
+Peanut; Soyabean; Carob	4500	2925
+302	BC080	Ceruloplasmin - Serum	900	585
+303	AL036	Cheddar	900	585
+304	AL037	Chicken	900	585
+305	AL038	Chickpea	900	585
+306	IM216	Chikungunya IgG Antibody	800	520
+307	MB109	Chikungunya RNA PCR	1500	975
+308	IM042	Chikungunya-IgM Antibody - Serum	800	520
+309	IM043	Chlamydia IgA antibodies - Serum	1800	1170
+310	IM044	Chlamydia IgG antibodies- Serum	1800	1170
+311	IM045	Chlamydia IgM antibodies - Serum	1800	1170
+312	MB110	Chlamydia trachomatis PCR	3500	2275
+313	BC081	Chloride - Serum	130	85
+314	BC082	Chloride -CSF	200	130
+315	BC084	Chloride-Urine-24 hrs	200	130
+316	BC083	Chloride-Urine-Random	200	130
+317	BC085	Cholesterol - HDL - Serum	250	163
+318	BC086	Cholesterol - LDL - Serum	250	163
+319	BC087	Cholesterol - Total - Serum	150	98
+320	BC088	Cholesterol VLDL - Serum	250	163
+321	BC089	Cholinesterase - Serum	450	293
+322	IM046	Chromogranin A - WB-EDTA-PLASMA	6500	4225
+323	CG075	Chromosomal Analysis - Second
+Opinion	1600	1040
+324	CG011	Chromosomal Analysis- Amniotic Fluid	4600	2990
+325	CG012	Chromosomal Analysis- Blood	2700	1755
+326	CG013	Chromosomal Analysis- Bone Marrow	4600	2990
+327	CG015	Chromosomal Analysis- Products of Conception(POC)	6000	3900
+328	CG016	Chromosome Analysis- Cord Blood	3200	2080
+329	CG014	Chromosome Analysis- Heart Blood	3200	2080
+330	CG017	Chromosome Analysis- Leukemic
+Blood	4600	2990
+331	BC093	Chyle-Urine-Random	450	293
+332	BC094	Citrate- Urine- 24 hrs	800	520
+333	AL039	Cladosporium herbarum	900	585
+334	HM011	Clotting Time	150	98
+335	MB116	CMV DNA Qualitative PCR	3000	1950
+336	MB117	CMV DNA Quantitative PCR	3000	1950
+337	P015	Coagulation Profile Activated Partial Thromboplastin Time (APTT/PTTK), Platelet Count,
+Prothrombin Time (PT)	600	390
+338	BC095	Cocaine-Urine-Random	620	403
+339	AL040	Cocklebur	900	585
+340	AL041	Cockroach	900	585
+341	AL042	Cocoa	900	585
+342	AL043	Coconut	900	585
+343	AL044	Codfish	900	585
+344	AL045	Coffee	900	585
+345	P016	Collagen/SLE Profile Complement 3 (C3), Complement 4 (C4), C-Reactive Protein (CRP), Erythrocyte Sedimentation Rate (ESR), c-ANCA (PR3), p-ANCA (MPO), Anti ds-DNA
+Antibody, Anti Nuclear Antibody.	4000	2600
+346	AL046	Common Ragweed	900	585
+347	BC096	Complement 3 (C3) - Serum	550	358
+348	BC097	Complement 4 (C4) - Serum	550	358
+349	HM012	Complete Blood Count (CBC)	250	120
+350	P017	Complete Health Profile - I Alanine Transaminase (ALT/SGPT), Alkaline Phosphatase (ALP), Aspartate Aminotransferase (SGOT), Bilirubin (Total + Direct), Blood Urea Nitrogen (BUN), Chloride, Cholesterol - Total, Cholesterol - HDL, Cholesterol - LDL, Creatinine, Gamma Glutamyl Transferase (GGT), Glucose - Fasting, Potassium, Protein Total with Albumin, Sodium (Na), Triglycerides, Uric Acid, Total cholesterol/HDL ratio, Cholesterol VLDL, LDL / HDL Ratio, Complete Urine Analysis (CUE), Complete Blood Count (CBC), Erythrocyte Sedimentation Rate (ESR)	1200	780
+351	P018	Complete Health Profile - II Alanine Transaminase (ALT/SGPT), Alkaline Phosphatase (ALP), Aspartate Aminotransferase (SGOT), Bilirubin (Total + Direct), Blood Urea Nitrogen (BUN), Calcium, Chloride, Cholesterol - Total, Cholesterol - HDL, Cholesterol - LDL, Creatinine, Gamma Glutamyl Transferase (GGT), Glucose - Fasting, Potassium, Protein Total with Albumin, Sodium (Na), Thyroid Stimulating Hormone (TSH), Triglycerides, Uric Acid, Total cholesterol/HDL ratio, Cholesterol VLDL, LDL / HDL Ratio, Complete Urine Analysis (CUE), Complete Blood Count (CBC), Erythrocyte Sedimentation Rate (ESR).	1600	1040
+352	CP003	Complete Urine Analysis (CUE)	120	35
+353	P097	Comprehensive Covid -19 Monitoring Profile	5000	3250
+354	P098	Comprehensive Covid -19 Monitoring Profile (Without IL6)	4000	2600
+355	HM014	Coombs Test - Direct	350	228
+356	HM015	Coombs Test - Indirect	400	260
+357	BC098	Copper- Urine-24 hrs	800	520
+358	BC099	Copper-Serum	800	520
+359	AL047	Corn	900	585
+360	BC100	Cortisol Serum (3 to 5 PM)	500	325
+361	BC101	Cortisol Serum (7 to 9 AM)	500	325
+362	BC102	Cortisol Total -Urine-24 hrs	750	488
+363	BC280	Cortisol/Creatinine Ratio- (24 hrs Urine)	750	488
+364	AL048	Cottonwood	900	585
+365	AL049	Cow Dander	900	585
+366	AL050	Cow Milk	900	585
+367	BC103	C-Peptide - Serum	900	585
+368	AL051	Crab	900	585
+369	BC104	C-Reactive Protein (CRP) - Serum	400	175
+370	BC105	Creatine Kinase MB (CK-MB) -
+Serum	500	325
+371	BC106	Creatinine - Serum	130	85
+372	BC107	Creatinine- (24 Hrs Urine)	200	130
+373	BC108	Creatinine Clearence Test	400	260
+374	BC109	Creatinine Kinase (CPK) - Serum	350	228
+375	BC110	Creatinine-Spot Urine	200	130
+376	BC111	CRP-High Sensitive (hsCRP) - Serum	600	390
+377	BC112	CRP-Rapid - Serum	400	260
+378	BC288	Cryoglobulin	850	553
+379	IM049	Cryptococcus Antigen - Serum	1800	1170
+380	IM048	Cryptococcus Antigen- CSF	1800	1170
+381	AL052	Cucumber	900	585
+382	MI115	Culture Aerobic - Ascitic Fluid	900	585
+383	MI121	Culture Aerobic - Others/Any Sample	900	585
+384	MI118	Culture Aerobic - Pericardial Fluid	900	585
+385	MI119	Culture Aerobic - Peritoneal Fluid	900	585
+386	MI117	Culture Aerobic - Pleural Fluid	900	585
+387	MI120	Culture Aerobic - Synovial Fluid	900	585
+388	MI028	Culture Aerobic Blood (Pediatric)	1100	715
+389	MI029	Culture Aerobic Blood (Rapid)	1100	715
+390	MI027	Culture Aerobic Blood(MANUAL)	620	403
+391	MI030	Culture Aerobic Body Fluids	1100	715
+392	MI116	Culture Aerobic -Bronchial Lavage	900	585
+393	MI129	Culture Aerobic Cord Blood	1100	715
+394	MI031	Culture Aerobic CSF	800	520
+395	MI032	Culture Aerobic Ear Swab	800	520
+396	MI033	Culture Aerobic Eye swab	800	520
+397	MI034	Culture Aerobic Miscellaneous	800	520
+398	MI035	Culture Aerobic Nasal Swab	800	520
+399	MI026	Culture Aerobic OT Swabs(MANUAL)	400	260
+400	MI036	Culture Aerobic Pus	800	520
+401	MI037	Culture Aerobic Sputum	800	520
+402	MI038	Culture Aerobic Throat swab	800	520
+403	MI039	Culture Aerobic Vaginal Swab	800	520
+404	MI040	Culture Anaerobic Blood Rapid	1200	780
+405	MI041	Culture Anaerobic Body Fluid Rapid	1200	780
+406	MI042	Culture Anaerobic -OT Swab	700	455
+407	MI025	Culture and Sensitivity Urine (22 Drugs)-MANUAL	450	293
+408	MI024	Culture and Sensitivity-Urine(MANUAL)	400	150
+409	MI130	Culture Fungus - Miscellaneous (Does Not Include Anti Fungal Sensitivity)	1100	715
+410	MI047	Culture Fungus (Does not include Anti fungal sensitivity)-Body Fluids	900	585
+411	MI048	Culture Fungus (Does not include Anti fungal sensitivity)-CSF	900	585
+412	MI051	Culture Fungus (Does not include Anti fungal sensitivity)-Hair	900	585
+413	MI050	Culture Fungus (Does not include Anti fungal sensitivity)-Nails	900	585
+414	MI045	Culture Fungus (Does not include Anti fungal sensitivity)-PUS	900	585
+415	MI049	Culture Fungus (Does not include Anti fungal sensitivity)-Skin Scrappings	900	585
+416	MI046	Culture Fungus (Does not include Anti fungal sensitivity)-Sputum	900	585
+417	MI044	Culture Fungus (Does not include Anti fungal sensitivity)-Swabs	900	585
+418	MI043	Culture Fungus (Does not include Anti fungal sensitivity)-Urine	900	585
+419	MI052	Culture Fungus Blood/Body fluids Rapid (Includes Antibiotic sensitivity for Yeast).	950	618
+420	MI053	Culture Nocardia (Does not include Antibiotic Sensitivity)-Pus	900	585
+421	MI056	Culture Nocardia Swabs (Does not include Antibiotic Sensitivity)	900	585
+422	MI055	Culture Nocardia Tissue in Normal Saline(Does not include Antibiotic Sensitivity)	900	585
+423	MI054	Culture NocardiaSputum (Does not include Antibiotic Sensitivity)	900	585
+424	MI057	Culture Stool	700	455
+425	MI058	Culture Urine	700	455
+426	MI059	CultureAerobic Semen	700	455
+427	MI061	Cultured Aerobic Bacteria Identification and Sensitivity	2000	1300
+428	MI060	Cultured Aerobic Bacteria Identification-Pure Isolate on appropriate media.	1000	650
+429	MI062	Culturue Aerobic Bacteria Sensitivity	1000	650
+430	BC114	Cyfra 21- 1 Lung cancer marker - Serum	2650	1723
+431	BC115	Cystatin C - Serum	1100	715
+432	IM050	Cysticercosis IgG Antibody - Serum	1400	910
+433	CY001	Cytology -Fluids -Air Dried Smears	400	260
+434	CY002	Cytology -Fluids -Ascitic Fluid	400	260
+435	CY003	Cytology -Fluids -BAL (Broncho Alveolar Lavage)	400	260
+436	CY010	Cytology -Fluids -CSF	400	260
+437	CY011	Cytology -Fluids -Cystic Fluid	400	260
+438	CY004	Cytology -Fluids -Fixed Smears	400	260
+439	CY005	Cytology -Fluids -Lavage Fluid	400	260
+440	CY013	Cytology -Fluids -Others	400	260
+441	CY012	Cytology -Fluids -Ovarian Cyst	400	260
+442	CY006	Cytology -Fluids -Pericardial Fluid	400	260
+443	CY007	Cytology -Fluids -Peritoneal Fluid	400	260
+444	CY008	Cytology -Fluids -Pleural Fluid	400	260
+445	CY009	Cytology -Fluids -Synovial Fluid	400	260
+446	CY014	Cytology -Fluids -Urine	400	260
+447	CY015	Cytology -FNAC -Air Dried Smears	650	423
+448	CY016	Cytology -FNAC -Aspirated Fluid	650	423
+449	CY017	Cytology -FNAC -Fixed Smears	650	423
+450	CY018	Cytology -FNAC -PUS	650	423
+451	CY021	Cytology -LBC -PAP	1200	780
+452	CY019	Cytology -PAP -Air Dried Smear	450	293
+453	CY020	Cytology -PAP Smear-Fixed	450	293
+454	MB027	Cytomegalo Virus (CMV) -
+Qualitative	3000	1950
+455	MB029	Cytomegalo Virus (CMV) -
+Quantitative	6000	3900
+456	MB028	Cytomegalo Virus (CMV) -
+Quantitative	3000	1950
+457	MB026	Cytomegalo Virus (CMV-Qualitative)	3000	1950
+458	IM051	Cytomegalo Virus IgG Antibody - Serum	450	293
+459	IM052	Cytomegalo Virus IgG Antibody-(CSF)	600	390
+460	IM237	Cytomegalo Virus IgG Avidity	900	585
+461	IM053	Cytomegalo Virus IgM Antibody - Serum	450	293
+462	IM054	Cytomegalo Virus IgM Antibody-(CSF)	600	390
+463	MB128	Cytomegalo Virus(CMV Qualitative)	3000	1950
+464	AL053	Dandelion	900	585
+465	BC116	D-Dimer - Na Citrated Plasma	1100	715
+466	IM057	Dehydroepiandrosterone (DHEA) -
+Serum	2200	1430
+467	BC117	Dehydroepiandrosterone Sulphate (DHEA-S) - Serum	850	553
+468	IM058	Dengue - NS1 Antigen - Rapid	900	400
+469	IM059	Dengue - NS1 Antigen-EDTA Plasma	900	585
+470	MB030	Dengue - RNA PCR - Qualitative	3000	1950
+471	IM060	Dengue IgG Antibody - Serum	850	553
+472	IM061	Dengue IgM Antibody - Serum	850	553
+473	IM062	Dengue NS1 Ag-ELISA - Serum	900	585
+474	P019	Dengue Profile (Antibody & NS1 Antigen)	1700	650
+475	S002	Dengue Profile Elisa	2600	1000
+476	AL054	Dermatophagoides farinae	900	585
+477	AL055	Dermatophatgodies pteronyssinus	900	585
+478	IM063	Desmoglein Level-I Antibody - Serum	2700	1755
+479	IM064	Desmoglein Level-III Antibody - Serum	2700	1755
+480	BC300	Dexamethasone Suppression Test	1050	683
+481	P020	Diabetic Profile Blood Urea Nitrogen (BUN), Cholesterol - Total, Cholesterol - HDL, Cholesterol - LDL, Creatinine, Glucose F/PP, Glycosylated Hemoglobin (GHb/HbA1c), Insulin, Microalbuminuria, Thyroid Stimulating Hormone (TSH), Thyroxine - Total (TT4), Triglycerides, Tri-Iodothyronine Total (TT3), Total cholesterol/HDL
+ratio, Cholesterol VLDL, LDL / HDL	1200	780
+482	HM016	Differential Leukocyte Count (DLC)-Blood	120	78
+483	BC118	Digoxin - Serum	800	520
+484	IM208	Direct Plasma Renin-CLIA	2000	1300
+485	AL056	Dog Dander	900	585
+486	AL057	Drug Panel - Amoxicilloyl; Ampicilloyl; Cefaclor; Chlorhexidine; Chymopapain; Gelatin bovine; Insulin bovine; Insulin human; Insulin porcine; Penicilloyl G; Penicilloyl V;Pholcodine; Morphine; Suxamethonium (succinylcholine)	7500	4875
+487	P021	Drugs of Abuse (Qualitative - 5 Drug Panel) Methamphetamine, Amphetamine, Opiates, Marijuana,
+Cocaine	2000	1300
+488	P022	Drugs of Abuse (Qualitative - 9 Drug Panel) Amphetamine, Barbiturates, Benzodiazepines, Cocaine, Methamphetamine, Opiates, Methadone, Phencyclidine and Tetrahydrocannabinoids	3000	1950
+489	P023	Dual Marker Free beta HCG, PAPP-A	1800	800
+490	AL058	Dust Panel - House dust; Dermatophagoides Pteronyssinus; Dermatophagoides Farinae; Cockroach	2500	1625
+491	MB032	E2A (19p13) and PBX1 (1q23) -
+t(1;19)(q23;p13) - ALL	5000	3250
+492	IM056	EBV IgM Antibody to Viral Capsid Antigen - Serum	1550	1008
+493	IM066	Echinococcus Antibody IgG (Hydatid serology) - Serum	1100	715
+494	AL059	ECZEMA Comprehensive Panel - Egg white; Milk; CodFish; Wheat; Soya bean; Peanut; Dog dander; Cow dander; Horse dander; Cat epithelium; House dust; Dermatophagoides Pteronyssinus; Dermatophagoides Farinae; Cockroach; Hazelnut; Shrimp; Kiwi Fruit; Banana; Lentil; Chickpea; Lemon; Rice	8500	5525
+495	AL060	ECZEMA Panel For Non-Vegetarians
+- Rice; Egg white; Milk; Wheat; Soya bean; Peanut; Pork; Beef; Chicken; Lamb; Potato; Shrimp; House dust; Dermatophagoides Pteronyssinus; Dermatophagoides Farinae; Cockroach.	5000	3250
+496	AL061	ECZEMA Panel For Vegetarians: Rice; Egg white; Milk; Wheat; Soya bean; Peanut; House dust; Dermatophagoides Pteronyssinus; Dermatophagoides Farinae; Cockroach.	4000	2600
+497	BC119	eGFR (estimated Glomerular
+Filtration Rate) - Serum	500	325
+498	AL062	Egg	900	585
+499	AL063	Egg White	900	585
+500	P024	Electrolyte Profile - Serum Chloride,
+Potassium, Sodium	350	150
+501	P025	Electrolyte Profile - Urine Chloride,
+Potassium, Sodium	350	228
+502	AL064	Elm	900	585
+503	IM067	Endomysial IgA Antibody - Serum	1600	1040
+504	IM068	Endomysial IgG Antibody - Serum	1600	1040
+505	IM069	Endomysial IgM Antibody - Serum	1600	1040
+506	IM070	Entamoeba histolytica IgG Antibody
+(Amoebiasis) - Serum	1200	780
+507	HM066	Eosinophils - Fluid	120	78
+508	HM067	Eosinophils - Nasal Smear	120	78
+509	HM065	Eosinophils - Sputum	120	78
+510	IM071	Epstein Barr Virus IgG Antibody - Serum	1500	975
+511	IM072	Epstein Barr Virus IgM Antibody - Serum	1500	975
+512	HM017	Erythrocyte Sedimentation Rate (ESR)	100	65
+513	BC120	Erythropoietin (EPO) - Serum	1550	1008
+514	BC121	Estradiol (E2) - Serum	500	225
+515	BC122	Estradiol(Titre) - Serum	500	325
+516	BC123	Estriol Unconjugated (uE3) - Serum	950	618
+517	AL065	Eucalyptus	900	585
+518	IM211	Extractablenuclear Antigens (ENA) Quantitative Profile	7000	4550
+519	MB034	Factor II (Prothrombin) Mutation
+Study	3500	2275
+520	HM018	Factor V	2500	1625
+521	MB035	Factor V Leiden Mutation	4500	2925
+522	HM019	Factor-IX	1500	975
+523	HM020	Factor-VII	3600	2340
+524	HM021	Factor-VIII	1500	975
+525	BC124	Ferritin - Serum	600	200
+526	BC125	Ferritin(Titer ) - Serum	600	390
+527	P027	Fertility Profile - I Follicle Stimulating Hormone (FSH), Luteinising Hormone (LH), Prolactin
+(PRL)	1000	275
+528	P028	Fertility Profile - II Estradiol (E2), Follicle Stimulating Hormone (FSH), Luteinising Hormone (LH), Prolactin (PRL), Thyroid Stimulating Hormone (TSH)	1500	975
+529	P029	Fertility Profile - III Follicle Stimulating Hormone (FSH), Luteinising Hormone (LH), Prolactin (PRL), Thyroid Stimulating Hormone
+(TSH)	1200	780
+530	P030	Fertility Profile - IV Follicle Stimulating Hormone (FSH), Luteinising Hormone (LH), Prolactin (PRL), Testosterone - Total	1100	715
+531	P031	Fertility Profile - V Follicle Stimulating Hormone (FSH), Luteinising Hormone (LH),
+Testosterone - Total	1000	650
+532	S042	Fever Panal 1 :- cbc mp widal Urine R/m	350	150
+533	P026	Fever Profile Complete Urine Analysis (CUE), Complete Blood Count (CBC), Erythrocyte Sedimentation Rate (ESR), Malarial Parasite Identification, Widal Test
+(Slide Test)	500	175
+534	HM022	Fibrinogen	800	520
+535	HM023	Fibrinogen Degradation Product (FDP)	800	520
+536	AL066	Fish	900	585
+537	CG070	FISH for 18 X & Y	6000	3900
+538	CG067	FISH for 18X and Y Chromoses	8000	5200
+539	CG066	FISH for 4 Marker	12500	8125
+540	HM024	Fluid Analysis (Other Fluids)	400	260
+541	HM025	Fluid Analysis-Ascitic	400	260
+542	HM026	Fluid Analysis-CSF	400	260
+543	HM027	Fluid Analysis-Pericardial	400	260
+544	HM028	Fluid Analysis-Peritoneal	400	260
+545	HM029	Fluid Analysis-Pleural	400	260
+546	HM030	Fluid Analysis-Synovial Fluid	400	260
+547	HM031	Fluid Cell count	120	78
+548	BC126	Folate- RBC -EDTA	1650	1073
+549	BC127	Folate Serum (Folic Acid)	850	300
+550	BC128	Folate Serum (Folic Acid)-Titre	850	553
+551	BC129	Follicle Stimulating Hormone (FSH) -
+Serum	400	100
+552	AL067	Food Panel-I - Rice; Egg white; Milk; Wheat; Soya bean; Peanut; Pork; Beef; Chicken; Lamb; Cod fish; Shrimp; Blue Mussel; Tuna; Salmon;
+Gluten.	5000	3250
+553	AL068	Food Panel-II - Egg white; Milk;
+Wheat; Soya bean; Fish; Peanut	2500	1625
+554	BC281	Free Androgen Index	2250	1463
+555	BC130	Free Light Chains (Kappa and
+Lambda) - Urine	4000	2600
+556	BC131	Free Light Chains (Kappa and
+Lambda)- Serum	4000	2600
+557	BC132	Fructosamine - Serum	800	520
+558	AL069	Fruit Panel - Comprehensive - Orange; Apple; Banana; Peach; Kiwi Fruit; Mango; Pineapple; Strawberry; Pear; Lemon; Coconut.	5500	3575
+559	AL070	Fruit Panel - I - Orange; Apple;
+Banana; Peach	2500	1625
+560	AL071	Fruit Panel - II - Kiwi Fruit; Mango;
+Banana; Pineapple	2500	1625
+561	AL072	Fruit Panel - III - Hazel nut, Apple,
+Kiwi Fruit, Banana.	2500	1625
+562	IM073	FTA - Abs - Serum	1500	975
+563	IM074	GAD-65 (Glutamic Acid Decarboxylase) Antibody - Serum	4500	2925
+564	BC133	Gamma Glutamyl Transferase (GGT) - Serum	220	143
+565	AL073	Garlic	900	585
+566	BC134	Gastrin - Serum	2000	1300
+567	MB041	Gene Expert MTB With Rifampicin Resistance PCR - Qualitative	2700	1755
+568	MB042	Gene Expert MTB With Rifampicin Resistance PCR - Qualitative	2700	1755
+569	MB043	Gene Expert MTB With Rifampicin Resistance PCR - Qualitative	2700	1755
+570	MB044	Gene Expert MTB With Rifampicin Resistance PCR - Qualitative	2700	1755
+571	MB045	Gene Expert MTB With Rifampicin Resistance PCR - Qualitative	2700	1755
+572	MB046	Gene Expert MTB With Rifampicin Resistance PCR - Qualitative	2700	1755
+573	MB047	Gene Expert MTB With Rifampicin Resistance PCR - Qualitative	2700	1755
+574	MB048	Gene Expert MTB With Rifampicin Resistance PCR - Qualitative	2700	1755
+575	MI063	Giemsa Stain-Secretions/Scrapings	350	228
+576	IM075	Gliadin IgA Antibody - Serum	1500	975
+577	IM076	Gliadin IgG Antibody - Serum	1500	975
+578	IM077	Gliadin IgM Antibody - Serum	1500	975
+579	BC135	Globulin - Serum	130	85
+580	IM078	Glomerular Basement Membrane
+IgG Antibody - Serum	1400	910
+581	BC138	Glucose - Post Prandial(PP)	70	40
+582	BC139	Glucose - Random	70	40
+583	BC136	Glucose 6 Phosphate Dehydrogenase (G6PD
+Quantitative)	700	455
+584	BC140	Glucose Challenge Test (75 Gms of
+Glucose)	300	195
+585	BC137	Glucose -Fasting	70	40
+586	BC141	Glucose-Fluid	140	91
+587	BC142	Glucose-Urine -Fasting	70	46
+588	BC143	Glucose-Urine-Post Prandial(PP)	70	46
+589	BC144	Glucose-Urine-Random	140	91
+590	AL074	Gluten	900	585
+591	BC145	Glycosylated Hemoglobin (GHb/HbA1c)	450	150
+592	AL075	Goldenrod	900	585
+593	AL076	Goosefoot	900	585
+594	MI122	Gram Stain - Ascitic Fluid	300	195
+595	MI066	Gram Stain - Body Fluids	330	215
+596	MI123	Gram Stain - Bronchial Lavage	300	195
+597	MI068	Gram Stain - CSF	330	215
+598	MI072	Gram Stain - Ear Swab	330	215
+599	MI071	Gram Stain - Eye Swab	330	215
+600	MI073	Gram Stain - Nasal Swab	330	215
+601	MI128	Gram Stain - Others/Any Sample	300	195
+602	MI125	Gram Stain - Pericardial Fluid	300	195
+603	MI126	Gram Stain - Peritoneal Fluid	300	195
+604	MI124	Gram Stain - Pleural Fluid	300	195
+605	MI065	Gram Stain - Pus	330	215
+606	MI064	Gram Stain - Sputum	330	215
+607	MI127	Gram Stain - Synovial Fluid	300	195
+608	MI070	Gram Stain - Throat Swab	330	215
+609	MI074	Gram Stain - Tissue	330	215
+610	MI067	Gram Stain - Urine	330	215
+611	MI069	Gram Stain - Vaginal Swab	330	215
+612	MI075	Gram Stain- Miscellaneous	330	215
+613	AL077	Grass Panel - Bermuda grass; Rye grass; Timothy grass; June Grass (kentucky Blue); Johnson grass;
+Bahia grass	3500	2275
+614	AL078	Green Pea	900	585
+615	BC146	Growth Hormone (GH) - Serum	650	423
+616	BC147	GTT-3 Glucose Tolerance Test	210	137
+617	BC148	GTT-4 Obstetrical Glucose Tolerance Test	280	182
+618	HM033	Haemoglobin(Hb)	100	65
+619	AL079	Hazelnut	900	585
+620	IM079	HCV - IgM Antibody - Serum	1000	650
+621	IM080	HCV Antibody (Rapid) - Serum	500	325
+622	BC290	HE4 with ROMA index Epithelial
+Ovarian Cancer	2250	1463
+623	S043	Healthceck Panel:- CBC ESR LFT, KFT-CALCIUM,LIPID THYROID PROFILE, IRON PROFILE HBA1C, BSF, VITAMIN B12, URINE R/M VITAMIN D, RA FACTOR	2200	900
+624	IM081	Helicobacter Pylori IgA - Serum	1500	975
+625	IM206	Helicobacter Pylori IgG Antibody-
+CLIA	1500	975
+626	IM083	Helicobacter Pylori IgM - Serum	1500	975
+627	HM032	Hematuria	120	78
+628	HM034	Hemoglobin Variant Estimation by Hemoglobin Electrophoresis	850	350
+629	S001	Hemogram	300	150
+630	IM084	Hepatitis A virus IgM (HAV- IgM) -
+Serum	950	618
+631	IM085	Hepatitis A virus-IgG (HAV IgG) -
+Serum	950	618
+632	IM086	Hepatitis B envelope Antibody
+(AntiHBe) - Serum	800	520
+633	IM087	Hepatitis B Envelope Antigen
+(HBeAg) - Serum	800	520
+634	IM184	Hepatitis B Envelope Antigen
+(HBeAg)- EDTA Plasma	800	520
+635	P033	Hepatitis B Marker Profile Hepatitis B envelope Antibody (AntiHBe), Hepatitis B Envelope Antigen (HBeAg), Hepatitis B surface Antibody Total (Anti HBs), Hepatitis B Surface antigen (HBsAg), Hepatitis Core Antibody IgM (Anti HBc - IgM), Hepatitis Core Antibody Total (HBcAb- Total)	3000	1950
+636	IM088	Hepatitis B surface Antibody (Anti
+HBs) - Serum	700	455
+637	IM247	Hepatitis B Surface antigen (HBsAg)
+CMIA	400	260
+638	IM089	Hepatitis B Surface antigen (HBsAg)
+Elisa	400	160
+639	IM090	Hepatitis B Surface Antigen (HBsAg)
+- Rapid	350	228
+640	MB049	Hepatitis B Virus - Genotyping	5500	3575
+641	MB050	Hepatitis B Virus - Qualitative	3600	2340
+642	MB051	Hepatitis B Virus - Quantitative - Viral Load	5600	1600
+643	MB052	Hepatitis C Virus - HCV-Genotyping	6500	4225
+644	MB053	Hepatitis C Virus - Qualitative	3600	2340
+645	MB054	Hepatitis C Virus - Quantitative -
+Viral Load	6600	1600
+646	IM091	Hepatitis C Virus (HCV Antibody) - Serum	1200	260
+647	IM092	Hepatitis C Virus IgG - Serum	1200	780
+648	IM093	Hepatitis Core Antibody IgM (Anti HBc - IgM) - Serum	850	553
+649	IM094	Hepatitis Core Antibody Total (HBcAb) - Serum	850	553
+650	IM095	Hepatitis E virus - IgG (HEV IgG) -
+Serum	1400	910
+651	IM096	Hepatitis E virus - IgM (HEV IgM) -
+Serum	1400	910
+652	P032	Hepatitis Profile Hepatitis A virus - IgM (HAV- IgM), Hepatitis A virus - Total (HAV IgG), Hepatitis B envelope Antibody (AntiHBe), Hepatitis B Envelope Antigen (HBeAg), Hepatitis B surface Antibody Total (Anti HBs), Hepatitis
+B Surface antigen (HBsAg), Hepatitis
+C Virus (HCV Antibody), Hepatitis Core Antibody IgM (Anti HBc - IgM), Hepatitis Core Antibody Total (HBcAb- Total), Hepatitis E virus - IgM (HEV IgM)	5000	3250
+653	IM097	Herpes Simplex Virus 1 & 2 IgG Antibody- Serum	550	358
+654	IM098	Herpes Simplex Virus 1 & 2 IgM Antibody - Serum	550	358
+655	IM099	Herpes Simplex Virus 1 IgG Antibody - Serum	550	358
+656	IM100	Herpes Simplex Virus 1 IgM Antibody - Serum	550	358
+657	MB056	Herpes Simplex Virus 1& 2 DNA PCR
+- Qualitative	3000	1950
+658	MB055	Herpes Simplex Virus 1& 2 DNA PCR
+- Qualitative-CSF	3000	1950
+659	IM101	Herpes Simplex Virus 2 IgG Antibody - Serum	550	358
+660	IM102	Herpes Simplex Virus 2 IgM Antibody - Serum	550	358
+661	BC338	High Sensitive Cardiac Troponin - I (hs-cTn I )	1500	975
+662	MB060	HIV - 1 RNA Virus - Qualitative	2750	1788
+663	MB059	HIV - 1 RNA Virus - Quantitative -
+Viral Load	4500	2925
+664	IM104	HIV 1 & 2 Antibody Rapid
+(Chromatography) - Serum	350	228
+665	IM105	HIV 1 & 2 Antibody Rapid
+(Immunofiltration) - Serum	350	228
+666	IM238	HIV 1 and 2 Antibodies	400	260
+667	IM106	HIV 1 Western Blot - Serum	2500	1625
+668	IM107	HIV 1& 2 (Rapid) - Serum	350	228
+669	IM103	HIV 1& 2 Ag/Ab (4th generation)	400	225
+670	P034	HIV 123 Profile HIV 1 & 2 Antibody (ELISA), HIV 1& 2 Antibody (Immunochromatography), HIV 1& 2 Antibody (Immunofiltration)	400	260
+671	P035	HIV Monitoring CD3/CD4/CD8, HIV - Quantitative (Viral Load)	5500	3575
+672	MB061	HIV-DNA Virus - Qualitative	3000	1950
+673	MB062	HLA B 27 - PCR - Qualitative	3000	1950
+674	FC095	HLA B-27	1800	650
+675	HL002	HLA-A B DRB1/3/4/5 Typing	13500	8775
+676	HL003	HLA-A Typing	4000	2600
+677	HL004	HLA-ABC DRB1DQBI	18500	12025
+678	HL005	HLA-ABC Typing	10000	6500
+679	HL006	HLA-ABCDR Typing	16000	10400
+680	HL007	HLA-B Typing	4000	2600
+681	HL008	HLA-Bone Marrow Transplant ABC DR & DQ Typing	19000	12350
+682	HL009	HLA-C Typing	4000	2600
+683	HL011	HLA-CLASS II Typing	5500	3575
+684	HL012	HLA-DQ Typing	4000	2600
+685	HL013	HLA-DR Typing	4000	2600
+686	HL014	HLA-DRB1/3/4/5 Typing	8000	5200
+687	HL015	HLA-Kidney Transplant AB & DR Typing	13000	8450
+688	HL017	HLA-T and B Cell Lymphocyte Cross Match	7000	4550
+689	P083	Homa Index	650	423
+690	BC150	Homocysteine-Plasma-EDTA	800	520
+691	BC151	Homocysteine-Serum	800	520
+692	AL080	Horse Dander	900	585
+693	AL081	Housedust	900	585
+694	IM110	HTLV 1+2 Antibody	3250	2113
+695	IM109	HTLV 1+2 Antibody - Serum	3250	2113
+696	MB063	Human Papilloma Virus (HPV) -
+Qualitative	1850	1203
+697	MB064	Human Papilloma Virus (HPV) -
+Qualitative	1850	1203
+698	MB120	Human Papilloma Virus (HPV)
+Genotyping	1850	1203
+699	P082	Human Papilloma Virus (HPV)
+Screening Panel Profile	2500	1625
+700	P036	Hypertension Profile Calcium, Chloride, Cholesterol - Total, Cholesterol - HDL, Cholesterol - LDL, Creatinine, Glucose - Fasting, Phosphorus, Potassium, Sodium (Na), Triglycerides, Urea, Uric Acid, Total cholesterol/HDL ratio, Cholesterol VLDL, LDL / HDL Ratio, Complete Urine Analysis (CUE)	900	585
+701	MI076	Identification of Fungal Elements (Any Specimen/Slides)	400	260
+702	BC153	IgA-Saliva	450	293
+703	BC154	IgE-Total - Serum	700	150
+704	BC343	IgG (CSF)	1300	845
+705	IH028	IHC-Estrogen/Progesterone Receptor (ER/PR)	2400	1560
+706	IH030	IHC-HER-2/neu	1850	1203
+707	IH033	IHC-Ki 67 Marker	2200	1430
+708	BC342	IL - 6 (Interleukin 6)	1200	780
+709	BC155	Immuno Fixation Electrophoresis-
+Urine-Random	5500	3575
+710	BC156	Immunofixation Electrophoresis-Serum	6000	3900
+711	BC316	Immunofixation Electrophoresis-
+Qualitative	6000	3900
+712	BC157	Immunoglobulin A (IgA) - Serum	450	293
+713	BC158	Immunoglobulin G (IgG) - Serum	450	293
+714	P078	Immunoglobulin IgG Synthesis Index	3800	2470
+715	BC159	Immunoglobulin M (IgM) - Serum	450	293
+716	IM111	Infectious Mononucleosis Antibody -
+Serum	900	585
+717	P038	Infectious Profile-ELISA Hepatitis B Surface antigen (HBsAg), Hepatitis C Virus (HCV Antibody), HIV 1 & 2
+Antibody	1000	450
+718	P039	Infectious Profile-Rapid HBsAg-
+Rapid, HCV Antibody, HIV 1 & 2 Antibody	1000	350
+719	P037	Infertility Profile Androstenedione (A4), Dehydroepiandrosterone Sulphate (DHEA-S), Follicle Stimulating Hormone (FSH), Luteinising Hormone (LH), Prolactin, Sex Hormone Binding Globulin (SHBG), Testosterone - Total	4000	2600
+720	IM112	Inhibin- A - Serum	1450	943
+721	IM174	Inhibin-B	2000	1300
+722	BC161	Insulin - Serum	650	175
+723	IM170	Insulin Antibody	1850	1203
+724	BC162	Insulin-Like Growth Factor-I ( IGF-I)/Somatomedin C - Serum	3500	2275
+725	BC163	Insulin-Post Prandial - Serum	650	175
+726	BC301	Intact Parathyroid Hormone (iPTH) - EDTA Plsma	1200	780
+727	BC164	Intact Parathyroid Hormone (iPTH) -
+Serum	1200	780
+728	IM113	Intrinsic Factor IgG Antibody -
+Serum	2250	1463
+729	BC165	Iodine - Plasma	1500	975
+730	BC166	Iodine - Serum	1500	975
+731	BC167	Iron - Serum	300	195
+732	BC168	Iron Binding Capacity - Total (TIBC) - Serum	300	195
+733	P040	Iron Deficiency Profile-I Ferritin, Iron, Iron Binding Capacity - Total (TIBC), Transferrin, % Iron
+Saturation	800	520
+734	P041	Iron Deficiency Profile-II ( Iron, Iron Binding Capacity - Total (TIBC), Transferrin, % Iron Saturation)	450	160
+735	BC169	Iron Saturation (%) - Serum	600	390
+736	IM114	Islet Cell Antibody - Serum	2600	1690
+737	MB067	JAK2 (Janus Kinase 2) V617F for
+MPDs	5000	3250
+738	MB113	JAK-2 Mutation (CMPD) Exon 12 Mutation	9500	6175
+739	MB068	Japanese Encephalitis Virus
+Detection	4300	2795
+740	MB069	Japanese Encephalitis Virus
+Detection	4300	2795
+741	MB070	Japanese Encephalitis Virus
+Detection	4300	2795
+742	MB134	JC / BK Virus (JC / BK Polyoma virus)	6000	3900
+743	MB071	JC / BK Virus (JC / BK Polyoma virus)
+- Quantitative	6000	3900
+744	MB072	JC / BK Virus (JC / BK Polyoma virus)
+- Quantitative	6000	3900
+745	AL082	Johnson grass	900	585
+746	AL083	June Grass (Kentucky Blue)	900	585
+747	P042	Kidney Function Test (KFT) - I Chloride, Creatinine, Potassium,
+Sodium (Na), Urea, Uric Acid	600	180
+748	P043	Kidney Function Test (KFT) - II Albumin, Alkaline Phosphatase (ALP), Chloride, Cholesterol - Total, Creatinine, Potassium, Protein Total, Sodium (Na), Urea, Uric Acid, Albumin / Globulin Ratio, Complete Urine Analysis (CUE)	700	455
+749	AL084	Kiwi Fruit	900	585
+750	MI081	KOH Preparation for Fungal Elements Body Fluids(Wet Mount)	400	260
+751	MI082	KOH Preparation for Fungal Elements CSF (Wet Mount)	400	260
+752	MI085	KOH Preparation for Fungal Elements Hair (Wet Mount)	400	260
+753	MI084	KOH Preparation for Fungal Elements Nails (Wet Mount)	400	260
+754	MI079	KOH Preparation for Fungal Elements PUS (Wet Mount)	400	260
+755	MI083	KOH Preparation for Fungal Elements Skin Scrappings (Wet Mount)	400	260
+756	MI080	KOH Preparation for Fungal Elements Sputum (Wet Mount)	400	260
+757	MI078	KOH Preparation for Fungal Elements Swabs (Wet Mount)	400	260
+758	MI077	KOH Preparation for Fungal Elements Urine (Wet Mount)	400	260
+759	BC172	Lactate Dehyderogenase (LDH)-
+Ascitic Fluid	300	195
+760	BC170	Lactate Dehyderogenase (LDH)-CSF	300	195
+761	BC171	Lactate Dehyderogenase (LDH)-
+Pleural Fluid	300	195
+762	BC173	Lactate Dehydrogenase (LDH)-
+Serum	300	195
+763	BC174	Lactate-CSF	850	553
+764	BC175	Lactate-Plasma	850	553
+765	AL085	Lamb	900	585
+766	HM035	LE Cells	300	195
+767	BC176	Lead	1500	975
+768	BC334	Lead (Qualitative)	0	
+769	BC177	Lead-Urine-Random	1500	975
+770	IM115	Leishmania (KALA AZAR) Antibody
+IgG - Serum	1600	1040
+771	AL086	Lemon	900	585
+772	AL087	Lentils	900	585
+773	MI087	Leptospira Detection-Urine	620	403
+774	MI086	Leptospira Detection-WB-Heparin	620	403
+775	MB074	Leptospira DNA PCR (Qualitative)	3000	1950
+776	IM116	Leptospira IgG Antibody - Serum	1000	650
+777	IM117	Leptospira IgM Antibody - Serum	1000	650
+778	BC178	Lipase - Serum	550	150
+779	BC302	Lipase -Urine	880	572
+780	P045	Lipid Profile Cholesterol - Total, Cholesterol - HDL, Cholesterol - LDL, Triglycerides, Total cholesterol/HDL ratio, Cholesterol VLDL, LDL / HDL
+Ratio	600	125
+781	BC179	Lipoprotein a (Lp-a) - Serum	850	553
+782	BC180	Lithium (Li) - Serum	450	293
+783	P044	Liver Function Test (LFT) Alanine Transaminase (ALT/SGPT), Albumin, Alkaline Phosphatase (ALP), Aspartate Aminotransferase (SGOT), Bilirubin Direct, Bilirubin Total, Gamma Glutamyl Transferase (GGT), Globulin, Protein Total, Bilirubin Indirect, Albumin / Globulin Ratio	600	150
+784	IM118	Liver-Kidney Microsome - 1
+Antibody (LKM 1) - Serum	1500	975
+785	AL088	Lobster	900	585
+786	HM036	Lupus Anticoagulant	1400	910
+787	BC181	Luteinising Hormone (LH) - Serum	400	100
+788	BC182	Magnesium - Serum	350	228
+789	BC309	Magnesium - Urine	350	228
+790	AL089	Maize	900	585
+791	HM037	Malarial Falciparum and Vivax
+Antigen (Parasite V & F)	500	160
+792	HM038	Malarial Parasite Identification	120	50
+793	AL090	Mango	900	585
+794	IM119	Mantoux Skin Test	200	130
+795	BC183	Marijuana-Urine-Random	620	403
+796	AL091	Meadow grass	900	585
+797	MB075	Measles - PCR (Qualitative)	3000	1950
+798	IM230	Measles (Rubeola) IgG Antibody-
+CLIA	1500	975
+799	IM231	Measles (Rubeola) IgM Antibody-
+CLIA	1500	975
+800	AL092	Meat	900	585
+801	AL093	Melaleuca	900	585
+802	AL094	Mesquite	900	585
+803	P093	Metabolic D Profile	5500	3575
+804	IM176	Metanephrines - Free Plasma	2800	1820
+805	IM123	Metanephrines-Urine	2000	1300
+806	IM122	Methamphetamine - Urine	620	403
+807	BC282	Microalbumin/Creatinine Ratio	400	170
+808	BC188	Microalbuminuria - Urine	450	293
+809	BC189	Microalbumin-Urine-24 hrs	450	293
+810	HM039	Microfilaria Antibody Detection	850	553
+811	HM041	Microfilaria Antigen	500	325
+812	HM040	Microfilaria Detection	400	260
+813	IH044	Microscopic Photos for the Tissue analysis	420	273
+814	AL095	Milk	900	585
+815	MB076	MLL(11q23)/AF4(4q21)-
+t(4;11)(q21;q23)	3000	1950
+816	MB077	MLL(11q23)/AF4(4q21)-
+t(4;11)(q21;q23)	3000	1950
+817	AL096	Mold Panel - Penicillium notatum; Cladosporium herbarum; Aspergillus fumigatus; Candida albicans; Alternaria tenuis	2500	1625
+818	HM042	MPV	120	78
+819	MB078	MTHFR (Methylenetetrahydrofolate Reductase) Gene Mutation (Homocysteinemia)	3500	2275
+820	AL097	Mugwort	900	585
+821	P073	Multiple Sclerosis - Panel - Mini (Multiple Sclerosis, Oligoclonal
+Bands/CSF)	6000	3900
+822	MB079	Mumps - PCR (Qualitative)	3000	1950
+823	IM222	MUMPS IgG Antibody-CLIA	1500	975
+824	IM223	MUMPS IgM Antibody-CLIA	1500	975
+825	AL098	Mushroom	900	585
+826	AL099	Mussel	900	585
+827	AL100	Mustard	900	585
+828	MB080	Mycobacterium Tuberculosis
+Complex (MTC) & MOTT PCR	1800	1170
+829	MB081	Mycobacterium Tuberculosis
+Complex (MTC) & MOTT PCR (AF)	1800	1170
+830	MB082	Mycobacterium Tuberculosis
+Complex (MTC) & MOTT PCR (BL)	1800	1170
+831	MB083	Mycobacterium Tuberculosis Complex (MTC) & MOTT PCR
+(Blood)	1800	1170
+832	MB084	Mycobacterium Tuberculosis Complex (MTC) & MOTT PCR (CSF)	1800	1170
+833	MB085	Mycobacterium Tuberculosis
+Complex (MTC) & MOTT PCR (PF)	1800	1170
+834	MB086	Mycobacterium Tuberculosis
+Complex (MTC) & MOTT PCR (SF)	1800	1170
+835	MB087	Mycobacterium Tuberculosis Complex (MTC) & MOTT PCR
+(Sputum)	1800	1170
+836	MB088	Mycobacterium Tuberculosis Complex (MTC) & MOTT PCR
+(Tissue)	1800	1170
+837	MB089	Mycobacterium Tuberculosis
+Complex (MTC) & MOTT PCR (Urine)	1800	1170
+838	MB090	Mycobacterium Tuberculosis m-
+RNA PCR	3000	1950
+839	MB091	Mycobacterium Tuberculosis m-
+RNA PCR	3000	1950
+840	BC190	Myoglobulin -Serum	1200	780
+841	BC191	Myoglobulin-Urine-Random	1200	780
+842	BC192	NBS - Biotinidase (BIOT)	600	390
+843	BC193	NBS - Comprehensive Panel: TSH; 17-OHP; G6PD; Galatosemia; PKU; Cystic Firbrosis; Biotinidase	2500	1625
+844	BC194	NBS - Congenital Hypothyroidism
+(TSH)	600	390
+845	BC195	NBS - Cystic Fibrosis	600	390
+846	BC196	NBS - Galactosemia (GALT)	600	390
+847	BC197	NBS - Glucose 6 phospate
+Dehydrogenase (G6PD)	600	390
+848	BC198	NBS - Inborn Metabolic Disorders (IMD) Panel: Fatty Acids; Organic Acids; Amino Acids Disorders	3500	2275
+849	BC200	NBS - Phenylketouria (PKU)	600	390
+850	BC201	NBS -17 - Hydroxyprogesterone (17-
+OHP)	600	390
+851	BC202	NBS Basic Panel - TSH; 17-OHP; G6PD, Galactosemia and
+Biotinidase	2000	1300
+852	MI088	Negative Stain (India Ink)-CSF	300	195
+853	MB122	Neisseria Gonorrhoeae PCR
+Qualitative	3500	2275
+854	CG031	Neonatal Screen (Trisomy 21 18 13
+X Y)-5 Markers - FISH	9000	5850
+855	HM064	Nestroft	300	195
+856	BC295	Nicotine	1250	813
+857	IM187	Nicotine Metabolite	1250	813
+858	AL101	Non-Vegetarian Panel-I - Pork;
+Beef; Chicken; Lamb (Mutton).	2500	1625
+859	AL102	Non-Vegetarian Panel-II - Cod Fish; Shrimp; Mussel; Tuna; Salmon;
+Lobster	3000	1950
+860	IM126	Nor Metanephrines-Free	2800	1820
+861	IM127	Nor Metanephrines-Urine	3000	1950
+862	AL103	Nut Panel	2500	1625
+863	AL104	Oat	900	585
+864	BC204	Oligoclonalbands -CSF	3500	2275
+865	AL105	Olive	900	585
+866	AL106	Onion	900	585
+867	BC205	Opiates / Morphine-Urine-Random	620	403
+868	BC206	Oral Glucose Tolerance Test (O-
+GTT)	700	455
+869	AL107	Orange	900	585
+870	BC209	Osmolality -Serum	600	390
+871	BC208	Osmolality-Urine-Random	600	390
+872	HM043	Osmotic Fragility	600	390
+873	BC210	Oxalates- Urine -24 hrs	1600	1040
+874	AL108	Ox-Eye Daisy	900	585
+875	HM044	Packed Cell Volume(PCV)	120	78
+876	IM128	p-ANCA (MPO) - Serum	1400	910
+877	BC211	PAPP-A - Serum	1000	650
+878	AL109	Paprika	900	585
+879	IM129	Parietal Cell Antibody - Serum	1800	1170
+880	P077	Path Arthritis Check 63 Parameters	6000	3900
+881	P076	Path Cardiac Check 59 Parameters	4500	2925
+882	P092	Path Cardiac Lite	1800	1170
+883	P074	Path Diabetic Check 47	2000	1300
+884	P047	Path Health Chek Complete Blood Count (CBC), Erythrocyte Sedimentation Rate (ESR), Thyroid Profile-I, Kidney Fuction Test (KFT)-I, Lipid Profile, Liver Fuction Test
+(LFT).	1200	780
+885	P075	Path Metabolic Check 53 Parameters	2700	1755
+886	P101	Pathcare - Fever Profile	2000	1300
+887	P048	PathCheck- 64 Alanine Transaminase (ALT/SGPT), Alkaline Phosphatase (ALP), Aspartate Aminotransferase (SGOT), Bilirubin (Total + Direct), Chloride, Cholesterol - Total, Cholesterol - HDL, Cholesterol - LDL, Creatinine, Gamma Glutamyl Transferase (GGT), Glucose - Fasting, Potassium, Protein Total with Albumin, Sodium (Na), Thyroid Stimulating Hormone (TSH), Thyroxine - Total (TT4), Triglycerides, Triiodothyronine  Total (TT3), Urea, Uric Acid, Total cholesterol/HDL ratio, Cholesterol VLDL, LDL / HDL Ratio, Complete Urine Analysis (CUE), Complete Blood Count (CBC)	1600	1040
+888	P049	PathChek - 72 Calcium, Glucose - Random, Glycosylated Hemoglobin (GHb/HbA1c), Vitamin - B12, 25 - Hydroxy Vitamin D, Complete Urine Analysis (CUE), Complete Blood Count (CBC), Erythrocyte Sedimentation Rate (ESR) (WB-EDTA Blood), Lipid Profile, Liver Function Tests, Thyroid Profile-I, Kidney Function Test-I, Iron.	2200	1000
+889	P046	PathPro Cholesterol - Total, Cholesterol - HDL, Cholesterol - LDL, Thyroid Stimulating Hormone (TSH), Triglycerides, Total cholesterol/HDL ratio, Cholesterol VLDL, LDL / HDL
+Ratio	500	325
+890	P091	PCL Surgical Profile - Major	3000	1950
+891	P090	PCL Surgical Profile - Minor	2000	1300
+892	P050	PCOD panel Follicle Stimulating Hormone (FSH), Glucose F/PP, Insulin, Luteinising Hormone (LH), Prolactin, Testosterone - Free, Testosterone - Total, Post Prandial
+Insulin	2600	1690
+893	AL110	Pea	900	585
+894	AL111	Peach	900	585
+895	AL112	Peanut	900	585
+896	AL113	Pear	900	585
+897	AL114	Pecan	900	585
+898	AL115	Pencillium notatum	900	585
+899	AL116	Perennial Rye Grass	900	585
+900	BC212	Phencyclidine-Urine-Random	620	403
+901	BC213	Phenobarbital (Gardinal) - Serum	800	520
+902	BC304	Phenyl Alanine (Blood Spot)	600	390
+903	BC214	Phenylalanine-Urine-Random	600	390
+904	BC215	Phenytoin (Eptoin) - Serum	725	471
+905	CG042	Philadelphia Chromosome Screening	4600	2990
+906	P087	Phospholipid Syndrome Profile	3800	2470
+907	BC216	Phosphorous-Urine-24 hrs	250	163
+908	BC217	Phosphorus - Serum	150	98
+909	AL117	Pineapple	900	585
+910	AL118	Pistachio	900	585
+911	HM045	Platelet Count (PC)	120	50
+912	MB095	PML (15q22) and RAR?(17q21)
+(t(15;17)(q21;q22))	3000	1950
+913	MB094	PML (15q22) and RARA(17q21)
+(t(15;17)(q21;q22))	3000	1950
+914	MB096	PML/RARa (AML - M3) (APL)
+Qualitative PCR	4750	3088
+915	MB097	PML/RARa (AML - M3) (APL)
+Quantitative	6500	4225
+916	MB118	PML/RARa (AML - M3) Quantitative	6500	4225
+917	AL119	Pork	900	585
+918	BC218	Porphobilinogen (PBG) -Urine-24 hrs	2500	1625
+919	BC219	Porphobilinogen (Qualitative)-Urine-Random	600	390
+920	BC308	Post Glucose Plasma Glucose	70	46
+921	BC220	Potassium - Serum	130	85
+922	BC222	Potassium-Urine-24 Hrs	200	130
+923	BC221	Potassium-Urine-Random	200	130
+924	AL120	Potato	900	585
+925	CP024	Potential of Hydrogen(PH)-Blood	200	130
+926	CP022	Potential of Hydrogen(PH)-Saliva	200	130
+927	CP023	Potential of Hydrogen(PH)-Urine	200	130
+928	P052	Pre Operative Profile Rapid - II Creatinine, Glucose - Random, Complete Urine Analysis (CUE), Blood Grouping (A B O) and Rh Type, Complete Blood Count (CBC), HIV 1& 2 (rapid), Hepatitis B Surface Antigen (rapid), HCV (rapid)	1200	780
+929	P071	Pregnancy Profile Complete Blood Count (CBC), Anti Phospholipid Antibody IgG, Anti Phospholipid Antibody IgM, Cardiolipin IgA Antibody, Cardiolipin IgG Antibody, Cardiolipin IgM Antibody, Cytomegalovirus IgG Antibody, Cytomegalovirus IgM Antibody, Hepatitis B Surface antigen (HBsAg), Herpes Simplex Virus 1 & 2 IgM, Herpes Simplex Virus 1 & 2 IgG, HIV 1 & 2 Antibody, Rapid Plasma Reagin (RPR Test), Rubella Virus - IgG, Rubella Virus - IgM, Toxoplasma gondii - IgG,
+Toxoplasma gondii - IgM	4500	2925
+930	CP004	Pregnancy Test	150	98
+931	CG032	Prenatal Aneuploidy Detection-Amnio (2 probes- Trisomy 21 & 13)-
+FISH	5000	3250
+932	CG034	Prenatal Aneuploidy Detection-Amnio (3 probes- Trisomy 18; X Y)-
+FISH	7000	4550
+933	CG036	Prenatal Aneuploidy Detection-
+Amnio (5 probes- Trisomy 21 18 13; X Y)-FISH	9000	5850
+934	CG037	Prenatal Aneuploidy Detection-Cord Blood (5 probes- Trisomy 21
+18 13; X Y)-FISH	9000	5850
+935	CG035	Prenatal Aneuploidy Detection-POC (3 probes- Trisomy 18; X Y)-FISH	6000	3900
+936	CG033	Prenatal Aneuploidy Detection-POC(2 probes- Trisomy 21 & 13)-FISH	5000	3250
+937	CG038	Prenatal Aneuploidy POC Detection-5 probes- Trisomy 21 18 13; X Y)-FISH	9000	5850
+938	CG039	Prenatal Panel -Amniotic Fluid (Karyotyping and FISH with 5
+probes)	13000	8450
+939	S044	Pre-Operative Profile - I :- CBC, Blood Group BSR, HIV, HCV, HBsAg, VDRL, Urine R/M TSH	1400	400
+940	P051	Pre-Operative Profile - I Glucose - Random, Blood Grouping (A,B,O) and Rh factor, Complete Blood Count (CBC), Hepatitis B Surface antigen (HBsAg), HCV Antibody ,
+HIV 1 & 2 Antibody	525	
+941	BC292	proBNP	1600	1040
+942	BC223	Procalcitonin - Serum	2500	1625
+943	BC224	Progesterone - Serum	500	275
+944	BC225	Progesterone-Titre - Serum	600	390
+945	BC226	Prolactin - Serum	400	100
+946	BC227	Prostate Specific Antigen (Free) -
+Serum	800	520
+947	BC228	Prostate Specific Antigen (Total
+PSA) - Serum	600	200
+948	BC229	Prostate Specific Antigen Total
+(Titer) - Serum	600	390
+949	P053	Prostatic Profile Prostate Specific Antigen (Free), Prostate Specific Antigen (Total), Ratio of Free
+PSA/Total PSA.	1200	780
+950	IM133	Protein C	3000	1950
+951	BC232	Protein Electrophoresis (CSF)	1625	1056
+952	BC233	Protein Electrophoresis (Serum)	600	390
+953	BC234	Protein Electrophoresis -Urine	700	455
+954	IM134	Protein S	3000	1950
+955	BC235	Protein Total - Serum	130	85
+956	BC236	Protein Total with Albumin - Serum	220	143
+957	BC231	Protein- Urine-24 hrs	200	130
+958	BC284	Protein/Creatinine Ratio -(Urine -24 hrs)	400	260
+959	BC283	Protein/Creatinine Ratio -Urine-
+Spot	400	260
+960	BC237	Proteins-Fluid	200	130
+961	BC230	Protein-Urine -Random	200	130
+962	HM046	Prothrombin Time (PT)	250	150
+963	AL121	Pulses Panel - Green Pea; White
+Bean/Navy Bean; Lentiles; Chick Pea	2500	1625
+964	P070	Quad Marker with Graph Inhibin A,
+Beta HcG, AFP, E3	2800	1250
+965	AL122	Ragweed	900	585
+966	AL123	Rapeseed	900	585
+967	IM136	Rapid Plasmin Reagin (RPR Test) -
+Serum	150	98
+968	P100	Ratio(Aldosterone/Direct Renin)	3500	2275
+969	HM047	RBC Count	100	65
+970	HM048	Red Cell Indices	120	78
+971	P054	Renal Profile Blood Urea Nitrogen (BUN), Calcium, Creatinine, Uric
+Acid	650	423
+972	HM049	Retic Count	300	195
+973	HM050	RH Antibody - Titres	600	390
+974	IM137	Rheumatic Factor IgA Antibody - Serum	600	390
+975	IM138	Rheumatic Factor IgG Antibody - Serum	600	390
+976	IM139	Rheumatic Factor IgM Antibody - Serum	600	390
+977	IM140	Rheumatiod Factor (Rapid) - Serum	300	195
+978	BC239	Rheumatoid Factor (RA Test) - Serum	400	175
+979	AL124	Rice	900	585
+980	IM141	Rota Virus Antigen	800	520
+981	IM142	Rubella Avidity IgG - Serum	2500	1625
+982	MB098	Rubella RNA PCR - Qualitative	3000	1950
+983	IM143	Rubella Virus IgG Antibody - Serum	450	293
+984	IM144	Rubella Virus IgM Antibody - Serum	450	293
+985	AL125	Rye grass	900	585
+986	BC240	SAAG(Serum / Ascites Albumin
+Gradient)	500	325
+987	AL126	Salmon	900	585
+988	IM145	Salmonella Typhi IgG (Typhidot) -
+Serum	450	293
+989	IM146	Salmonella typhi IgM (TYPHI DOT) -
+Serum	450	160
+990	MB132	SARS-CoV-2(COVID-19)Qualitative	4500	2925
+991	IM147	Scl-70 Antibody - Serum	1300	845
+992	IM172	Scrub Typhus Antibody	1110	722
+993	CP005	Semen Analysis	300	195
+994	CP006	Semen for Fructose	350	228
+995	AL127	Sesame	900	585
+996	BC242	Sex Hormone Binding Globulin
+(SHBG) - Serum	1900	1235
+997	AL128	Sheep Sorrel	900	585
+998	AL129	Shrimp	900	585
+999	HM051	Sickling test	200	130
+1000	AL130	Silk	900	585
+1001	CY022	Slide Return -Slides	200	130
+1002	IM148	Sm/RNP Antibody	1300	845
+1003	MI091	Smear for Gonococci (Endocervical Secretions)	300	195
+1004	MI090	Smear for Gonococci (Slides)	300	195
+1005	MI089	Smear for Gonococci (Urine )	300	195
+1006	BC243	Sodium - Serum	130	85
+1007	BC245	Sodium-Urine-24 hrs	200	130
+1008	BC244	Sodium-Urine-Random	200	130
+1009	AL131	Soya Bean	900	585
+1010	P099	Specific Covid - 19 Profile	2000	1300
+1011	AL132	Spinach	900	585
+1012	CY023	Sputum for Malignant Cells - Smears/Sputum	450	293
+1013	AL133	Stemphylium solani	900	585
+1014	BC246	Stone Analysis-Renal	800	520
+1015	CP007	Stool Examination	120	78
+1016	MI092	Stool for Hanging Drop-Stool	150	98
+1017	CP008	Stool for Occult Blood	120	78
+1018	AL134	Strawberry	900	585
+1019	CP009	Sudan Red Stain	500	325
+1020	AL135	Sunflower Seeds	900	585
+1021	CP010	Synovial fluid for Crystals	400	260
+1022	BC247	Tacrolimus - WB-EDTA	4000	2600
+1023	IM149	TB Gold - Quantiferon/IGRA-Lithium Heparin	2500	900
+1024	MB102	TEL (12p13)/AML1(21q22)-
+t(12;21)(p13;q22)	3000	1950
+1025	MB103	TEL (12p13)/AML1(21q22)-
+t(12;21)(p13;q22)	3000	1950
+1026	IM150	Testosterone - Free - Serum	1000	650
+1027	BC248	Testosterone - Total - Serum	500	150
+1028	P061	Thallasemia Profile Ferritin, Iron, Iron Binding Capacity - Total (TIBC), Complete Blood Count (CBC), Hemoglobin Electrophoresis.	1800	1170
+1029	HM052	Thrombin Time	600	390
+1030	P055	Thrombophilia Profile Anti Thrombin III (Antigenic), Protein C,
+Protein S	8000	5200
+1031	P081	Thrombotic Profile - II	14000	9100
+1032	P062	Thrombotic Profile D-Dimer, Homocysteine, Anti Thrombin III (Antigenic), Factor-VIII, Lupus Anticoagulant, Protein C, Protein S, Factor V, Anti Phospholipid IgG Antibody, Anti Phospholipid IgM	12000	7800
+1033	BC249	Thyroglobulin - Serum	1300	845
+1034	BC250	Thyroglobulin (Titer value) - Serum	1300	845
+1035	P057	Thyroid Profile - II Thyroid Stimulating Hormone (TSH), Thyroxine - Free (FT4), Thyroxine - Total (TT4), Triiodothyronine Free (FT3), Triiodothyronine Total (TT3)	750	488
+1036	P058	Thyroid Profile - III Follicle Stimulating Hormone (FSH), Luteinising Hormone (LH), Prolactin, Thyroid Stimulating Hormone (TSH), Thyroxine - Total (TT4), Triiodothyronine Total (TT3)	1200	780
+1037	P059	Thyroid Profile - IV Thyroid Stimulating Hormone (TSH), Thyroxine - Free (FT4),
+Triiodothyronine Free (FT3)	600	150
+1038	P060	Thyroid Profile - V Prolactin, Thyroid Stimulating Hormone (TSH), Thyroxine - Total (TT4),
+TriIodothyronine Total (TT3)	750	488
+1039	P056	Thyroid Profile I Thyroid Stimulating Hormone (TSH), Thyroxine - Total (TT4), Triiodothyronine Total (TT3)	450	90
+1040	BC251	Thyroid Stimulating Hormone (TSH) Serum	250	45
+1041	BC252	Thyroxine - Free (FT4) - Serum	300	195
+1042	BC253	Thyroxine - Total (TT4) - Serum	200	130
+1043	BC254	Thyroxine Binding Globulin - Serum	4000	2600
+1044	AL136	Timothy Grass	900	585
+1045	IM152	Tissue Transglutaminase IgA
+Antibody - Serum	800	520
+1046	IM203	Tissue Transglutaminase IgA Antibody-CLIA	800	520
+1047	IM153	Tissue Transglutaminase IgG
+Antibody - Serum	800	520
+1048	IM154	Tissue Transglutaminase IgM
+Antibody - Serum	800	520
+1049	HM053	TLC and DLC	120	78
+1050	AL137	Tobacco	900	585
+1051	AL138	Tomato	900	585
+1052	P063	TORCH 10 PROFILE (IgG&IgM)
+Cytomegalovirus IgG Antibody, Cytomegalovirus IgM Antibody, Herpes Simplex Virus 1 IgG, Herpes Simplex Virus 1 IgM, Herpes Simplex Virus 2 IgG, Herpes Simplex Virus 2 IgM, Rubella Virus - IgG, Rubella Virus - IgM, Toxoplasma gondii - IgG, Toxoplasma gondii -	1900	750
+1053	P067	TORCH 4 Profile(IgG) Cytomegalovirus IgG Antibody, Herpes Simplex Virus 1 & 2 IgG, Rubella Virus - IgG, Toxoplasma
+gondii - IgG	1000	650
+1054	P068	TORCH 4 Profile(IgM) Cytomegalovirus IgM Antibody, Herpes Simplex Virus 1 & 2 IgM, Rubella Virus - IgM, Toxoplasma
+gondii - IgM	1000	650
+1055	P064	TORCH 5 Profile (IgG) Cytomegalovirus IgG Antibody, Herpes Simplex Virus 1 IgG, Herpes Simplex Virus 2 IgG, Rubella Virus - IgG, Toxoplasma gondii - IgG	1100	380
+1056	P065	TORCH 5 Profile(IgM) Cytomegalovirus IgM Antibody, Herpes Simplex Virus 1 IgM, Herpes Simplex Virus 2 IgM, Rubella Virus - IgM, Toxoplasma gondii - IgM	1100	380
+1057	P066	TORCH 8 Profile(IgG&IgM) Cytomegalovirus IgG Antibody, Cytomegalovirus IgM Antibody, Herpes Simplex Virus 1 & 2 IgM, Herpes Simplex Virus 1 & 2 IgG, Rubella Virus - IgG, Rubella Virus - IgM, Toxoplasma gondii - IgG,	1800	1170
+1058	HM054	Total Leucocyte Count (TLC)	120	78
+1059	MB104	Toxoplasma DNA PCR - Qualitative	3000	1950
+1060	IM155	Toxoplasma gondii IgG Antibody -
+Serum	450	293
+1061	IM156	Toxoplasma gondii IgM Antibody -
+Serum	450	293
+1062	IM239	Toxoplasma IgG Avidity	900	585
+1063	BC255	Transferrin - Serum	950	618
+1064	CG046	Translocation (9;22)-FISH	4600	2990
+1065	CG048	Traslocation (4;11) -FISH	4600	2990
+1066	CG062	Traslocation (8;21)-FISH	4600	2990
+1067	AL139	Tree Panel - Acacia; Olive; Willow; Melaeuca; White pine; Eucalyptus	3750	2438
+1068	IM157	Treponema Pallidum Haemagglutination Assay - Serum	550	358
+1069	BC256	Triglycerides - Serum	250	163
+1070	BC257	Tri-Iodothyronine Free (FT3) - Serum	300	195
+1071	BC258	Tri-Iodothyronine Total (TT3) - Serum	200	130
+1072	P069	Triple Marker With Graph Alpha Feto Protein (AFP), Beta Human Chorionic Gonodotropin Hormone , Estriol,Unconjugated (E3)	2000	775
+1073	CG057	Trisomy - 4-FISH	4600	2990
+1074	CG059	Trisomy-10-FISH	4600	2990
+1075	BC259	Troponin - I - Serum	1500	975
+1076	BC260	Troponin - T - Serum	1500	975
+1077	BC339	Troponin-T-Qualitative	1600	1040
+1078	BC261	TSH Receptor Antibodies - Serum	3200	2080
+1079	BC297	TUMOUR NECROSIS
+FACTOR(TNF)ALPHASERUM	3900	2535
+1080	AL140	Tuna	900	585
+1081	AL141	Turkey	900	585
+1082	IM158	U1-nRNP antibodies - Serum	1600	1040
+1083	BC262	Urea - Serum	130	60
+1084	BC263	Urea Post Dialysis - Serum	130	85
+1085	BC264	Urea Pre Dialysis - Serum	130	85
+1086	BC265	Urea-Urine-24 hrs	200	130
+1087	BC266	Uric Acid - Serum	130	60
+1088	BC267	Uric acid - Urine-24 hrs	200	130
+1089	CP011	Urine - Ketone Bodies	120	78
+1090	CP012	Urine -Bilirubin	120	78
+1091	CP021	Urine for Dysmorphic RBC	360	234
+1092	CP013	Urine for Fat Globulins	200	130
+1093	CP014	Urine for Hemoglobunuria	400	260
+1094	CP015	Urine For Hemosiderin	620	403
+1095	CP016	Urine for Ketone	120	78
+1096	CP017	Urine -Protein	120	78
+1097	CP018	Urine-pH	120	78
+1098	CP019	Urine-Reducing Substance	120	78
+1099	CP020	Urobilinogen	120	78
+1100	BC268	Valproic Acid (Sodium Valproate)	725	471
+1101	IM204	Varicella Zoster Virus IgG-CLIA	1100	715
+1102	IM202	Varicella Zoster Virus IgM-CLIA	1100	715
+1103	IM188	VDRL / RPR Titre	150	98
+1104	IM161	VDRL- Syphilis Antibodies - Serum	150	98
+1105	AL143	Vegetable Panel - I -Tomato; Carrot;
+Potato; Garlic; Mustard	2500	1625
+1106	AL142	Vegetable Panel - II - Tomato; Carrot; Potato; Garlic; Mustard; Sesame Seed; Bakers Yeast; Celery; Spinach; Cabbage; Paprika; Onion; Cucumber; Brinjal; Mushroom	5000	3250
+1107	AL144	Velvet Grass	900	585
+1108	BC269	Vitamin - B12 - Serum	850	200
+1109	P080	Vitamin B Complex Panel Vitamin
+B1, B2, B6, by HPLC, B9 (Folic acid), Vitamin B12	7000	4550
+1110	BC270	Vitamin B1	3500	2275
+1111	BC272	Vitamin B6	3500	2275
+1112	BC273	Vitamin E (Tocopherol) - Serum	2500	1625
+1113	BC274	Vitamin-A - Serum	3500	2275
+1114	BC294	Vitamin-C	3000	1950
+1115	BC330	VMA (Vanillyl Mandelic Acid) -
+SPOT-Urine-Quantitative	900	585
+1116	BC275	VMA (Vanillyl Mandelic Acid) -
+SPOT-Urine-Random	700	455
+1117	BC276	VMA (Vanillyl Mandelic Acid)-Urine-24 hrs	2750	1788
+1118	AL145	Walnut	900	585
+1119	AL146	Weed Panel - Ragweed; Mugwort; Ox-Eye Dsidy; Dandelion;
+Goldenrod.	3000	1950
+1120	IM162	Weil - Felix Test - Serum	600	390
+1121	AL147	Wheat	900	585
+1122	AL148	Wheeze/Rhinitis Comprehensive Panel Adult Common Ragweed; Mugwrot; Ox-Eye Daisy; Dandelion; Goldenrod; Penicillium notatum; Cladosporium herbarum; Aspergillus fumigatus; Candida albicans; Alternaria tenuis; House dust; Cockroach; Dermatophagoides Pteronyssinus; Dermatophagoides Farinae; Cow dander; Horse dander; Cat epithelium; Dog dander; Bermuda grass; Perennial Rye grass; Timothy grass; June Grass (Kentucky Blud); Bahia grass; Johnson grass; Alder; Hazelnut; Elm; Willow; Cotton Wood.	10000	6500
+1123	AL149	Wheeze/Rhinitis comprehensive Panel Pediatric Rice; Egg white; Milk; Wheat; Soya bean; Peanut; House dust; Cockroach; Dermatophagoides Pteronyssinus; Dermatophagoides Farinae; Penicillium notatum; Cladosporium herbarum; Aspergillus fumigatus; Candida albicans; Alternaria tenuis; Cow dander; Horse dander; Cat epithelium; Dog dander.	10000	6500
+1124	AL150	White Bean	900	585
+1125	AL151	White Pine	900	585
+1126	IM163	Widal Test (Slide Test)- Serum	150	70
+1127	IM164	Widal Test (Tube Test) - Serum	200	130
+1128	AL152	Willow	900	585
+1129	AL153	Wool	900	585
+1130	MB108	Y Chromosome Microdeletion (16
+Mutation)	7000	4550
+1131	AL154	Yeast	900	585
+1132	BC277	Zinc-Serum	1800	1170
+1133	BC278	Zinc-Urine-Random	1800	1170
+1134	IM177	17 -OH-P -Amniotic Fluid	2850	2565
+1135	CG001	17p-FISH	4900	4410
+1136	CG002	17p-FISH	4900	4410
+1137	CG003	22q deletion LSI Di George / Velo Cardio Facial Syndrome (VCFS)-FISH	5000	4500
+1138	CG004	22q deletion LSI Di George / Velo Cardio Facial Syndrome (VCFS)-FISH	5000	4500
+1139	MB001	5FU (5 - Fluoro Uracil Assay)	4000	3600
+1140	IM215	Acetyl Choline Receptor Binding
+Antibody	2800	2520
+1141	BC313	Adrenaline (Epinephrine]
+,Urine24hrs	2500	2250
+1142	FC044	ALCD - Acute Leukemia Comprehensive Diagnostic Panel (CD2, CD3, Cytoplasmic CD3, CD4, CD5, CD7, CD8; CD10,CD19, CD22,
+IgM, Cytoplasmic CD79a; CD13, CD14, CD15, CD33, CD117,
+Cytoplasmic MPO, CD41, Glycophorin A, CD34, CD45, TDT, HLA-DR)	13000	11700
+1143	FC045	ALL- Acute Lymphoblastic Leukemia Panel (CD3, Cytoplasmic CD3, CD5, CD7, CD10, CD19, CD22,
+Cytoplasmic CD79a, CD13, CD33, CD117, Cytoplasmic MPO; CD34, CD45, TDT, HLA - DR.)	12000	10800
+1144	CG005	ALL Panel-t(9;22)t(12;21)mLLE2A-
+Karyotyping+FISH	16000	14400
+1145	CG006	ALL Panel-t(9;22)t(12;21)mLLE2A-
+Karyotyping+FISH	16000	14400
+1146	FC046	ALL/AML MRD Panel	9000	8100
+1147	FC047	ALL/AML MRD Panel	9000	8100
+1148	AL157	Allergy Screening-Tryptase	2000	1800
+1149	BC022	Alpha 1- Antitrypsin (AAT) - Serum	2000	1800
+1150	BC025	Aluminium - Serum	1600	1440
+1151	BC319	Amino Acid Quantitative - Plasma	5200	4680
+1152	BC327	Amino Acids Qualitative - Plasma	1200	1080
+1153	BC317	Amino Acids Qualitative - Urine	1230	1107
+1154	BC335	Amino Acids Quantitative urine	5200	4680
+1155	FC048	AML â Acute Myeloid Leukemia Panel (Cytoplasmic CD3, CD4, CD5, CD7, CD19, Cytoplasmic CD 79a, CD13, CD14, CD15, CD33, CD117,
+Cytoplasmic MPO, CD41, CD34, CD45, HLA-DR.)	10000	9000
+1156	CG008	AML- t ( 15 ; 17 ) MLL Inv ( 16 ) t ( 8
+; 21 ) - Karyotyping+FISH	16000	14400
+1157	CG007	AML- t ( 15 ; 17 ) MLL Inv ( 16 ) t ( 8
+; 21 ) -Karyotyping+FISH	16000	14400
+1158	MB012	AML1(21q22) and ETO(8q22)
+(t(8;21)(q22;q22))	3500	3150
+1159	MB013	AML1(21q22) and ETO(8q22)
+(t(8;21)(q22;q22))	3500	3150
+1160	BC293	Anti Diuretic Hormone - ADH	3400	3060
+1161	BC285	Anti Dnase B	1200	1080
+1162	IM240	Anti Histone Antibody	1300	1170
+1163	IM196	Anti MAG (Myelin Associated
+Glycoprotein) Antibody	3500	3150
+1164	IM246	Anti Spike SARS-CoV-2-IgG Neutralizing Ab- Quantitative	1600	1440
+1165	IM217	Anti-HDV Total Antibody	1900	1710
+1166	IM235	Anti-MOG (MYELIN
+OLIGODENDROCYTE GLYCOPROTEIN) ANTIBODY	6500	5850
+1167	IM245	Anti-MOG (MYELIN OLIGODENDROCYTE GLYCOPROTEIN) ANTIBODY -Serum	6500	5850
+1168	IM027	Anti-SS DNA Antibody - Serum	2450	2205
+1169	HM062	APCR-Activated Protein C
+Resistance	3400	3060
+1170	BC044	Arsenic-Blood-WB-Heparin	2500	2250
+1171	BC045	Arsenic-Urine-Random	2500	2250
+1172	P072	Autoimmune Encephalitis Panel	15000	13500
+1173	IM220	Autoimmune Encephalitis-Panel CSF	15000	13500
+1174	MI023	Bacterial Meningitis Screen-CSF	3050	2745
+1175	BC299	Beta -2 Crosslaps C-Telopeptodes(B-
+CTX)	1300	1170
+1176	MB018	Beta Thalassemia (23 Mutations)	8000	7200
+1177	BC296	BIOTINIDASE QUANTITATIVE
+BLOOD	3800	3420
+1178	BC328	BNP B Type Natriuretic Peptide	1700	1530
+1179	MB123	BRAF V600 Mutation	4500	4050
+1180	ON005	BRCA 1 & 2	39500	35550
+1181	CG010	Burkittâs Lymphoma t(8; 14)-FISH	4500	4050
+1182	BC287	C 1 Esterase Inhibitor	2200	1980
+1183	BC069	Cadmium - Urine-Random	2500	2250
+1184	BC070	Cadmium-Whole Blood	2500	2250
+1185	MB114	Calreticulin(CALR) Exon 9 Mutation Analysis	6000	5400
+1186	IM168	Catecholamines Plasma	4500	4050
+1187	MB023	CBF Beta (16q22) and MYH11
+(16p13) inv (16)(p13;q22)	3000	2700
+1188	MB024	CBF Beta (16q22) and MYH11
+(16p13) inv(16)(p13;q22))	3000	2700
+1189	FC112	CD07/CD05/CD45/CD02	3000	2700
+1190	FC113	CD07/CD05/CD45/CD02-(Bone
+Marrow)	3000	2700
+1191	FC126	CD07/ZAP70/CD19	2300	2070
+1192	FC127	CD07/ZAP70/CD19-(Bone Marrow)	2300	2070
+1193	FC110	CD15/CD13/CD45/CD33	3000	2700
+1194	FC111	CD15/CD13/CD45/CD33-(Bone
+Marrow)	3000	2700
+1195	FC106	CD20/CD10/CD45/CD19	3000	2700
+1196	FC118	CD23/CD05/CD45/CD19	3000	2700
+1197	FC119	CD23/CD05/CD45/CD19-(Bone
+Marrow)	3000	2700
+1198	FC128	CD3/CD56/CD45/CD19	3000	2700
+1199	FC129	CD3/CD56/CD45/CD19-(Bone
+Marrow)	3000	2700
+1200	FC124	CD38/CD34/CD45/CD22	3000	2700
+1201	FC125	CD38/CD34/CD45/CD22-(Bone
+Marrow)	3000	2700
+1202	FC130	CD55/CD59	2000	1800
+1203	FC131	CD55/CD59-(Bone Marrow)	1800	1620
+1204	FC116	CD79a with CD45 Gating	1800	1620
+1205	FC117	CD79a with CD45 Gating-(Bone
+Marrow)	1800	1620
+1206	IM221	Chlamydia Antigen Rapid	900	810
+1207	IM229	Chlamydophila pneumoniae IgG
+Antibody	710	639
+1208	BC303	Chromium Urine - 24 Hrs	2500	2250
+1209	BC090	Chromium-Plasma	2500	2250
+1210	BC091	Chromium-Serum	2500	2250
+1211	BC092	Chromium-Urine -Random	2500	2250
+1212	RE001	Clinical Exome 20MB (80-100X)	35400	31860
+1213	CG018	CLL Panel-Chromosomes 13q 17p 11q and Trisomy 12 with
+Karyotyping	16000	14400
+1214	FC090	CLPD â Chronic Lympho Proliferative Disorder Panel (CD2, CD3, CD4, CD5, CD8, CD10, CD16, CD19, CD20, CD22, CD23, CD25, CD34, CD38, CD45, CD56, CD11c, CD103, FMC 7, HLA DR, Kappa, Lambda, CD138, ZAP70	13000	11700
+1215	IM171	Complement -CH50	2200	1980
+1216	IM213	Coxsackie Antibodies IgG	1630	1467
+1217	IM212	Coxsackie Antibodies IgM	1630	1467
+1218	IM214	Coxsackie Antibodies Panel (IgG &
+IgM)	3080	2772
+1219	BC113	Cyclosporine - WB-EDTA	3000	2700
+1220	MB025	Cystic Fibrosis (Alpha)F
+508/CFTRF508	5500	4950
+1221	CG019	del 13q - FISH	4900	4410
+1222	CG020	del 13q-FISH	4900	4410
+1223	CG021	Deletion 20 q-FISH	5000	4500
+1224	IM065	Diphtheria IgG - Serum	3200	2880
+1225	MB031	DMD-26exons (Duchenne Muscular
+Dystrophy)	7500	6750
+1226	BC314	Dopamine, 24 hrs urine	1900	1710
+1227	HL001	DSA	10000	9000
+1228	IM250	EBV IgG Antibody to Nuclear
+Antigen	1800	1620
+1229	IM055	EBV IgM Antibody to Nuclear
+Antigen - Serum	1550	1395
+1230	CG022	EGFR Gene Amplification-FISH	11000	9900
+1231	MB033	EGFR Mutation Study (10 Common
+Mutations)	7000	6300
+1232	IM234	Epstein bar Virus Antibody to
+VCAIgG	1600	1440
+1233	BC337	Everolimus	4500	4050
+1234	HM058	Factor - XIII	600	540
+1235	HM063	Factor X Functional	4700	4230
+1236	IM195	Fecal Elastase	5000	4500
+1237	IH045	Final Diagnosis Panel	9000	8100
+1238	MB036	FIP1L1 PDGFRa	6500	5850
+1239	MB037	FIP1L1 PGDFRa	6500	5850
+1240	CG074	FISH for ALK Gene	13000	11700
+1241	CG068	FISH For del(1p)(19q)	15000	13500
+1242	FC132	FLAER / CD14/CD45/CD24	3000	2700
+1243	FC133	FLAER / CD14/CD45/CD24-(Bone
+Marrow)	3000	2700
+1244	MB038	FLT3 â ITD (Fetal Liver Tyrosine
+Kinase)	5000	4500
+1245	MB039	FLT3 â ITD (Fetal Liver Tyrosine
+Kinase)	5000	4500
+1246	FC120	FMC07/CD103/CD19	2500	2250
+1247	FC121	FMC07/CD103/CD19-(Bone
+Marrow)	2500	2250
+1248	MB040	FMRI Gene (Fragile X Syndrome)	6000	5400
+1249	BC326	Free Cortisol - 24 hrs Urine	800	720
+1250	IM189	Galactomannan (Aspergillus
+Antigen)	5100	4590
+1251	BC323	Galactosemia Classical Quantitative
+Blood	1900	1710
+1252	BC341	Galactosemia Panel	3900	3510
+1253	BC289	Galactosemia Quantitative Blood ( Epimerase )	2450	2205
+1254	IM179	Ganglioside Antibody IgG	3200	2880
+1255	IM180	Ganglioside Antibody IgM	3200	2880
+1256	IM233	GBMA by IFA	1450	1305
+1257	IM199	Hanta Virus Antibodies-IGM	1200	1080
+1258	BC149	Haptoglobin - Serum	2000	1800
+1259	IM186	HBsAg - Quantitative Titre	2250	2025
+1260	MB129	HDV-RNA Detection by PCR	6200	5580
+1261	CG023	Her-2 Neu Oncogene Amplification Breast Cancer- FISH	11000	9900
+1262	BC306	Histidine Quantitative	8400	7560
+1263	MB058	HIV - 1 Drug Resistance Assay	15000	13500
+1264	MB121	HIV 2 RT Qualitative	3100	2790
+1265	MB057	HIV-1 Drug Resistance Assay	15000	13500
+1266	HL018	HLA B5 (51/52) DISEASE
+ASSOCIATION	4300	3870
+1267	HL010	HLA-Celiac Disease (DQB1*02 1*03
+DQA1*05;01)	5700	5130
+1268	FC108	HLA-DR/CD34/CD45/CD117	3000	2700
+1269	FC109	HLA-DR/CD34/CD45/CD117-(Bone
+Marrow)	3000	2700
+1270	HL016	HLA-Panel Reactive Antibodies	5790	5211
+1271	BC325	Homocysteine Qualitative Urine
+Spot	1200	1080
+1272	MB125	Huntington Disease Mutation Detection	3000	2700
+1273	BC344	IGE total -Serum Titre	700	630
+1274	IH046	IHC - EGFR Marker	2430	2187
+1275	IH004	IHC-Any Five Markers	7500	6750
+1276	IH002	IHC-Any One Marker	2200	1980
+1277	IH003	IHC-Any Three Markers	5500	4950
+1278	IH005	IHC-BCL-2	1850	1665
+1279	IH006	IHC-Carcino Embryonic Antigen	1850	1665
+1280	IH007	IHC-CD 117 Marker	1850	1665
+1281	IH008	IHC-CD 79 A	2200	1980
+1282	IH019	IHC-CD 99 Marker	1850	1665
+1283	IH009	IHC-CD03 Marker	1850	1665
+1284	IH010	IHC-CD10 Marker	2200	1980
+1285	IH011	IHC-CD15 Marker	1850	1665
+1286	IH012	IHC-CD20 Marker	1850	1665
+1287	IH013	IHC-CD23 Marker	2200	1980
+1288	IH014	IHC-CD30 Marker	1850	1665
+1289	IH015	IHC-CD43 Marker	1850	1665
+1290	IH016	IHC-CD45 Marker	1850	1665
+1291	IH017	IHC-CD5 Marker	1850	1665
+1292	IH018	iHC-CD68 Marker	1850	1665
+1293	IH020	IHC-Chromogranin	1850	1665
+1294	IH021	IHC-CK - 20	2200	1980
+1295	IH022	IHC-CK - 7	1850	1665
+1296	IH023	IHC-CK19	1850	1665
+1297	IH024	IHC-Cyclin-D1 Marker	2200	1980
+1298	IH025	IHC-Cytokeratin 19	1850	1665
+1299	IH026	IHC-Desmin	1850	1665
+1300	IH027	IHC-Epithelial Membrane Antigen	1850	1665
+1301	IH029	IHC-GFAP	1850	1665
+1302	IH031	IHC-HMB 45	1850	1665
+1303	IH032	IHC-Inhibin Marker	1850	1665
+1304	IH034	IHC-MPO	1850	1665
+1305	IH035	IHC-NSE Marker	1850	1665
+1306	IH036	IHC-P53	1850	1665
+1307	IH037	IHC-Pancytokeratin	1850	1665
+1308	IH038	IHC-Placental Alkaline Phosphatase (PLAP)	1850	1665
+1309	IH039	IHC-S-100	1850	1665
+1310	IH040	IHC-SMA	1850	1665
+1311	IH041	IHC-Synaphtophysin	1850	1665
+1312	IH042	IHC-Thyroglobulin	1850	1665
+1313	IH043	IHC-Vimentin Marker	1850	1665
+1314	HM059	Immature Platelet Fraction(IPF)	750	675
+1315	BC160	Immunoglobulin Type-4 - Serum	4800	4320
+1316	BC152	Insulin-like growth factor-binding protein 3 (IGFBP-3)	3000	2700
+1317	MB065	Interleukin-28B polymorphism	5000	4500
+1318	CG025	Inv(16)- FISH	4600	4140
+1319	CG024	Inv(16)-FISH	4600	4140
+1320	MB066	IRMA in CML (Imatinib Resistance
+Mutation Analysis)	9000	8100
+1321	FC122	KAPPA/LAMBDA/CD19	2500	2250
+1322	FC123	KAPPA/LAMBDA/CD19-(Bone
+Marrow)	2500	2250
+1323	BC331	Ketone Body (Beta
+Hydroxybutyrate)	1500	1350
+1324	MB073	KRAS (Colorectal Cancer Marker)
+Mutations	7000	6300
+1325	IM226	Legionella Pneumophilia IgG	2500	2250
+1326	IM225	Legionella Pneumophilia IgM	2500	2250
+1327	BC321	Leptin	3900	3510
+1328	FC098	Leukemia Diagnostic Panel - CLL Characterization (CD5, CD7, CD10, CD11c, CD19, CD20, CD23, CD25, CD38, CD45, FMC7, CD103,
+Kappa/Lamda, ZAP70, Surface IgM)	12000	10800
+1329	FC099	Leukemia Diagnostic Panel - CLL/HCL/SLL(BASIC) - (CD5, CD7, CD10, CD19, CD11c, CD19, CD20, CD23, CD25, CD38, CD45, FMC7,
+CD103, Kappa/Lamda, ZAP70, Surface IgM	10000	9000
+1330	BC307	Levetiracetam	4300	3870
+1331	CG026	LSI MLL gene breakapart -FISH	8000	7200
+1332	CG027	LSI MLL gene breakapart -FISH	8000	7200
+1333	IM190	Lyme Borrelia Burgdorferilg IgG
+Antibodies	1300	1170
+1334	IM191	Lyme Borrelia Burgdorferilg IgM
+Antibodies	1300	1170
+1335	BC291	Manganese	2500	2250
+1336	CG028	MDS PANEL (5q 7q 8 and 20q)-FISH
+with Karyotyping	16000	14400
+1337	CG029	MDS PANEL(5q 7q 8 and 20q)-FISH
+With Karyotyping	16000	14400
+1338	BC184	Mercury- Serum	2500	2250
+1339	BC185	Mercury-Hair	2500	2250
+1340	BC186	Mercury-Nails	2500	2250
+1341	BC187	Mercury-Spot Urine-Random	2500	2250
+1342	IM244	Metanephrine Profile Fractionated
+EDTA Plasma	7000	6300
+1343	IM243	Metanephrines 24 Hours Urine	6000	5400
+1344	IM242	Metanephrines Fractionated
+Random Urine	6000	5400
+1345	RG064	Micro array- Chorionic villi	16000	14400
+1346	RG066	Microarry- Aminotic	20000	18000
+1347	RG065	Microarry- Blood	20000	18000
+1348	FC100	MM â Multiple Myeloma Panel - (CD38, CD56, CD19, Kappa, Lambda, CD45)	6500	5850
+1349	MB112	MPL W515/S505 Mutation Analysis	6700	6030
+1350	FC114	MPO/CD3/CD45/CD22	3000	2700
+1351	FC115	MPO/CD3/CD45/CD22-(Bone
+Marrow)	3000	2700
+1352	CG076	Multiple Myeloma Karyotyping +
+FISH	18000	16200
+1353	CG030	Multiple Myeloma- Karyotyping + FISH	18000	16200
+1354	IM178	Musk Antibody	5000	4500
+1355	MB111	Mycobacetrium Speciation	6500	5850
+1356	IM193	Mycoplasma Pneumoniae IgG	1800	1620
+1357	IM192	Mycoplasma Pneumoniae IgM	1800	1620
+1358	IM210	Myositis Profile	7000	6300
+1359	BC199	NBS - Inborn Metabolic Disorders (IMD) Panel: Fatty Acids; Organic Acids; Amino Acids Disorders	9000	8100
+1360	IM232	Neuron Specific Enolase(NSE)	3200	2880
+1361	IM181	Neuronal Antibody Profile (IgG)	9000	8100
+1362	BC203	Nickel- WB-EDTA	2500	2250
+1363	RG055	NIPT	21000	18900
+1364	FC103	NK CELL Panel - CD3 CD16 / CD56	3500	3150
+1365	FC039	NK Cell Panel â CD 3 CD 16 CD 56	3500	3150
+1366	IM175	NMDA Receptor
+Antibody/Antiglutamate Antibody - Serum	6250	5625
+1367	IM219	NMDA Receptor
+Antibody/Antiglutamate Antibody (CSF)	6000	5400
+1368	IM201	Nor-Adrenaline (Nor-epinephrine)
+Plasma	2500	2250
+1369	BC315	Nor-Adrenaline (Nor-Epinephrine)-
+24 Hrs- Urine	2500	2250
+1370	MB092	NPM1 (Nucleophosmin 1) Gene
+AML	4000	3600
+1371	MB124	NRAS Mutations Analysis	6100	5490
+1372	BC207	Organic Acids Quantitative - Urine-
+Random	3500	3150
+1373	BC311	Osteocalcin BGP-Bone Gla Protein	1900	1710
+1374	MB127	Panfungal-DNA Detection	3900	3510
+1375	MB093	Parvo Virus B19 DNA - Qualitative	5000	4500
+1376	IM130	Parvovirus B19 Antibody IgG -
+Serum	2200	1980
+1377	IM131	Parvovirus B19 Antibody IgM -
+Serum	2200	1980
+1378	IM132	Pertusis IgG â Serum	2900	2610
+1379	BC340	PIIINP (Procollagen Type III Amino
+Terminal Propeptide)	4000	3600
+1380	IM183	PLA2 Receptor Antibody	5000	4500
+1381	BC333	Placental Growth Factor PIGF	0	0
+1382	MB130	Plasminogen Activator Inhibitor-1 (PAI-1) / SERPINE-1 4G/5G
+Genotyping	13500	12150
+1383	FC104	PNH â Paroxysmal Nocturnal Hemoglobinuria Panel (CD55, CD58, CD59, Glycophorin A)	5000	4500
+1384	CG040	Prader - Willi Syndrome-FISH	8000	7200
+1385	RG063	Products of Conception-Micro Array	16000	14400
+1386	BC318	Pyruvate-Serum	1600	1440
+1387	IM135	Rabies Antibody - Serum	2400	2160
+1388	HP031	Renal Biopsy	2800	2520
+1389	MB100	SCA Panel (Spino cerebellar Ataxia)
+123671012	12000	10800
+1390	BC241	Selenium - Serum	3500	3150
+1391	CG073	Semen DNA Fragmentation Test	11000	9900
+1392	IM227	Serotonin 5-Hydroxy Tryptamine	3350	3015
+1393	MB101	Sickle Cell Anemia - HB3 Gene	6000	5400
+1394	MB126	SMA Carrier Detection	6500	5850
+1395	ON060	Somatic Cancer Mutation Hotspot
+Tumor Panel	39500	35550
+1396	MB099	Spinal Muscular Atrophy
+Microdeletion	2800	2520
+1397	CG043	Stress Cytogenetics	7400	6660
+1398	CG044	t (11:14) or LSI IGH / CCND1-FISH	4900	4410
+1399	CG051	t (11:14) or LSI IGH / CCND1-FISH	4900	4410
+1400	IM151	Tetanus IgG - Serum	3200	2880
+1401	IM249	Tissue Transglutaminase TTG-DGP	1900	1710
+1402	MB115	Torch Profile PCR Qualitative Panel	6700	6030
+1403	MB133	Torch Profile PCR Qualitative-Panel	10000	9000
+1404	MB105	TPMT Gene (Thiopurine
+Methyltransferase)	5500	4950
+1405	CG060	Translocation (9;22)-FISH	4600	4140
+1406	CG054	Translocation 1;19 (E2A gene)-FISH	4600	4140
+1407	CG055	Translocation 1;19 (E2A gene)-FISH	4600	4140
+1408	CG052	Traslocation (11;19)- FISH	5000	4500
+1409	CG053	Traslocation (11;19)-FISH	5000	4500
+1410	CG049	Traslocation (15;17)-FISH	4600	4140
+1411	CG061	Traslocation (15;17)-FISH	4600	4140
+1412	CG047	Traslocation (8;21)- FISH	4600	4140
+1413	CG050	Traslocation(12;21) - FISH	4600	4140
+1414	CG063	Traslocation(12;21)-FISH	4600	4140
+1415	CG045	Trisomy 8-FISH	4500	4050
+1416	MB106	UGT1A1 Gene (Gilberts Syndrome)	5000	4500
+1417	BC332	Vancomycin	4750	4275
+1418	MB107	Varicella-Zoster Virus DNA PCR -
+Qualitative	2700	2430
+1419	MB119	Varicella-Zoster Virus DNA PCR
+Qualitative	3000	2700
+1420	IM218	VGKC	7800	7020
+1421	IM173	VGKC (Voltage Gated Potassium
+Channel) Antibody - Serum	7000	6300
+1422	BC322	Vitamin B2 (Riboflavin)	3500	3150
+1423	HM056	Von - Willebrand Antigen	6500	5850
+1424	IM198	West Nile Virus IgG - Serum	3620	3258
+1425	IM197	West Nile Virus IgM - Serum	3620	3258
+1426	CG065	Wilsons Disease-Amniotic Fluid	28000	25200

@@ -12,6 +12,11 @@ import OrderFeedbackCta from "./OrderFeedbackCta";
 import { paymentMethodSummary } from "./paymentMethods";
 import { maskMobile } from "./personFields";
 import { scanHref } from "./orderQr";
+import { awaitingPartnerMessage, isAwaitingPartnerConfirm } from "./orderConfirm";
+import {
+  isDiagnosticKind,
+  mergeOrderReportIntoStore,
+} from "./labPipeline";
 
 function typeLabel(order) {
   return kindLabel(order?.kind || order?.orderType);
@@ -22,7 +27,13 @@ function MyOrders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   useEffect(() => {
-    setOrders(loadAllOrders());
+    const rows = loadAllOrders();
+    setOrders(rows);
+    rows.forEach((order) => {
+      if (isDiagnosticKind(order?.kind || order?.orderType) && order?.reportFileData) {
+        mergeOrderReportIntoStore(order);
+      }
+    });
   }, []);
 
   const handleSelectedChange = (next) => {
@@ -90,11 +101,17 @@ function MyOrders() {
             <strong>Type:</strong> {typeLabel(selectedOrder)}
           </p>
 
-          <LiveTrackingPanel
-            order={selectedOrder}
-            onOrderChange={handleSelectedChange}
-            compact
-          />
+          {isAwaitingPartnerConfirm(selectedOrder) ? (
+            <p className="lab-hint" role="status">
+              {awaitingPartnerMessage(selectedOrder.kind || selectedOrder.orderType)}
+            </p>
+          ) : (
+            <LiveTrackingPanel
+              order={selectedOrder}
+              onOrderChange={handleSelectedChange}
+              compact
+            />
+          )}
 
           <h3>
             {selectedOrder.kind === "lab"
@@ -154,6 +171,32 @@ function MyOrders() {
                   <strong>Time Slot:</strong>{" "}
                   {selectedOrder.timeSlot || "Not provided"}
                 </p>
+                {selectedOrder.technicianName ? (
+                  <p>
+                    <strong>Technician:</strong>{" "}
+                    {selectedOrder.technicianName}
+                    {selectedOrder.technicianMobile
+                      ? ` · ${maskMobile(selectedOrder.technicianMobile)}`
+                      : ""}
+                  </p>
+                ) : null}
+                {selectedOrder.reportFileData || selectedOrder.reportFileName ? (
+                  <p>
+                    <strong>Report:</strong>{" "}
+                    {selectedOrder.reportFileData ? (
+                      <a
+                        href={selectedOrder.reportFileData}
+                        download={selectedOrder.reportFileName || "report"}
+                      >
+                        {selectedOrder.reportFileName || "Download report"}
+                      </a>
+                    ) : (
+                      selectedOrder.reportFileName
+                    )}
+                    {" · "}
+                    <a href="#reports">Open Reports</a>
+                  </p>
+                ) : null}
               </>
             )}
             {selectedOrder.kind === "homecare" && (
@@ -317,10 +360,32 @@ function MyOrders() {
             {selectedOrder.paymentMethod ? (
               <p>
                 <strong>Payment:</strong>{" "}
-                {paymentMethodSummary(
-                  selectedOrder.paymentMethod,
-                  "Cash on delivery / visit"
-                )}
+                {selectedOrder.paymentStatus === "awaiting_partner" ||
+                isAwaitingPartnerConfirm(selectedOrder)
+                  ? "After partner acceptance"
+                  : selectedOrder.paymentStatus === "awaiting_payment" ||
+                      (selectedOrder.paymentMethod === "pending" &&
+                        !selectedOrder.paid)
+                    ? "Pending — complete payment"
+                    : paymentMethodSummary(
+                        selectedOrder.paymentMethod,
+                        "Cash on delivery / visit"
+                      )}
+              </p>
+            ) : null}
+            {selectedOrder.partnerConfirmed &&
+            !selectedOrder.paid &&
+            (selectedOrder.paymentStatus === "awaiting_payment" ||
+              selectedOrder.paymentMethod === "pending") ? (
+              <p className="lab-hint" role="status">
+                {selectedOrder.kind === "lab" || selectedOrder.kind === "radiology"
+                  ? (
+                      <>
+                        Booking confirmed.{" "}
+                        <a href="#labs">Open Lab Tests</a> to pay, or track from here.
+                      </>
+                    )
+                  : "Booking confirmed. Complete payment or track live from the buttons below."}
               </p>
             ) : null}
             <PinGpsBlock record={selectedOrder} compact />

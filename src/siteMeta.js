@@ -61,6 +61,11 @@ const PAGE_META = {
     title: "MediHome | Medicines, Lab Tests And Home Care In Delhi NCR",
     description: SITE.description,
   },
+  checkout: {
+    title: "Checkout | MediHome",
+    description:
+      "Pay for prescribed medicines and lab tests together through MediHome.",
+  },
   "medicine-search": {
     title: "Order Medicines Online | MediHome Delhi NCR",
     description:
@@ -127,9 +132,21 @@ const PAGE_META = {
       "Practical guides, live webinars, and short quizzes for chronic care at home from MediHome.",
   },
   apps: {
-    title: "MediHome Apps | Customer, Staff And Partner",
+    title: "MediHome Desks | Customer, Partner And Staff",
+    description: "Open the MediHome customer, partner, or staff webpage.",
+  },
+  portals: {
+    title: "MediHome Desks | Customer, Partner And Staff",
+    description: "Open the MediHome customer, partner, or staff webpage.",
+  },
+  customer: {
+    title: "Customer | MediHome",
     description:
-      "Open the MediHome customer app, staff operations desk, or partner jobs desk.",
+      "Customer webpage for medicines, lab tests, Home Care, orders, and account on MediHome.",
+  },
+  staff: {
+    title: "Staff | MediHome",
+    description: "Staff webpage for MediHome operations, orders, and partner coordination.",
   },
   about: {
     title: "About MediHome | Chronic Care At Your Doorstep",
@@ -159,6 +176,11 @@ const PAGE_META = {
     description: "MediHome operations desk for incoming orders.",
   },
   partner: {
+    title: "Partner | MediHome",
+    description:
+      "Partner webpage for MediHome delivery, lab collection, radiology, and home-visit partners.",
+  },
+  "partner-desk": {
     title: "Partner Desk | MediHome",
     description: "Assigned jobs for MediHome delivery, lab, Home Care, psychologist, and ambulance partners.",
   },

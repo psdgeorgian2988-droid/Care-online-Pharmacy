@@ -1,3 +1,188 @@
 {
-  "threads": []
+  "threads": [
+    {
+      "sessionId": "care-mtiy9m98-emzd41",
+      "name": "",
+      "mobile": "",
+      "needsStaff": true,
+      "unreadStaff": true,
+      "createdAt": 1789744050158,
+      "updatedAt": 1789745010684,
+      "messages": [
+        {
+          "id": "m-mu73ebce-3xbs",
+          "from": "user",
+          "text": "How do I use MediHome?",
+          "at": 1789744050158
+        },
+        {
+          "id": "m-mu73ebcf-q7jj",
+          "from": "bot",
+          "text": "To use MediHome: open Home, choose a service (Medicines, Lab Tests, Home Care, and more), complete the booking form, then track it in My Orders. Guests can continue without an account; Login/Register saves your details for faster checkout.",
+          "at": 1789744050159,
+          "links": [
+            {
+              "href": "#home",
+              "label": "Open Home"
+            },
+            {
+              "href": "#login",
+              "label": "Login"
+            },
+            {
+              "href": "#register",
+              "label": "Register"
+            }
+          ]
+        },
+        {
+          "id": "m-mu73emim-kjdj",
+          "from": "user",
+          "text": "I want to track my order",
+          "at": 1789744064638
+        },
+        {
+          "id": "m-mu73emin-etqu",
+          "from": "bot",
+          "text": "Open My Orders, select your booking, then use Live track for status updates. Share your order id with customer care if tracking looks stuck.",
+          "at": 1789744064639,
+          "links": [
+            {
+              "href": "#myorders",
+              "label": "My Orders"
+            }
+          ]
+        },
+        {
+          "id": "m-mu73yfxg-dj1i",
+          "from": "user",
+          "text": "How do I use MediHome?",
+          "at": 1789744989220
+        },
+        {
+          "id": "m-mu73yfxh-a352",
+          "from": "bot",
+          "text": "To use MediHome: open Home, choose a service (Medicines, Lab Tests, Home Care, and more), complete the booking form, then track it in My Orders. Guests can continue without an account; Login/Register saves your details for faster checkout.",
+          "at": 1789744989221,
+          "links": [
+            {
+              "href": "#home",
+              "label": "Open Home"
+            },
+            {
+              "href": "#login",
+              "label": "Login"
+            },
+            {
+              "href": "#register",
+              "label": "Register"
+            }
+          ]
+        },
+        {
+          "id": "m-mu73yhw5-8fy8",
+          "from": "user",
+          "text": "I want to track my order",
+          "at": 1789744991765
+        },
+        {
+          "id": "m-mu73yhw6-q242",
+          "from": "bot",
+          "text": "Open My Orders, select your booking, then use Live track for status updates. Share your order id with customer care if tracking looks stuck.",
+          "at": 1789744991766,
+          "links": [
+            {
+              "href": "#myorders",
+              "label": "My Orders"
+            }
+          ]
+        },
+        {
+          "id": "m-mu73yjgw-xtz4",
+          "from": "user",
+          "text": "I need medicines delivered",
+          "at": 1789744993808
+        },
+        {
+          "id": "m-mu73yjgx-u7mn",
+          "from": "bot",
+          "text": "Search medicines by brand, salt, or upload a strip photo. Add to cart, confirm your PIN address, and place the order. Delivery is available across Delhi NCR with cash on delivery where enabled.",
+          "at": 1789744993809,
+          "links": [
+            {
+              "href": "#medicine-search",
+              "label": "Search medicines"
+            }
+          ]
+        },
+        {
+          "id": "m-mu73ylfr-5vhw",
+          "from": "user",
+          "text": "I need medicines delivered",
+          "at": 1789744996359
+        },
+        {
+          "id": "m-mu73ylfs-gia3",
+          "from": "bot",
+          "text": "Search medicines by brand, salt, or upload a strip photo. Add to cart, confirm your PIN address, and place the order. Delivery is available across Delhi NCR with cash on delivery where enabled.",
+          "at": 1789744996360,
+          "links": [
+            {
+              "href": "#medicine-search",
+              "label": "Search medicines"
+            }
+          ]
+        },
+        {
+          "id": "m-mu73ymfe-ugex",
+          "from": "user",
+          "text": "I want to book a lab test",
+          "at": 1789744997642
+        },
+        {
+          "id": "m-mu73ymfe-c9za",
+          "from": "bot",
+          "text": "Book lab tests with home sample collection: choose the test, enter your PIN, pick a slot, and confirm. Reports appear under Reports / My Orders when ready.",
+          "at": 1789744997642,
+          "links": [
+            {
+              "href": "#labs",
+              "label": "Book a lab test"
+            },
+            {
+              "href": "#reports",
+              "label": "Reports"
+            }
+          ]
+        },
+        {
+          "id": "m-mu73ywhn-ar83",
+          "from": "user",
+          "text": "Please connect me to a care executive",
+          "at": 1789745010683
+        },
+        {
+          "id": "m-mu73ywhn-h8zp",
+          "from": "bot",
+          "text": "I will connect you with a MediHome care executive. Please call MediHome customer care at +91 72920 94000 (8:00 AM – 10:00 PM IST, all days), or continue on WhatsApp.",
+          "at": 1789745010683,
+          "links": [
+            {
+              "href": "tel:+917292094000",
+              "label": "Call +91 72920 94000"
+            },
+            {
+              "href": "https://wa.me/917292094000?text=Hi%20MediHome%2C%20I%20need%20help%20from%20customer%20care.",
+              "label": "WhatsApp care"
+            },
+            {
+              "href": "#contact",
+              "label": "Contact page"
+            }
+          ]
+        }
+      ],
+      "unreadCustomer": false
+    }
+  ]
 }

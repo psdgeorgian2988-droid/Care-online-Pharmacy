@@ -10,6 +10,7 @@ import { coinsToRupees, quoteWalletSpend } from "./walletQuote.js";
 /** Platform share of each rupee of MRP / sale. Remainder is for the working partner. */
 export const SPLIT_PLATFORM_PERCENT = {
   medicine: 40,
+  cart: 25,
   lab: 15,
   radiology: 15,
   homecare: 20,
@@ -21,6 +22,7 @@ export const SPLIT_PLATFORM_PERCENT = {
 
 export const PARTNER_SHARE_LABEL = {
   medicine: "Delivery outlet",
+  cart: "MediHome partners",
   lab: "Lab partner",
   radiology: "Imaging centre",
   homecare: "Home Care professional",

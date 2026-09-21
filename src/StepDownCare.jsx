@@ -3,13 +3,10 @@ import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
-import {
-  awaitingPartnerMessage,
-  initialOrderStatus,
-} from "./orderConfirm";
+import { partnerAcceptFields } from "./orderConfirm";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
-import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
+import BusyWait, { useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill.jsx";
 import BookingFlow from "./BookingFlow";
@@ -182,10 +179,12 @@ function StepDownCare() {
   });
   const [errors, setErrors] = useState({});
   const [booking, setBooking] = useState(null);
+  const [flowStep, setFlowStep] = useState("placed");
   const [submitting, setSubmitting] = useState(false);
+  const [paying, setPaying] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
-  const busyWait = useBusyOverlay(submitting, "stepdown");
+  const busyWait = useBusyOverlay(submitting || paying, "stepdown");
   const stayTotal = Math.max(1, Number(form.durationDays) || 1) * STEPDOWN_DAY_RATE;
   const openSlots = useMemo(
     () => openAppointmentSlots(TIME_SLOTS, form.date),
@@ -264,16 +263,6 @@ function StepDownCare() {
       let ambulanceRequestId = "";
       const total = Math.max(1, Number(form.durationDays) || 1) * STEPDOWN_DAY_RATE;
       const pay = paymentFromQuote(payQuote, total);
-      const payment = await settleCheckoutPayment({
-        method: payMethod,
-        ...pay,
-        kind: "stepdown",
-        pin: gps.pinCode,
-        name: booked.patientName,
-        mobile: booked.mobile,
-        reference: bookingId,
-        description: "MediHome step-down stay",
-      });
 
       if (wantsAmbulance && centre) {
         ambulanceRequestId = "MH-AMB-" + Math.floor(100000 + Math.random() * 900000);
@@ -294,6 +283,8 @@ function StepDownCare() {
         centreName: centre?.name || "",
         centreAddress: centre?.address || "",
         centrePin: centre?.pin || "",
+        partner: centre?.name || "",
+        partnerId: centre?.id || "",
         serviceLabel,
         durationDays: Number(form.durationDays),
         needAmbulance: wantsAmbulance,
@@ -305,22 +296,17 @@ function StepDownCare() {
         highTrafficWait: queue.busy || queue.waited,
         bookedAt: new Date().toLocaleString(),
         bookedAtMs: Date.now(),
-        ...initialOrderStatus("stepdown"),
-        ...payment,
+        ...partnerAcceptFields(),
+        trackStatus: "assigned",
+        status: "Partner assigned — recovery centre",
+        paymentMethod: "pending",
+        paymentStatus: "awaiting_payment",
+        paid: false,
       };
       const trackedBooking = persistOrder(withTracking(bookingDetails, "stepdown"));
 
       if (wantsAmbulance && centre) {
-        const ambPay = await settleCheckoutPayment({
-          method: "cod",
-          amountRupees: TRANSFER_FEE,
-          kind: "ambulance",
-          pin: gps.pinCode,
-          name: booked.patientName,
-          mobile: booked.mobile,
-          reference: ambulanceRequestId,
-          description: "Transfer to step-down centre",
-        });
+        const ambPay = paymentFromQuote(null, TRANSFER_FEE);
         persistOrder(
           withTracking(
             {
@@ -339,27 +325,69 @@ function StepDownCare() {
               destinationAddress: centre.address,
               destinationPin: centre.pin,
               linkedStepDownId: bookingId,
+              partner: "MediHome Ambulance",
               notes: `Automatic transfer to ${centre.name}, ${centre.address} (PIN ${centre.pin}). Linked step-down booking ${bookingId}.`,
-              total: TRANSFER_FEE,
+              total: ambPay.amountRupees,
+              saleRupees: ambPay.saleRupees,
+              couponCode: ambPay.couponCode,
+              discountRupees: ambPay.discountRupees,
               requestedAt: new Date().toLocaleString(),
               requestedAtMs: Date.now(),
-              ...initialOrderStatus("ambulance"),
-              ...ambPay,
+              ...partnerAcceptFields(),
+              trackStatus: "assigned",
+              status: "Partner assigned — ambulance transfer",
+              paymentMethod: "pending",
+              paymentStatus: "awaiting_payment",
+              paid: false,
             },
             "ambulance"
           )
         );
       }
       setBooking(trackedBooking);
+      setFlowStep("placed");
     } catch (error) {
-      alert(error.message || "Booking or payment could not be completed.");
+      alert(error.message || "Booking could not be submitted.");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handlePayment = async (event) => {
+    event.preventDefault();
+    if (!booking) return;
+    setPaying(true);
+    try {
+      const amount = Number(booking.total) || 0;
+      const pay = paymentFromQuote(payQuote, amount);
+      const payment = await settleCheckoutPayment({
+        method: payMethod,
+        ...pay,
+        kind: "stepdown",
+        pin: booking.pinCode || booking.pin,
+        name: booking.patientName,
+        mobile: booking.mobile,
+        reference: booking.bookingId,
+        description: "MediHome step-down stay",
+      });
+      const next = persistOrder(booking, {
+        ...payment,
+        paymentStatus: "paid",
+        paid: true,
+        status: booking.partnerConfirmed ? "Confirmed" : booking.status,
+      });
+      setBooking(next);
+      setFlowStep("paid");
+    } catch (error) {
+      alert(error.message || "Payment could not be completed.");
+    } finally {
+      setPaying(false);
+    }
+  };
+
   const startNew = () => {
     setBooking(null);
+    setFlowStep("placed");
     setTab("find");
     setForm({
       centreId: "",
@@ -374,23 +402,43 @@ function StepDownCare() {
       needAmbulance: "",
     });
     setPayMethod("cod");
+    setPayQuote(null);
     setErrors({});
   };
 
-  if (booking) {
+  if (booking && (flowStep === "placed" || flowStep === "pay" || flowStep === "paid")) {
+    const partnerName = booking.partner || booking.centreName || "Recovery centre";
     return (
       <>
         <style>{styles}</style>
+        {busyWait ? <BusyWait kind="stepdown" traffic={busyWait} /> : null}
         <div className="service-page">
           <section className="service-confirm">
-            <div className="success-icon">✓</div>
-            <h1>Request Submitted</h1>
-            <PatienceNote kind="stepdown" shown={booking.highTrafficWait} />
-            <p>
-              {booking.needAmbulance
-                ? `${awaitingPartnerMessage("stepdown")} An ambulance transfer request was also sent for partner acceptance.`
-                : awaitingPartnerMessage("stepdown")}
-            </p>
+            {flowStep === "placed" ? (
+              <>
+                <div className="success-icon">✓</div>
+                <h1>Booking Confirmed</h1>
+                <p>
+                  {booking.needAmbulance
+                    ? "Your recovery stay and ambulance transfer are confirmed. Track below."
+                    : "Your recovery stay is confirmed. Track the centre below."}
+                </p>
+              </>
+            ) : null}
+            {flowStep === "pay" ? (
+              <>
+                <div className="success-icon">₹</div>
+                <h1>Payment</h1>
+                <p>Pay now or continue tracking — you can also pay later from My Orders.</p>
+              </>
+            ) : null}
+            {flowStep === "paid" ? (
+              <>
+                <div className="success-icon">✓</div>
+                <h1>Payment Received</h1>
+                <p>Thank you. Track the stay from My Orders anytime.</p>
+              </>
+            ) : null}
             <div className="confirm-card">
               <div className="confirm-head">
                 <h2>Booking Details</h2>
@@ -398,7 +446,7 @@ function StepDownCare() {
               </div>
               <div className="confirm-row">
                 <span>Centre</span>
-                <strong>{booking.centreName}</strong>
+                <strong>{partnerName}</strong>
               </div>
               <div className="confirm-row">
                 <span>Care type</span>
@@ -442,7 +490,9 @@ function StepDownCare() {
               <div className="confirm-row">
                 <span>Payment</span>
                 <strong>
-                  {paymentMethodSummary(booking.paymentMethod, "Pay at centre")}
+                  {flowStep === "paid" || booking.paid
+                    ? paymentMethodSummary(booking.paymentMethod, "Pay at centre")
+                    : "Pending — pay anytime from My Orders"}
                 </strong>
               </div>
               <div className="confirm-row">
@@ -456,33 +506,103 @@ function StepDownCare() {
                 </div>
               ) : null}
             </div>
-            <AssignedAgent record={booking} />
-            <div className="confirm-actions">
-              <BillButton order={booking} />
-              <button
-                type="button"
-                className="service-submit"
-                onClick={() => {
-                  window.location.hash = trackHref(booking.bookingId);
+            {flowStep !== "pay" ? (
+              <AssignedAgent
+                record={{
+                  ...booking,
+                  agentRole: "Recovery centre",
                 }}
-              >
-                Track live
-              </button>
-              {booking.ambulanceRequestId ? (
+              />
+            ) : null}
+            {flowStep === "pay" ? (
+              <form className="service-pay-form" onSubmit={handlePayment}>
+                <PaymentBlock
+                  kind="stepdown"
+                  amount={Number(booking.total) || 0}
+                  pin={booking.pinCode}
+                  method={payMethod}
+                  onMethodChange={setPayMethod}
+                  onQuoteChange={setPayQuote}
+                  guestDetails={booking}
+                  cashLabel="Pay at centre"
+                />
+                <div className="confirm-actions">
+                  <button type="submit" className="service-submit" disabled={paying}>
+                    {paying ? "Processing…" : "Pay now"}
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => setFlowStep("placed")}
+                  >
+                    Back
+                  </button>
+                </div>
+              </form>
+            ) : null}
+            {flowStep === "placed" ? (
+              <div className="confirm-actions">
                 <button
                   type="button"
                   className="service-submit"
                   onClick={() => {
-                    window.location.hash = trackHref(booking.ambulanceRequestId);
+                    window.location.hash = trackHref(booking.bookingId);
                   }}
                 >
-                  Track ambulance
+                  Track live
                 </button>
-              ) : null}
-              <button type="button" className="service-submit" onClick={startNew}>
-                Find another centre
-              </button>
-            </div>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => setFlowStep("pay")}
+                >
+                  Pay now
+                </button>
+                {booking.ambulanceRequestId ? (
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => {
+                      window.location.hash = trackHref(booking.ambulanceRequestId);
+                    }}
+                  >
+                    Track ambulance
+                  </button>
+                ) : null}
+                <BillButton order={booking} />
+                <button type="button" className="ghost-button" onClick={startNew}>
+                  Find another centre
+                </button>
+              </div>
+            ) : null}
+            {flowStep === "paid" ? (
+              <div className="confirm-actions">
+                <button
+                  type="button"
+                  className="service-submit"
+                  onClick={() => {
+                    window.location.hash = trackHref(booking.bookingId);
+                  }}
+                >
+                  Track live
+                </button>
+                {booking.ambulanceRequestId ? (
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => {
+                      window.location.hash = trackHref(booking.ambulanceRequestId);
+                    }}
+                  >
+                    Track ambulance
+                  </button>
+                ) : null}
+                <BillButton order={booking} />
+                <button type="button" className="ghost-button" onClick={startNew}>
+                  Find another centre
+                </button>
+              </div>
+            ) : null}
           </section>
         </div>
       </>
@@ -860,7 +980,10 @@ const styles = `
 .confirm-row strong{text-align:right}
 .confirm-row:last-child{border-bottom:none}
 .confirm-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
-.confirm-actions .service-submit{width:auto;min-width:160px;margin:0}
+.confirm-actions .service-submit,.confirm-actions .ghost-button{width:auto;min-width:160px;margin:0;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.ghost-button{border:1px solid #d8e3e9;border-radius:8px;background:#fff;color:#34546b;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;min-height:40px;padding:8px 14px;box-sizing:border-box}
+.ghost-button:hover{background:#f7fbfe}
+.service-pay-form{max-width:640px;margin:0 auto 14px;text-align:left}
 @media (max-width:800px){
   .lab-page,.service-page{padding:14px}
   .sd-form-grid{grid-template-columns:1fr}

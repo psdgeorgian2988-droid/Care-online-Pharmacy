@@ -3,11 +3,13 @@ import assert from "node:assert/strict";
 import {
   checkMedicineAvailability,
   initialOrderStatus,
+  isAwaitingPartnerConfirm,
   medicineConfirmedFields,
   needsPartnerConfirm,
   partnerAcceptFields,
   partnerDeclineFields,
 } from "./orderConfirm.js";
+import { gatedTrackStatus } from "./orderQr.js";
 
 test("lab and other tests need partner confirmation", () => {
   assert.equal(needsPartnerConfirm("lab"), true);
@@ -16,6 +18,25 @@ test("lab and other tests need partner confirmation", () => {
   assert.equal(needsPartnerConfirm("medicine"), false);
   assert.equal(initialOrderStatus("lab").trackStatus, "requested");
   assert.equal(initialOrderStatus("medicine").trackStatus, "confirmed");
+});
+
+test("partner kinds stay requested until accept even if status was confirmed", () => {
+  const pending = {
+    kind: "lab",
+    trackStatus: "confirmed",
+    partnerConfirmed: false,
+  };
+  assert.equal(isAwaitingPartnerConfirm(pending), true);
+  assert.equal(gatedTrackStatus(pending), "requested");
+  assert.equal(
+    gatedTrackStatus({
+      kind: "lab",
+      trackStatus: "confirmed",
+      partnerConfirmed: true,
+      partnerConfirmStatus: "accepted",
+    }),
+    "confirmed"
+  );
 });
 
 test("medicine confirms only when catalogue has the cart items", () => {

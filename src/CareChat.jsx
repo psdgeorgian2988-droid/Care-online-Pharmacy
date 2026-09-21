@@ -6,13 +6,19 @@ import {
   CARE_PHONE_DISPLAY,
   CARE_PHONE_TEL,
   CARE_WHATSAPP_URL,
+  MEDIBOT_NAME,
+  OPEN_MEDIBOT_EVENT,
   QUICK_PROMPTS,
+  newMessageId,
   newSessionId,
+  replyTo,
   welcomeMessage,
 } from "./careChat";
 
 const SESSION_KEY = "mediHomeCareSession";
 const LOCAL_KEY = "mediHomeCareThread";
+const POS_KEY = "mediHomeMediBotPos";
+const BUBBLE_SIZE = 56;
 
 function readProfile() {
   try {
@@ -58,13 +64,59 @@ function writeLocalThread(thread) {
   }
 }
 
-export default function CareChat({ open, onOpen, onClose }) {
+function fixedBubblePos() {
+  if (typeof window === "undefined") {
+    return { left: 16, top: 16 };
+  }
+  const fab = document.querySelector(".site-floating-help .care-fab, .care-fab");
+  if (fab) {
+    const rect = fab.getBoundingClientRect();
+    return { left: Math.round(rect.left), top: Math.round(rect.top) };
+  }
+  const right = Math.max(8, window.innerWidth - BUBBLE_SIZE - 10);
+  return {
+    left: right,
+    top: Math.max(8, window.innerHeight - BUBBLE_SIZE - 48),
+  };
+}
+
+function writeBubblePos(pos) {
+  try {
+    localStorage.setItem(POS_KEY, JSON.stringify(pos));
+  } catch {
+    /* ignore */
+  }
+}
+
+function appendMediBotReply(thread, userText) {
+  const reply = replyTo(userText);
+  return {
+    ...thread,
+    messages: [
+      ...(thread.messages || []),
+      {
+        id: newMessageId(),
+        from: "bot",
+        text: reply.text,
+        at: Date.now(),
+        links: reply.links || [],
+        needsStaff: Boolean(reply.needsStaff),
+      },
+    ],
+  };
+}
+
+export default function CareChat() {
   const [sessionId] = useState(readSessionId);
   const [thread, setThread] = useState(readLocalThread);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [pos, setPos] = useState(fixedBubblePos);
   const scroller = useRef(null);
+  const closeTimer = useRef(0);
 
   const syncThread = async () => {
     try {
@@ -84,6 +136,30 @@ export default function CareChat({ open, onOpen, onClose }) {
   };
 
   useEffect(() => {
+    const place = () => {
+      const next = fixedBubblePos();
+      setPos(next);
+      writeBubblePos(next);
+    };
+    place();
+    const raf = window.requestAnimationFrame(place);
+    window.addEventListener("resize", place);
+    window.addEventListener("hashchange", place);
+    const stack = document.querySelector(".site-floating-help");
+    const ro =
+      typeof ResizeObserver !== "undefined" && stack
+        ? new ResizeObserver(place)
+        : null;
+    ro?.observe(stack);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", place);
+      window.removeEventListener("hashchange", place);
+      ro?.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
     syncThread();
   }, [sessionId]);
 
@@ -91,7 +167,7 @@ export default function CareChat({ open, onOpen, onClose }) {
     if (!open) return undefined;
     setUnread(0);
     const onKey = (event) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") closeChat();
     };
     window.addEventListener("keydown", onKey);
     const timer = setInterval(syncThread, 8000);
@@ -99,13 +175,43 @@ export default function CareChat({ open, onOpen, onClose }) {
       window.removeEventListener("keydown", onKey);
       clearInterval(timer);
     };
-  }, [open, onClose, sessionId]);
+  }, [open, sessionId]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!visible) return;
     const node = scroller.current;
     if (node) node.scrollTop = node.scrollHeight;
-  }, [open, thread.messages?.length]);
+  }, [visible, thread.messages?.length]);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    };
+  }, []);
+
+  const openChat = () => {
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = 0;
+    }
+    setVisible(true);
+    requestAnimationFrame(() => setOpen(true));
+  };
+
+  useEffect(() => {
+    const onOpenRequest = () => openChat();
+    window.addEventListener(OPEN_MEDIBOT_EVENT, onOpenRequest);
+    return () => window.removeEventListener(OPEN_MEDIBOT_EVENT, onOpenRequest);
+  }, []);
+
+  const closeChat = () => {
+    setOpen(false);
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => {
+      setVisible(false);
+      closeTimer.current = 0;
+    }, 280);
+  };
 
   const sendText = async (text) => {
     const body = String(text || "").trim();
@@ -136,9 +242,15 @@ export default function CareChat({ open, onOpen, onClose }) {
       if (data?.thread) {
         setThread(data.thread);
         writeLocalThread(data.thread);
+      } else {
+        const local = appendMediBotReply(optimistic, body);
+        setThread(local);
+        writeLocalThread(local);
       }
     } catch {
-      /* keep optimistic local messages */
+      const local = appendMediBotReply(optimistic, body);
+      setThread(local);
+      writeLocalThread(local);
     } finally {
       setSending(false);
     }
@@ -149,35 +261,60 @@ export default function CareChat({ open, onOpen, onClose }) {
     sendText(draft);
   };
 
+  const panelWidth =
+    typeof window === "undefined" ? 380 : Math.min(380, window.innerWidth - 16);
+  const panelStyle =
+    typeof window === "undefined"
+      ? undefined
+      : {
+          left: Math.min(
+            Math.max(8, pos.left + BUBBLE_SIZE - panelWidth),
+            Math.max(8, window.innerWidth - panelWidth - 8)
+          ),
+          bottom: Math.max(12, window.innerHeight - pos.top + 10),
+        };
+
   return (
     <>
       <style>{styles}</style>
-      {!open ? (
-        <button
-          type="button"
-          className="care-fab"
-          onClick={onOpen}
-          aria-label="Need help"
-        >
-          Need help
-          {unread ? (
-            <span className="care-fab-badge">{unread > 9 ? "9+" : unread}</span>
-          ) : null}
-        </button>
-      ) : null}
+      <button
+        type="button"
+        className="care-fab"
+        aria-label={`Open ${MEDIBOT_NAME}`}
+        title={MEDIBOT_NAME}
+        onClick={openChat}
+      >
+        <img
+          className="care-fab-img"
+          src="/app/medibot-bubble.png"
+          alt=""
+          draggable={false}
+        />
+        <span className="sr-only">{MEDIBOT_NAME}</span>
+        {unread ? (
+          <span className="care-fab-badge">{unread > 9 ? "9+" : unread}</span>
+        ) : null}
+      </button>
 
-      {open ? (
-        <section className="care-chat" role="dialog" aria-labelledby="care-chat-title">
+      {visible ? (
+        <section
+          className={`care-chat${open ? " is-open" : " is-closing"}`}
+          role="dialog"
+          aria-labelledby="care-chat-title"
+          style={panelStyle}
+        >
           <header className="care-chat-head">
             <div>
-              <p>MediHome care</p>
-              <h2 id="care-chat-title">Customer care chat</h2>
+              <p>MediHome AI assistant</p>
+              <h2 id="care-chat-title">{MEDIBOT_NAME}</h2>
             </div>
-            <button type="button" onClick={onClose} aria-label="Close chat">
+            <button type="button" onClick={closeChat} aria-label="Close MediBot">
               ×
             </button>
           </header>
-          <p className="care-chat-hours">{CARE_HOURS}</p>
+          <p className="care-chat-hours">
+            {MEDIBOT_NAME} helps with MediHome usage · Care hours {CARE_HOURS}
+          </p>
           <div className="care-phone-row">
             <span>Customer Care No</span>
             <strong>
@@ -200,6 +337,9 @@ export default function CareChat({ open, onOpen, onClose }) {
           <div className="care-chat-log" ref={scroller}>
             {(thread.messages || []).map((row) => (
               <article key={row.id} className={`care-bubble is-${row.from}`}>
+                {row.from === "bot" ? (
+                  <p className="care-bubble-label">{MEDIBOT_NAME}</p>
+                ) : null}
                 <p>{row.text}</p>
                 {row.links?.length ? (
                   <div className="care-bubble-links">
@@ -209,7 +349,7 @@ export default function CareChat({ open, onOpen, onClose }) {
                         href={link.href}
                         target={link.href.startsWith("http") ? "_blank" : undefined}
                         rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                        onClick={link.href.startsWith("#") ? onClose : undefined}
+                        onClick={link.href.startsWith("#") ? closeChat : undefined}
                       >
                         {link.label}
                       </a>
@@ -231,13 +371,13 @@ export default function CareChat({ open, onOpen, onClose }) {
           </div>
           <form className="care-compose" onSubmit={handleSubmit}>
             <label className="sr-only" htmlFor="care-draft">
-              Message
+              Message MediBot
             </label>
             <input
               id="care-draft"
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              placeholder="Type a message"
+              placeholder={`Ask ${MEDIBOT_NAME} about MediHome…`}
               maxLength={500}
               autoComplete="off"
             />
@@ -246,7 +386,7 @@ export default function CareChat({ open, onOpen, onClose }) {
             </button>
           </form>
           <p className="care-chat-foot">
-            Same number as Contact Us:{" "}
+            If {MEDIBOT_NAME} cannot help, call{" "}
             <a href={`tel:${CARE_PHONE_TEL}`}>{CARE_PHONE_DISPLAY}</a>
             {" · "}
             <a href={`mailto:${CARE_EMAIL}`}>{CARE_EMAIL}</a>
@@ -262,9 +402,12 @@ export default function CareChat({ open, onOpen, onClose }) {
 }
 
 const styles = `
-.care-fab{position:fixed;right:16px;bottom:6px;z-index:80;height:28px;border:1px solid rgba(255,255,255,.75);border-radius:0;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:12px;font-weight:700;padding:0 12px;box-shadow:none;cursor:pointer;display:inline-flex;align-items:center}
-.care-fab-badge{margin-left:8px;display:inline-flex;min-width:16px;height:16px;align-items:center;justify-content:center;border-radius:99px;background:#c44b4b;font-size:10px}
-.care-chat{position:fixed;right:16px;bottom:48px;z-index:90;width:min(380px,calc(100vw - 32px));max-height:calc(100vh - 132px);display:flex;flex-direction:column;background:#fff;border:1px solid #d7e6ee;border-radius:12px;box-shadow:0 16px 40px rgba(20,50,70,.2);overflow:hidden}
+.care-fab{position:relative;z-index:80;width:${BUBBLE_SIZE}px;height:${BUBBLE_SIZE}px;padding:0;border:2px solid #ffffff;border-radius:999px;background:#1a6b7a;box-shadow:0 8px 20px rgba(20,50,70,.28);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;overflow:visible;user-select:none;flex-shrink:0}
+.care-fab-img{display:block;width:100%;height:100%;object-fit:cover;border-radius:999px;pointer-events:none}
+.care-fab-badge{position:absolute;top:-2px;right:-2px;display:inline-flex;min-width:18px;height:18px;align-items:center;justify-content:center;border-radius:99px;background:#c44b4b;color:#fff;font-size:10px;font-weight:800;border:2px solid #fff}
+.care-chat{position:fixed;z-index:90;width:min(380px,calc(100vw - 32px));max-height:min(70vh,560px);display:flex;flex-direction:column;background:#fff;border:1px solid #d7e6ee;border-radius:12px;box-shadow:0 16px 40px rgba(20,50,70,.2);overflow:hidden;transform-origin:bottom right;opacity:0;transform:translateY(14px) scale(.94);pointer-events:none}
+.care-chat.is-open{animation:care-chat-in .3s ease forwards;pointer-events:auto}
+.care-chat.is-closing{animation:care-chat-out .28s ease forwards;pointer-events:none}
 .care-chat-head{display:flex;justify-content:space-between;gap:8px;padding:12px 14px;background:#1a6b7a;color:#fff}
 .care-chat-head p{margin:0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
 .care-chat-head h2{margin:2px 0 0;font-size:16px}
@@ -278,9 +421,10 @@ const styles = `
 .care-phone-btn{border-radius:99px;background:#0639b8;color:#fff;text-decoration:none;font-size:12px;font-weight:800;padding:5px 10px}
 .care-phone-btn.is-wa{background:#128c7e}
 .care-quick-call{border:1px solid #0639b8;border-radius:99px;background:#eaf0ff;color:#0639b8;text-decoration:none;font-size:11px;font-weight:800;padding:5px 8px}
-.care-chat-log{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#f6fafc;min-height:220px}
+.care-chat-log{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#f6fafc;min-height:180px}
 .care-bubble{max-width:86%;padding:8px 10px;border-radius:12px;font-size:13px;line-height:1.4}
 .care-bubble p{margin:0}
+.care-bubble-label{margin:0 0 4px!important;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#1a6b7a}
 .care-bubble.is-user{align-self:flex-end;background:#1a6b7a;color:#fff}
 .care-bubble.is-bot,.care-bubble.is-staff{align-self:flex-start;background:#fff;border:1px solid #e4ecef;color:#143246}
 .care-bubble.is-staff{border-color:#b7e0c8}
@@ -295,8 +439,9 @@ const styles = `
 .care-chat-foot{margin:0;padding:0 12px 10px;color:#5d7180;font-size:11px}
 .care-chat-foot a{color:#1a6b7a;font-weight:700;text-decoration:none}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
-@media (max-width:640px){
-  .care-fab{right:10px;bottom:6px}
-  .care-chat{right:10px;bottom:48px;width:calc(100vw - 20px)}
+@keyframes care-chat-in{from{opacity:0;transform:translateY(14px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes care-chat-out{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(12px) scale(.96)}}
+@media (prefers-reduced-motion:reduce){
+  .care-chat.is-open,.care-chat.is-closing{animation:none;opacity:1;transform:none;pointer-events:auto}
 }
 `;

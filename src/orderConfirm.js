@@ -13,6 +13,17 @@ export function needsPartnerConfirm(kind) {
   return PARTNER_CONFIRM_KINDS.has(String(kind || "").toLowerCase());
 }
 
+/** True until a partner (or medicine auto path) has actually confirmed. */
+export function isAwaitingPartnerConfirm(order) {
+  const kind = String(order?.kind || order?.orderType || "").toLowerCase();
+  if (!needsPartnerConfirm(kind)) return false;
+  if (order?.partnerConfirmed === true) return false;
+  const confirm = String(order?.partnerConfirmStatus || "").toLowerCase();
+  if (confirm === "accepted" || confirm === "auto") return false;
+  if (confirm === "declined") return false;
+  return true;
+}
+
 export function initialOrderStatus(kind) {
   if (needsPartnerConfirm(kind)) {
     return {

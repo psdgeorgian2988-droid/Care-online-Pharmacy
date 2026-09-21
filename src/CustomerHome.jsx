@@ -1,6 +1,4 @@
 import { useMemo, useState } from "react";
-import { useFeatures } from "./featureFlags";
-import { FEATURE_CATALOG, featureEnabled } from "./salesReport";
 import { useLoginSession } from "./authSession";
 import {
   kindLabel,
@@ -8,21 +6,13 @@ import {
   trackHref,
 } from "./orderTracking";
 import CustomerWelcome, { needsCustomerWelcome } from "./CustomerWelcome";
+import HomeServiceCatalog from "./HomeServiceCatalog";
+import HomePrescriptionUpload from "./HomePrescriptionUpload";
 
 export default function CustomerHome() {
-  const features = useFeatures();
   const user = useLoginSession();
   const [welcomeTick, setWelcomeTick] = useState(0);
   const activeOrder = useMemo(() => activeOrderFromList(loadAllOrders()), []);
-
-  const services = FEATURE_CATALOG.filter((row) => row.key !== "scanDelivery").map(
-    (row) => ({
-      key: row.key,
-      href: row.href,
-      title: String(row.label || "").toUpperCase(),
-      on: featureEnabled(features, row.key),
-    })
-  );
 
   if (needsCustomerWelcome(user)) {
     return (
@@ -34,7 +24,11 @@ export default function CustomerHome() {
   }
 
   return (
-    <div className="app-home is-fill">
+    <div className="app-home is-fill is-account">
+      {user?.name ? (
+        <p className="app-home-hello">Hello, {String(user.name).split(" ")[0]}</p>
+      ) : null}
+
       {activeOrder ? (
         <section className="app-home-panel app-home-order is-live" aria-label="Active order">
           <div className="app-home-order-row">
@@ -54,18 +48,10 @@ export default function CustomerHome() {
         </section>
       ) : null}
 
-      <section className="app-home-services-wrap" aria-label="Services">
-        <div className="app-home-services is-1">
-          {services.map((service) => (
-            <a
-              key={service.key}
-              className={`app-home-service${service.on ? "" : " is-off"}`}
-              href={service.href}
-            >
-              <strong>{service.title}</strong>
-            </a>
-          ))}
-        </div>
+      <HomePrescriptionUpload />
+
+      <section className="account-more" aria-label="Services">
+        <HomeServiceCatalog />
       </section>
     </div>
   );

@@ -6,7 +6,14 @@ import ErrorBoundary from "./ErrorBoundary";
 import { bootstrapNativeShell } from "./nativeShell.js";
 import { bootAppPreview } from "./appRuntime.js";
 import { registerPwa } from "./registerPwa";
+import { bootLayoutMode } from "./layoutMode.js";
 
+if (typeof document !== "undefined") {
+  document.documentElement.removeAttribute("data-theme");
+  document.documentElement.style.colorScheme = "light";
+}
+
+bootLayoutMode();
 bootAppPreview();
 registerPwa();
 bootstrapNativeShell();

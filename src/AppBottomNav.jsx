@@ -80,6 +80,9 @@ function AccountIcon() {
   );
 }
 
+const AUTH_ROUTES = new Set(["#login", "#register", "#forgot"]);
+const AUTH_HIDDEN_TABS = new Set(["#labs", "#reports"]);
+
 const TABS = [
   { href: "#home", label: "Home", Icon: HomeIcon },
   { href: "#medicine-search", label: "Medicines", Icon: MedicinesIcon },
@@ -100,9 +103,13 @@ function tabActive(href, route) {
 }
 
 export default function AppBottomNav({ route }) {
+  const tabs = AUTH_ROUTES.has(route)
+    ? TABS.filter((tab) => !AUTH_HIDDEN_TABS.has(tab.href))
+    : TABS;
+
   return (
     <nav className="app-bottom-nav" aria-label="App">
-      {TABS.map((tab) => {
+      {tabs.map((tab) => {
         const active = tabActive(tab.href, route);
         return (
           <a

@@ -30,12 +30,14 @@ function memoryStore(start = {}) {
 test("customer, staff and partner apps have start hashes", () => {
   assert.equal(APP_ROLES.customer.hash, "#home");
   assert.equal(APP_ROLES.staff.hash, "#admin");
-  assert.equal(APP_ROLES.partner.hash, "#partner");
+  assert.equal(APP_ROLES.partner.hash, "#partner-desk");
+  assert.equal(APP_ROLES.partner.portal, "#partner");
 });
 
-test("website visitors do not see the app picker", () => {
+test("website visitors do not see the portals chooser on home", () => {
   assert.equal(shouldShowAppPicker("#home", {}), false);
   assert.equal(shouldShowAppPicker("#apps", {}), true);
+  assert.equal(shouldShowAppPicker("#portals", {}), true);
 });
 
 test("an installed app with no role opens the picker on home", () => {
@@ -57,7 +59,7 @@ test("staff and partner launch once from home into their desk", () => {
   assert.equal(launchHashForRole("staff", "#home", session), "#admin");
   assert.equal(launchHashForRole("staff", "#home", session), "");
   const session2 = memoryStore();
-  assert.equal(launchHashForRole("partner", "#home", session2), "#partner");
+  assert.equal(launchHashForRole("partner", "#home", session2), "#partner-desk");
   assert.equal(launchHashForRole("customer", "#home", memoryStore()), "");
 });
 

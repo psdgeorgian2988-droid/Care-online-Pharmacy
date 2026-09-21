@@ -1,4 +1,6 @@
 import { SITE } from "./siteMeta.js";
+import { isAwaitingPartnerConfirm } from "./orderConfirm.js";
+import { isDiagnosticKind } from "./labPipeline.js";
 
 export const CHECKPOINT_STEPS = [
   {
@@ -505,6 +507,10 @@ export function gatedTrackStatus(order, progressKey = "") {
   if (checks.deliver || order?.trackCompleted) return "done";
   const current = String(order?.trackStatus || "").toLowerCase();
   if (current === "declined") return "declined";
+  // Partner-confirmed services stay requested until Accept (fail closed).
+  if (isAwaitingPartnerConfirm(order) && !checks.pack && !checks.pickup) {
+    return "requested";
+  }
   if (
     (current === "requested" || order?.partnerConfirmStatus === "pending") &&
     !order?.partnerConfirmed &&
@@ -512,6 +518,19 @@ export function gatedTrackStatus(order, progressKey = "") {
     !checks.pickup
   ) {
     return "requested";
+  }
+  // Lab / radiology: partner drives technician → sample → report statuses.
+  if (isDiagnosticKind(order?.kind || order?.orderType || order?.serviceType)) {
+    if (
+      current === "sample_collected" ||
+      current === "report_ready" ||
+      current === "assigned" ||
+      current === "confirmed" ||
+      current === "done"
+    ) {
+      return current;
+    }
+    if (order?.partnerConfirmed) return current || "confirmed";
   }
   if (checks.pickup) {
     if (progressKey === "done") return "arriving";

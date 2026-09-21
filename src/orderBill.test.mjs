@@ -18,9 +18,9 @@ test("lab bills use the assigned lab GST and licence", () => {
   const party = billingPartyFor({
     kind: "lab",
     partnerId: "lal-pathlabs",
-    partner: "Lal PathLabs",
+    partner: "Lal Path Lab",
   });
-  assert.equal(party.name, "Lal PathLabs");
+  assert.equal(party.name, "Lal Path Lab");
   assert.equal(party.gstin, "07AAACL0582L1Z2");
   assert.match(party.dlNo, /LAB/);
 });
@@ -28,7 +28,7 @@ test("lab bills use the assigned lab GST and licence", () => {
 test("imaging bills use the assigned centre GST and AERB licence", () => {
   const party = billingPartyFor({
     kind: "radiology",
-    partner: "MediHome Imaging Centre - Gurgaon",
+    partner: "MediHome Gurgaon",
   });
   assert.equal(party.gstin, "06AAMHM1220G1Z4");
   assert.match(party.dlNo, /AERB/);

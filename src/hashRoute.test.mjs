@@ -8,14 +8,16 @@ test("empty and home hashes open the home page", () => {
   }
 });
 
-test("social and staff aliases open the live pages", () => {
+test("social aliases and desk pages resolve correctly", () => {
   assert.equal(parseAppHash("#social").route, "#contact");
-  assert.equal(parseAppHash("#staff").route, "#admin");
+  assert.equal(parseAppHash("#staff").route, "#staff");
   assert.equal(parseAppHash("#ops").route, "#admin");
   assert.equal(parseAppHash("#partners").route, "#partner");
-  assert.equal(parseAppHash("#customer").route, "#home");
-  assert.equal(parseAppHash("#app").route, "#apps");
-  assert.equal(parseAppHash("#apps").route, "#apps");
+  assert.equal(parseAppHash("#partner-desk").route, "#partner-desk");
+  assert.equal(parseAppHash("#partnerdesk").route, "#partner-desk");
+  assert.equal(parseAppHash("#customer").route, "#customer");
+  assert.equal(parseAppHash("#app").route, "#portals");
+  assert.equal(parseAppHash("#apps").route, "#portals");
 });
 
 test("login, register and forgot hashes open their own pages", () => {

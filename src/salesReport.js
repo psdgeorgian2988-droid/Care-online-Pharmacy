@@ -17,11 +17,12 @@ export const FEATURE_CATALOG = [
 ];
 
 export const DEFAULT_FEATURES = Object.fromEntries(
-  FEATURE_CATALOG.map((row) => [row.key, false])
+  FEATURE_CATALOG.map((row) => [row.key, true])
 );
 
 export const ROUTE_FEATURES = {
   "#medicine-search": ["medicine"],
+  "#checkout": ["medicine", "lab", "radiology"],
   "#labs": ["lab", "radiology"],
   "#homecare": ["homecare"],
   "#vaccination": ["vaccination"],

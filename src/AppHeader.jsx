@@ -1,6 +1,6 @@
-import LogoMark from "./LogoMark";
+import MediHomeLogoLink from "./MediHomeLogoLink";
+import HeaderCart from "./HeaderCart";
 import { goToHash } from "./hashRoute";
-import { authEntryHref } from "./authSession";
 
 function BackIcon() {
   return (
@@ -12,21 +12,6 @@ function BackIcon() {
         strokeWidth="2.2"
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function AccountIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="8" r="3.2" fill="none" stroke="currentColor" strokeWidth="2" />
-      <path
-        d="M5.5 19.2c1.4-3 3.7-4.5 6.5-4.5s5.1 1.5 6.5 4.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
       />
     </svg>
   );
@@ -44,7 +29,7 @@ function goBack(route) {
   goToHash("#home");
 }
 
-export default function AppHeader({ user, route } = {}) {
+export default function AppHeader({ route } = {}) {
   return (
     <header className="app-chrome-header">
       <button
@@ -55,25 +40,12 @@ export default function AppHeader({ user, route } = {}) {
       >
         <BackIcon />
       </button>
-      <a className="app-chrome-brand-box" href="#home" aria-label="MediHome home">
-        <LogoMark />
-        <strong>MediHome</strong>
-      </a>
-      <a
-        className={`app-chrome-btn is-end${user ? "" : " is-login"}`}
-        href={user ? "#profile" : authEntryHref()}
-        aria-label={user ? "Account" : "Login"}
-        onClick={() => {
-          if (user) return;
-          try {
-            sessionStorage.setItem("mediHomeEntryChosen", "1");
-          } catch {
-            /* ignore quota / private mode */
-          }
-        }}
-      >
-        {user ? <AccountIcon /> : "Login"}
-      </a>
+      <MediHomeLogoLink
+        className="app-chrome-brand-box"
+        size="md"
+        aria-label="MediHome welcome"
+      />
+      <HeaderCart className="app-chrome-header-cart" />
     </header>
   );
 }

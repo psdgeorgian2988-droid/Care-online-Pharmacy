@@ -17,8 +17,8 @@
       "kinds": ["lab"],
       "mobile": "9654222902",
       "outletId": "MH-OUT-CD",
-      "loginId": "",
-      "passwordHash": ""
+      "loginId": "lab1",
+      "passwordHash": "26f5b20f19ea5c9aaaf94a97adb7fd64:3cd33df60099dc7dfd8c9a332b666335652babe8295771b247d0be3ff0ebfaca"
     },
     {
       "id": "P-RAD-01",
@@ -27,8 +27,8 @@
       "kinds": ["radiology"],
       "mobile": "9654222903",
       "outletId": "MH-OUT-SD",
-      "loginId": "",
-      "passwordHash": ""
+      "loginId": "rad1",
+      "passwordHash": "26f5b20f19ea5c9aaaf94a97adb7fd64:3cd33df60099dc7dfd8c9a332b666335652babe8295771b247d0be3ff0ebfaca"
     },
     {
       "id": "P-HC-01",

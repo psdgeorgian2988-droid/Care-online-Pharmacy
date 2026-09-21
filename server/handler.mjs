@@ -2,6 +2,11 @@ import { randomBytes } from "node:crypto";
 import { listOrders, patchOrder, upsertOrder } from "./store.mjs";
 import { attachSettlement, resolveCollector, splitPayment } from "../src/paymentSplit.js";
 import { isOnlinePayment } from "../src/paymentMethods.js";
+import {
+  initialOrderStatus,
+  isAwaitingPartnerConfirm,
+  needsPartnerConfirm,
+} from "../src/orderConfirm.js";
 import { openTrafficFromOrders } from "../src/partnerQueue.js";
 import {
   createRazorpayOrder,
@@ -32,6 +37,7 @@ import {
 } from "./chats.mjs";
 import { readSettings, writeSettings } from "./settings.mjs";
 import { lookupPin, nearestPin, resolvePinFromLocation } from "./pincodes.mjs";
+import { parsePrescriptionPayload } from "./prescriptionAi.mjs";
 
 const ADMIN_USER = process.env.MEDIHOME_ADMIN_USER || "admin";
 const ADMIN_PASSWORD = process.env.MEDIHOME_ADMIN_PASSWORD || "MediHome@26";
@@ -122,6 +128,10 @@ function enrichOrder(body) {
   if (!next.paymentStatus) {
     next.paymentStatus = isOnlinePayment(next.paymentMethod) ? "paid" : "cod";
   }
+  // Partner-confirmed services cannot be stored as confirmed until Accept.
+  if (needsPartnerConfirm(kind) && isAwaitingPartnerConfirm(next)) {
+    Object.assign(next, initialOrderStatus(kind));
+  }
   return next;
 }
 
@@ -142,6 +152,17 @@ export async function handleApi(req, res) {
   try {
     if (pathname === "/api/payments/config" && req.method === "GET") {
       send(res, 200, publicPaymentConfig());
+      return true;
+    }
+
+    if (pathname === "/api/prescription/parse" && req.method === "POST") {
+      const body = await readJson(req);
+      const result = await parsePrescriptionPayload({
+        fileData: body.fileData || "",
+        fileName: body.fileName || "",
+        fileType: body.fileType || "",
+      });
+      send(res, 200, result);
       return true;
     }
 
@@ -517,7 +538,13 @@ export async function handleApi(req, res) {
               ? "Declined By Partner"
               : body.trackStatus === "confirmed"
                 ? String(body.status || "Confirmed")
-                : String(body.status || existing.status || "Updated");
+                : body.trackStatus === "assigned"
+                  ? String(body.status || "Technician Assigned")
+                  : body.trackStatus === "sample_collected"
+                    ? String(body.status || "Sample Collected")
+                    : body.trackStatus === "report_ready"
+                      ? String(body.status || "Report Ready")
+                      : String(body.status || existing.status || "Updated");
       }
       if (Object.prototype.hasOwnProperty.call(body, "partnerConfirmed")) {
         patch.partnerConfirmed = Boolean(body.partnerConfirmed);
@@ -527,6 +554,42 @@ export async function handleApi(req, res) {
       }
       if (body.partnerConfirmedAt) {
         patch.partnerConfirmedAt = Number(body.partnerConfirmedAt) || Date.now();
+      }
+      if (body.technicianName != null) {
+        patch.technicianName = String(body.technicianName || "").trim().slice(0, 80);
+      }
+      if (body.technicianMobile != null) {
+        patch.technicianMobile = String(body.technicianMobile || "")
+          .replace(/\D/g, "")
+          .slice(0, 10);
+      }
+      if (body.technicianAssignedAt) {
+        patch.technicianAssignedAt = Number(body.technicianAssignedAt) || Date.now();
+      }
+      if (body.sampleCollectedAt) {
+        patch.sampleCollectedAt = Number(body.sampleCollectedAt) || Date.now();
+      }
+      if (body.reportUploadedAt) {
+        patch.reportUploadedAt = Number(body.reportUploadedAt) || Date.now();
+      }
+      if (body.reportFileName != null) {
+        patch.reportFileName = String(body.reportFileName || "").trim().slice(0, 160);
+      }
+      if (body.reportFileType != null) {
+        patch.reportFileType = String(body.reportFileType || "").trim().slice(0, 80);
+      }
+      if (body.reportFileData != null) {
+        const data = String(body.reportFileData || "");
+        patch.reportFileData = data.slice(0, 2_000_000);
+      }
+      if (body.reportTestName != null) {
+        patch.reportTestName = String(body.reportTestName || "").trim().slice(0, 120);
+      }
+      if (body.reportNotes != null) {
+        patch.reportNotes = String(body.reportNotes || "").trim().slice(0, 400);
+      }
+      if (body.completedAt) {
+        patch.completedAt = Number(body.completedAt) || Date.now();
       }
       if (
         body.trackStatus === "confirmed" ||

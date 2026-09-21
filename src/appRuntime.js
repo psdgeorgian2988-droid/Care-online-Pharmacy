@@ -5,20 +5,23 @@ export const APP_PREVIEW_KEY = "medihome.appPreview";
 export const APP_ROLES = {
   customer: {
     id: "customer",
-    title: "Customer App",
+    title: "Customer",
     hash: "#home",
+    portal: "#customer",
     summary: "Medicines, Lab Tests, Home Care, And Account.",
   },
   staff: {
     id: "staff",
-    title: "Staff App",
+    title: "Staff",
     hash: "#admin",
+    portal: "#staff",
     summary: "Orders, Partners, And Operations Desk.",
   },
   partner: {
     id: "partner",
-    title: "Partner App",
-    hash: "#partner",
+    title: "Partner",
+    hash: "#partner-desk",
+    portal: "#partner",
     summary: "Assigned Jobs For Delivery, Lab, And Visits.",
   },
 };
@@ -112,7 +115,7 @@ export function writeAppRole(role, store) {
 }
 
 export function shouldShowAppPicker(route, env = globalThis, store) {
-  if (route === "#apps") return true;
+  if (route === "#apps" || route === "#portals") return true;
   if (!isInstalledApp(env)) return false;
   if (readAppRole(store)) return false;
   return route === "#home";

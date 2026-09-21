@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { BillButton } from "./OrderBill.jsx";
@@ -29,6 +29,17 @@ import {
   withBookingIdentity,
 } from "./bookingFor";
 import { monthlySavingForCart, monthlySavingForItem, resolveCartAdd } from "./medicineCartCompare";
+import {
+  MEDICINE_CART_EVENT,
+  MEDICINE_CHECKOUT_OPEN_EVENT,
+  openShopCart,
+  peekRxLabCheckout,
+  readMedicineCart,
+  takeRxMedicineCheckout,
+  writeMedicineCart,
+} from "./medicineCartStore";
+import { fileFromPrescriptionDraft, readPrescriptionDraft } from "./prescriptionDraft";
+import { goToHash } from "./hashRoute";
 
 function readHomeMedicineSearch() {
   const hash = window.location.hash || "";
@@ -2814,6 +2825,50 @@ function searchMedicines(list, query) {
   };
 }
 
+function rxMedicineRelated(rxName, medicine) {
+  if (!medicine) return false;
+  const ignore = new Set([
+    "syp",
+    "syrup",
+    "tab",
+    "tabs",
+    "tablet",
+    "tablets",
+    "cap",
+    "caps",
+    "capsule",
+    "capsules",
+    "mg",
+    "ml",
+    "iu",
+  ]);
+  const qTokens = queryTokens(
+    String(rxName || "").replace(/^(syp|syrup|tab|tablet|cap|capsule)\s+/i, "")
+  )
+    .map((token) => normalizeSearchText(token))
+    .filter((token) => token.length > 2 && !ignore.has(token) && !/^\d+$/.test(token));
+  if (!qTokens.length) return false;
+  const blob = medicineSearchBlob(medicine);
+  return qTokens.some((token) => blob.includes(token));
+}
+
+export function lookupPrescriptionMedicine(rxMed) {
+  const query = String(rxMed?.name || "")
+    .replace(/^(syp|syrup|tab|tablet|cap|capsule)\s+/i, "")
+    .trim();
+  const result = searchMedicines(catalogue, query || String(rxMed?.name || ""));
+  const candidates = [result.brandMatch, result.mediHomeMatch, ...(result.items || [])];
+  const offer =
+    candidates.find((medicine) => rxMedicineRelated(query || rxMed?.name, medicine)) || null;
+  const prescribed =
+    result.brandMatch &&
+    !result.brandMatch.isMediHome &&
+    rxMedicineRelated(query || rxMed?.name, result.brandMatch)
+      ? result.brandMatch
+      : null;
+  return { rx: rxMed, offer, prescribed, hint: result.emptyHint || "" };
+}
+
 const requiresPrescription = (medicine) =>
   Boolean(medicine.prescription || medicine.prescriptionRequired);
 
@@ -2954,6 +3009,7 @@ function readHomeMedicineCategory() {
 }
 
 function Medicines({ initialSearch = "" }) {
+  const rxMedBoot = useMemo(() => takeRxMedicineCheckout(), []);
   const [search, setSearch] = useState(
     () => (initialSearch || "").trim() || readHomeMedicineSearch()
   );
@@ -2962,10 +3018,18 @@ function Medicines({ initialSearch = "" }) {
     return fromHome || "All";
   });
   const [recentSearches, setRecentSearches] = useState([]);
-  const [cart, setCart] = useState([]);
-  const [showCart, setShowCart] = useState(false);
+  const [cart, setCartState] = useState(() => readMedicineCart());
+  const setCart = (updater) => {
+    setCartState((current) => {
+      const next = typeof updater === "function" ? updater(current) : updater;
+      writeMedicineCart(next);
+      return next;
+    });
+  };
   const [showCheckout, setShowCheckout] = useState(false);
-  const [prescriptionFile, setPrescriptionFile] = useState(null);
+  const [prescriptionFile, setPrescriptionFile] = useState(() =>
+    rxMedBoot?.attachRx ? fileFromPrescriptionDraft(readPrescriptionDraft()) : null
+  );
   const savedProfile = readSavedProfile();
   const [whoFor, setWhoFor] = useState(() => initialBookingFor(savedProfile || {}));
   const [fullName, setFullName] = useState(savedProfile?.name || "");
@@ -2981,6 +3045,26 @@ function Medicines({ initialSearch = "" }) {
   const [payQuote, setPayQuote] = useState(null);
   const busyWait = useBusyOverlay(placingOrder, "medicine");
   const [pickedBrandId, setPickedBrandId] = useState(null);
+
+  useEffect(() => {
+    const sync = () => setCartState(readMedicineCart());
+    const openCheckout = () => {
+      goToHash("#checkout");
+    };
+    window.addEventListener(MEDICINE_CART_EVENT, sync);
+    window.addEventListener(MEDICINE_CHECKOUT_OPEN_EVENT, openCheckout);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(MEDICINE_CART_EVENT, sync);
+      window.removeEventListener(MEDICINE_CHECKOUT_OPEN_EVENT, openCheckout);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!rxMedBoot) return;
+    if (readMedicineCart().length) goToHash("#checkout");
+  }, [rxMedBoot]);
 
   useEffect(() => {
     const next = (initialSearch || "").trim();
@@ -3069,11 +3153,6 @@ function Medicines({ initialSearch = "" }) {
   const showBrandStrip = searchingBrand;
   const monthlySave = monthlySavingForCart(cart);
 
-  const cartCount = cart.reduce(
-    (total, item) => total + (item.quantity || 1),
-    0
-  );
-
   const cartTotal = cart.reduce(
     (total, item) => total + item.price * (item.quantity || 1),
     0
@@ -3113,37 +3192,9 @@ function Medicines({ initialSearch = "" }) {
 
       return [...currentCart, { ...selling, quantity: 1 }];
     });
-    setShowCart(true);
+    openShopCart();
     setShowCheckout(false);
     setConfirmedOrder(null);
-  };
-
-  const increaseQuantity = (medicineId) => {
-    setCart((currentCart) =>
-      currentCart.map((item) =>
-        item.id === medicineId
-          ? { ...item, quantity: (item.quantity || 1) + 1 }
-          : item
-      )
-    );
-  };
-
-  const decreaseQuantity = (medicineId) => {
-    setCart((currentCart) =>
-      currentCart
-        .map((item) =>
-          item.id === medicineId
-            ? { ...item, quantity: (item.quantity || 1) - 1 }
-            : item
-        )
-        .filter((item) => (item.quantity || 1) > 0)
-    );
-  };
-
-  const removeFromCart = (medicineId) => {
-    setCart((currentCart) =>
-      currentCart.filter((item) => item.id !== medicineId)
-    );
   };
 
   const resetCheckoutForm = () => {
@@ -3262,7 +3313,6 @@ function Medicines({ initialSearch = "" }) {
       const trackedOrder = persistOrder(withTracking(newOrder, "medicine"));
 
       setCart([]);
-      setShowCart(false);
       setShowCheckout(false);
       resetCheckoutForm();
       setConfirmedOrder(trackedOrder);
@@ -3285,16 +3335,6 @@ function Medicines({ initialSearch = "" }) {
               at affordable price.
             </p>
           </div>
-          <div
-            className="cart-box"
-            onClick={() => {
-              setShowCart(true);
-              setShowCheckout(false);
-              setConfirmedOrder(null);
-            }}
-          >
-            🛒 Cart: {cartCount}
-          </div>
         </div>
         <div className="medicine-category-boxes">
           {categories.map((item) => (
@@ -3312,7 +3352,6 @@ function Medicines({ initialSearch = "" }) {
               onClick={() => {
                 setCategory(item);
                 setSearch("");
-                setShowCart(false);
                 setShowCheckout(false);
                 setConfirmedOrder(null);
               }}
@@ -3372,89 +3411,6 @@ function Medicines({ initialSearch = "" }) {
           }}
         />
       </div>
-
-      {showCart && (
-        <div className="cart-panel">
-          <h2>🛒 Your Cart</h2>
-
-          {cart.length === 0 ? (
-            <p>Your cart is empty.</p>
-          ) : (
-            cart.map((item) => (
-              <div className="cart-item" key={item.id}>
-                <div className="cart-item-info">
-                  <span>{item.name}</span>
-                  <span>
-                    ₹{item.price} × {item.quantity || 1} = ₹
-                    {item.price * (item.quantity || 1)}
-                  </span>
-                </div>
-                <div className="cart-item-actions">
-                  <button
-                    type="button"
-                    onClick={() => decreaseQuantity(item.id)}
-                  >
-                    −
-                  </button>
-                  <span>{item.quantity || 1}</span>
-                  <button
-                    type="button"
-                    onClick={() => increaseQuantity(item.id)}
-                  >
-                    +
-                  </button>
-                  <button
-                    type="button"
-                    className="cart-remove-button"
-                    onClick={() => removeFromCart(item.id)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-
-          <h3>Total: ₹{cartTotal}</h3>
-
-          <div className="cart-actions">
-            <button
-              type="button"
-              className="cart-btn cart-btn-secondary"
-              onClick={() => setShowCart(false)}
-            >
-              Continue shopping
-            </button>
-            <button
-              type="button"
-              className="cart-btn cart-btn-primary"
-              onClick={() => {
-                if (cart.length === 0) {
-                  alert("Your cart is empty. Please add a medicine before checkout.");
-                  return;
-                }
-                setShowCart(false);
-                setShowCheckout(true);
-                setConfirmedOrder(null);
-                const profile = readSavedProfile();
-                if (profile) {
-                  setFullName((current) => current || profile.name);
-                  setMobileNumber((current) => current || profile.mobile);
-                  setDelivery((current) => {
-                    const filled =
-                      current.houseNo || current.society || current.pinCode;
-                    return filled
-                      ? current
-                      : { ...emptyAddress(), ...pickAddress(profile) };
-                  });
-                }
-              }}
-            >
-              Proceed to checkout
-            </button>
-          </div>
-        </div>
-      )}
 
       {showCheckout && (
         <div className="checkout-panel">
@@ -3579,7 +3535,6 @@ function Medicines({ initialSearch = "" }) {
               className="cart-btn cart-btn-secondary"
               onClick={() => {
                 setShowCheckout(false);
-                setShowCart(true);
               }}
             >
               Continue shopping
@@ -3633,6 +3588,22 @@ function Medicines({ initialSearch = "" }) {
           <AssignedAgent record={confirmedOrder} />
           <div className="cart-actions">
             <BillButton order={confirmedOrder} className="cart-btn cart-btn-primary" />
+            {peekRxLabCheckout()?.tests?.length ? (
+              <button
+                type="button"
+                className="cart-btn cart-btn-primary"
+                onClick={() => {
+                  const pending = peekRxLabCheckout();
+                  const kind = pending?.serviceType || "lab";
+                  const lab = pending?.partnerId || "";
+                  window.location.hash = lab
+                    ? `#labs?service=${encodeURIComponent(kind)}&lab=${encodeURIComponent(lab)}`
+                    : "#labs";
+                }}
+              >
+                Continue to book tests
+              </button>
+            ) : null}
             <button
               type="button"
               className="cart-btn cart-btn-secondary"
@@ -3663,7 +3634,7 @@ function Medicines({ initialSearch = "" }) {
         </div>
       )}
 
-      {!showCart && !showCheckout && !confirmedOrder && (
+      {!showCheckout && !confirmedOrder && (
         <>
           {showBrandStrip && (
             <BrandSearchStrip

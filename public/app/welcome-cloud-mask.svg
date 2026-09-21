@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" preserveAspectRatio="none">
+  <!-- Padded cloud so stroke/mask edges stay fully inside the frame -->
+  <path
+    fill="#fff"
+    d="M98 198c-30 0-54-22-56-50-20-4-34-22-34-44 0-26 22-48 48-48 8-30 36-52 70-52 30 0 56 18 66 44 12-8 24-12 40-12 38 0 68 28 70 64 24 4 40 24 40 48 0 28-24 50-52 50H98z"
+  />
+</svg>

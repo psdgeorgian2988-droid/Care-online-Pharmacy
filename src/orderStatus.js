@@ -1,3 +1,5 @@
+import { isAwaitingPartnerConfirm } from "./orderConfirm.js";
+
 export const SERVICE_ORDER_KINDS = [
   "medicine",
   "lab",
@@ -13,6 +15,8 @@ export const TRACK_STATUS_STEPS = [
   { key: "requested", label: "Awaiting Partner Confirmation" },
   { key: "confirmed", label: "Confirmed" },
   { key: "assigned", label: "Partner Assigned" },
+  { key: "sample_collected", label: "Sample Collected" },
+  { key: "report_ready", label: "Report Ready" },
   { key: "packed", label: "Packed" },
   { key: "on_the_way", label: "On The Way" },
   { key: "arriving", label: "Arriving" },
@@ -27,6 +31,12 @@ export function serviceKind(order) {
 export function trackKey(order) {
   if (order?.trackCompleted && String(order?.trackStatus || "") !== "declined") {
     return "done";
+  }
+  if (String(order?.trackStatus || "").toLowerCase() === "declined") {
+    return "declined";
+  }
+  if (isAwaitingPartnerConfirm(order)) {
+    return "requested";
   }
   const key = String(order?.trackStatus || "confirmed");
   return TRACK_STATUS_STEPS.some((step) => step.key === key) ? key : "confirmed";
@@ -54,6 +64,7 @@ export function emptyStepCounts() {
 }
 
 export function statusMatrix(orders) {
+  const list = Array.isArray(orders) ? orders : [];
   const byKind = Object.fromEntries(
     SERVICE_ORDER_KINDS.map((kind) => [
       kind,
@@ -65,18 +76,18 @@ export function statusMatrix(orders) {
   let done = 0;
   let unassigned = 0;
 
-  for (const order of orders) {
+  for (const order of list) {
     const kind = serviceKind(order);
     const step = trackKey(order);
     if (!byKind[kind]) {
       byKind[kind] = { kind, ...emptyStepCounts(), open: 0, unassigned: 0, total: 0 };
     }
-    byKind[kind][step] += 1;
+    byKind[kind][step] = (byKind[kind][step] || 0) + 1;
     byKind[kind].total += 1;
-    byStep[step] += 1;
+    byStep[step] = (byStep[step] || 0) + 1;
     if (step === "done") {
       done += 1;
-    } else {
+    } else if (step !== "declined") {
       open += 1;
       byKind[kind].open += 1;
       if (isUnassigned(order)) {
@@ -94,8 +105,8 @@ export function statusMatrix(orders) {
     open,
     done,
     unassigned,
-    total: orders.length,
-    inProgress: orders.filter((order) => {
+    total: list.length,
+    inProgress: list.filter((order) => {
       const step = trackKey(order);
       return (
         step !== "requested" &&
@@ -109,8 +120,10 @@ export function statusMatrix(orders) {
 
 export function groupByTrackStatus(orders) {
   const groups = Object.fromEntries(TRACK_STATUS_STEPS.map((step) => [step.key, []]));
-  for (const order of orders) {
-    groups[trackKey(order)].push(order);
+  for (const order of orders || []) {
+    const key = trackKey(order);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(order);
   }
   return groups;
 }
@@ -129,4 +142,8 @@ export function matchesStatusFilter(order, statusFilter) {
     );
   }
   return trackKey(order) === statusFilter;
+}
+
+export function statusLabel(key) {
+  return TRACK_STATUS_STEPS.find((step) => step.key === key)?.label || key;
 }

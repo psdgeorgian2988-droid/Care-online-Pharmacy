@@ -94,6 +94,11 @@ export function consumeReturnHash() {
 
 export function logoutSession() {
   writeLoginSession(null);
+  try {
+    sessionStorage.removeItem("mediHomeEntryChosen");
+  } catch {
+    /* ignore */
+  }
 }
 
 export function useLoginSession() {

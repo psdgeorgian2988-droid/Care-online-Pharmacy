@@ -290,7 +290,7 @@ export default function ScanPage({ scanId, scanStep }) {
     next !== "already_done" &&
     !result?.autoMismatch &&
     !stepMismatch;
-  const backHref = app === "partner" ? "#partner" : app === "admin" ? "#admin" : "#myorders";
+  const backHref = app === "partner" ? "#partner-desk" : app === "admin" ? "#admin" : "#myorders";
   const backLabel =
     app === "partner" ? "Partner Desk" : app === "admin" ? "Staff Desk" : "My Orders";
   const showComingSoon =

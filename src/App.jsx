@@ -16,6 +16,8 @@ import {
   Psychologist,
   Reports,
   Reviews,
+  PrescriptionReview,
+  CartCheckout,
   ScanPage,
   StepDownCare,
   TrackPage,
@@ -26,6 +28,8 @@ import SocialLinks from "./SocialLinks";
 import MedicineSearchTools from "./MedicineSearchTools";
 import { reviewStats } from "./reviewStore";
 import CareChat from "./CareChat.jsx";
+import NeedHelp from "./NeedHelp.jsx";
+import HeaderCart from "./HeaderCart.jsx";
 import { CARE_WHATSAPP } from "./careChat.js";
 import ComingSoon from "./ComingSoon";
 import ErrorBoundary from "./ErrorBoundary";
@@ -34,12 +38,17 @@ import { logoutSession, useLoginSession } from "./authSession";
 import { useFeatures } from "./featureFlags";
 import { featureEnabled, pausedServiceTitle, routeEnabled } from "./salesReport";
 import { goToHash, parseAppHash } from "./hashRoute";
-import AppPicker from "./AppPicker";
+import { peekRxLabCheckout } from "./medicineCartStore";
+import PortalsChooser, { CustomerPortal, PartnerPortal, StaffPortal } from "./RolePortals";
 import CustomerHome from "./CustomerHome";
+import HomeServiceCatalog from "./HomeServiceCatalog";
+import LabsHub from "./LabsHub";
+import HomePrescriptionUpload from "./HomePrescriptionUpload";
+import { useIsPhoneLayout } from "./useLayoutMode";
 import AppBottomNav from "./AppBottomNav";
 import BackToHome from "./BackToHome";
 import WebinarNotice from "./WebinarNotice";
-import { needsCustomerWelcome } from "./CustomerWelcome";
+import CustomerWelcome, { needsCustomerWelcome } from "./CustomerWelcome";
 import {
   isAppShell,
   isInstalledApp,
@@ -48,7 +57,11 @@ import {
   shouldShowAppPicker,
 } from "./appRuntime";
 import LogoMark from "./LogoMark";
+import MediHomeLogoLink from "./MediHomeLogoLink";
 import AppHeader from "./AppHeader";
+
+const AUTH_ROUTES = new Set(["#login", "#register", "#forgot"]);
+const AUTH_HIDDEN_NAV = new Set(["#labs", "#reports"]);
 
 const NAV_LINKS = [
   { href: "#home", label: "Home" },
@@ -72,17 +85,56 @@ const ACCOUNT_LINKS = [
 const BOTTOM_LINKS = [
   { href: "#about", label: "About" },
   { href: "#contact", label: "Contact" },
-  { href: "#apps", label: "Apps" },
+  { href: "#customer", label: "Customer" },
+  { href: "#partner", label: "Partner" },
+  { href: "#staff", label: "Staff" },
 ];
 
 const OPS_LINKS = [
   { href: "#admin", label: "Staff Orders" },
-  { href: "#partner", label: "Partner Desk" },
+  { href: "#partner-desk", label: "Partner Desk" },
 ];
 
 const HOME_WHATSAPP_URL = `https://wa.me/${CARE_WHATSAPP}?text=${encodeURIComponent(
   "Hi MediHome, I would like to order medicines."
 )}`;
+
+const TICKER_TEXT = "YOUR COMPLETE HEALTHCARE ECOSYSTEM AT YOUR DOORSTEP";
+
+function SiteTicker() {
+  return (
+    <div className="top-ticker">
+      <div className="ticker-track">
+        <span className="ticker-item">{TICKER_TEXT}</span>
+        <span className="ticker-item">{TICKER_TEXT}</span>
+        <span className="ticker-item">{TICKER_TEXT}</span>
+        <span className="ticker-item">{TICKER_TEXT}</span>
+      </div>
+    </div>
+  );
+}
+
+function SiteFooter() {
+  return (
+    <footer className="app-footer">
+      <p>© 2026 MediHome. All rights reserved.</p>
+      <SocialLinks className="footer-social" />
+    </footer>
+  );
+}
+
+function SiteFloatingHelp({ needHelpOpen, setNeedHelpOpen }) {
+  return (
+    <div className="site-floating-help" aria-label="Help">
+      <CareChat />
+      <NeedHelp
+        open={needHelpOpen}
+        onOpen={() => setNeedHelpOpen(true)}
+        onClose={() => setNeedHelpOpen(false)}
+      />
+    </div>
+  );
+}
 
 function openWhatsAppUrl(url, event) {
   if (event) {
@@ -139,6 +191,25 @@ function WebsiteHomePage() {
   const features = useFeatures();
   const user = useLoginSession();
   const [query, setQuery] = useState("");
+  const isPhone = useIsPhoneLayout();
+
+  const guestStartHref = featureEnabled(features, "lab") || featureEnabled(features, "radiology")
+    ? "#labs"
+    : featureEnabled(features, "medicine")
+      ? "#medicine-search"
+      : featureEnabled(features, "homecare")
+        ? "#homecare"
+        : "#home-services";
+
+  const startGuestOrder = () => {
+    if (guestStartHref.startsWith("#") && guestStartHref !== "#home-services") {
+      goToHash(guestStartHref);
+      return;
+    }
+    document
+      .getElementById("home-services")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const applyMedicineQuery = (value) => {
     const next = String(value || "").trim();
@@ -224,11 +295,7 @@ function WebsiteHomePage() {
                 <button
                   type="button"
                   className="home-account-btn is-guest"
-                  onClick={() => {
-                    document
-                      .getElementById("home-services")
-                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }}
+                  onClick={startGuestOrder}
                 >
                   Order As Guest
                 </button>
@@ -237,85 +304,11 @@ function WebsiteHomePage() {
           </aside>
         </div>
 
-        <section className="home-services" id="home-services" aria-label="Services">
-          {featureEnabled(features, "medicine") ? (
-            <a className="home-service-card" href="#medicine-search">
-              <h2>Medicines</h2>
-              <p>Doorstep delivery, cash on delivery.</p>
-              <span>View medicines</span>
-            </a>
-          ) : null}
-          {featureEnabled(features, "lab") ? (
-            <a className="home-service-card" href="#labs">
-              <h2>Lab Tests</h2>
-              <p>Home sample collection.</p>
-              <span>Book a test</span>
-            </a>
-          ) : null}
-          {featureEnabled(features, "radiology") ? (
-            <a className="home-service-card" href="#labs">
-              <h2>Radiology</h2>
-              <p>Scans at partner centres.</p>
-              <span>Book a scan</span>
-            </a>
-          ) : null}
-          {featureEnabled(features, "homecare") ? (
-            <a className="home-service-card" href="#homecare">
-              <h2>Home Care</h2>
-              <p>Nurse, Caregiver or Physiotherapy at Home.</p>
-              <span>Book a visit</span>
-            </a>
-          ) : null}
-          {featureEnabled(features, "vaccination") ? (
-            <a className="home-service-card" href="#vaccination">
-              <h2>Vaccination Record</h2>
-              <p>Record, schedule and due-date reminders.</p>
-              <span>View record</span>
-            </a>
-          ) : null}
-          {featureEnabled(features, "psychologist") ? (
-            <a className="home-service-card" href="#psychologist">
-              <h2>Psychologist Consultation</h2>
-              <p>Video or home visit sessions.</p>
-              <span>Book a session</span>
-            </a>
-          ) : null}
-          {featureEnabled(features, "stepdown") ? (
-            <a className="home-service-card" href="#stepdown">
-              <h2>Step-Down Care</h2>
-              <p>Find a recovery centre near you.</p>
-              <span>Find a centre</span>
-            </a>
-          ) : null}
-          {featureEnabled(features, "ambulance") ? (
-            <a className="home-service-card" href="#ambulance">
-              <h2>Ambulance</h2>
-              <p>Emergency or planned pickup.</p>
-              <span>Request now</span>
-            </a>
-          ) : null}
-          {featureEnabled(features, "scanDelivery") ? (
-            <a className="home-service-card" href="#scan?step=deliver">
-              <h2>Scan Delivery</h2>
-              <p>Scan the order QR when medicines arrive.</p>
-              <span>Open scanner</span>
-            </a>
-          ) : null}
-          {featureEnabled(features, "reports") ? (
-            <a className="home-service-card" href="#reports">
-              <h2>Reports</h2>
-              <p>Save lab PDFs on this device.</p>
-              <span>Save a report</span>
-            </a>
-          ) : null}
-          {featureEnabled(features, "education") ? (
-            <a className="home-service-card" href="#education">
-              <h2>Health Education</h2>
-              <p>Guides, live webinars, and quick quizzes.</p>
-              <span>Open education</span>
-            </a>
-          ) : null}
-        </section>
+        <HomePrescriptionUpload />
+
+        <div className="home-services-catalog" id="home-services">
+          <HomeServiceCatalog className={isPhone ? "is-mobile-web" : "is-desktop-web"} />
+        </div>
 
         <HomeReviewsTeaser />
       </div>
@@ -341,8 +334,7 @@ function PausedService({ route, features }) {
 
 function App() {
   const [hash, setHash] = useState(window.location.hash);
-  const [careOpen, setCareOpen] = useState(false);
-  const [appMenuOpen, setAppMenuOpen] = useState(false);
+  const [needHelpOpen, setNeedHelpOpen] = useState(false);
   const [sessionTick, setSessionTick] = useState(0);
   const user = useLoginSession();
 
@@ -359,7 +351,6 @@ function App() {
   useEffect(() => {
     const handleHashChange = () => {
       setHash(window.location.hash);
-      setAppMenuOpen(false);
     };
 
     window.addEventListener("hashchange", handleHashChange);
@@ -371,8 +362,18 @@ function App() {
     };
   }, []);
 
-  const { route, q: medicineQuery, id: trackId, step: scanStep } = parseAppHash(hash);
-  const isOps = route === "#admin" || route === "#partner";
+  const {
+    route,
+    q: medicineQuery,
+    id: trackId,
+    step: scanStep,
+    lab: selectedLab,
+  } = parseAppHash(hash);
+  const isAuthRoute = AUTH_ROUTES.has(route);
+  const menuNavLinks = isAuthRoute
+    ? NAV_LINKS.filter((link) => !AUTH_HIDDEN_NAV.has(link.href))
+    : NAV_LINKS;
+  const isOps = route === "#admin" || route === "#partner-desk";
   const features = useFeatures();
   const appRole = readAppRole();
   const customerShell =
@@ -407,9 +408,18 @@ function App() {
     if (next) goToHash(next);
   }, [route]);
 
+  useEffect(() => {
+    if (isOps || appRole === "staff" || appRole === "partner") return undefined;
+    if (AUTH_ROUTES.has(route)) return undefined;
+    if (needsCustomerWelcome(user) && route !== "#home") {
+      goToHash("#home");
+    }
+    return undefined;
+  }, [appRole, isOps, route, sessionTick, user]);
+
   const renderPage = () => {
     if (shouldShowAppPicker(route)) {
-      return <AppPicker />;
+      return <PortalsChooser />;
     }
     if (!routeEnabled(route, features)) {
       return <PausedService route={route} features={features} />;
@@ -418,7 +428,11 @@ function App() {
       case "#medicine-search":
         return <Medicines initialSearch={medicineQuery} />;
       case "#labs":
-        return <LabTests />;
+        return selectedLab || peekRxLabCheckout()?.tests?.length ? (
+          <LabTests />
+        ) : (
+          <LabsHub />
+        );
       case "#homecare":
         return <HomeCare />;
       case "#vaccination":
@@ -431,6 +445,10 @@ function App() {
         return <Ambulance />;
       case "#reports":
         return <Reports />;
+      case "#prescription":
+        return <PrescriptionReview />;
+      case "#checkout":
+        return <CartCheckout />;
       case "#profile":
         return <Profile />;
       case "#myorders":
@@ -453,15 +471,22 @@ function App() {
       case "#admin":
         return <Admin />;
       case "#partner":
+        return <PartnerPortal />;
+      case "#partner-desk":
         return <Partner />;
+      case "#customer":
+        return <CustomerPortal />;
+      case "#staff":
+        return <StaffPortal />;
+      case "#portals":
+      case "#apps":
+        return <PortalsChooser />;
       case "#login":
         return <AuthPage mode="login" />;
       case "#register":
         return <AuthPage mode="register" />;
       case "#forgot":
         return <AuthPage mode="forgot" />;
-      case "#apps":
-        return <AppPicker />;
       case "#home":
       default:
         return <HomePage />;
@@ -472,10 +497,11 @@ function App() {
     return (
       <div className="app app-ops">
         <Seo route={route} />
+        <SiteTicker />
         <header className="ops-bar">
           <a className="ops-brand" href="#admin" aria-label="MediHome operations">
-            <LogoMark />
-            <span>MediHome Operations</span>
+            <LogoMark size="sm" />
+            <span>Operations</span>
           </a>
           <nav className="ops-nav" aria-label="Operations">
             {OPS_LINKS.map((link) => (
@@ -495,200 +521,167 @@ function App() {
             <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
           </ErrorBoundary>
         </main>
+        <SiteFooter />
+        <SiteFloatingHelp needHelpOpen={needHelpOpen} setNeedHelpOpen={setNeedHelpOpen} />
       </div>
     );
   }
 
-  const showBackHome = route !== "#home" && route !== "#apps";
+  const showBackHome =
+    route !== "#home" &&
+    route !== "#portals" &&
+    route !== "#apps" &&
+    route !== "#customer" &&
+    route !== "#partner" &&
+    route !== "#staff";
+
+  const welcomeGate =
+    !isOps &&
+    appRole !== "staff" &&
+    appRole !== "partner" &&
+    !isAuthRoute &&
+    needsCustomerWelcome(user) &&
+    sessionTick >= 0;
 
   if (customerShell) {
-    const welcomeGate =
-      route === "#home" && needsCustomerWelcome(user) && sessionTick >= 0;
     return (
       <div className={`app app-customer${welcomeGate ? " is-welcome-gate" : ""}`}>
         <Seo route={route} />
+        <SiteTicker />
         <div className="app-frame">
-          <AppHeader user={user} route={route} />
+          {welcomeGate ? null : <AppHeader route={route} />}
           <main id="app-scroll">
-            {welcomeGate ? null : <WebinarNotice />}
-            <ErrorBoundary key={route}>
-              <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
+            {welcomeGate || isAuthRoute ? null : <WebinarNotice />}
+            <ErrorBoundary key={welcomeGate ? "welcome" : route}>
+              <Suspense fallback={<PageFallback />}>
+                {welcomeGate ? (
+                  <CustomerWelcome
+                    onDone={() => setSessionTick((n) => n + 1)}
+                  />
+                ) : (
+                  renderPage()
+                )}
+              </Suspense>
             </ErrorBoundary>
           </main>
-          {welcomeGate ? null : <AppBottomNav route={route} />}
-          {welcomeGate ? null : (
-            <CareChat
-              open={careOpen}
-              onOpen={() => setCareOpen(true)}
-              onClose={() => setCareOpen(false)}
-            />
-          )}
+          {welcomeGate || isAuthRoute ? null : <AppBottomNav route={route} />}
         </div>
+        <SiteFooter />
+        <SiteFloatingHelp needHelpOpen={needHelpOpen} setNeedHelpOpen={setNeedHelpOpen} />
       </div>
     );
   }
 
   return (
-    <div className={`app${appMenuOpen ? " is-menu-open" : ""}`}>
+    <div className="app">
       <Seo route={route} />
-      <div className="top-ticker">
-        <div className="ticker-track">
-          <span className="ticker-item">
-            YOUR COMPLETE HEALTH PARTNER AT YOUR DOORSTEP
-          </span>
-          <span className="ticker-item">
-            YOUR COMPLETE HEALTH PARTNER AT YOUR DOORSTEP
-          </span>
-          <span className="ticker-item">
-            YOUR COMPLETE HEALTH PARTNER AT YOUR DOORSTEP
-          </span>
-          <span className="ticker-item">
-            YOUR COMPLETE HEALTH PARTNER AT YOUR DOORSTEP
-          </span>
-        </div>
-      </div>
+      <SiteTicker />
 
       <header className="site-topbar">
         <div className="site-topbar-inner">
-          <div className="site-menu-wrap">
-            <button
-              type="button"
-              className="site-menu-btn"
-              aria-expanded={appMenuOpen}
-              aria-haspopup="menu"
-              onClick={() => setAppMenuOpen((open) => !open)}
-            >
-              Menu
-            </button>
-            {appMenuOpen ? (
-              <div className="site-menu-dropdown" role="menu" aria-label="Site menu">
-                <nav className="site-menu-nav" aria-label="Main">
-                  {NAV_LINKS.map((link) => (
-                    <a
-                      key={link.href}
-                      href={link.href}
-                      role="menuitem"
-                      className={
-                        hashLinkActive(link.href, route, scanStep) ? "active" : undefined
-                      }
-                      onClick={() => setAppMenuOpen(false)}
-                    >
-                      {link.label}
-                    </a>
-                  ))}
-                </nav>
-                <nav className="site-menu-nav" aria-label="Account">
-                  {user ? (
-                    <>
-                      {ACCOUNT_LINKS.map((link) => (
-                        <a
-                          key={link.href}
-                          href={link.href}
-                          role="menuitem"
-                          className={
-                            hashLinkActive(link.href, route, scanStep) ? "active" : undefined
-                          }
-                          onClick={() => setAppMenuOpen(false)}
-                        >
-                          {link.label}
-                        </a>
-                      ))}
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          logoutSession();
-                          setAppMenuOpen(false);
-                          goToHash("#home");
-                        }}
-                      >
-                        Logout
-                      </button>
-                    </>
-                  ) : (
-                    <a
-                      href="#login"
-                      role="menuitem"
-                      className={
-                        route === "#login" || route === "#register" || route === "#forgot"
-                          ? "active"
-                          : undefined
-                      }
-                      onClick={() => setAppMenuOpen(false)}
-                    >
-                      Login / Register
-                    </a>
-                  )}
-                </nav>
-                <nav className="site-menu-nav" aria-label="More">
-                  {BOTTOM_LINKS.map((link) => (
-                    <a
-                      key={link.href}
-                      href={link.href}
-                      role="menuitem"
-                      className={route === link.href ? "active" : undefined}
-                      onClick={() => setAppMenuOpen(false)}
-                    >
-                      {link.label}
-                    </a>
-                  ))}
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className={careOpen ? "active" : undefined}
-                    onClick={() => {
-                      setAppMenuOpen(false);
-                      setCareOpen(true);
-                    }}
-                  >
-                    Customer Care
-                  </button>
-                </nav>
-              </div>
-            ) : null}
-          </div>
-
-          <a className="site-topbar-brand" href="#home" aria-label="MediHome home">
-            <LogoMark />
-            <span>MediHome</span>
-          </a>
-
-          <a
-            className="site-topbar-account"
-            href={user ? "#profile" : "#login"}
-          >
-            {user ? "Profile" : "Login"}
-          </a>
-        </div>
-        {appMenuOpen ? (
-          <button
-            type="button"
-            className="site-menu-scrim"
-            aria-label="Close menu"
-            onClick={() => setAppMenuOpen(false)}
+          <div className="site-topbar-slot is-start" aria-hidden="true" />
+          <MediHomeLogoLink
+            className="site-topbar-brand"
+            size="lg"
+            aria-label="MediHome welcome"
           />
-        ) : null}
+          <HeaderCart className="site-topbar-header-cart" />
+        </div>
       </header>
 
+      <aside className="sidebar site-topbar-desktop-only" aria-label="Site navigation">
+        <div className="sidebar-links">
+          {welcomeGate || isAuthRoute ? null : (
+            <nav className="sidebar-nav" aria-label="Main">
+              {menuNavLinks.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className={
+                    hashLinkActive(link.href, route, scanStep) ? "active" : undefined
+                  }
+                >
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+          )}
+          <nav className="sidebar-account" aria-label="Account">
+            {user ? (
+              <>
+                {ACCOUNT_LINKS.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className={
+                      hashLinkActive(link.href, route, scanStep) ? "active" : undefined
+                    }
+                  >
+                    {link.label}
+                  </a>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    logoutSession();
+                    goToHash("#home");
+                  }}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <a
+                href="#login"
+                className={
+                  route === "#login" || route === "#register" || route === "#forgot"
+                    ? "active"
+                    : undefined
+                }
+              >
+                Login / Register
+              </a>
+            )}
+          </nav>
+          {welcomeGate || isAuthRoute ? null : (
+            <nav className="sidebar-bottom" aria-label="More">
+              {BOTTOM_LINKS.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className={route === link.href ? "active" : undefined}
+                >
+                  {link.label}
+                </a>
+              ))}
+              <button
+                type="button"
+                className={needHelpOpen ? "active" : undefined}
+                onClick={() => setNeedHelpOpen(true)}
+              >
+                Need help
+              </button>
+            </nav>
+          )}
+        </div>
+      </aside>
+
       <main>
-        <BackToHome show={showBackHome} />
-        <WebinarNotice />
-        <ErrorBoundary key={route}>
-          <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
+        {welcomeGate || isAuthRoute ? null : <BackToHome show={showBackHome} />}
+        {welcomeGate || isAuthRoute ? null : <WebinarNotice />}
+        <ErrorBoundary key={welcomeGate ? "welcome" : route}>
+          <Suspense fallback={<PageFallback />}>
+            {welcomeGate ? (
+              <CustomerWelcome onDone={() => setSessionTick((n) => n + 1)} />
+            ) : (
+              renderPage()
+            )}
+          </Suspense>
         </ErrorBoundary>
       </main>
 
-      <footer className="app-footer">
-        <LogoMark />
-        <p>© 2026 MediHome. All rights reserved.</p>
-        <SocialLinks className="footer-social" />
-      </footer>
-
-      <CareChat
-        open={careOpen}
-        onOpen={() => setCareOpen(true)}
-        onClose={() => setCareOpen(false)}
-      />
+      <SiteFooter />
+      <SiteFloatingHelp needHelpOpen={needHelpOpen} setNeedHelpOpen={setNeedHelpOpen} />
     </div>
   );
 }

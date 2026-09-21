@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchStaffChats,
   fetchStaffOrders,
@@ -106,6 +106,8 @@ function Admin() {
   const [features, setFeatures] = useState(DEFAULT_FEATURES);
   const [featureDraft, setFeatureDraft] = useState(DEFAULT_FEATURES);
   const [featureSaving, setFeatureSaving] = useState(false);
+  const [featureSavedNote, setFeatureSavedNote] = useState("");
+  const featuresDirtyRef = useRef(false);
   const [webinars, setWebinars] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("all");
@@ -132,7 +134,9 @@ function Admin() {
       setChats(Array.isArray(chatData.threads) ? chatData.threads : []);
       const nextFeatures = mergeFeatures(settings.features);
       setFeatures(nextFeatures);
-      setFeatureDraft(nextFeatures);
+      if (!featuresDirtyRef.current) {
+        setFeatureDraft(nextFeatures);
+      }
       cacheFeatures(nextFeatures);
       const nextWebinars = Array.isArray(settings.webinars) ? settings.webinars : [];
       setWebinars(nextWebinars);
@@ -295,16 +299,19 @@ function Admin() {
       ),
     [featureDraft, features]
   );
+  featuresDirtyRef.current = featuresDirty;
 
   const saveFeatures = async () => {
     setFeatureSaving(true);
     setError("");
+    setFeatureSavedNote("");
     try {
       const saved = await patchStaffSettings({ features: featureDraft });
       const merged = mergeFeatures(saved.features);
       setFeatures(merged);
       setFeatureDraft(merged);
       cacheFeatures(merged);
+      setFeatureSavedNote("Saved. Customers now see these On/Off settings.");
     } catch (err) {
       setError(err.message || "Could Not Save Feature Switches.");
       await loadDesk();
@@ -315,7 +322,29 @@ function Admin() {
 
   const resetFeatureDraft = () => {
     setFeatureDraft(features);
+    setFeatureSavedNote("");
   };
+
+  const renderFeatureActions = () => (
+    <div className="admin-feature-actions">
+      <button
+        type="button"
+        className="admin-feature-save"
+        onClick={saveFeatures}
+        disabled={!featuresDirty || featureSaving}
+      >
+        {featureSaving ? "Saving…" : "Save"}
+      </button>
+      <button
+        type="button"
+        className="admin-feature-reset"
+        onClick={resetFeatureDraft}
+        disabled={!featuresDirty || featureSaving}
+      >
+        Discard
+      </button>
+    </div>
+  );
 
   const generateReport = () => {
     const rows = filterReport(orders, {
@@ -443,6 +472,60 @@ function Admin() {
 
         {error ? <p className="admin-error">{error}</p> : null}
 
+        <section className="admin-panel admin-feature-panel" aria-label="Feature Switches">
+          <div className="admin-feature-head">
+            <div>
+              <h2>Turn Services On Or Off</h2>
+              <p>
+                Flip a switch to draft a change. Customers only see the new
+                setting after you press Save. Only staff can save.
+              </p>
+            </div>
+            {renderFeatureActions()}
+          </div>
+          {featuresDirty ? (
+            <p className="admin-feature-note" role="status">
+              Unsaved changes — website and app still use the last saved
+              settings until you Save.
+            </p>
+          ) : null}
+          {featureSavedNote && !featuresDirty ? (
+            <p className="admin-feature-ok" role="status">
+              {featureSavedNote}
+            </p>
+          ) : null}
+          <div className="admin-switches">
+            {FEATURE_CATALOG.map((row) => {
+              const draftOn = featureEnabled(featureDraft, row.key);
+              const liveOn = featureEnabled(features, row.key);
+              const dirty = draftOn !== liveOn;
+              return (
+                <button
+                  key={row.key}
+                  type="button"
+                  role="switch"
+                  aria-checked={draftOn}
+                  className={`${draftOn ? "is-on" : ""}${dirty ? " is-dirty" : ""}`}
+                  onClick={() => {
+                    setFeatureSavedNote("");
+                    toggleFeature(row.key);
+                  }}
+                  disabled={featureSaving}
+                >
+                  <span>
+                    {row.label}
+                    {dirty ? (
+                      <em className="admin-feature-draft"> · draft</em>
+                    ) : null}
+                  </span>
+                  <strong>{draftOn ? "On" : "Off"}</strong>
+                </button>
+              );
+            })}
+          </div>
+          {renderFeatureActions()}
+        </section>
+
         <section className="admin-panel" aria-label="Customer Care Inbox">
           <h2>Customer Care Inbox</h2>
           <p>Replies From This Desk Show In The Public Chatbox.</p>
@@ -546,56 +629,6 @@ function Admin() {
           {storeUp ? `Store Growth: ${storeUp.label} (${formatPct(storeUp.pct)}).` : ""}{" "}
           {storeDown ? `Store Drop: ${storeDown.label} (${formatPct(storeDown.pct)}).` : ""}
         </p>
-
-        <section className="admin-panel" aria-label="Feature Switches">
-          <h2>Turn Features On Or Off</h2>
-          <p>
-            Services stay off until you turn them on and press Save Settings.
-            Off services stay on the menu and show Coming Soon until you turn
-            them back on. Scan Delivery buttons stay visible. When that switch
-            is off, a customer click opens Coming Soon.
-          </p>
-          {featuresDirty ? (
-            <p className="admin-feature-note" role="status">
-              You have unsaved switch changes. Customers still see the last
-              saved settings until you save.
-            </p>
-          ) : null}
-          <div className="admin-switches">
-            {FEATURE_CATALOG.map((row) => (
-              <button
-                key={row.key}
-                type="button"
-                role="switch"
-                aria-checked={featureEnabled(featureDraft, row.key)}
-                className={featureEnabled(featureDraft, row.key) ? "is-on" : ""}
-                onClick={() => toggleFeature(row.key)}
-                disabled={featureSaving}
-              >
-                <span>{row.label}</span>
-                <strong>{featureEnabled(featureDraft, row.key) ? "On" : "Off"}</strong>
-              </button>
-            ))}
-          </div>
-          <div className="admin-feature-actions">
-            <button
-              type="button"
-              className="admin-feature-save"
-              onClick={saveFeatures}
-              disabled={!featuresDirty || featureSaving}
-            >
-              {featureSaving ? "Saving…" : "Save Settings"}
-            </button>
-            <button
-              type="button"
-              className="admin-feature-reset"
-              onClick={resetFeatureDraft}
-              disabled={!featuresDirty || featureSaving}
-            >
-              Discard Changes
-            </button>
-          </div>
-        </section>
 
         <AdminWebinars
           webinars={webinars}
@@ -1098,14 +1131,22 @@ const styles = `
 .admin-panel{background:#fff;border:1px solid #e4ecef;border-radius:12px;padding:14px;margin-bottom:14px}
 .admin-panel h2{margin:0 0 6px;font-size:16px}
 .admin-panel p{margin:0 0 10px;color:#5d7180;font-size:13px}
+.admin-feature-panel{border-color:#b7d0dc;box-shadow:0 1px 0 rgba(26,107,122,.06)}
+.admin-feature-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
+.admin-feature-head h2{margin:0 0 6px}
+.admin-feature-head p{margin:0;max-width:42rem}
 .admin-switches{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .admin-switches button{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid #d7e2e9;border-radius:10px;background:#f7fafc;padding:10px 12px;font:inherit;cursor:pointer}
 .admin-switches button.is-on{background:#e7f6ef;border-color:#b7e0c8}
+.admin-switches button.is-dirty{outline:2px solid #e2a30b;outline-offset:1px}
 .admin-switches strong{font-size:12px;color:#5d7180}
 .admin-switches button.is-on strong{color:#1a7a45}
+.admin-feature-draft{font-style:normal;font-weight:700;color:#a56a00;font-size:11px}
 .admin-feature-note{margin:0 0 10px;padding:10px 12px;border-radius:8px;background:#fff7e6;color:#7a4b00;font-size:13px;font-weight:700}
+.admin-feature-ok{margin:0 0 10px;padding:10px 12px;border-radius:8px;background:#e7f6ef;color:#1a7a45;font-size:13px;font-weight:700}
 .admin-feature-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.admin-feature-save,.admin-feature-reset{min-height:38px;padding:8px 14px;border-radius:8px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.admin-feature-head .admin-feature-actions{margin-top:0}
+.admin-feature-save,.admin-feature-reset{min-height:40px;padding:8px 18px;border-radius:8px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
 .admin-feature-save{border:none;background:#1a6b7a;color:#fff}
 .admin-feature-save:disabled,.admin-feature-reset:disabled{opacity:.55;cursor:not-allowed}
 .admin-feature-reset{border:1px solid #d7e2e9;background:#fff;color:#34546b}

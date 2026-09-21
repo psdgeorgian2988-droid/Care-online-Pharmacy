@@ -4,6 +4,13 @@ import { mediHomeApiPlugin } from './server/vitePlugin.mjs'
 
 export default defineConfig({
   plugins: [react(), mediHomeApiPlugin()],
+  // Keep Node-only AI packages out of the browser bundle.
+  optimizeDeps: {
+    exclude: ["@cursor/sdk", "tesseract.js"],
+  },
+  ssr: {
+    external: ["@cursor/sdk", "tesseract.js"],
+  },
   server: {
     host: true,
     port: 5173,

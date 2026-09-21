@@ -8,10 +8,21 @@ const EVENT = "medihome-features";
 export function readCachedFeatures() {
   try {
     const parsed = JSON.parse(sessionStorage.getItem("mediHomeFeatures") || "null");
-    return mergeFeatures(parsed);
+    if (parsed && typeof parsed === "object") {
+      return mergeFeatures(parsed);
+    }
   } catch {
-    return { ...DEFAULT_FEATURES };
+    /* ignore */
   }
+  return { ...DEFAULT_FEATURES };
+}
+
+/** Force all services on (dev). Clears stale session cache of paused flags. */
+export function activateAllFeaturesForDev() {
+  const features = { ...DEFAULT_FEATURES };
+  for (const key of Object.keys(features)) features[key] = true;
+  cacheFeatures(features);
+  return features;
 }
 
 function cacheFeatures(features) {
@@ -32,9 +43,19 @@ export async function fetchPublicFeatures() {
 }
 
 export function useFeatures() {
-  const [features, setFeatures] = useState(readCachedFeatures);
+  const [features, setFeatures] = useState(() => {
+    if (import.meta.env.DEV) {
+      return activateAllFeaturesForDev();
+    }
+    return readCachedFeatures();
+  });
   useEffect(() => {
-    fetchPublicFeatures().catch(() => {});
+    if (import.meta.env.DEV) {
+      activateAllFeaturesForDev();
+    }
+    fetchPublicFeatures().catch(() => {
+      if (import.meta.env.DEV) activateAllFeaturesForDev();
+    });
     const onUpdate = (event) => setFeatures(mergeFeatures(event.detail));
     window.addEventListener(EVENT, onUpdate);
     return () => window.removeEventListener(EVENT, onUpdate);

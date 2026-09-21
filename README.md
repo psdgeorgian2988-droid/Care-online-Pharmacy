@@ -64,12 +64,13 @@ Staff create each partner’s first **Login ID** and **password** on the Staff D
 
 One React codebase powers the website and the Android / iPhone apps (Capacitor). The app UI is bundled from `dist/`. API calls go to `https://medihome.co.in` (or your laptop during live reload).
 
-Inside the app, open **Apps** (`/#apps`) and pick:
+On the website, open the separate desks from the footer:
 
-- **Customer App** — home, medicines, bookings, account
-- **Staff App** — operations desk
-- **Partner App** — assigned jobs
+- **Customer** (`/#customer`) — customer webpage, then home / login / register
+- **Partner** (`/#partner`) — partner jobs desk
+- **Staff** (`/#staff`) — staff webpage, then operations desk (`/#admin`)
 
+Installed apps with no saved role open a chooser linking to those three pages.
 ### Build and open Android / iOS
 
 ```bash
