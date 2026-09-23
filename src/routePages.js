@@ -7,6 +7,7 @@ export const MyOrders = lazy(() => import("./MyOrders"));
 export const HomeCare = lazy(() => import("./HomeCare"));
 export const Vaccination = lazy(() => import("./Vaccination"));
 export const Psychologist = lazy(() => import("./Psychologist"));
+export const DoctorAppointment = lazy(() => import("./DoctorAppointment"));
 export const StepDownCare = lazy(() => import("./StepDownCare"));
 export const Ambulance = lazy(() => import("./Ambulance"));
 export const Reports = lazy(() => import("./Reports"));

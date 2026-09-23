@@ -86,6 +86,11 @@ const PAGE_META = {
     description:
       "Government of India UIP schedule for children and older persons, with a saved record and due-date reminders.",
   },
+  doctor: {
+    title: "Doctor Appointment | MediHome Delhi NCR",
+    description:
+      "Book a clinic visit, video consult, or home visit with a MediHome doctor in Delhi NCR.",
+  },
   psychologist: {
     title: "Psychologist Consultation | MediHome",
     description:
@@ -118,7 +123,7 @@ const PAGE_META = {
     description: "Track medicines, diagnostics, Home Care, psychologist, and ambulance bookings.",
   },
   track: {
-    title: "Track Live | MediHome",
+    title: "Current status | MediHome",
     description: "Follow your MediHome order or visit on the live PIN map.",
   },
   scan: {

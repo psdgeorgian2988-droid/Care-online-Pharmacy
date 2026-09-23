@@ -41,6 +41,31 @@ export function clearPrescriptionParse(store) {
   }
 }
 
+export function updatePrescriptionMedicine(id, patch = {}, store) {
+  const current = readPrescriptionParse(store);
+  if (!current) return null;
+  const medicines = (current.medicines || []).map((med) =>
+    String(med.id) === String(id)
+      ? {
+          ...med,
+          ...patch,
+          name: String(patch.name ?? med.name ?? "").trim() || med.name,
+          userCorrected: true,
+          verified: true,
+        }
+      : med
+  );
+  writePrescriptionParse({ ...current, medicines, medicinesConfirmed: false }, store);
+  return readPrescriptionParse(store);
+}
+
+export function setPrescriptionMedicinesConfirmed(confirmed, store) {
+  const current = readPrescriptionParse(store);
+  if (!current) return null;
+  writePrescriptionParse({ ...current, medicinesConfirmed: Boolean(confirmed) }, store);
+  return readPrescriptionParse(store);
+}
+
 export async function digitizePrescription(draft = readPrescriptionDraft()) {
   if (!draft?.fileName) {
     throw new Error("Upload a prescription on Home first.");

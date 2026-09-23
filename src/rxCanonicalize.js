@@ -246,6 +246,24 @@ export function canonicalizePrescription(parsed = {}, ocrParsed = null) {
   const medicines = [];
   const seenMed = new Set();
   const pushMed = (row) => {
+    const writtenName = String(row?.name || "").trim();
+    if (row?.userCorrected && writtenName) {
+      const canon = canonicalizeMedicineName(writtenName, row);
+      const key = `${foldRx(canon.salt || writtenName)}|${foldRx(canon.strength || row?.strength)}`;
+      if (seenMed.has(key)) return;
+      seenMed.add(key);
+      medicines.push({
+        ...row,
+        name: writtenName,
+        strength: row?.strength || canon.strength || "",
+        form: row?.form || canon.form || "",
+        salt: canon.salt || row?.salt || "",
+        verified: true,
+        userCorrected: true,
+        asWritten: row?.asWritten || writtenName,
+      });
+      return;
+    }
     const canon = canonicalizeMedicineName(row?.name, row);
     if (!canon.name) return;
     const key = `${foldRx(canon.salt || canon.name)}|${foldRx(canon.strength)}`;
@@ -258,7 +276,7 @@ export function canonicalizePrescription(parsed = {}, ocrParsed = null) {
       form: canon.form || row?.form || "",
       salt: canon.salt || row?.salt || "",
       verified: canon.verified,
-      asWritten: canon.asWritten || row?.name || "",
+      asWritten: row?.asWritten || canon.asWritten || row?.name || "",
     });
   };
 

@@ -40,6 +40,8 @@ function kindLabel(kind) {
       return "Vaccination";
     case "psychologist":
       return "Psychologist Consultation";
+    case "doctor":
+      return "Doctor Appointment";
     case "stepdown":
       return "Step-Down Care";
     case "ambulance":

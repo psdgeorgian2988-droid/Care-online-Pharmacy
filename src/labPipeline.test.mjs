@@ -23,6 +23,14 @@ test("partner pipeline advances confirm → technician → sample → report →
   );
   assert.equal(
     nextDiagnosticAction({
+      kind: "radiology",
+      partnerConfirmStatus: "slot_offered",
+      slotConfirmStatus: "offered",
+    }),
+    "await_customer_slot"
+  );
+  assert.equal(
+    nextDiagnosticAction({
       kind: "lab",
       partnerConfirmed: true,
       partnerConfirmStatus: "accepted",

@@ -13,8 +13,9 @@ export function diagnosticKindOf(order) {
 /** Steps shown on partner desk and customer track for diagnostics. */
 export const DIAGNOSTIC_TRACK_STEPS = [
   { key: "requested", label: "Awaiting Partner Confirmation" },
+  { key: "slot_offered", label: "Awaiting Customer Slot Confirmation" },
   { key: "confirmed", label: "Partner Accepted" },
-  { key: "assigned", label: "Technician Assigned" },
+  { key: "assigned", label: "Partner Assigned" },
   { key: "sample_collected", label: "Sample Collected" },
   { key: "report_ready", label: "Report Ready" },
   { key: "done", label: "Completed" },
@@ -25,7 +26,10 @@ export function diagnosticStepLabel(key, kind = "lab") {
   const hit = DIAGNOSTIC_TRACK_STEPS.find((step) => step.key === key);
   if (hit) return hit.label;
   if (key === "done") return "Completed";
-  return kind === "radiology" ? "Imaging Update" : "Lab Update";
+  if (key === "packed" || key === "on_the_way" || key === "arriving") {
+    return "Partner Accepted";
+  }
+  return "In progress";
 }
 
 export function assignTechnicianFields({ name, mobile } = {}, now = Date.now()) {
@@ -33,7 +37,7 @@ export function assignTechnicianFields({ name, mobile } = {}, now = Date.now()) 
   const technicianMobile = String(mobile || "").replace(/\D/g, "").slice(0, 10);
   return {
     trackStatus: "assigned",
-    status: "Technician Assigned",
+    status: "Partner Assigned",
     technicianName,
     technicianMobile,
     technicianAssignedAt: now,
@@ -73,7 +77,10 @@ export function diagnosticCompleteFields(now = Date.now()) {
 export function nextDiagnosticAction(order) {
   const kind = diagnosticKindOf(order);
   if (!isDiagnosticKind(kind)) return "";
-  if (String(order?.partnerConfirmStatus || "") === "pending" || !order?.partnerConfirmed) {
+  const confirm = String(order?.partnerConfirmStatus || "").toLowerCase();
+  const slot = String(order?.slotConfirmStatus || "").toLowerCase();
+  if (confirm === "slot_offered" || slot === "offered") return "await_customer_slot";
+  if (confirm === "pending" || confirm === "slot_rejected" || !order?.partnerConfirmed) {
     return "confirm";
   }
   const status = String(order?.trackStatus || "").toLowerCase();

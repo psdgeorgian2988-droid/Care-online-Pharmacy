@@ -161,6 +161,16 @@ export function replyTo(rawText) {
     };
   }
 
+  if (
+    /\b(doctor|physician|clinic visit|general physician|pediatrician|gynecologist|cardiologist)\b/.test(
+      q
+    )
+  ) {
+    return {
+      text: "Book a doctor appointment from Services. Choose a listed specialty or Other for more, then pick video consultation, home visit, or clinic and a slot.",
+      links: [{ href: "#doctor", label: "Book a doctor" }],
+    };
+  }
   if (/\b(psychologist|psychiatrist|counsellor|counselor|mental health|anxiety|depression)\b/.test(q)) {
     return {
       text: "Book a confidential psychologist session on video or as a home visit from the Psychologist page. Choose a plan and slot, then confirm.",

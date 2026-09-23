@@ -175,6 +175,7 @@ export function scanStepTitle(kind, step, serviceType) {
     if (service === "homecare") return "Scan Care Visit Start";
     if (service === "vaccination") return "Scan Vaccination Visit Start";
     if (service === "psychologist") return "Scan Session Start";
+    if (service === "doctor") return "Scan Appointment Start";
     if (service === "lab") return "Scan Collection Start";
     if (service === "radiology") return "Scan Centre Check-In";
     if (service === "ambulance") return "Scan Ambulance Pickup";
@@ -186,6 +187,7 @@ export function scanStepTitle(kind, step, serviceType) {
   if (service === "homecare") return "Scan Care Visit Complete";
   if (service === "vaccination") return "Scan Vaccination Visit Complete";
   if (service === "psychologist") return "Scan Consultation Complete";
+  if (service === "doctor") return "Scan Appointment Complete";
   if (service === "lab") return "Scan Sample Received";
   if (service === "radiology") return "Scan Imaging Complete";
   if (service === "ambulance") return "Scan Handover";
@@ -507,6 +509,13 @@ export function gatedTrackStatus(order, progressKey = "") {
   if (checks.deliver || order?.trackCompleted) return "done";
   const current = String(order?.trackStatus || "").toLowerCase();
   if (current === "declined") return "declined";
+  if (
+    current === "slot_offered" ||
+    String(order?.slotConfirmStatus || "").toLowerCase() === "offered" ||
+    String(order?.partnerConfirmStatus || "").toLowerCase() === "slot_offered"
+  ) {
+    return "slot_offered";
+  }
   // Partner-confirmed services stay requested until Accept (fail closed).
   if (isAwaitingPartnerConfirm(order) && !checks.pack && !checks.pickup) {
     return "requested";
@@ -522,10 +531,13 @@ export function gatedTrackStatus(order, progressKey = "") {
   // Lab / radiology: partner drives technician → sample → report statuses.
   if (isDiagnosticKind(order?.kind || order?.orderType || order?.serviceType)) {
     if (
+      current === "requested" ||
+      current === "slot_offered" ||
       current === "sample_collected" ||
       current === "report_ready" ||
       current === "assigned" ||
       current === "confirmed" ||
+      current === "declined" ||
       current === "done"
     ) {
       return current;

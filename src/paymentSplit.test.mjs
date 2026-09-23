@@ -5,9 +5,24 @@ import {
   ledgerShareText,
   partnerSettlementNote,
   quoteCheckout,
+  resplitOrder,
   splitPayment,
 } from "./paymentSplit.js";
 import { buildOrderBill } from "./orderBill.js";
+
+test("staff can resplit an order by partner percent", () => {
+  const order = {
+    kind: "lab",
+    total: 1000,
+    split: splitPayment("lab", 1000, "122017"),
+  };
+  assert.equal(order.split.partnerPercent, 85);
+  const next = resplitOrder(order, { partnerPercent: 70 });
+  assert.equal(next.partnerPercent, 70);
+  assert.equal(next.platformPercent, 30);
+  assert.equal(next.partnerRupees, 700);
+  assert.equal(next.platformRupees, 300);
+});
 
 test("without discount the partner still gets the remainder of sale", () => {
   const split = splitPayment("medicine", 100, "110001");
@@ -108,6 +123,8 @@ test("service charge / platform fee is credited only to MediHome", () => {
   assert.equal(split.serviceChargeTo, "medihome");
   assert.equal(split.platformSettledRupees, 200);
   assert.equal(split.medihomeAccountRupees, 200);
+  assert.equal(split.medihomeCreditDest, "settlement_bank");
+  assert.equal(split.medihomeCreditRupees, 200);
   assert.match(
     split.ledger.at(-1).note,
     /service charge|platform fee/i

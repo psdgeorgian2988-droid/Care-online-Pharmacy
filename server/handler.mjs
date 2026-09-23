@@ -1,14 +1,32 @@
 import { randomBytes } from "node:crypto";
 import { listOrders, patchOrder, upsertOrder } from "./store.mjs";
-import { attachSettlement, resolveCollector, splitPayment } from "../src/paymentSplit.js";
-import { isOnlinePayment } from "../src/paymentMethods.js";
+import { applyPartnerMedicineCorrection } from "../src/rxPartnerShare.js";
 import {
+  attachSettlement,
+  clampSplitPercent,
+  resplitOrder,
+  resolveCollector,
+  splitPayment,
+} from "../src/paymentSplit.js";
+import { isOnlinePayment } from "../src/paymentMethods.js";
+import { publicSplit } from "../src/payeeBank.js";
+import { partnerCollectPatch } from "../src/partnerCollect.js";
+import {
+  customerAcceptSlotFields,
+  customerDeclineOfferedSlotFields,
   initialOrderStatus,
+  isAwaitingCustomerSlotConfirm,
   isAwaitingPartnerConfirm,
   needsPartnerConfirm,
 } from "../src/orderConfirm.js";
+import {
+  listCustomerNotifications,
+  markCustomerNotificationsRead,
+  notifyCustomerSlotOffer,
+} from "./customerNotify.mjs";
 import { openTrafficFromOrders } from "../src/partnerQueue.js";
 import {
+  clientPayment,
   createRazorpayOrder,
   findPayment,
   newPaymentId,
@@ -27,6 +45,7 @@ import {
   partnerIdFromToken,
   partnerLogin,
   setPartnerLogin,
+  updatePartner,
 } from "./partners.mjs";
 import {
   appendCustomerMessage,
@@ -130,7 +149,10 @@ function enrichOrder(body) {
   }
   // Partner-confirmed services cannot be stored as confirmed until Accept.
   if (needsPartnerConfirm(kind) && isAwaitingPartnerConfirm(next)) {
-    Object.assign(next, initialOrderStatus(kind));
+    const confirm = String(next.partnerConfirmStatus || "").toLowerCase();
+    if (!confirm || confirm === "pending") {
+      Object.assign(next, initialOrderStatus(kind));
+    }
   }
   return next;
 }
@@ -186,7 +208,7 @@ export async function handleApi(req, res) {
         paymentMethod,
         paidOn,
       });
-      const partnerCollects = split.collector === "partner";
+      const digital = isOnlinePayment(paymentMethod);
       const payment = {
         id: newPaymentId(),
         status: "created",
@@ -198,61 +220,41 @@ export async function handleApi(req, res) {
         collector: split.collector,
         paidOn: split.paidOn,
         paymentMethod,
-        split,
+        split: publicSplit(split),
         razorpayOrderId: "",
         razorpayPaymentId: "",
         createdAt: Date.now(),
       };
 
-      if (razorpayEnabled() && !partnerCollects) {
-        const transfers = split.razorpayAccountId
-          ? [
-              {
-                account: split.razorpayAccountId,
-                amount: split.partnerTransferPaise ?? split.partnerPaise,
-                currency: "INR",
-                notes: { outlet: split.outletName, kind },
-              },
-            ]
-          : undefined;
+      if (razorpayEnabled() && digital) {
         const rzp = await createRazorpayOrder({
           amountPaise: split.totalPaise,
           receipt: payment.id,
-          notes: { kind, pin, reference: payment.reference },
-          transfers,
+          notes: {
+            kind,
+            pin,
+            reference: payment.reference,
+            dest: "settlement_bank",
+          },
         });
         payment.razorpayOrderId = rzp.id;
         payment.status = "razorpay_created";
-        await savePayment(payment);
+        const saved = await savePayment(payment);
         send(res, 200, {
-          paymentId: payment.id,
+          paymentId: saved.id,
           razorpayOrderId: rzp.id,
           amountPaise: split.totalPaise,
           keyId: publicPaymentConfig().keyId,
-          split,
+          split: publicSplit(saved.split),
           testCheckout: false,
         });
         return true;
       }
 
-      if (partnerCollects) {
-        payment.status = isOnlinePayment(paymentMethod) ? "paid" : "created";
-        payment.partnerCollected = true;
-        payment.paidAt = isOnlinePayment(paymentMethod) ? Date.now() : undefined;
-        await savePayment(payment);
-        send(res, 200, {
-          paymentId: payment.id,
-          split,
-          testCheckout: true,
-          partnerCollected: true,
-        });
-        return true;
-      }
-
-      await savePayment(payment);
+      const saved = await savePayment(payment);
       send(res, 200, {
-        paymentId: payment.id,
-        split,
+        paymentId: saved.id,
+        split: publicSplit(saved.split),
         testCheckout: true,
       });
       return true;
@@ -279,13 +281,10 @@ export async function handleApi(req, res) {
       payment.razorpayOrderId = body.razorpay_order_id;
       payment.razorpayPaymentId = body.razorpay_payment_id;
       payment.paidAt = Date.now();
-      await savePayment(payment);
+      const verified = await savePayment(payment);
       send(res, 200, {
-        paymentId: payment.id,
+        ...clientPayment(verified),
         paymentStatus: "paid",
-        razorpayPaymentId: payment.razorpayPaymentId,
-        razorpayOrderId: payment.razorpayOrderId,
-        split: payment.split,
       });
       return true;
     }
@@ -304,11 +303,10 @@ export async function handleApi(req, res) {
       payment.status = "paid";
       payment.paidAt = Date.now();
       payment.testPaid = true;
-      await savePayment(payment);
+      const confirmed = await savePayment(payment);
       send(res, 200, {
-        paymentId: payment.id,
+        ...clientPayment(confirmed),
         paymentStatus: "paid",
-        split: payment.split,
       });
       return true;
     }
@@ -360,6 +358,19 @@ export async function handleApi(req, res) {
       if (!requireStaff(req, res)) return true;
       const body = await readJson(req);
       const updated = await setPartnerLogin(decodeURIComponent(partnerLoginMatch[1]), body);
+      if (!updated.ok) {
+        send(res, 400, { error: updated.error });
+        return true;
+      }
+      send(res, 200, { partner: updated.partner, partners: await listPartners() });
+      return true;
+    }
+
+    const partnerUpdateMatch = pathname.match(/^\/api\/admin\/partners\/([^/]+)$/);
+    if (partnerUpdateMatch && req.method === "PATCH") {
+      if (!requireStaff(req, res)) return true;
+      const body = await readJson(req);
+      const updated = await updatePartner(decodeURIComponent(partnerUpdateMatch[1]), body);
       if (!updated.ok) {
         send(res, 400, { error: updated.error });
         return true;
@@ -539,11 +550,13 @@ export async function handleApi(req, res) {
               : body.trackStatus === "confirmed"
                 ? String(body.status || "Confirmed")
                 : body.trackStatus === "assigned"
-                  ? String(body.status || "Technician Assigned")
+                  ? String(body.status || "Partner Assigned")
                   : body.trackStatus === "sample_collected"
                     ? String(body.status || "Sample Collected")
                     : body.trackStatus === "report_ready"
                       ? String(body.status || "Report Ready")
+                      : body.trackStatus === "slot_offered"
+                        ? String(body.status || "Awaiting Customer Slot Confirmation")
                       : String(body.status || existing.status || "Updated");
       }
       if (Object.prototype.hasOwnProperty.call(body, "partnerConfirmed")) {
@@ -591,42 +604,148 @@ export async function handleApi(req, res) {
       if (body.completedAt) {
         patch.completedAt = Number(body.completedAt) || Date.now();
       }
+      if (body.rxMedicineCorrection) {
+        const corrected = applyPartnerMedicineCorrection(
+          existing,
+          body.rxMedicineCorrection,
+          partner
+        );
+        if (!corrected.ok) {
+          send(res, 400, { error: corrected.error });
+          return true;
+        }
+        Object.assign(patch, corrected.patch);
+      }
+      if (body.timeSlot != null) patch.timeSlot = String(body.timeSlot).slice(0, 40);
+      if (body.date != null) patch.date = String(body.date).slice(0, 12);
+      if (body.requestedTimeSlot != null) {
+        patch.requestedTimeSlot = String(body.requestedTimeSlot).slice(0, 40);
+      }
+      if (body.requestedDate != null) {
+        patch.requestedDate = String(body.requestedDate).slice(0, 12);
+      }
+      if (body.offeredTimeSlot != null) {
+        patch.offeredTimeSlot = String(body.offeredTimeSlot).slice(0, 40);
+      }
+      if (body.offeredDate != null) {
+        patch.offeredDate = String(body.offeredDate).slice(0, 12);
+      }
+      if (Object.prototype.hasOwnProperty.call(body, "slotConfirmed")) {
+        patch.slotConfirmed = Boolean(body.slotConfirmed);
+      }
+      if (body.slotConfirmStatus) {
+        patch.slotConfirmStatus = String(body.slotConfirmStatus);
+      }
+      if (body.slotOfferedAt) {
+        patch.slotOfferedAt = Number(body.slotOfferedAt) || Date.now();
+      }
+      if (body.slotConfirmedAt) {
+        patch.slotConfirmedAt = Number(body.slotConfirmedAt) || Date.now();
+      }
+      if (body.slotRejectedAt) {
+        patch.slotRejectedAt = Number(body.slotRejectedAt) || Date.now();
+      }
       if (
         body.trackStatus === "confirmed" ||
-        body.partnerConfirmStatus === "accepted"
+        body.trackStatus === "assigned" ||
+        body.trackStatus === "slot_offered" ||
+        body.partnerConfirmStatus === "accepted" ||
+        body.partnerConfirmStatus === "slot_offered"
       ) {
         patch.partnerId = partner.id;
         patch.partnerName = partner.name;
         patch.partnerMobile = partner.mobile;
         patch.partnerRole = partner.role;
+        patch.partner = partner.name;
         patch.partnerAssignedAt = Date.now();
+        if (!existing.split?.staffSet) {
+          patch.split = {
+            ...resplitOrder(
+              { ...existing, ...patch },
+              { partnerPercent: partner.partnerPercent }
+            ),
+            staffSet: false,
+          };
+        }
       }
       if (body.collectPayment) {
-        const paymentMethod = isOnlinePayment(body.paymentMethod)
-          ? String(body.paymentMethod)
-          : "cod";
-        const paidOn = "partner";
-        const collector = resolveCollector({ method: paymentMethod, paidOn });
-        const payable = Number(
-          existing.split?.payableRupees ?? existing.total ?? existing.charges ?? 0
-        );
-        const kind = existing.kind || existing.orderType || "medicine";
-        const pin = existing.pinCode || existing.pin || "";
-        patch.paidOn = paidOn;
-        patch.collector = collector;
-        patch.paymentMethod = paymentMethod;
-        patch.paymentStatus = "paid";
-        patch.split = splitPayment(kind, payable, pin, {
-          saleRupees:
-            existing.split?.saleRupees ?? existing.saleRupees ?? payable,
-          payableRupees: existing.split?.payableRupees ?? payable,
-          couponCode: existing.split?.couponCode || existing.couponCode || "",
-          platformPercent: existing.split?.platformPercent,
-          paymentMethod,
-          paidOn,
-        });
+        const collected = partnerCollectPatch(existing, body);
+        if (!collected.ok) {
+          send(res, 400, { error: collected.error });
+          return true;
+        }
+        Object.assign(patch, collected.patch);
+        if (!existing.partnerId && !patch.partnerId) {
+          patch.partnerId = partner.id;
+          patch.partnerName = partner.name;
+          patch.partnerMobile = partner.mobile;
+          patch.partnerRole = partner.role;
+          patch.partner = partner.name;
+          patch.partnerAssignedAt = Date.now();
+        }
       }
       const updated = await patchOrder(orderId(existing), patch);
+      if (
+        updated &&
+        (updated.partnerConfirmStatus === "slot_offered" ||
+          updated.slotConfirmStatus === "offered")
+      ) {
+        try {
+          await notifyCustomerSlotOffer(updated);
+        } catch {
+          /* keep the partner offer even if the notice store fails */
+        }
+      }
+      send(res, 200, { order: updated });
+      return true;
+    }
+
+    if (pathname === "/api/customer/notifications" && req.method === "GET") {
+      const mobile = String(url.searchParams.get("mobile") || "").replace(/\D/g, "");
+      send(res, 200, { notifications: await listCustomerNotifications(mobile) });
+      return true;
+    }
+
+    const slotReply = pathname.match(/^\/api\/orders\/([^/]+)\/slot-reply$/);
+    if (slotReply && req.method === "POST") {
+      const body = await readJson(req);
+      const wanted = decodeURIComponent(slotReply[1]);
+      const mobile = String(body.mobile || "").replace(/\D/g, "").slice(-10);
+      const found = (await listOrders()).find((row) => orderId(row) === wanted);
+      if (!found) {
+        send(res, 404, { error: "Booking not found." });
+        return true;
+      }
+      const orderDigits = String(orderMobile(found) || "").slice(-10);
+      if (!mobile || mobile.length !== 10 || orderDigits !== mobile) {
+        send(res, 403, { error: "Use the mobile number on this booking." });
+        return true;
+      }
+      if (!isAwaitingCustomerSlotConfirm(found)) {
+        send(res, 409, { error: "There is no offered time slot to confirm." });
+        return true;
+      }
+      const decision = String(body.decision || "").toLowerCase();
+      const fields =
+        decision === "accept"
+          ? customerAcceptSlotFields(found)
+          : decision === "decline"
+            ? customerDeclineOfferedSlotFields(found)
+            : null;
+      if (!fields) {
+        send(res, 400, { error: "Choose accept or decline." });
+        return true;
+      }
+      const updated = await patchOrder(orderId(found), fields);
+      try {
+        const notices = await listCustomerNotifications(mobile);
+        const ids = notices
+          .filter((row) => row.orderId === orderId(found) && row.type === "slot_offer")
+          .map((row) => row.id);
+        if (ids.length) await markCustomerNotificationsRead(mobile, ids);
+      } catch {
+        /* ignore */
+      }
       send(res, 200, { order: updated });
       return true;
     }
@@ -666,34 +785,72 @@ export async function handleApi(req, res) {
     if (patchMatch && req.method === "PATCH") {
       if (!requireStaff(req, res)) return true;
       const body = await readJson(req);
+      const orderKey = decodeURIComponent(patchMatch[1]);
+      let current = null;
       if (Object.prototype.hasOwnProperty.call(body, "partnerId")) {
         if (!body.partnerId) {
-          const updated = await patchOrder(decodeURIComponent(patchMatch[1]), {
+          current = await patchOrder(orderKey, {
             partnerId: "",
             partnerName: "",
             partnerMobile: "",
             partnerRole: "",
             partnerAssignedAt: 0,
           });
-          if (!updated) {
+          if (!current) {
             send(res, 404, { error: "Order not found." });
             return true;
           }
-          send(res, 200, { order: updated });
+        } else {
+          current = await assignPartnerToOrder(orderKey, body);
+          if (!current) {
+            send(res, 404, { error: "Order or partner not found." });
+            return true;
+          }
+        }
+      }
+      if (body.partnerPercent != null || body.platformPercent != null) {
+        current =
+          current ||
+          (await listOrders()).find(
+            (row) =>
+              String(row.id) === orderKey ||
+              String(row.bookingId) === orderKey ||
+              String(row.requestId) === orderKey
+          );
+        if (!current) {
+          send(res, 404, { error: "Order not found." });
           return true;
         }
-        const assigned = await assignPartnerToOrder(
-          decodeURIComponent(patchMatch[1]),
-          body
-        );
-        if (!assigned) {
-          send(res, 404, { error: "Order or partner not found." });
+        const partnerShare = clampSplitPercent(body.partnerPercent);
+        const split = {
+          ...resplitOrder(current, {
+            partnerPercent: body.partnerPercent,
+            platformPercent: body.platformPercent,
+          }),
+          staffSet: true,
+        };
+        current = await patchOrder(orderKey, {
+          split,
+          staffPartnerPercent:
+            partnerShare != null ? partnerShare : split.partnerPercent,
+        });
+        if (!current) {
+          send(res, 404, { error: "Order not found." });
           return true;
         }
-        send(res, 200, { order: assigned });
+      }
+      if (current && (body.partnerId != null || body.partnerPercent != null || body.platformPercent != null)) {
+        const leftover = { ...body };
+        delete leftover.partnerId;
+        delete leftover.partnerPercent;
+        delete leftover.platformPercent;
+        if (Object.keys(leftover).length) {
+          current = (await patchOrder(orderKey, leftover)) || current;
+        }
+        send(res, 200, { order: current });
         return true;
       }
-      const updated = await patchOrder(decodeURIComponent(patchMatch[1]), body);
+      const updated = await patchOrder(orderKey, body);
       if (!updated) {
         send(res, 404, { error: "Order not found." });
         return true;

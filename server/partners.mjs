@@ -3,6 +3,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listOrders, patchOrder } from "./store.mjs";
+import { DELIVERY_OUTLETS, outletForPin } from "../src/deliveryOutlets.js";
+import {
+  clampSplitPercent,
+  defaultPartnerPercentFor,
+  resplitOrder,
+} from "../src/paymentSplit.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataFile = path.join(root, "data", "partners.json");
@@ -15,6 +21,7 @@ const KIND_OPTIONS = [
   "homecare",
   "vaccination",
   "psychologist",
+  "doctor",
   "ambulance",
   "stepdown",
 ];
@@ -51,6 +58,38 @@ const SEED = [
     kinds: ["homecare"],
     mobile: "9654222904",
     outletId: "MH-OUT-SD",
+  },
+  {
+    id: "P-HC-02",
+    name: "Ankit Sharma",
+    role: "Home Care nurse",
+    kinds: ["homecare"],
+    mobile: "9654222914",
+    outletId: "MH-OUT-SD",
+  },
+  {
+    id: "P-HC-03",
+    name: "Kavita Rai",
+    role: "Home Care caregiver",
+    kinds: ["homecare"],
+    mobile: "9654222924",
+    outletId: "MH-OUT-CD",
+  },
+  {
+    id: "P-HC-04",
+    name: "Rohan Malhotra",
+    role: "Physiotherapist",
+    kinds: ["homecare"],
+    mobile: "9654222934",
+    outletId: "MH-OUT-WD",
+  },
+  {
+    id: "P-HC-05",
+    name: "Meena Joshi",
+    role: "Home Care nurse",
+    kinds: ["homecare"],
+    mobile: "9654222944",
+    outletId: "MH-OUT-ND",
   },
   {
     id: "P-PSY-01",
@@ -115,23 +154,31 @@ function normalizeKinds(raw) {
   return kinds.length ? kinds : ["medicine"];
 }
 
+function normalizePartnerPercent(value, kinds) {
+  const clamped = clampSplitPercent(value);
+  if (clamped != null) return clamped;
+  return defaultPartnerPercentFor(kinds?.[0] || "medicine");
+}
+
 function sanitizePartner(row) {
   if (!row || typeof row !== "object") return null;
   const id = clipText(row.id, 40);
   const name = clipText(row.name, 80);
   if (!id || !name) return null;
   const loginId = normalizePartnerLoginId(row.loginId);
+  const kinds = normalizeKinds(row.kinds);
   const { pin, password, ...rest } = row;
   return {
     ...rest,
     id,
     name,
     role: clipText(row.role, 80) || "Partner",
-    kinds: normalizeKinds(row.kinds),
+    kinds,
     mobile: String(row.mobile || "").replace(/\D/g, "").slice(0, 10),
     outletId: clipText(row.outletId, 40),
     loginId,
     passwordHash: String(row.passwordHash || "").trim(),
+    partnerPercent: normalizePartnerPercent(row.partnerPercent, kinds),
   };
 }
 
@@ -251,6 +298,7 @@ export async function createPartner(body = {}) {
     kinds: body.kinds,
     mobile: body.mobile,
     outletId: body.outletId,
+    partnerPercent: body.partnerPercent,
   });
   list.push(row);
   await writePartners(list);
@@ -265,12 +313,36 @@ export async function createPartner(body = {}) {
   return { ok: true, partner: publicPartner(row) };
 }
 
+export async function updatePartner(id, body = {}) {
+  const list = await readPartners();
+  const index = list.findIndex((row) => row.id === id);
+  if (index < 0) return { ok: false, error: "Partner not found." };
+  const current = list[index];
+  const next = sanitizePartner({
+    ...current,
+    name: body.name != null ? body.name : current.name,
+    role: body.role != null ? body.role : current.role,
+    kinds: body.kinds != null ? body.kinds : current.kinds,
+    mobile: body.mobile != null ? body.mobile : current.mobile,
+    outletId: body.outletId != null ? body.outletId : current.outletId,
+    partnerPercent:
+      body.partnerPercent != null ? body.partnerPercent : current.partnerPercent,
+    id: current.id,
+    loginId: current.loginId,
+    passwordHash: current.passwordHash,
+  });
+  list[index] = next;
+  await writePartners(list);
+  return { ok: true, partner: publicPartner(next) };
+}
+
 export function partnerIdFromToken(token) {
   return tokens.get(String(token || "")) || "";
 }
 
-function orderKind(row) {
+export function orderKind(row) {
   const kind = String(row?.kind || row?.orderType || "").toLowerCase();
+  if (kind === "cart") return "medicine";
   if (KIND_OPTIONS.includes(kind)) return kind;
   const service = String(row?.serviceType || "").toLowerCase();
   if (service === "radiology") return "radiology";
@@ -288,10 +360,31 @@ function isPendingPartnerConfirm(row) {
 
 export function partnerCanAccessJob(partner, row) {
   if (!partner || !row) return false;
+  const kinds = Array.isArray(partner.kinds) ? partner.kinds : [];
+  const kind = orderKind(row);
+  if (!kinds.includes(kind)) return false;
   if (row.partnerId && row.partnerId === partner.id) return true;
   if (!isPendingPartnerConfirm(row)) return false;
-  const kinds = Array.isArray(partner.kinds) ? partner.kinds : [];
-  return kinds.includes(orderKind(row));
+  return true;
+}
+
+export function concernedPartnersForOrder(order, partners = []) {
+  const kind = orderKind(order);
+  const assignedId = String(
+    order?.partnerId || order?.preferredPartnerId || ""
+  ).trim();
+  const list = (Array.isArray(partners) ? partners : []).filter(Boolean);
+  const exact = list.filter((row) => row.id === assignedId);
+  if (exact.length) return exact;
+  const byKind = list.filter((row) =>
+    (Array.isArray(row.kinds) ? row.kinds : []).includes(kind)
+  );
+  const outletId = String(order?.outletId || "").trim();
+  if (kind === "medicine" && outletId) {
+    const byOutlet = byKind.filter((row) => row.outletId === outletId);
+    if (byOutlet.length) return byOutlet;
+  }
+  return byKind;
 }
 
 export async function listPartnerJobs(partnerId, token) {
@@ -306,11 +399,25 @@ export async function listPartnerJobs(partnerId, token) {
 export async function assignPartnerToOrder(orderId, body) {
   const partner = await findPartner(body.partnerId);
   if (!partner) return null;
-  return patchOrder(orderId, {
+  const wanted = String(orderId || "");
+  const existing = (await listOrders()).find(
+    (row) =>
+      String(row.id) === wanted ||
+      String(row.bookingId) === wanted ||
+      String(row.requestId) === wanted
+  );
+  const patch = {
     partnerId: partner.id,
     partnerName: partner.name,
     partnerMobile: partner.mobile,
     partnerRole: partner.role,
     partnerAssignedAt: Date.now(),
-  });
+  };
+  if (existing && !existing.split?.staffSet) {
+    patch.split = {
+      ...resplitOrder(existing, { partnerPercent: partner.partnerPercent }),
+      staffSet: false,
+    };
+  }
+  return patchOrder(orderId, patch);
 }

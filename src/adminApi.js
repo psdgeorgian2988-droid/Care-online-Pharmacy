@@ -97,6 +97,19 @@ export async function setStaffPartnerLogin(id, body) {
   );
 }
 
+export async function patchStaffPartner(id, body) {
+  return parseResponse(
+    await apiFetch(`/api/admin/partners/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${staffToken()}`,
+      },
+      body: JSON.stringify(body),
+    })
+  );
+}
+
 export async function fetchPublicFeatures() {
   return parseResponse(await apiFetch("/api/features"));
 }

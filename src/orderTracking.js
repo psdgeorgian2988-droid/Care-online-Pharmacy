@@ -8,7 +8,10 @@ import {
 import { publishOrder } from "./adminApi";
 import { withDeliveryOutlet } from "./deliveryOutlets";
 import { checkpointState, ensureOrderCodes, gatedTrackStatus } from "./orderQr";
-import { isAwaitingPartnerConfirm } from "./orderConfirm.js";
+import {
+  isAwaitingCustomerSlotConfirm,
+  isAwaitingPartnerConfirm,
+} from "./orderConfirm.js";
 import { diagnosticStepLabel, isDiagnosticKind } from "./labPipeline.js";
 
 export const ORDER_STORAGE = {
@@ -18,12 +21,14 @@ export const ORDER_STORAGE = {
   homecare: "mediHomeHomeCareBookings",
   vaccination: "mediHomeVaccinationBookings",
   psychologist: "mediHomePsychologistBookings",
+  doctor: "mediHomeDoctorBookings",
   stepdown: "mediHomeStepDownBookings",
   ambulance: "mediHomeAmbulanceRequests",
 };
 
 export const TRACK_STEPS = [
   { key: "requested", label: "Awaiting Partner Confirmation" },
+  { key: "slot_offered", label: "Awaiting Customer Slot Confirmation" },
   { key: "confirmed", label: "Confirmed" },
   { key: "assigned", label: "Partner Assigned" },
   { key: "sample_collected", label: "Sample Collected" },
@@ -42,6 +47,7 @@ const DURATION_MS = {
   homecare: 170000,
   vaccination: 170000,
   psychologist: 170000,
+  doctor: 170000,
   stepdown: 180000,
   ambulance: 90000,
 };
@@ -89,6 +95,8 @@ export function kindLabel(kind) {
       return "Vaccination";
     case "psychologist":
       return "Psychologist Consultation";
+    case "doctor":
+      return "Doctor Appointment";
     case "stepdown":
       return "Step-Down Care";
     case "ambulance":
@@ -108,6 +116,8 @@ export function partnerRole(kind) {
       return "Vaccination nurse";
     case "psychologist":
       return "Psychologist";
+    case "doctor":
+      return "Doctor";
     case "stepdown":
       return "Admission coordinator";
     case "lab":
@@ -150,6 +160,12 @@ const AGENT_ROSTER = {
     { name: "Dr. Rhea Kapoor", mobile: "9999183340" },
     { name: "Dr. Imran Qureshi", mobile: "9818894412" },
   ],
+  doctor: [
+    { name: "Dr. Neha Bansal", mobile: "9813346701" },
+    { name: "Dr. Amit Khurana", mobile: "9876612098" },
+    { name: "Dr. Sana Qureshi", mobile: "9999183302" },
+    { name: "Dr. Rohit Malhotra", mobile: "9818894408" },
+  ],
   lab: [
     { name: "Phlebotomist Kiran Das", mobile: "9815567023" },
     { name: "Phlebotomist Farhan Ali", mobile: "9871204456" },
@@ -169,6 +185,16 @@ const AGENT_ROSTER = {
 };
 
 export function withAssignedAgent(record, kind = recordKind(record)) {
+  if (isAwaitingPartnerConfirm(record) || isAwaitingCustomerSlotConfirm(record)) {
+    return {
+      ...record,
+      agentName: record.agentName || "",
+      agentMobile: record.agentMobile || "",
+      agentVehicle: record.agentVehicle || "",
+      agentUnit: record.agentUnit || "",
+      agentRole: record.agentRole || partnerRole(kind),
+    };
+  }
   const id = recordId(record, kind) || record?.bookingId || record?.requestId || record?.id;
   const pool = AGENT_ROSTER[kind] || AGENT_ROSTER.medicine;
   const pick = pool[hashSeed(String(id || "medihome")) % pool.length];
@@ -232,6 +258,7 @@ export function partnerCopy(kind) {
 export function stepLabel(kind, key) {
   if (isDiagnosticKind(kind)) return diagnosticStepLabel(key, kind);
   if (key === "requested") return "Awaiting Partner Confirmation";
+  if (key === "slot_offered") return "Awaiting Customer Slot Confirmation";
   if (key === "declined") return "Declined By Partner";
   if (key === "done") return doneLabel(kind);
   if (key === "packed") return "Packed";
@@ -256,6 +283,9 @@ export function recordKind(record, fallback = "medicine") {
   ) {
     return "psychologist";
   }
+  if (record?.orderType === "doctor" || record?.bookingId?.startsWith("MH-DOC-")) {
+    return "doctor";
+  }
   if (record?.orderType === "stepdown" || record?.bookingId?.startsWith("MH-SD-")) {
     return "stepdown";
   }
@@ -269,6 +299,7 @@ function usesBookingId(kind) {
     kind === "homecare" ||
     kind === "vaccination" ||
     kind === "psychologist" ||
+    kind === "doctor" ||
     kind === "stepdown" ||
     kind === "lab" ||
     kind === "radiology"
@@ -546,9 +577,10 @@ export function loadAllOrders() {
   const psychologist = readList(ORDER_STORAGE.psychologist).map((row) =>
     unifyOrder(row, "psychologist")
   );
+  const doctor = readList(ORDER_STORAGE.doctor).map((row) => unifyOrder(row, "doctor"));
   const stepDown = readList(ORDER_STORAGE.stepdown).map((row) => unifyOrder(row, "stepdown"));
   const ambulance = readList(ORDER_STORAGE.ambulance).map((row) => unifyOrder(row, "ambulance"));
-  return [...diagnostics, ...homeCare, ...vaccination, ...psychologist, ...stepDown, ...ambulance, ...medicines].sort(
+  return [...diagnostics, ...homeCare, ...vaccination, ...psychologist, ...doctor, ...stepDown, ...ambulance, ...medicines].sort(
     (a, b) => (b.sortKey || 0) - (a.sortKey || 0)
   );
 }
@@ -562,16 +594,21 @@ export function findOrderById(id) {
 export async function resolveOrderById(id) {
   const local = findOrderById(id);
   if (local) return local;
+  return refreshOrderFromServer(id);
+}
+
+export async function refreshOrderFromServer(id) {
   const wanted = decodeURIComponent(String(id || "")).trim();
-  if (!wanted) return null;
+  const local = findOrderById(wanted);
+  if (!wanted) return local || null;
   try {
     const res = await apiFetch(`/api/orders/lookup?id=${encodeURIComponent(wanted)}`);
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.order) return null;
-    const kind = data.order.kind || data.order.orderType || "medicine";
-    return persistOrder(withTracking(data.order, kind));
+    if (!res.ok || !data.order) return local || null;
+    const kind = data.order.kind || data.order.orderType || recordKind(data.order);
+    return persistOrder(withTracking({ ...(local || {}), ...data.order, kind }, kind));
   } catch {
-    return null;
+    return local || null;
   }
 }
 

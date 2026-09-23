@@ -3,21 +3,38 @@ import { useFeatures } from "./featureFlags";
 import { featureEnabled } from "./salesReport";
 import { HOME_SERVICE_TREE } from "./homeServiceTree";
 import ServiceCartoon from "./ServiceCartoon";
+import { hasAccountSession, useLoginSession } from "./authSession";
+import { goToHash } from "./hashRoute";
 
 export default function HomeServiceCatalog({ className = "", sectionKeys } = {}) {
   const features = useFeatures();
+  const user = useLoginSession();
+  const showReports = hasAccountSession(user);
   const sections = useMemo(() => {
     const allowed =
       Array.isArray(sectionKeys) && sectionKeys.length
         ? new Set(sectionKeys.map(String))
         : null;
-    return HOME_SERVICE_TREE.filter((section) =>
-      allowed ? allowed.has(section.key) : true
-    ).map((section) => ({
+    return HOME_SERVICE_TREE.filter((section) => {
+      if (allowed && !allowed.has(section.key)) return false;
+      if (section.key === "reports" && !showReports) return false;
+      return true;
+    }).map((section) => ({
       ...section,
       on: featureEnabled(features, section.key),
     }));
-  }, [features, sectionKeys]);
+  }, [features, sectionKeys, showReports]);
+
+  const openMedicineSearch = (event) => {
+    event.preventDefault();
+    try {
+      sessionStorage.setItem("mediHomeMedicineCategory", "Search");
+      sessionStorage.removeItem("mediHomeMedicineSearch");
+    } catch {
+      /* ignore */
+    }
+    goToHash("#medicine-search");
+  };
 
   return (
     <section
@@ -44,11 +61,24 @@ export default function HomeServiceCatalog({ className = "", sectionKeys } = {})
                 aria-disabled={section.on ? undefined : "true"}
                 style={{ "--item-index": itemIndex }}
                 onClick={
-                  section.on
-                    ? undefined
-                    : (event) => {
+                  !section.on
+                    ? (event) => {
                         event.preventDefault();
                       }
+                    : item.id === "med-search"
+                      ? openMedicineSearch
+                      : item.category
+                        ? () => {
+                            try {
+                              sessionStorage.setItem(
+                                "mediHomeMedicineCategory",
+                                item.category
+                              );
+                            } catch {
+                              /* ignore */
+                            }
+                          }
+                        : undefined
                 }
               >
                 {item.logo ? (

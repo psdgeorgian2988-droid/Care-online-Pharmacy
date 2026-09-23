@@ -172,6 +172,15 @@ export function prescriptionDraftIsPdf(draft) {
   return /\.pdf$/i.test(draft.fileName || "");
 }
 
+export function hasPrescriptionDraft(store) {
+  const draft = readPrescriptionDraft(store);
+  return Boolean(draft?.fileName && draft?.fileData);
+}
+
+export function prescriptionDraftName(store) {
+  return String(readPrescriptionDraft(store)?.fileName || "").trim();
+}
+
 export function fileFromPrescriptionDraft(draft) {
   if (!draft?.fileData) return null;
   try {

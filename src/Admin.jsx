@@ -64,24 +64,16 @@ import {
   MonthStackChart,
 } from "./adminCharts";
 import {
-  isUnassigned,
+  SERVICE_ORDER_KINDS,
+  groupOrdersByKind,
   matchesStatusFilter,
   serviceKind,
   trackKey,
 } from "./orderStatus";
 import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateToday, isoDateYearsAgo } from "./personFields";
-import { paymentMethodLabel } from "./paymentMethods";
-import { settlementOpsNote } from "./paymentSplit";
-
-function personName(order) {
-  return (
-    order.patientName ||
-    order.fullName ||
-    order.name ||
-    "Not provided"
-  );
-}
+import OrderFullView from "./OrderFullView.jsx";
+import OrderListTable from "./OrderListTable.jsx";
 
 function downloadCsv(filename, text) {
   const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
@@ -118,6 +110,7 @@ function Admin() {
   const [reportTo, setReportTo] = useState("");
   const [reportRows, setReportRows] = useState(null);
   const [chartPeriod, setChartPeriod] = useState("mtd");
+  const [openOrderId, setOpenOrderId] = useState("");
 
   const loadDesk = async () => {
     setLoading(true);
@@ -255,6 +248,23 @@ function Admin() {
       await loadDesk();
     } catch (err) {
       setError(err.message || "Could Not Assign Partner.");
+    }
+  };
+
+  const handleSplit = async (order, partnerPercent) => {
+    const id = order.id || order.bookingId || order.requestId;
+    const next = Number(partnerPercent);
+    if (!Number.isFinite(next) || next < 0 || next > 100) {
+      setError("Partner split must be between 0 and 100.");
+      return;
+    }
+    setError("");
+    try {
+      const data = await patchStaffOrder(id, { partnerPercent: next });
+      persistOrder(order, data.order || { split: { ...order.split, partnerPercent: next } });
+      await loadDesk();
+    } catch (err) {
+      setError(err.message || "Could Not Update Split.");
     }
   };
 
@@ -896,6 +906,7 @@ function Admin() {
             ["radiology", "Radiology"],
             ["homecare", "Home Care"],
             ["vaccination", "Vaccination"],
+            ["doctor", "Doctor Appointment"],
             ["psychologist", "Psychologist"],
             ["stepdown", "Step-Down"],
             ["ambulance", "Ambulance"],
@@ -935,106 +946,28 @@ function Admin() {
           ))}
         </div>
 
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Order</th>
-                <th>Type</th>
-                <th>Patient</th>
-                <th>PIN</th>
-                <th>Outlet</th>
-                <th>When</th>
-                <th>Amount</th>
-                <th>Pay / Split</th>
-                <th>Partner</th>
-                <th>Status</th>
-                <th>Track</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan="11">
-                    {loading
-                      ? "Loading…"
-                      : "No Orders."}
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((order) => {
-                  const id = order.id || order.bookingId || order.requestId;
-                  const kind = serviceKind(order);
-                  const step = trackKey(order);
-                  return (
-                    <tr
-                      key={`${kind}-${id}`}
-                      className={isUnassigned(order) ? "is-unassigned" : ""}
-                    >
-                      <td>#{id}</td>
-                      <td>{kindLabel(kind)}</td>
-                      <td>{personName(order)}</td>
-                      <td>{order.pinCode || order.pin || "—"}</td>
-                      <td>
-                        {order.outletName ? (
-                          <>
-                            {order.outletName}
-                            {order.outletArea ? (
-                              <span className="admin-outlet-area">
-                                {" "}
-                                · {order.outletArea}
-                              </span>
-                            ) : null}
-                          </>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td>{order.date || order.bookedAt || order.requestedAt || "—"}</td>
-                      <td>
-                        {order.total != null && order.total !== ""
-                          ? `₹${Number(order.total).toLocaleString("en-IN")}`
-                          : "—"}
-                        {order.split?.discountRupees > 0 ? (
-                          <span className="admin-outlet-area">
-                            <br />
-                            Sale ₹
-                            {Number(order.split.saleRupees || order.saleRupees || 0).toLocaleString("en-IN")}
-                            {" · Disc ₹"}
-                            {Number(order.split.discountRupees).toLocaleString("en-IN")}
-                            {order.split.couponCode ? ` · ${order.split.couponCode}` : ""}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td>
-                        {paymentMethodLabel(order.paymentMethod, "COD")}
-                        {order.paymentStatus ? ` · ${order.paymentStatus}` : ""}
-                        {order.split ? (
-                          <span className="admin-outlet-area">
-                            <br />
-                            MH ₹{Number(order.split.platformRupees || 0).toLocaleString("en-IN")}
-                            {" · "}
-                            Partner ₹
-                            {Number(order.split.partnerRupees || 0).toLocaleString("en-IN")}
-                            {order.split.partnerPercent != null
-                              ? ` (${order.split.partnerPercent}% MRP)`
-                              : ""}
-                            {settlementOpsNote(order.split, {
-                              collector: order.collector,
-                              paymentMethod: order.paymentMethod,
-                            }) ? (
-                              <>
-                                <br />
-                                {settlementOpsNote(order.split, {
-                                  collector: order.collector,
-                                  paymentMethod: order.paymentMethod,
-                                })}
-                              </>
-                            ) : null}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td>
+        {groupOrdersByKind(
+          filtered,
+          filter === "all" ? SERVICE_ORDER_KINDS : [filter]
+        ).map((group) => (
+          <section key={group.kind} className="order-category" aria-label={group.title}>
+            <h2>{group.title}</h2>
+            <OrderListTable
+              orders={group.orders}
+              audience="staff"
+              empty={loading ? "Loading…" : `No ${group.title.toLowerCase()}.`}
+              openId={openOrderId}
+              onOpen={setOpenOrderId}
+              renderDetail={(order) => {
+                const id = order.id || order.bookingId || order.requestId;
+                const kind = serviceKind(order);
+                const step = trackKey(order);
+                return (
+                  <div className="admin-order-detail-inner">
+                    <OrderFullView order={order} audience="staff" />
+                    <div className="admin-order-tools">
+                      <label>
+                        Assigned to
                         <select
                           value={order.partnerId || ""}
                           onChange={(event) => handleAssign(order, event.target.value)}
@@ -1053,11 +986,9 @@ function Admin() {
                               </option>
                             ))}
                         </select>
-                      </td>
-                      <td>
-                        <span className={`admin-status-pill is-${step}`}>
-                          {step === "done" ? doneLabel(kind) : TRACK_STEPS.find((row) => row.key === step)?.label}
-                        </span>
+                      </label>
+                      <label>
+                        Status
                         <select
                           value={step}
                           onChange={(event) => handleStatus(order, event.target.value)}
@@ -1068,27 +999,55 @@ function Admin() {
                             </option>
                           ))}
                         </select>
-                      </td>
-                      <td>
-                        <a href={trackHref(id)}>Live Track</a>
-                        {String(kind) === "medicine" ? (
-                          <>
-                            {" · "}
-                            <a href={`#scan?id=${encodeURIComponent(id)}&step=pack`}>Scan Packing</a>
-                            {" · "}
-                            <a href={`#scan?id=${encodeURIComponent(id)}&step=pickup`}>Scan Pickup</a>
-                            {" · "}
-                            <a href={`#scan?id=${encodeURIComponent(id)}&step=deliver`}>Scan Delivery</a>
-                          </>
-                        ) : null}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </label>
+                      <label>
+                        Partner %
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          defaultValue={
+                            order.split?.partnerPercent ??
+                            partners.find((row) => row.id === order.partnerId)
+                              ?.partnerPercent ??
+                            ""
+                          }
+                          key={`${id}-${order.split?.partnerPercent ?? ""}-${order.updatedAt || ""}`}
+                          aria-label={`Partner split percent for order ${id}`}
+                          onBlur={(event) => {
+                            const next = Number(event.target.value);
+                            const current = Number(order.split?.partnerPercent);
+                            if (Number.isFinite(next) && next !== current) {
+                              handleSplit(order, next);
+                            }
+                          }}
+                        />
+                      </label>
+                      {order.split?.partnerPercent != null ? (
+                        <span className="admin-outlet-area">
+                          MediHome {100 - Number(order.split.partnerPercent)}%
+                        </span>
+                      ) : null}
+                    </div>
+                    <p>
+                      <a href={trackHref(id)}>Live Track</a>
+                      {String(kind) === "medicine" ? (
+                        <>
+                          {" · "}
+                          <a href={`#scan?id=${encodeURIComponent(id)}&step=pack`}>Scan Packing</a>
+                          {" · "}
+                          <a href={`#scan?id=${encodeURIComponent(id)}&step=pickup`}>Scan Pickup</a>
+                          {" · "}
+                          <a href={`#scan?id=${encodeURIComponent(id)}&step=deliver`}>Scan Delivery</a>
+                        </>
+                      ) : null}
+                    </p>
+                  </div>
+                );
+              }}
+            />
+          </section>
+        ))}
       </div>
     </>
   );
@@ -1103,6 +1062,8 @@ const styles = `
 .admin-login{max-width:420px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}
+.order-category{margin:0 0 18px}
+.order-category h2{margin:0 0 8px;font-size:16px;color:#143246}
 .admin-table-wrap{overflow:auto;background:#fff;border:1px solid #e4ecef;border-radius:12px;margin-bottom:16px}
 .admin-table{width:100%;border-collapse:collapse;font-size:13px}
 .admin-table th,.admin-table td{padding:8px 10px;border-bottom:1px solid #edf1f3;text-align:left;vertical-align:middle}
@@ -1224,6 +1185,16 @@ const styles = `
 .admin-partner-kinds{display:flex;flex-wrap:wrap;gap:8px;font-weight:600}
 .admin-partner-kinds label{flex-direction:row;align-items:center;gap:6px;font-weight:600}
 .admin-partner-create button{border:1px solid #1a6b7a;border-radius:6px;background:#1a6b7a;color:#fff;font:inherit;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer}
+.admin-order-toggle{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;border:0;background:transparent;padding:0;font:inherit;font-weight:800;color:#1a6b7a;cursor:pointer}
+.admin-order-toggle span{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
+.admin-order-toggle.is-on span{color:#1a6b7a}
+.admin-order-detail td{background:#f7fbfd;vertical-align:top}
+.admin-split-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
+.admin-split-row input[type=number]{width:72px;min-width:72px;max-width:80px}
+.admin-split-row label{display:flex;flex-direction:column;gap:2px;font-size:11px;font-weight:700;color:#5d7180}
+.admin-order-tools{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:12px 0 8px}
+.admin-order-tools label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;color:#5d7180}
+.admin-order-tools input[type=number]{width:72px}
 @media (max-width:800px){.admin-partner-grid{grid-template-columns:1fr}}
 .admin-chat-layout{display:grid;grid-template-columns:220px 1fr;gap:10px}
 .admin-chat-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:240px;overflow:auto}

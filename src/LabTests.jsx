@@ -2,10 +2,19 @@ import React, { useEffect, useMemo, useState } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
-import { loadAllOrders, persistOrder, trackHref, withTracking } from "./orderTracking";
 import {
-  partnerAcceptFields,
+  loadAllOrders,
+  persistOrder,
+  refreshOrderFromServer,
+  trackHref,
+  withTracking,
+} from "./orderTracking";
+import {
+  appointmentSlotLabel,
+  diagnosticRequestFields,
+  isAwaitingCustomerSlotConfirm,
 } from "./orderConfirm";
+import SlotOfferCard from "./SlotOfferCard";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { useBusyOverlay } from "./BusyWait";
@@ -356,6 +365,28 @@ function LabTests() {
   }, [prepSummaryTests]);
 
   useEffect(() => {
+    const id = booking?.bookingId;
+    const kind = booking?.serviceType || booking?.kind;
+    if (!id || kind !== "radiology") return undefined;
+    if (booking.partnerConfirmed && booking.slotConfirmed) return undefined;
+    let cancelled = false;
+    const timer = setInterval(async () => {
+      const latest = await refreshOrderFromServer(id);
+      if (!cancelled && latest) setBooking(latest);
+    }, 6000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [
+    booking?.bookingId,
+    booking?.partnerConfirmed,
+    booking?.slotConfirmed,
+    booking?.serviceType,
+    booking?.kind,
+  ]);
+
+  useEffect(() => {
     if (!prepPopup) return undefined;
     const onKey = (event) => {
       if (event.key === "Escape") setPrepPopup(null);
@@ -671,12 +702,10 @@ function LabTests() {
         visitType: serviceType === "radiology" ? "centre" : form.visitType,
         bookedAt: new Date().toLocaleString(),
         bookedAtMs: Date.now(),
-        ...partnerAcceptFields(),
-        trackStatus: serviceType === "lab" ? "assigned" : "confirmed",
-        status:
-          serviceType === "lab"
-            ? "Partner assigned — sample collection"
-            : "Partner confirmed — visit scheduled",
+        ...diagnosticRequestFields(kind, {
+          date: booked.date || form.date,
+          timeSlot: form.timeSlot,
+        }),
         paymentMethod: "pending",
         paymentStatus: "awaiting_payment",
         paid: false,
@@ -786,11 +815,23 @@ function LabTests() {
             {flowStep === "placed" ? (
               <>
                 <div className="success-icon">✓</div>
-                <h1>Booking Confirmed</h1>
+                <h1>
+                  {isLabBooking
+                    ? "Request sent"
+                    : booking.partnerConfirmed
+                      ? "Scan booking confirmed"
+                      : isAwaitingCustomerSlotConfirm(booking)
+                        ? "New time slot offered"
+                        : "Scan request sent"}
+                </h1>
                 <p>
                   {isLabBooking
                     ? "Your request has been sent to the lab. Track sample collection below."
-                    : "Your request has been sent to the imaging centre. Track your appointment below."}
+                    : booking.partnerConfirmed
+                      ? "The imaging centre confirmed your slot. Track your appointment below."
+                      : isAwaitingCustomerSlotConfirm(booking)
+                        ? "Your requested slot was not available. Accept the centre’s offered slot to confirm the booking."
+                        : "Your request has been sent to the imaging centre. The booking is confirmed after they accept your slot, or after you accept a new slot they offer."}
                 </p>
               </>
             ) : null}
@@ -846,9 +887,23 @@ function LabTests() {
                 <strong>{booking.date}</strong>
               </div>
               <div className="confirm-row">
-                <span>Time slot</span>
-                <strong>{booking.timeSlot}</strong>
+                <span>
+                  {booking.slotConfirmed
+                    ? "Confirmed time slot"
+                    : isAwaitingCustomerSlotConfirm(booking)
+                      ? "Offered time slot"
+                      : "Requested time slot"}
+                </span>
+                <strong>{appointmentSlotLabel(booking)}</strong>
               </div>
+              <SlotOfferCard
+                order={booking}
+                onResolved={(next) => {
+                  setBooking(next);
+                  localStorage.setItem("mediHomeLabBooking", JSON.stringify(next));
+                  localStorage.setItem("mediHomeLastBooking", JSON.stringify(next));
+                }}
+              />
               <div className="confirm-row">
                 <span>Address</span>
                 <strong>{booking.address}</strong>
@@ -872,7 +927,8 @@ function LabTests() {
               </div>
             </div>
 
-            {flowStep !== "pay" ? (
+            {flowStep !== "pay" &&
+            (isLabBooking || booking.partnerConfirmed) ? (
               <AssignedAgent
                 record={{
                   ...booking,
@@ -1331,7 +1387,7 @@ function LabTests() {
 
             <div className="lab-field">
               <label htmlFor="timeSlot">
-                Time slot <em>*</em>
+                {isLab ? "Time slot" : "Preferred time slot"} <em>*</em>
               </label>
               <select id="timeSlot" name="timeSlot" value={form.timeSlot} onChange={handleChange}>
                 <option value="">Select a slot</option>
@@ -1347,6 +1403,10 @@ function LabTests() {
                 </small>
               ) : errors.timeSlot ? (
                 <small className="lab-error">{errors.timeSlot}</small>
+              ) : !isLab ? (
+                <small className="lab-hint">
+                  If this slot is full, the imaging centre will offer another time. The booking is confirmed only after you accept that slot.
+                </small>
               ) : null}
             </div>
 

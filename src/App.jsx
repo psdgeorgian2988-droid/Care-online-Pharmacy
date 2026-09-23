@@ -13,6 +13,7 @@ import {
   MyOrders,
   Partner,
   Profile,
+  DoctorAppointment,
   Psychologist,
   Reports,
   Reviews,
@@ -25,7 +26,6 @@ import {
 } from "./routePages";
 import Seo from "./Seo";
 import SocialLinks from "./SocialLinks";
-import MedicineSearchTools from "./MedicineSearchTools";
 import { reviewStats } from "./reviewStore";
 import CareChat from "./CareChat.jsx";
 import NeedHelp from "./NeedHelp.jsx";
@@ -34,7 +34,12 @@ import { CARE_WHATSAPP } from "./careChat.js";
 import ComingSoon from "./ComingSoon";
 import ErrorBoundary from "./ErrorBoundary";
 import AuthPage from "./AuthPage";
-import { logoutSession, useLoginSession } from "./authSession";
+import {
+  hasAccountSession,
+  logoutSession,
+  rememberReturnHash,
+  useLoginSession,
+} from "./authSession";
 import { useFeatures } from "./featureFlags";
 import { featureEnabled, pausedServiceTitle, routeEnabled } from "./salesReport";
 import { goToHash, parseAppHash } from "./hashRoute";
@@ -48,6 +53,7 @@ import { useIsPhoneLayout } from "./useLayoutMode";
 import AppBottomNav from "./AppBottomNav";
 import BackToHome from "./BackToHome";
 import WebinarNotice from "./WebinarNotice";
+import SlotOfferBanner from "./SlotOfferBanner";
 import CustomerWelcome, { needsCustomerWelcome } from "./CustomerWelcome";
 import {
   isAppShell,
@@ -69,6 +75,7 @@ const NAV_LINKS = [
   { href: "#labs", label: "Lab Tests" },
   { href: "#homecare", label: "Home Care" },
   { href: "#vaccination", label: "Vaccination Record" },
+  { href: "#doctor", label: "Doctor Appointment" },
   { href: "#psychologist", label: "Psychologist" },
   { href: "#stepdown", label: "Step-Down" },
   { href: "#ambulance", label: "Ambulance" },
@@ -78,6 +85,7 @@ const NAV_LINKS = [
 
 const ACCOUNT_LINKS = [
   { href: "#myorders", label: "My Orders" },
+  { href: "#reports", label: "Reports" },
   { href: "#scan?step=deliver", label: "Scan Delivery" },
   { href: "#profile", label: "Profile" },
 ];
@@ -190,7 +198,6 @@ function HomeReviewsTeaser() {
 function WebsiteHomePage() {
   const features = useFeatures();
   const user = useLoginSession();
-  const [query, setQuery] = useState("");
   const isPhone = useIsPhoneLayout();
 
   const guestStartHref = featureEnabled(features, "lab") || featureEnabled(features, "radiology")
@@ -211,25 +218,14 @@ function WebsiteHomePage() {
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const applyMedicineQuery = (value) => {
-    const next = String(value || "").trim();
-    setQuery(next);
+  const openMedicineSearch = () => {
     try {
-      if (next) sessionStorage.setItem("mediHomeMedicineSearch", next);
-      else sessionStorage.removeItem("mediHomeMedicineSearch");
+      sessionStorage.setItem("mediHomeMedicineCategory", "Search");
+      sessionStorage.removeItem("mediHomeMedicineSearch");
     } catch {
       /* ignore */
     }
-    goToHash(
-      next
-        ? `#medicine-search?q=${encodeURIComponent(next)}`
-        : "#medicine-search"
-    );
-  };
-
-  const goToMedicines = (event) => {
-    event.preventDefault();
-    applyMedicineQuery(query);
+    goToHash("#medicine-search");
   };
 
   return (
@@ -249,19 +245,13 @@ function WebsiteHomePage() {
             </section>
 
             {featureEnabled(features, "medicine") ? (
-              <>
-                <form className="home-search-form" onSubmit={goToMedicines}>
-                  <input
-                    type="search"
-                    placeholder="Search by brand, name or salt (e.g. Dolo, Crocin)"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    aria-label="Search medicines"
-                  />
-                  <button type="submit">Search</button>
-                </form>
-                <MedicineSearchTools onQuery={applyMedicineQuery} />
-              </>
+              <button
+                type="button"
+                className="home-search-open"
+                onClick={openMedicineSearch}
+              >
+                Search medicines
+              </button>
             ) : null}
 
             <p className="home-whatsapp-line">
@@ -370,9 +360,12 @@ function App() {
     lab: selectedLab,
   } = parseAppHash(hash);
   const isAuthRoute = AUTH_ROUTES.has(route);
-  const menuNavLinks = isAuthRoute
-    ? NAV_LINKS.filter((link) => !AUTH_HIDDEN_NAV.has(link.href))
-    : NAV_LINKS;
+  const loggedIn = hasAccountSession(user);
+  const menuNavLinks = NAV_LINKS.filter((link) => {
+    if (isAuthRoute && AUTH_HIDDEN_NAV.has(link.href)) return false;
+    if (link.href === "#reports" && !loggedIn) return false;
+    return true;
+  });
   const isOps = route === "#admin" || route === "#partner-desk";
   const features = useFeatures();
   const appRole = readAppRole();
@@ -417,6 +410,14 @@ function App() {
     return undefined;
   }, [appRole, isOps, route, sessionTick, user]);
 
+  useEffect(() => {
+    if (route !== "#reports") return undefined;
+    if (hasAccountSession(user)) return undefined;
+    rememberReturnHash("#reports");
+    goToHash("#login");
+    return undefined;
+  }, [route, user]);
+
   const renderPage = () => {
     if (shouldShowAppPicker(route)) {
       return <PortalsChooser />;
@@ -437,6 +438,8 @@ function App() {
         return <HomeCare />;
       case "#vaccination":
         return <Vaccination />;
+      case "#doctor":
+        return <DoctorAppointment />;
       case "#psychologist":
         return <Psychologist />;
       case "#stepdown":
@@ -552,6 +555,7 @@ function App() {
           {welcomeGate ? null : <AppHeader route={route} />}
           <main id="app-scroll">
             {welcomeGate || isAuthRoute ? null : <WebinarNotice />}
+            {welcomeGate || isAuthRoute ? null : <SlotOfferBanner />}
             <ErrorBoundary key={welcomeGate ? "welcome" : route}>
               <Suspense fallback={<PageFallback />}>
                 {welcomeGate ? (
@@ -669,6 +673,7 @@ function App() {
       <main>
         {welcomeGate || isAuthRoute ? null : <BackToHome show={showBackHome} />}
         {welcomeGate || isAuthRoute ? null : <WebinarNotice />}
+        {welcomeGate || isAuthRoute ? null : <SlotOfferBanner />}
         <ErrorBoundary key={welcomeGate ? "welcome" : route}>
           <Suspense fallback={<PageFallback />}>
             {welcomeGate ? (

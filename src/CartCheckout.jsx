@@ -4,10 +4,11 @@ import AssignedAgent from "./AssignedAgent";
 import { BillButton } from "./OrderBill.jsx";
 import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import { buildPartnerRxShare } from "./rxPartnerShare";
 import {
   checkMedicineAvailability,
   medicineConfirmedFields,
-  partnerAcceptFields,
+  diagnosticRequestFields,
 } from "./orderConfirm";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
@@ -47,7 +48,12 @@ import {
   writeMedicineCart,
   writeTestCart,
 } from "./medicineCartStore";
-import { fileFromPrescriptionDraft, readPrescriptionDraft } from "./prescriptionDraft";
+import {
+  PRESCRIPTION_EVENT,
+  hasPrescriptionDraft,
+  prescriptionDraftName,
+  readPrescriptionDraft,
+} from "./prescriptionDraft";
 
 function money(value) {
   return `₹${Number(value || 0)}`;
@@ -104,9 +110,8 @@ export default function CartCheckout() {
     timeSlot: "",
   }));
   const [errors, setErrors] = useState({});
-  const [prescriptionFile, setPrescriptionFile] = useState(() =>
-    fileFromPrescriptionDraft(readPrescriptionDraft())
-  );
+  const [rxDraft, setRxDraft] = useState(() => readPrescriptionDraft());
+  const [prescriptionFile, setPrescriptionFile] = useState(null);
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
   const [placing, setPlacing] = useState(false);
@@ -118,13 +123,18 @@ export default function CartCheckout() {
       setMedicines(readMedicineCart());
       setTests(readTestCart());
     };
+    const syncRx = () => setRxDraft(readPrescriptionDraft());
     window.addEventListener(MEDICINE_CART_EVENT, sync);
     window.addEventListener(TEST_CART_EVENT, sync);
+    window.addEventListener(PRESCRIPTION_EVENT, syncRx);
     window.addEventListener("storage", sync);
+    window.addEventListener("storage", syncRx);
     return () => {
       window.removeEventListener(MEDICINE_CART_EVENT, sync);
       window.removeEventListener(TEST_CART_EVENT, sync);
+      window.removeEventListener(PRESCRIPTION_EVENT, syncRx);
       window.removeEventListener("storage", sync);
+      window.removeEventListener("storage", syncRx);
     };
   }, []);
 
@@ -142,6 +152,8 @@ export default function CartCheckout() {
   const billTotal = testTotal + medicineTotal;
   const billSale = testTotal + medicineMrp;
   const needsRx = medicines.some(requiresPrescription);
+  const rxName = prescriptionFile?.name || rxDraft?.fileName || prescriptionDraftName();
+  const hasRx = Boolean(prescriptionFile) || hasPrescriptionDraft() || Boolean(rxDraft?.fileName);
   const today = isoDateToday();
   const maxVisit = labBookingMaxDate();
   const openSlots = useMemo(
@@ -190,7 +202,7 @@ export default function CartCheckout() {
       alert(Object.values(detailsErrors)[0]);
       return;
     }
-    if (needsRx && !prescriptionFile) {
+    if (needsRx && !hasRx) {
       alert("Please upload your prescription.");
       return;
     }
@@ -254,7 +266,8 @@ export default function CartCheckout() {
               ...whoFor,
               ...booked,
               mobileNumber: booked.mobile,
-              prescription: prescriptionFile ? prescriptionFile.name : "",
+              prescription: rxName,
+              ...buildPartnerRxShare("medicine"),
               ...addr,
               ...medicineConfirmedFields(availability),
               ...payment,
@@ -301,12 +314,10 @@ export default function CartCheckout() {
           timeSlot: form.timeSlot,
           bookedAt: new Date().toLocaleString(),
           bookedAtMs: Date.now(),
-          ...partnerAcceptFields(),
-          trackStatus: group.kind === "lab" ? "assigned" : "confirmed",
-          status:
-            group.kind === "lab"
-              ? "Partner assigned — sample collection"
-              : "Partner confirmed — visit scheduled",
+          ...diagnosticRequestFields(group.kind, {
+            date: form.date,
+            timeSlot: form.timeSlot,
+          }),
           ...payment,
           paid,
           paymentStatus: paid ? "paid" : payment.paymentStatus || "cod",
@@ -342,12 +353,23 @@ export default function CartCheckout() {
     return (
       <section className="cart-checkout-page">
         <div className="checkout-panel">
-          <h1>Order confirmed</h1>
+          <h1>
+            {confirmed.testOrders.some((row) => row.serviceType === "radiology") &&
+            !confirmed.medicineOrder
+              ? "Request sent"
+              : "Order confirmed"}
+          </h1>
           <PatienceNote kind="medicine" shown={false} />
           <p>
             Thank you, {confirmed.booked.patientName}. Medicines and tests in this
             cart were billed together.
           </p>
+          {confirmed.testOrders.some((row) => row.serviceType === "radiology") ? (
+            <p>
+              Imaging bookings stay as requests until the centre accepts your
+              preferred slot, or until you accept a new slot they offer.
+            </p>
+          ) : null}
           <p>
             <strong>Total paid:</strong> {money(confirmed.total)}
           </p>
@@ -558,7 +580,10 @@ export default function CartCheckout() {
                   onChange={(event) => patchForm("date", event.target.value)}
                 />
                 <label htmlFor="cartTimeSlot">
-                  Time slot <em>*</em>
+                  {tests.some((test) => test.kind === "radiology")
+                    ? "Preferred time slot"
+                    : "Time slot"}{" "}
+                  <em>*</em>
                   <select
                     id="cartTimeSlot"
                     name="timeSlot"
@@ -593,7 +618,7 @@ export default function CartCheckout() {
               </div>
             ) : null}
 
-            {needsRx ? (
+            {needsRx && !hasRx ? (
               <div className="checkout-rx">
                 <label htmlFor="cartRx">Prescription</label>
                 <input
@@ -602,7 +627,10 @@ export default function CartCheckout() {
                   accept="image/*,.pdf"
                   onChange={(event) => setPrescriptionFile(event.target.files[0])}
                 />
-                {prescriptionFile ? <p>Selected: {prescriptionFile.name}</p> : null}
+              </div>
+            ) : needsRx ? (
+              <div className="checkout-rx is-ready">
+                <p>Using uploaded prescription: {rxName}</p>
               </div>
             ) : null}
 

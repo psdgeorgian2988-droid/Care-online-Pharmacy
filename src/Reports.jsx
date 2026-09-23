@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateToday, isoDateYearsAgo } from "./personFields";
 import { readUserProfile } from "./addressFields";
-import { useLoginSession } from "./authSession";
+import { hasAccountSession, rememberReturnHash, useLoginSession } from "./authSession";
 import {
   householdReportPeople,
   reportBelongsTo,
@@ -283,6 +283,30 @@ function Reports() {
   const removeReport = (id) => {
     persist(reports.filter((item) => item.id !== id));
   };
+
+  if (!hasAccountSession(session)) {
+    return (
+      <>
+        <style>{styles}</style>
+        <div className="service-page reports-page">
+          <section className="service-hero">
+            <div>
+              <span className="service-kicker">MediHome Reports</span>
+              <h1>Reports are in your account</h1>
+              <p>Log in to see lab and imaging reports for your family.</p>
+              <a
+                className="service-submit"
+                href="#login"
+                onClick={() => rememberReturnHash("#reports")}
+              >
+                Login to open Reports
+              </a>
+            </div>
+          </section>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

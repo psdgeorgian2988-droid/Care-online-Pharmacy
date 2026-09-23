@@ -43,6 +43,21 @@ export function authEntryHref() {
   return "#register";
 }
 
+export function hasAccountSession(user = readLoginSession()) {
+  return Boolean(user?.mobile && !user.isGuest);
+}
+
+export function rememberReturnHash(hash) {
+  try {
+    const next = String(hash || "").trim();
+    if (next.startsWith("#") && next !== "#login" && next !== "#register") {
+      sessionStorage.setItem("mediHomeReturnHash", next);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 export function readLoginSession() {
   try {
     if (sessionStorage.getItem(LOGIN_SESSION_KEY) !== "1") return null;

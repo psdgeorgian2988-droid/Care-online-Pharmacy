@@ -8,6 +8,15 @@ export const LAB_TIME_SLOTS = [
   "4:00 PM - 6:00 PM",
 ];
 
+export const PSY_TIME_SLOTS = [
+  "08:00 AM – 10:00 AM",
+  "10:00 AM – 12:00 PM",
+  "12:00 PM – 02:00 PM",
+  "02:00 PM – 04:00 PM",
+  "04:00 PM – 06:00 PM",
+  "06:00 PM – 08:00 PM",
+];
+
 /** How far ahead customers may book appointments (lab, home care, etc.). */
 export const BOOKING_MONTHS_AHEAD = 6;
 export const LAB_BOOKING_MONTHS_AHEAD = BOOKING_MONTHS_AHEAD;

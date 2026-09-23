@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { BillButton } from "./OrderBill.jsx";
 import { resolvePinLocation } from "./pinLocation";
 import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import { buildPartnerRxShare } from "./rxPartnerShare";
 import {
   checkMedicineAvailability,
   medicineConfirmedFields,
@@ -14,7 +15,6 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import { paymentMethodSummary } from "./paymentMethods";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
-import MedicineSearchTools from "./MedicineSearchTools";
 import BookingFlow from "./BookingFlow";
 import {
   addressFromUnknown,
@@ -38,8 +38,16 @@ import {
   takeRxMedicineCheckout,
   writeMedicineCart,
 } from "./medicineCartStore";
-import { fileFromPrescriptionDraft, readPrescriptionDraft } from "./prescriptionDraft";
+import {
+  fileFromPrescriptionDraft,
+  hasPrescriptionDraft,
+  prescriptionDraftName,
+  readPrescriptionDraft,
+} from "./prescriptionDraft";
 import { goToHash } from "./hashRoute";
+import MedicineSearchTools from "./MedicineSearchTools";
+import { matchExactMediHomeFromPhoto } from "./medicineStripSearch";
+import { groupMedicineFamilies, medicineInCategory } from "./medicineSaltGroups";
 
 function readHomeMedicineSearch() {
   const hash = window.location.hash || "";
@@ -2579,16 +2587,6 @@ const FLAGSHIP_BRANDS = new Set([
 
 const catalogue = medicines.map(withHouseBrand);
 const houseCatalogue = catalogue.filter((medicine) => medicine.isMediHome);
-const houseCountByCategory = houseCatalogue.reduce((counts, medicine) => {
-  const key = medicine.category || "Other";
-  counts[key] = (counts[key] || 0) + 1;
-  return counts;
-}, {});
-
-function catalogueCountForTab(tab) {
-  if (tab === "All") return houseCatalogue.length;
-  return houseCountByCategory[tab] || 0;
-}
 
 function sortMedicineRows(list) {
   return [...list].sort((a, b) => {
@@ -2721,6 +2719,17 @@ function prescribedBrandNameScore(query, medicine) {
 
 function saltKey(medicine) {
   return normalizeSearchText(medicine.salt || "");
+}
+
+function familyKeyFromName(name) {
+  return normalizeSearchText(name);
+}
+
+function familyMatchesQuery(family, query) {
+  const compact = normalizeSearchText(query);
+  if (!compact) return true;
+  if (normalizeSearchText(family.name).includes(compact)) return true;
+  return family.items.some((medicine) => medicineSearchBlob(medicine).includes(compact));
 }
 
 function findMediHomeMatch(list, brandMedicine) {
@@ -2884,13 +2893,21 @@ function MedicinePhoto({ medicine, className = "medicine-photo" }) {
   );
 }
 
-function MedicineCard({ medicine, onAdd }) {
+function MedicineCard({ medicine, onAdd, selected = false, onSelect }) {
   return (
-    <div className="medicine-row">
+    <div
+      className={`medicine-row${selected ? " is-selected" : ""}`}
+      role={onSelect ? "button" : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      onClick={onSelect ? () => onSelect(medicine) : undefined}
+    >
       <button
         type="button"
         className="medicine-row-add"
-        onClick={() => onAdd(medicine)}
+        onClick={(event) => {
+          event.stopPropagation();
+          onAdd(medicine);
+        }}
       >
         Add to cart
       </button>
@@ -2900,6 +2917,25 @@ function MedicineCard({ medicine, onAdd }) {
       <span className="medicine-row-mrp">₹{medicine.mrp}</span>
       <span className="medicine-row-price">₹{medicine.price}</span>
     </div>
+  );
+}
+
+function MedicineFamilyCard({ family, onOpen }) {
+  const count = family.items.length;
+  return (
+    <button
+      type="button"
+      className="medicine-family-card"
+      onClick={() => onOpen(family.key)}
+    >
+      <span className="medicine-family-name">{family.name}</span>
+      <span className="medicine-family-meta">
+        {count} {count === 1 ? "strength" : "strengths & combinations"}
+      </span>
+      {family.brands.length ? (
+        <span className="medicine-family-brands">{family.brands.join(" · ")}</span>
+      ) : null}
+    </button>
   );
 }
 
@@ -3015,9 +3051,10 @@ function Medicines({ initialSearch = "" }) {
   );
   const [category, setCategory] = useState(() => {
     const fromHome = readHomeMedicineCategory();
+    if (fromHome === "Search") return "All";
     return fromHome || "All";
   });
-  const [recentSearches, setRecentSearches] = useState([]);
+  const searchInputRef = useRef(null);
   const [cart, setCartState] = useState(() => readMedicineCart());
   const setCart = (updater) => {
     setCartState((current) => {
@@ -3028,7 +3065,9 @@ function Medicines({ initialSearch = "" }) {
   };
   const [showCheckout, setShowCheckout] = useState(false);
   const [prescriptionFile, setPrescriptionFile] = useState(() =>
-    rxMedBoot?.attachRx ? fileFromPrescriptionDraft(readPrescriptionDraft()) : null
+    hasPrescriptionDraft() || rxMedBoot?.attachRx
+      ? fileFromPrescriptionDraft(readPrescriptionDraft())
+      : null
   );
   const savedProfile = readSavedProfile();
   const [whoFor, setWhoFor] = useState(() => initialBookingFor(savedProfile || {}));
@@ -3045,6 +3084,8 @@ function Medicines({ initialSearch = "" }) {
   const [payQuote, setPayQuote] = useState(null);
   const busyWait = useBusyOverlay(placingOrder, "medicine");
   const [pickedBrandId, setPickedBrandId] = useState(null);
+  const [photoSearch, setPhotoSearch] = useState(null);
+  const [openSaltKey, setOpenSaltKey] = useState("");
 
   useEffect(() => {
     const sync = () => setCartState(readMedicineCart());
@@ -3080,8 +3121,12 @@ function Medicines({ initialSearch = "" }) {
     }
     const fromHome = readHomeMedicineCategory();
     if (fromHome) {
-      setCategory(fromHome);
-      setSearch("");
+      setCategory(fromHome === "Search" ? "All" : fromHome);
+      if (fromHome === "Search") {
+        /* keep typed search */
+      } else {
+        setSearch("");
+      }
       try {
         sessionStorage.removeItem("mediHomeMedicineCategory");
       } catch {
@@ -3090,23 +3135,9 @@ function Medicines({ initialSearch = "" }) {
     }
   }, [initialSearch]);
 
-  const handleMedicineSearch = () => {
-    const value = search.trim();
-    setCategory("All");
-
-    if (value !== "") {
-      setRecentSearches((previous) => {
-        const updated = [
-          value,
-          ...previous.filter(
-            (item) => item.toLowerCase() !== value.toLowerCase()
-          ),
-        ];
-
-        return updated.slice(0, 5);
-      });
-    }
-  };
+  useEffect(() => {
+    searchInputRef.current?.focus();
+  }, [category]);
 
   const categories = [
     "All",
@@ -3129,26 +3160,69 @@ function Medicines({ initialSearch = "" }) {
     "Dermatology",
   ];
 
-  const searchResult = searchMedicines(catalogue, search);
+  const categoryCatalogue = useMemo(
+    () => catalogue.filter((medicine) => medicineInCategory(medicine, category)),
+    [category]
+  );
+  const saltFamilies = useMemo(
+    () =>
+      groupMedicineFamilies(
+        houseCatalogue.filter((medicine) => medicineInCategory(medicine, category))
+      ),
+    [category]
+  );
+  const showSaltTabs = category !== "All" && category !== "Search";
+  const visibleSaltFamilies = showSaltTabs ? saltFamilies : [];
+  const searchResult = searchMedicines(categoryCatalogue, search);
+  const photoMatch = useMemo(
+    () =>
+      photoSearch
+        ? matchExactMediHomeFromPhoto(categoryCatalogue, photoSearch.query || search)
+        : null,
+    [photoSearch, photoSearch?.query, search, categoryCatalogue]
+  );
   const selectedBrand =
+    photoMatch?.brandMatch ||
     searchResult.brandMatches.find((medicine) => medicine.id === pickedBrandId) ||
     searchResult.brandMatch;
-  const selectedMediHome = findMediHomeMatch(catalogue, selectedBrand);
+  const selectedMediHome =
+    photoMatch?.items?.[0] || findMediHomeMatch(categoryCatalogue, selectedBrand);
 
   useEffect(() => {
     if (searchResult.brandMatch) {
       setPickedBrandId(searchResult.brandMatch.id);
     }
   }, [search, searchResult.brandMatch?.id]);
+
+  useEffect(() => {
+    if (photoSearch) return;
+    const compact = normalizeSearchText(search);
+    if (compact.length < 3) return;
+    const exact = saltFamilies.find(
+      (family) => familyKeyFromName(family.name) === compact
+    );
+    if (exact) setOpenSaltKey(exact.key);
+  }, [search, photoSearch, saltFamilies]);
+
+  const openSaltFamily =
+    saltFamilies.find((family) => family.key === openSaltKey) || null;
   const hasSearch = search.trim().length >= 2;
-  const searchingBrand = Boolean(hasSearch && searchResult.prescribedSearch && selectedBrand);
-  const listed = hasSearch ? searchResult.items : houseCatalogue;
+  const searchingBrand = Boolean(
+    !photoMatch && hasSearch && searchResult.prescribedSearch && selectedBrand
+  );
+  const listed = photoMatch
+    ? photoMatch.items
+    : openSaltFamily
+      ? hasSearch
+        ? openSaltFamily.items.filter((medicine) =>
+            familyMatchesQuery({ name: openSaltFamily.name, items: [medicine] }, search)
+          )
+        : openSaltFamily.items
+      : hasSearch
+        ? searchResult.items
+        : [];
   const filteredMedicines = sortMedicineRows(
-    listed.filter((medicine) => {
-      if (!medicine.isMediHome) return false;
-      if (hasSearch) return true;
-      return category === "All" || medicine.category === category;
-    })
+    listed.filter((medicine) => medicine.isMediHome)
   );
   const showBrandStrip = searchingBrand;
   const monthlySave = monthlySavingForCart(cart);
@@ -3165,6 +3239,8 @@ function Medicines({ initialSearch = "" }) {
   );
 
   const cartNeedsPrescription = cart.some(requiresPrescription);
+  const savedRxName = prescriptionFile?.name || prescriptionDraftName();
+  const hasSavedRx = Boolean(prescriptionFile) || hasPrescriptionDraft();
 
   const addToCart = (medicine) => {
     const added = resolveCartAdd(medicine, catalogue, selectedBrand, {
@@ -3253,7 +3329,7 @@ function Medicines({ initialSearch = "" }) {
     setDeliveryErrors({});
     const booked = withBookingIdentity(source, profile);
 
-    if (cartNeedsPrescription && !prescriptionFile) {
+    if (cartNeedsPrescription && !hasSavedRx) {
       alert("Please upload your prescription.");
       return;
     }
@@ -3304,7 +3380,8 @@ function Medicines({ initialSearch = "" }) {
         ...whoFor,
         ...booked,
         mobileNumber: booked.mobile,
-        prescription: prescriptionFile ? prescriptionFile.name : "",
+        prescription: savedRxName,
+        ...buildPartnerRxShare("medicine"),
         ...addr,
         ...medicineConfirmedFields(availability),
         ...payment,
@@ -3344,71 +3421,93 @@ function Medicines({ initialSearch = "" }) {
               className={`medicine-category-box ${
                 category === item ? "active" : ""
               }`}
-              aria-label={
-                item === "All"
-                  ? `All, ${catalogueCountForTab(item)} medicines`
-                  : `${item}, ${catalogueCountForTab(item)} medicines`
-              }
+              aria-label={item}
               onClick={() => {
                 setCategory(item);
                 setSearch("");
+                setPhotoSearch(null);
+                setOpenSaltKey("");
                 setShowCheckout(false);
                 setConfirmedOrder(null);
+                window.requestAnimationFrame(() => searchInputRef.current?.focus());
               }}
             >
               <span className="medicine-category-name">
                 {item === "All" ? "All" : item}
               </span>
-              <span className="medicine-category-count">
-                {catalogueCountForTab(item)}
-              </span>
             </button>
           ))}
         </div>
-        <p className="medicines-combo-hint">
-          Other brands stay hidden until you search a prescribed brand. Then we
-          compare that pack rate with MediHome. Monthly saving is calculated at
-          checkout.
-        </p>
-        <div className="medicine-search-box">
+        {showSaltTabs ? (
+          <div className="medicine-salt-row">
+            <p className="medicine-salt-kicker">{category} medicines</p>
+            {visibleSaltFamilies.length ? (
+              <div
+                className="medicine-category-boxes medicine-salt-boxes"
+                role="tablist"
+                aria-label={`${category} medicines`}
+              >
+                {visibleSaltFamilies.map((family) => (
+                  <button
+                    key={family.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={openSaltKey === family.key}
+                    className={`medicine-category-box ${
+                      openSaltKey === family.key ? "active" : ""
+                    }`}
+                    onClick={() => {
+                      setOpenSaltKey(family.key);
+                      setPhotoSearch(null);
+                      setShowCheckout(false);
+                      setConfirmedOrder(null);
+                    }}
+                  >
+                    <span className="medicine-category-name">{family.name}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="medicines-empty-hint">No medicines in {category}.</p>
+            )}
+          </div>
+        ) : null}
+        <div className="medicine-search-box is-large">
           <input
-            type="text"
-            placeholder="Search by brand, name or salt (e.g. Dolo, Crocin, Metformin)"
+            ref={searchInputRef}
+            type="search"
+            placeholder={
+              category === "All" || category === "Search"
+                ? "Search by brand name or salt name"
+                : `Search ${category} by brand name or salt name`
+            }
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleMedicineSearch();
-              }
+            onChange={(e) => {
+              setPhotoSearch(null);
+              setSearch(e.target.value);
             }}
+            aria-label="Search medicines by brand or salt"
+            autoFocus
           />
-
-          <button
-            type="button"
-            className="medicine-search-button"
-            onClick={handleMedicineSearch}
-          >
-            Search Medicine
-          </button>
-
-          {search.trim() !== "" && (
+          {search.trim() !== "" ? (
             <button
               type="button"
               className="medicine-clear-button"
               onClick={() => {
                 setSearch("");
-                setCategory("All");
+                setPhotoSearch(null);
               }}
             >
               Clear
             </button>
-          )}
+          ) : null}
         </div>
         <MedicineSearchTools
           onQuery={(value) => {
-            setSearch(value);
-            setCategory("All");
+            setSearch(String(value || "").trim());
+            searchInputRef.current?.focus();
           }}
+          onPhoto={(payload) => setPhotoSearch(payload)}
         />
       </div>
 
@@ -3485,20 +3584,21 @@ function Medicines({ initialSearch = "" }) {
               </ul>
             </section>
           ) : null}
-          {cartNeedsPrescription && (
+          {cartNeedsPrescription && !hasSavedRx ? (
             <div className="checkout-rx">
               <label>Prescription</label>
-
               <input
                 type="file"
                 accept="image/*"
                 capture="environment"
                 onChange={(e) => setPrescriptionFile(e.target.files[0])}
               />
-
-              {prescriptionFile && <p>Selected: {prescriptionFile.name}</p>}
             </div>
-          )}
+          ) : cartNeedsPrescription ? (
+            <div className="checkout-rx is-ready">
+              <p>Using uploaded prescription: {savedRxName}</p>
+            </div>
+          ) : null}
 
           <PaymentBlock
             kind="medicine"
@@ -3636,6 +3736,30 @@ function Medicines({ initialSearch = "" }) {
 
       {!showCheckout && !confirmedOrder && (
         <>
+          {photoSearch ? (
+            <aside className="photo-match-panel">
+              {photoSearch.previewUrl ? (
+                <img
+                  className="photo-match-preview"
+                  src={photoSearch.previewUrl}
+                  alt={photoSearch.fileName || "Uploaded medicine photo"}
+                />
+              ) : null}
+              <div>
+                <p className="brand-search-kicker">Suggested MediHome medicine</p>
+                {selectedMediHome ? (
+                  <p>
+                    Exact match: {selectedMediHome.name} · {selectedMediHome.strength}
+                  </p>
+                ) : (
+                  <p>
+                    {photoMatch?.emptyHint ||
+                      "No exact MediHome medicine matches this photo."}
+                  </p>
+                )}
+              </div>
+            </aside>
+          ) : null}
           {showBrandStrip && (
             <BrandSearchStrip
               brandMatch={selectedBrand}
@@ -3652,9 +3776,12 @@ function Medicines({ initialSearch = "" }) {
             {filteredMedicines.length === 0 ? (
               showBrandStrip && searchResult.brandMatch ? null : (
                 <p className="medicines-empty-hint">
-                  {hasSearch
-                    ? searchResult.emptyHint || "No medicines match your search."
-                    : "No medicines in this category."}
+                  {photoMatch?.emptyHint ||
+                    (hasSearch
+                      ? searchResult.emptyHint || "No medicines match your search in this category."
+                      : category === "All"
+                        ? "Choose a category to see its medicine tabs."
+                        : `Choose a ${category} salt tab to see all strengths and combinations.`)}
                 </p>
               )
             ) : (

@@ -6,6 +6,7 @@
     "homecare": true,
     "vaccination": true,
     "psychologist": true,
+    "doctor": true,
     "stepdown": true,
     "ambulance": true,
     "reports": true,

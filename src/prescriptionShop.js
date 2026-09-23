@@ -1,5 +1,5 @@
 import { persistOrder, withTracking } from "./orderTracking";
-import { partnerAcceptFields } from "./orderConfirm";
+import { diagnosticRequestFields } from "./orderConfirm";
 import { pickAddress, readUserProfile } from "./addressFields";
 import { isoDateToday } from "./personFields";
 import { LAB_TIME_SLOTS, openAppointmentSlots } from "./appointmentSlot";
@@ -175,12 +175,7 @@ export function checkoutPayloadForTests({ kind = "lab", partnerId, tests = [] } 
     timeSlot,
     bookedAt: new Date().toLocaleString(),
     bookedAtMs: Date.now(),
-    ...partnerAcceptFields(),
-    trackStatus: serviceType === "lab" ? "assigned" : "confirmed",
-    status:
-      serviceType === "lab"
-        ? "Partner assigned — sample collection"
-        : "Partner confirmed — visit scheduled",
+    ...diagnosticRequestFields(serviceType, { date, timeSlot }),
     paymentMethod: "pending",
     paymentStatus: "awaiting_payment",
     paid: false,

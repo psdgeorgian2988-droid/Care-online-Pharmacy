@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useLoginSession } from "./authSession";
 import {
-  kindLabel,
   loadAllOrders,
   trackHref,
 } from "./orderTracking";
+import { orderCurrentStatus } from "./orderStatus";
 import CustomerWelcome, { needsCustomerWelcome } from "./CustomerWelcome";
 import HomeServiceCatalog from "./HomeServiceCatalog";
 import HomePrescriptionUpload from "./HomePrescriptionUpload";
@@ -30,15 +30,12 @@ export default function CustomerHome() {
       ) : null}
 
       {activeOrder ? (
-        <section className="app-home-panel app-home-order is-live" aria-label="Active order">
+        <section className="app-home-panel app-home-order is-live" aria-label="Current status">
           <div className="app-home-order-row">
             <div>
-              <p className="app-home-panel-title">Live order</p>
+              <p className="app-home-panel-title">Current status</p>
               <p className="app-home-order-status">
-                {activeOrder.trackLabel ||
-                  activeOrder.status ||
-                  kindLabel(activeOrder.kind) ||
-                  "In progress"}
+                {orderCurrentStatus(activeOrder)}
               </p>
             </div>
             <a className="app-home-cta app-home-cta-sm" href={trackHref(activeOrder.id)}>

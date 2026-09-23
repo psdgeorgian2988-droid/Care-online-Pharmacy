@@ -50,6 +50,7 @@ function bgFor(type) {
     webinar: "#ebe8ff",
     quiz: "#fff6e0",
     refer: "#e6f7f2",
+    search: "#dff3f6",
   };
   return map[type] || "#e8f4f2";
 }
@@ -366,6 +367,30 @@ function bodyFor(type) {
           <text x="40" y="48" textAnchor="middle" fontSize="28" fontWeight="800" fill="#2a3d4a">
             ?
           </text>
+        </g>
+      );
+    case "doctor":
+      return (
+        <g>
+          <circle cx="40" cy="24" r="10" fill="#f7c9a3" />
+          <path d="M24 56 v-8 a16 16 0 0 1 32 0 v8" fill="#1a6b7a" />
+          <rect x="56" y="18" width="10" height="28" rx="3" fill="#e85d5d" />
+          <rect x="50" y="24" width="22" height="10" rx="3" fill="#e85d5d" />
+        </g>
+      );
+    case "search":
+      return (
+        <g>
+          <circle cx="36" cy="34" r="12" fill="none" stroke="#1a6b7a" strokeWidth="4" />
+          <line
+            x1="45"
+            y1="43"
+            x2="58"
+            y2="56"
+            stroke="#1a6b7a"
+            strokeWidth="5"
+            strokeLinecap="round"
+          />
         </g>
       );
     case "refer":

@@ -1,4 +1,5 @@
 import { isAwaitingPartnerConfirm } from "./orderConfirm.js";
+import { diagnosticStepLabel, isDiagnosticKind } from "./labPipeline.js";
 
 export const SERVICE_ORDER_KINDS = [
   "medicine",
@@ -7,6 +8,7 @@ export const SERVICE_ORDER_KINDS = [
   "homecare",
   "vaccination",
   "psychologist",
+  "doctor",
   "stepdown",
   "ambulance",
 ];
@@ -25,7 +27,43 @@ export const TRACK_STATUS_STEPS = [
 ];
 
 export function serviceKind(order) {
-  return String(order?.kind || order?.orderType || "medicine");
+  const raw = String(order?.kind || order?.orderType || "medicine").toLowerCase();
+  if (raw === "cart") return "medicine";
+  return raw || "medicine";
+}
+
+export function serviceCategoryTitle(kind) {
+  switch (String(kind || "").toLowerCase()) {
+    case "medicine":
+      return "Pharmacy orders";
+    case "lab":
+      return "Lab test orders";
+    case "radiology":
+      return "Radiology test orders";
+    case "homecare":
+      return "Home Care orders";
+    case "vaccination":
+      return "Vaccination orders";
+    case "psychologist":
+      return "Psychology orders";
+    case "doctor":
+      return "Doctor appointment orders";
+    case "stepdown":
+      return "Step-down orders";
+    case "ambulance":
+      return "Ambulance orders";
+    default:
+      return "Orders";
+  }
+}
+
+export function groupOrdersByKind(orders, kinds = SERVICE_ORDER_KINDS) {
+  const list = Array.isArray(orders) ? orders : [];
+  return kinds.map((kind) => ({
+    kind,
+    title: serviceCategoryTitle(kind),
+    orders: list.filter((order) => serviceKind(order) === kind),
+  }));
 }
 
 export function trackKey(order) {
@@ -146,4 +184,30 @@ export function matchesStatusFilter(order, statusFilter) {
 
 export function statusLabel(key) {
   return TRACK_STATUS_STEPS.find((step) => step.key === key)?.label || key;
+}
+
+export function isGenericTrackLabel(value) {
+  return /^(lab|imaging)\s+update$/i.test(String(value || "").trim());
+}
+
+export function orderCurrentStatus(order) {
+  const kind = String(order?.kind || order?.orderType || "medicine").toLowerCase();
+  const raw = String(order?.status || order?.trackLabel || "")
+    .replace(/technician assigned/i, "Partner Assigned")
+    .trim();
+  if (raw && !isGenericTrackLabel(raw) && raw.toLowerCase() !== "current status") {
+    return raw;
+  }
+  const key = String(order?.trackStatus || "").toLowerCase();
+  const labeled = isDiagnosticKind(kind)
+    ? diagnosticStepLabel(key, kind)
+    : statusLabel(key);
+  if (
+    labeled &&
+    !isGenericTrackLabel(labeled) &&
+    labeled.toLowerCase() !== "current status"
+  ) {
+    return labeled;
+  }
+  return "In progress";
 }

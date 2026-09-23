@@ -4,15 +4,23 @@ import {
   kindLabel,
   loadAllOrders,
   persistOrder,
+  refreshOrderFromServer,
   trackHref,
 } from "./orderTracking";
+import { orderCurrentStatus } from "./orderStatus";
 import PinGpsBlock from "./PinGpsBlock";
 import { BillButton } from "./OrderBill.jsx";
 import OrderFeedbackCta from "./OrderFeedbackCta";
-import { paymentMethodSummary } from "./paymentMethods";
-import { maskMobile } from "./personFields";
 import { scanHref } from "./orderQr";
-import { awaitingPartnerMessage, isAwaitingPartnerConfirm } from "./orderConfirm";
+import {
+  awaitingPartnerMessage,
+  isAwaitingCustomerSlotConfirm,
+  isAwaitingPartnerConfirm,
+} from "./orderConfirm";
+import SlotOfferCard from "./SlotOfferCard";
+import { rxShareCardStyles } from "./RxShareCard";
+import OrderFullView from "./OrderFullView.jsx";
+import OrderListTable from "./OrderListTable.jsx";
 import {
   isDiagnosticKind,
   mergeOrderReportIntoStore,
@@ -25,6 +33,24 @@ function typeLabel(order) {
 function MyOrders() {
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  useEffect(() => {
+    const needsSlot = selectedOrder && isAwaitingCustomerSlotConfirm(selectedOrder);
+    const needsRx = Boolean(selectedOrder?.rxShare?.digital?.medicines?.length);
+    if (!needsSlot && !needsRx) {
+      return undefined;
+    }
+    const id = selectedOrder.bookingId || selectedOrder.id;
+    let cancelled = false;
+    const timer = setInterval(async () => {
+      const latest = await refreshOrderFromServer(id);
+      if (!cancelled && latest) handleSelectedChange(latest);
+    }, 6000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [selectedOrder?.id, selectedOrder?.bookingId, selectedOrder?.slotConfirmStatus]);
 
   useEffect(() => {
     const rows = loadAllOrders();
@@ -57,6 +83,7 @@ function MyOrders() {
 
   return (
     <div className="my-orders-pag my-orders-page">
+      <style>{rxShareCardStyles}</style>
       <div className="orders-page-header">
         <div>
           <span className="orders-eyebrow">ACCOUNT</span>
@@ -95,13 +122,18 @@ function MyOrders() {
           </p>
 
           <p>
-            <strong>Status:</strong> {selectedOrder.status}
+            <strong>Status:</strong> {orderCurrentStatus(selectedOrder)}
           </p>
           <p>
             <strong>Type:</strong> {typeLabel(selectedOrder)}
           </p>
 
-          {isAwaitingPartnerConfirm(selectedOrder) ? (
+          {isAwaitingCustomerSlotConfirm(selectedOrder) ? (
+            <SlotOfferCard
+              order={selectedOrder}
+              onResolved={handleSelectedChange}
+            />
+          ) : isAwaitingPartnerConfirm(selectedOrder) ? (
             <p className="lab-hint" role="status">
               {awaitingPartnerMessage(selectedOrder.kind || selectedOrder.orderType)}
             </p>
@@ -113,294 +145,25 @@ function MyOrders() {
             />
           )}
 
-          <h3>
-            {selectedOrder.kind === "lab"
-              ? "Laboratory Tests"
-              : selectedOrder.kind === "radiology"
-                ? "Imaging Studies"
-                : selectedOrder.kind === "homecare"
-                  ? "Home Care"
-                  : selectedOrder.kind === "vaccination"
-                    ? "Vaccination"
-                    : selectedOrder.kind === "psychologist"
-                    ? "Psychologist Consultation"
-                    : selectedOrder.kind === "stepdown"
-                      ? "Step-Down Care"
-                      : selectedOrder.kind === "ambulance"
-                        ? "Request"
-                        : "Medicines"}
-          </h3>
-
-          <ul>
-            {selectedOrder.items?.map((item, index) => (
-              <li key={index}>
-                {item.name}
-                {item.quantity ? ` × ${item.quantity}` : ""}
-                {item.price ? ` — ₹${item.price}` : ""}
-              </li>
-            ))}
-          </ul>
+          <OrderFullView order={selectedOrder} audience="customer" />
+          {selectedOrder.partnerConfirmed &&
+          !selectedOrder.paid &&
+          (selectedOrder.paymentStatus === "awaiting_payment" ||
+            selectedOrder.paymentMethod === "pending") ? (
+            <p className="lab-hint" role="status">
+              {selectedOrder.kind === "lab" || selectedOrder.kind === "radiology" ? (
+                <>
+                  Booking confirmed.{" "}
+                  <a href="#labs">Open Lab Tests</a> to pay, or track from here.
+                </>
+              ) : (
+                "Booking confirmed. Complete payment or track live from the buttons below."
+              )}
+            </p>
+          ) : null}
           <div className="order-details-address">
-            {(selectedOrder.kind === "lab" || selectedOrder.kind === "radiology") && (
-              <>
-                <p>
-                  <strong>
-                    {selectedOrder.kind === "lab" ? "Lab Partner" : "Imaging Partner"}:
-                  </strong>{" "}
-                  {selectedOrder.partner || "Not provided"}
-                </p>
-                <p>
-                  <strong>Patient:</strong>{" "}
-                  {selectedOrder.patientName || "Not provided"}
-                </p>
-                <p>
-                  <strong>Mobile:</strong>{" "}
-                  {maskMobile(selectedOrder.mobile) || "Not provided"}
-                </p>
-                <p>
-                  <strong>
-                    {selectedOrder.kind === "lab" ? "Collection Type" : "Appointment Type"}:
-                  </strong>{" "}
-                  {selectedOrder.visitType === "home" ? "Home Collection" : "Centre Visit"}
-                </p>
-                <p>
-                  <strong>Appointment Date:</strong>{" "}
-                  {selectedOrder.appointmentDate || selectedOrder.date || "Not provided"}
-                </p>
-                <p>
-                  <strong>Time Slot:</strong>{" "}
-                  {selectedOrder.timeSlot || "Not provided"}
-                </p>
-                {selectedOrder.technicianName ? (
-                  <p>
-                    <strong>Technician:</strong>{" "}
-                    {selectedOrder.technicianName}
-                    {selectedOrder.technicianMobile
-                      ? ` · ${maskMobile(selectedOrder.technicianMobile)}`
-                      : ""}
-                  </p>
-                ) : null}
-                {selectedOrder.reportFileData || selectedOrder.reportFileName ? (
-                  <p>
-                    <strong>Report:</strong>{" "}
-                    {selectedOrder.reportFileData ? (
-                      <a
-                        href={selectedOrder.reportFileData}
-                        download={selectedOrder.reportFileName || "report"}
-                      >
-                        {selectedOrder.reportFileName || "Download report"}
-                      </a>
-                    ) : (
-                      selectedOrder.reportFileName
-                    )}
-                    {" · "}
-                    <a href="#reports">Open Reports</a>
-                  </p>
-                ) : null}
-              </>
-            )}
-            {selectedOrder.kind === "homecare" && (
-              <>
-                <p>
-                  <strong>Patient:</strong>{" "}
-                  {selectedOrder.patientName || "Not provided"}
-                </p>
-                <p>
-                  <strong>Visit date:</strong> {selectedOrder.date || "Not provided"}
-                </p>
-                <p>
-                  <strong>Time slot:</strong> {selectedOrder.timeSlot || "Not provided"}
-                </p>
-                <p>
-                  <strong>Plan:</strong> {selectedOrder.carePlanLabel || "Not provided"}
-                </p>
-                <p>
-                  <strong>Charges:</strong>{" "}
-                  {selectedOrder.total != null
-                    ? `₹${Number(selectedOrder.total).toLocaleString("en-IN")}`
-                    : "Not provided"}
-                </p>
-              </>
-            )}
-            {selectedOrder.kind === "psychologist" && (
-              <>
-                <p>
-                  <strong>Patient:</strong>{" "}
-                  {selectedOrder.patientName || "Not provided"}
-                </p>
-                <p>
-                  <strong>Session:</strong> {selectedOrder.carePlanLabel || "Not provided"}
-                </p>
-                <p>
-                  <strong>Mode:</strong>{" "}
-                  {selectedOrder.sessionMode === "home" ? "Home visit" : "Video"}
-                </p>
-                <p>
-                  <strong>Session date:</strong> {selectedOrder.date || "Not provided"}
-                </p>
-                <p>
-                  <strong>Time slot:</strong> {selectedOrder.timeSlot || "Not provided"}
-                </p>
-                {selectedOrder.concern ? (
-                  <p>
-                    <strong>Note:</strong> {selectedOrder.concern}
-                  </p>
-                ) : null}
-                <p>
-                  <strong>Charges:</strong>{" "}
-                  {selectedOrder.total != null
-                    ? `₹${Number(selectedOrder.total).toLocaleString("en-IN")}`
-                    : "Not provided"}
-                </p>
-              </>
-            )}
-            {selectedOrder.kind === "stepdown" && (
-              <>
-                <p>
-                  <strong>Centre:</strong>{" "}
-                  {selectedOrder.centreName || "Not provided"}
-                </p>
-                <p>
-                  <strong>Patient:</strong>{" "}
-                  {selectedOrder.patientName || "Not provided"}
-                </p>
-                <p>
-                  <strong>Start date:</strong> {selectedOrder.date || "Not provided"}
-                </p>
-                <p>
-                  <strong>Time slot:</strong> {selectedOrder.timeSlot || "Not provided"}
-                </p>
-                <p>
-                  <strong>Days:</strong> {selectedOrder.durationDays || "Not provided"}
-                </p>
-                <p>
-                  <strong>Ambulance to centre:</strong>{" "}
-                  {selectedOrder.needAmbulance ? "Yes (booked automatically)" : "No"}
-                </p>
-                {selectedOrder.ambulanceRequestId ? (
-                  <p>
-                    <strong>Ambulance ID:</strong> {selectedOrder.ambulanceRequestId}
-                  </p>
-                ) : null}
-              </>
-            )}
-            {selectedOrder.kind === "ambulance" && (
-              <>
-                <p>
-                  <strong>Patient:</strong>{" "}
-                  {selectedOrder.patientName || "Not provided"}
-                </p>
-                <p>
-                  <strong>Type:</strong>{" "}
-                  {selectedOrder.emergencyType === "emergency"
-                    ? "Emergency"
-                    : "Non-emergency"}
-                </p>
-                {selectedOrder.destinationName ? (
-                  <p>
-                    <strong>Drop at:</strong> {selectedOrder.destinationName}
-                    {selectedOrder.destinationAddress
-                      ? ` · ${selectedOrder.destinationAddress}`
-                      : ""}
-                    {selectedOrder.destinationFacilities
-                      ? ` · ${selectedOrder.destinationFacilities}`
-                      : ""}
-                  </p>
-                ) : null}
-              </>
-            )}
-            <p>
-              <strong>
-                {selectedOrder.kind === "ambulance" ? "Pickup Address" : "Address"}:
-              </strong>{" "}
-              {selectedOrder.deliveryAddress || "Not provided"}
-            </p>
-
-            <p>
-              <strong>PIN Code:</strong> {selectedOrder.pinCode || "Not provided"}
-            </p>
-            {selectedOrder.outletName ? (
-              <p>
-                <strong>Delivery outlet:</strong> {selectedOrder.outletName}
-                {selectedOrder.outletArea ? ` · ${selectedOrder.outletArea}` : ""}
-              </p>
-            ) : null}
-            {selectedOrder.kind === "medicine" && (selectedOrder.outletGstin || selectedOrder.outletDlNo) ? (
-              <>
-                {selectedOrder.outletGstin ? (
-                  <p>
-                    <strong>Outlet GSTIN:</strong> {selectedOrder.outletGstin}
-                  </p>
-                ) : null}
-                {selectedOrder.outletDlNo ? (
-                  <p>
-                    <strong>Outlet DL No.:</strong> {selectedOrder.outletDlNo}
-                  </p>
-                ) : null}
-              </>
-            ) : null}
-            {(selectedOrder.kind === "lab" || selectedOrder.kind === "radiology") &&
-            (selectedOrder.partnerGstin || selectedOrder.partnerDlNo) ? (
-              <>
-                {selectedOrder.partnerGstin ? (
-                  <p>
-                    <strong>Partner GSTIN:</strong> {selectedOrder.partnerGstin}
-                  </p>
-                ) : null}
-                {selectedOrder.partnerDlNo ? (
-                  <p>
-                    <strong>
-                      {selectedOrder.kind === "lab" ? "Lab licence:" : "Centre licence:"}
-                    </strong>{" "}
-                    {selectedOrder.partnerDlNo}
-                  </p>
-                ) : null}
-              </>
-            ) : null}
-            {selectedOrder.paymentMethod ? (
-              <p>
-                <strong>Payment:</strong>{" "}
-                {selectedOrder.paymentStatus === "awaiting_partner" ||
-                isAwaitingPartnerConfirm(selectedOrder)
-                  ? "After partner acceptance"
-                  : selectedOrder.paymentStatus === "awaiting_payment" ||
-                      (selectedOrder.paymentMethod === "pending" &&
-                        !selectedOrder.paid)
-                    ? "Pending — complete payment"
-                    : paymentMethodSummary(
-                        selectedOrder.paymentMethod,
-                        "Cash on delivery / visit"
-                      )}
-              </p>
-            ) : null}
-            {selectedOrder.partnerConfirmed &&
-            !selectedOrder.paid &&
-            (selectedOrder.paymentStatus === "awaiting_payment" ||
-              selectedOrder.paymentMethod === "pending") ? (
-              <p className="lab-hint" role="status">
-                {selectedOrder.kind === "lab" || selectedOrder.kind === "radiology"
-                  ? (
-                      <>
-                        Booking confirmed.{" "}
-                        <a href="#labs">Open Lab Tests</a> to pay, or track from here.
-                      </>
-                    )
-                  : "Booking confirmed. Complete payment or track live from the buttons below."}
-              </p>
-            ) : null}
             <PinGpsBlock record={selectedOrder} compact />
-            {selectedOrder.kind === "medicine" && (
-              <p>
-                <strong>Prescription:</strong>{" "}
-                {selectedOrder.prescription || "Not provided"}
-              </p>
-            )}
           </div>
-          {selectedOrder.total != null && selectedOrder.total !== "" && (
-            <p className="order-details-total">
-              <strong>Total:</strong> ₹{selectedOrder.total}
-            </p>
-          )}
           <div className="order-action-buttons">
             <BillButton order={selectedOrder} className="order-details-btn" />
             <a className="order-details-btn" href={trackHref(selectedOrder.id)}>
@@ -450,84 +213,19 @@ function MyOrders() {
               <a href="#labs">Book diagnostics</a>
               <a href="#homecare">Book home care</a>
               <a href="#homecare?service=nurse&plan=vaccination">Book nurse vaccination</a>
+              <a href="#doctor">Book a doctor</a>
               <a href="#psychologist">Book a psychologist</a>
               <a href="#stepdown">Find a step-down centre</a>
               <a href="#ambulance">Request ambulance</a>
             </div>
           </div>
         ) : (
-          <div className="orders-grid">
-            {orders.map((order) => (
-              <div key={`${order.kind}-${order.id}`} className="order-chip">
-                <button
-                  type="button"
-                  className="order-chip-id"
-                  onClick={() => setSelectedOrder(order)}
-                >
-                  #{order.id}
-                </button>
-                <div className="order-chip-tip">
-                  <p>
-                    <strong>Type:</strong> {typeLabel(order)}
-                  </p>
-                  <p>
-                    <strong>Date:</strong> {order.date || "Not provided"}
-                  </p>
-                  <p>
-                    <strong>Items:</strong>{" "}
-                    {order.items?.map((item) => item.name).join(", ") || "—"}
-                  </p>
-                  {order.total != null && order.total !== "" ? (
-                    <p>
-                      <strong>Total:</strong> ₹{order.total}
-                    </p>
-                  ) : null}
-                  <p>
-                    <strong>PIN:</strong> {order.pinCode || "Add PIN to track"}
-                  </p>
-                  {order.outletName ? (
-                    <p>
-                      <strong>Outlet:</strong> {order.outletName}
-                    </p>
-                  ) : null}
-                  {order.paymentMethod ? (
-                    <p>
-                      <strong>Payment:</strong>{" "}
-                      {paymentMethodSummary(
-                        order.paymentMethod,
-                        "Cash on delivery"
-                      )}
-                    </p>
-                  ) : null}
-                  <p>
-                    <strong>Status:</strong> {order.status}
-                  </p>
-                  <div className="order-chip-tip-actions">
-                    <button
-                      className="order-details-btn"
-                      type="button"
-                      onClick={() => setSelectedOrder(order)}
-                    >
-                      View Details
-                    </button>
-                    <BillButton order={order} className="order-details-btn" />
-                    <a className="order-track-btn" href={trackHref(order.id)}>
-                      Track live
-                    </a>
-                    <a
-                      className="order-track-btn"
-                      href={scanHref({ id: order.id, step: "deliver", order })}
-                    >
-                      Scan Delivery
-                    </a>
-                    {order.trackCompleted ? (
-                      <OrderFeedbackCta order={order} />
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <OrderListTable
+            orders={orders}
+            audience="customer"
+            empty="No orders found yet."
+            onOpen={(_id, order) => setSelectedOrder(order)}
+          />
         ))}
     </div>
   );

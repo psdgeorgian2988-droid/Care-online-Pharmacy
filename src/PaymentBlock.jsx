@@ -37,7 +37,7 @@ function rbiNote(method) {
     return "Your UPI ID is saved only if you tick this box, as per RBI / NPCI guidelines.";
   }
   if (method === "bank") {
-    return "Only IFSC and the last 4 digits of the account are kept. The full account number is not stored.";
+    return "Bank / netbanking is completed on the secure payment gateway.";
   }
   return "RBI tokenisation rules: only the last 4 digits and card network are kept. CVV is never saved.";
 }
@@ -256,7 +256,6 @@ export default function PaymentBlock({
     quote.serviceChargeRupees > 0;
   const showInstrument = isOnlinePayment(method) && method !== "online";
   const usingSavedCard = Boolean(details.savedId) && (method === "credit" || method === "debit");
-  const usingSavedBank = Boolean(details.savedId) && method === "bank";
 
   return (
     <>
@@ -429,61 +428,12 @@ export default function PaymentBlock({
             ) : null}
 
             {method === "bank" ? (
-              usingSavedBank ? (
-                <p className="pay-saved-cap">
-                  {details.accountName ? `${details.accountName} · ` : ""}
-                  {details.ifsc} •••• {details.accountLast4}
-                </p>
-              ) : (
-                <>
-                  <label className="pay-field pay-span">
-                    Account Holder Name <em>*</em>
-                    <input
-                      value={details.accountName}
-                      placeholder="Name as in the bank account"
-                      onChange={(event) =>
-                        patchDetails({ accountName: event.target.value, savedId: "" })
-                      }
-                      {...noContactNameProps}
-                    />
-                  </label>
-                  <label className="pay-field">
-                    Account Number <em>*</em>
-                    <input
-                      inputMode="numeric"
-                      autoComplete="off"
-                      value={details.accountNumber}
-                      placeholder="9 to 18 digits"
-                      onChange={(event) =>
-                        patchDetails({
-                          accountNumber: event.target.value.replace(/\D/g, "").slice(0, 18),
-                          savedId: "",
-                        })
-                      }
-                    />
-                  </label>
-                  <label className="pay-field">
-                    IFSC <em>*</em>
-                    <input
-                      autoComplete="off"
-                      value={details.ifsc}
-                      placeholder="HDFC0001234"
-                      onChange={(event) =>
-                        patchDetails({
-                          ifsc: event.target.value
-                            .toUpperCase()
-                            .replace(/[^A-Z0-9]/g, "")
-                            .slice(0, 11),
-                          savedId: "",
-                        })
-                      }
-                    />
-                  </label>
-                </>
-              )
+              <p className="pay-saved-cap pay-span">
+                Complete bank / netbanking on the secure payment gateway at checkout.
+              </p>
             ) : null}
 
-            {method !== "qr" ? (
+            {method !== "qr" && method !== "bank" ? (
               <label className="pay-save">
                 <input
                   type="checkbox"
@@ -539,20 +489,6 @@ export default function PaymentBlock({
               <span>Service charge (to MediHome)</span>
               <strong>{formatRupee(quote.serviceChargeRupees)}</strong>
             </li>
-          ) : null}
-          {quote.split ? (
-            <>
-              <li>
-                <span>
-                  Partner share ({quote.split.partnerPercent}% MRP)
-                </span>
-                <strong>{formatRupee(quote.split.partnerTransferRupees)}</strong>
-              </li>
-              <li>
-                <span>MediHome share after discount/fee</span>
-                <strong>{formatRupee(quote.split.platformSettledRupees)}</strong>
-              </li>
-            </>
           ) : null}
         </ul>
         {hasDiscount || quote.split ? (

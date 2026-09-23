@@ -69,6 +69,16 @@
       "outletId": "MH-OUT-DWK",
       "loginId": "",
       "passwordHash": ""
+    },
+    {
+      "id": "P-TEST-01",
+      "name": "Test Partner Desk",
+      "role": "Test partner",
+      "kinds": ["medicine", "lab", "radiology", "homecare", "psychologist", "doctor"],
+      "mobile": "9654222999",
+      "outletId": "MH-OUT-CD",
+      "loginId": "tester",
+      "passwordHash": "afe84a1f9bf51c56519de2fcad913ee7:45ca0d1b2aed57128a84a1ae6288788dfebfd407d2e2b85c60167de878a11d7e"
     }
   ]
 }

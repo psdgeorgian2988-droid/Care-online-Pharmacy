@@ -14,10 +14,13 @@ import {
   TRACK_STEPS,
   trackHref,
 } from "./orderTracking";
+import { DIAGNOSTIC_TRACK_STEPS, isDiagnosticKind } from "./labPipeline";
+import { orderCurrentStatus } from "./orderStatus";
 import { mapsUrlForPin, normalizePin, osmEmbedUrl } from "./pinLocation";
 import AssignedAgent from "./AssignedAgent";
 import ScanActions from "./ScanActions";
 import OrderFeedbackCta from "./OrderFeedbackCta";
+import OrderFullView from "./OrderFullView.jsx";
 
 function mercatorY(lat) {
   const rad = (lat * Math.PI) / 180;
@@ -224,8 +227,14 @@ export function LiveTrackingPanel({ order, onOrderChange, compact = false, showS
   if (!live) return null;
 
   const pin = normalizePin(live.pinCode || live.pin);
-  const copy = partnerCopy(live.kind);
-  const steps = TRACK_STEPS.map((step) => ({
+  const currentStatus = orderCurrentStatus(live);
+  const steps = (
+    isDiagnosticKind(live.kind)
+      ? DIAGNOSTIC_TRACK_STEPS.filter(
+          (step) => step.key !== "declined" || live.trackStatus === "declined"
+        )
+      : TRACK_STEPS
+  ).map((step) => ({
     ...step,
     label: step.key === "done" ? stepLabel(live.kind, "done") : step.label,
   }));
@@ -244,10 +253,8 @@ export function LiveTrackingPanel({ order, onOrderChange, compact = false, showS
       {showScan !== false ? <ScanActions order={live} app="customer" /> : null}
       <div className="live-track-head">
         <div>
-          <span className="live-kicker">Live tracking</span>
-          <h3>
-            {copy.title} {copy.toward}
-          </h3>
+          <span className="live-kicker">Current status</span>
+          <h3>{currentStatus}</h3>
           <p>
             Following the assigned partner to PIN {pin || "—"}
             {live.locality ? ` · ${live.locality}` : ""}. Position is updated on this
@@ -284,7 +291,7 @@ export function LiveTrackingPanel({ order, onOrderChange, compact = false, showS
           <LiveMap order={live} />
           <div className="live-meta">
             <p>
-              <strong>Status:</strong> {live.status}
+              <strong>Status:</strong> {currentStatus}
             </p>
             <p>
               <strong>Destination:</strong>{" "}
@@ -338,9 +345,9 @@ export default function TrackPage({ trackId }) {
       <div className="orders-page-header">
         <div>
           <span className="orders-eyebrow">TRACKING</span>
-          <h1>Track Live</h1>
+          <h1>Current status</h1>
           <p className="orders-subtitle">
-            Watch the assigned partner move toward your PIN in real time.
+            See this order’s current status and the assigned partner toward your PIN.
           </p>
         </div>
         <a className="orders-home-link" href="#myorders">
@@ -351,13 +358,14 @@ export default function TrackPage({ trackId }) {
       {order ? (
         <div className="order-details-page live-track-wrap">
           <p>
-            <strong>{kindLabel(order.kind)}</strong> · #{order.id}
+            <strong>{kindLabel(order.kind)}</strong> · #{order.id} · {orderCurrentStatus(order)}
           </p>
           <p>
             <strong>{order.kind === "ambulance" ? "Pickup" : "Address"}:</strong>{" "}
             {order.address || order.deliveryAddress || "Not provided"}
           </p>
           <LiveTrackingPanel order={order} onOrderChange={setOrder} />
+          <OrderFullView order={order} audience="customer" />
         </div>
       ) : (
         <div className="orders-empty">

@@ -29,6 +29,28 @@ test("recognizes dolo, pantocid and ambrol", () => {
   assert.equal(canonicalizeMedicineName("Syp Ambrol").salt, "Ambroxol");
 });
 
+test("maps lasetol to laretol and mednovit d3 to mednovit cd3", () => {
+  const laretol = canonicalizeMedicineName("Lasetol");
+  assert.equal(laretol.verified, true);
+  assert.match(laretol.name, /laretol/i);
+  assert.match(laretol.salt, /lactulose/i);
+  const mednovit = canonicalizeMedicineName("Mednovit D3");
+  assert.equal(mednovit.verified, true);
+  assert.match(mednovit.name, /mednovit cd3/i);
+  assert.equal(canonicalizeMedicineName("Arkamin").salt, "Clonidine");
+  assert.equal(canonicalizeMedicineName("Dapanox").salt, "Dapagliflozin");
+});
+
+test("keeps a patient-corrected medicine name", () => {
+  const parsed = canonicalizePrescription({
+    medicines: [{ name: "Laretol", userCorrected: true, asWritten: "Lasetol" }],
+    tests: [],
+  });
+  assert.equal(parsed.medicines[0].name, "Laretol");
+  assert.equal(parsed.medicines[0].userCorrected, true);
+  assert.match(parsed.medicines[0].salt, /lactulose/i);
+});
+
 test("splits CBC / CRP and keeps typhidot/dengue", () => {
   const tests = canonicalizePrescription({
     medicines: [],

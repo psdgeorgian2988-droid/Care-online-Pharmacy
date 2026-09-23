@@ -5,6 +5,7 @@ export const PARTNER_CONFIRM_KINDS = new Set([
   "homecare",
   "vaccination",
   "psychologist",
+  "doctor",
   "stepdown",
   "ambulance",
 ]);
@@ -20,8 +21,29 @@ export function isAwaitingPartnerConfirm(order) {
   if (order?.partnerConfirmed === true) return false;
   const confirm = String(order?.partnerConfirmStatus || "").toLowerCase();
   if (confirm === "accepted" || confirm === "auto") return false;
+  if (confirm === "slot_offered") return false;
   if (confirm === "declined") return false;
   return true;
+}
+
+export const SLOT_CONFIRM_KINDS = new Set(["radiology", "psychologist", "doctor"]);
+
+export function needsSlotConfirm(kind) {
+  return SLOT_CONFIRM_KINDS.has(String(kind || "").toLowerCase());
+}
+
+export function slotPartnerNoun(kind) {
+  const key = String(kind || "").toLowerCase();
+  if (key === "psychologist") return "psychologist";
+  if (key === "doctor") return "doctor";
+  return "imaging centre";
+}
+
+export function isAwaitingCustomerSlotConfirm(order) {
+  const slot = String(order?.slotConfirmStatus || "").toLowerCase();
+  const confirm = String(order?.partnerConfirmStatus || "").toLowerCase();
+  const status = String(order?.trackStatus || "").toLowerCase();
+  return slot === "offered" || confirm === "slot_offered" || status === "slot_offered";
 }
 
 export function initialOrderStatus(kind) {
@@ -102,6 +124,36 @@ export function medicineConfirmedFields(availability) {
   };
 }
 
+export function diagnosticRequestFields(kind, extras = {}) {
+  const requestedTimeSlot = String(
+    extras.timeSlot || extras.requestedTimeSlot || ""
+  ).trim();
+  const requestedDate = String(extras.date || extras.requestedDate || "").trim();
+  const needsSlot = needsSlotConfirm(kind);
+  return {
+    ...initialOrderStatus(kind),
+    partnerAssignedAt: 0,
+    ...(requestedTimeSlot
+      ? { requestedTimeSlot, timeSlot: requestedTimeSlot }
+      : {}),
+    ...(requestedDate ? { requestedDate, date: requestedDate } : {}),
+    slotConfirmed: false,
+    slotConfirmStatus: needsSlot ? "pending" : "auto",
+  };
+}
+
+export function firstAcceptRequestFields(kind) {
+  return {
+    ...initialOrderStatus(kind),
+    partnerId: "",
+    partnerName: "",
+    partnerMobile: "",
+    partnerAssignedAt: 0,
+    offerMode: "first_accept",
+    declinedBy: [],
+  };
+}
+
 export function partnerAcceptFields(now = Date.now()) {
   return {
     trackStatus: "confirmed",
@@ -110,6 +162,120 @@ export function partnerAcceptFields(now = Date.now()) {
     partnerConfirmStatus: "accepted",
     partnerConfirmedAt: now,
   };
+}
+
+export function partnerApproveFields(kind, extras = {}, now = Date.now()) {
+  if (typeof extras === "number") {
+    now = extras;
+    extras = {};
+  }
+  const key = String(kind || "").toLowerCase();
+  const assignNow = key === "lab" || key === "radiology" || key === "homecare";
+  return {
+    trackStatus: assignNow ? "assigned" : "confirmed",
+    status: assignNow ? "Partner Assigned" : "Confirmed",
+    partnerConfirmed: true,
+    partnerConfirmStatus: "accepted",
+    partnerConfirmedAt: now,
+    ...extras,
+  };
+}
+
+export function acceptRequestedSlotFields(kind, order = {}, now = Date.now()) {
+  const key = String(kind || order?.kind || order?.orderType || "").toLowerCase();
+  const date = String(order.requestedDate || order.date || "").trim();
+  const timeSlot = String(order.requestedTimeSlot || order.timeSlot || "").trim();
+  return {
+    trackStatus: "assigned",
+    status:
+      key === "psychologist"
+        ? "Psychologist Confirmed"
+        : "Imaging Centre Confirmed",
+    partnerConfirmed: true,
+    partnerConfirmStatus: "accepted",
+    partnerConfirmedAt: now,
+    date,
+    timeSlot,
+    requestedDate: date,
+    requestedTimeSlot: timeSlot,
+    slotConfirmed: true,
+    slotConfirmStatus: "accepted",
+    slotConfirmedAt: now,
+  };
+}
+
+export function radiologyAcceptRequestedSlotFields(order = {}, now = Date.now()) {
+  return acceptRequestedSlotFields("radiology", order, now);
+}
+
+export function partnerOfferSlotFields(offer = {}, now = Date.now()) {
+  const date = String(offer.date || offer.offeredDate || "").trim();
+  const timeSlot = String(offer.timeSlot || offer.offeredTimeSlot || "").trim();
+  return {
+    trackStatus: "slot_offered",
+    status: "Awaiting Customer Slot Confirmation",
+    partnerConfirmed: false,
+    partnerConfirmStatus: "slot_offered",
+    partnerConfirmedAt: 0,
+    date,
+    timeSlot,
+    offeredDate: date,
+    offeredTimeSlot: timeSlot,
+    requestedDate: String(offer.requestedDate || "").trim(),
+    requestedTimeSlot: String(offer.requestedTimeSlot || "").trim(),
+    slotConfirmed: false,
+    slotConfirmStatus: "offered",
+    slotOfferedAt: now,
+  };
+}
+
+export function customerAcceptSlotFields(order = {}, now = Date.now()) {
+  const kind = String(order.kind || order.orderType || order.serviceType || "").toLowerCase();
+  const date = String(order.offeredDate || order.date || "").trim();
+  const timeSlot = String(order.offeredTimeSlot || order.timeSlot || "").trim();
+  return {
+    trackStatus: "assigned",
+    status:
+      kind === "psychologist"
+        ? "Psychologist Confirmed"
+        : "Imaging Centre Confirmed",
+    partnerConfirmed: true,
+    partnerConfirmStatus: "accepted",
+    partnerConfirmedAt: now,
+    date,
+    timeSlot,
+    slotConfirmed: true,
+    slotConfirmStatus: "accepted",
+    slotConfirmedAt: now,
+  };
+}
+
+export function customerDeclineOfferedSlotFields(order = {}, now = Date.now()) {
+  return {
+    trackStatus: "requested",
+    status: "Customer Declined Offered Slot",
+    partnerConfirmed: false,
+    partnerConfirmStatus: "slot_rejected",
+    date: String(order.requestedDate || order.date || "").trim(),
+    timeSlot: String(order.requestedTimeSlot || order.timeSlot || "").trim(),
+    slotConfirmed: false,
+    slotConfirmStatus: "rejected",
+    slotRejectedAt: now,
+  };
+}
+
+export function appointmentSlotLabel(order) {
+  const slot = String(order?.timeSlot || order?.offeredTimeSlot || order?.requestedTimeSlot || "").trim();
+  if (!slot) return "Not provided";
+  const kind = String(order?.kind || order?.orderType || order?.serviceType || "").toLowerCase();
+  if (isAwaitingCustomerSlotConfirm(order)) {
+    return `${slot} (offered by ${slotPartnerNoun(kind)} — accept to confirm)`;
+  }
+  if (order?.slotConfirmed) return `${slot} (confirmed)`;
+  if (needsSlotConfirm(kind)) {
+    return `${slot} (requested — awaiting ${slotPartnerNoun(kind)})`;
+  }
+  return slot;
 }
 
 export function partnerDeclineFields(now = Date.now()) {
@@ -129,7 +295,16 @@ export function awaitingPartnerMessage(kind) {
     return "Your laboratory test request has been sent. It is confirmed only after the lab partner accepts it.";
   }
   if (key === "radiology") {
-    return "Your radiology request has been sent. It is confirmed only after the imaging partner accepts it.";
+    return "Your radiology request has been sent. If your preferred slot is free, the imaging centre can confirm it. If not, they will offer another slot — the booking is confirmed only after you accept that slot.";
+  }
+  if (key === "psychologist") {
+    return "Your psychologist request has been sent. If your preferred slot is free, the psychologist can confirm it. If not, they will offer another available slot — the booking is confirmed only after you accept that slot.";
+  }
+  if (key === "doctor") {
+    return "Your doctor appointment request has been sent. If your preferred slot is free, the doctor can confirm it. If not, they will offer another available slot — the booking is confirmed only after you accept that slot.";
+  }
+  if (key === "homecare") {
+    return "Your home-care request was sent to all available nurses, caregivers, and physiotherapists in your PIN. The first partner who accepts is assigned, and their details appear here.";
   }
   if (key === "ambulance") {
     return "Your ambulance request has been sent. It is confirmed only after the ambulance partner accepts it.";

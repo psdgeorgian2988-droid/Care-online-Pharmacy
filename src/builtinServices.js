@@ -5,6 +5,7 @@ export const SERVICE_KIND_OPTIONS = [
   { value: "vaccination", label: "Vaccination" },
   { value: "lab", label: "Lab Tests" },
   { value: "radiology", label: "Radiology" },
+  { value: "doctor", label: "Doctor Appointment" },
   { value: "psychologist", label: "Psychologist Consultation" },
   { value: "stepdown", label: "Step-Down Care" },
   { value: "ambulance", label: "Ambulance" },

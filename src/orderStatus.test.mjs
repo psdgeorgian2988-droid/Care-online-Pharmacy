@@ -2,9 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   groupByTrackStatus,
+  groupOrdersByKind,
   isUnassigned,
   matchesStatusFilter,
   nextTrackStep,
+  serviceKind,
   statusMatrix,
   trackKey,
 } from "./orderStatus.js";
@@ -83,4 +85,16 @@ test("status filters isolate open, unassigned, and a single step", () => {
   assert.equal(orders.filter((row) => matchesStatusFilter(row, "progress")).length, 3);
   assert.equal(groupByTrackStatus(orders).confirmed.length, 1);
   assert.equal(groupByTrackStatus(orders).requested.length, 1);
+});
+
+test("cart checkout orders sit with pharmacy, and lists group by service", () => {
+  assert.equal(serviceKind({ kind: "cart" }), "medicine");
+  const groups = groupOrdersByKind(
+    [...orders, { id: "c1", kind: "cart" }],
+    ["medicine", "lab"]
+  );
+  assert.equal(groups[0].title, "Pharmacy orders");
+  assert.equal(groups[0].orders.length, 3);
+  assert.equal(groups[1].title, "Lab test orders");
+  assert.equal(groups[1].orders.length, 1);
 });

@@ -143,6 +143,11 @@ function Profile() {
               </div>
             </dl>
           </section>
+          <section className="profile-card" aria-label="Account reports">
+            <a className="profile-save-btn" href="#reports">
+              Open Reports
+            </a>
+          </section>
         </div>
       </>
     );
@@ -161,6 +166,14 @@ function Profile() {
               the account holder and added members.
             </p>
           </div>
+        </section>
+
+        <section className="profile-card" aria-label="Account reports">
+          <h2 className="profile-reports-title">Reports</h2>
+          <p>Lab and imaging reports for this account are here after you log in.</p>
+          <a className="profile-save-btn" href="#reports">
+            Open Reports
+          </a>
         </section>
 
         <section className="profile-card" aria-label="Family tree">
@@ -336,6 +349,9 @@ const styles = `
   .profile-actions{display:flex;flex-wrap:wrap;gap:8px;max-width:760px;margin:0 auto 14px}
   .profile-save-btn,.profile-edit-btn{border:none;border-radius:8px;padding:11px 16px;font-size:14px;font-weight:800;cursor:pointer}
   .profile-save-btn{background:#1a6b7a;color:#fff}
+  a.profile-save-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;width:fit-content}
+  .profile-reports-title{margin:0;font-size:18px;color:#123b59}
+  .profile-card > p{margin:0;color:#607589;font-size:13px;line-height:1.4}
   .profile-edit-btn{background:#fff;color:#1a6b7a;border:1px solid #d7e2e9}
   .profile-member-details{display:grid;gap:10px;margin:0}
   .profile-member-details div{display:grid;gap:2px}

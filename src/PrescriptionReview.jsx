@@ -11,6 +11,8 @@ import {
   clearPrescriptionParse,
   digitizePrescription,
   readPrescriptionParse,
+  setPrescriptionMedicinesConfirmed,
+  updatePrescriptionMedicine,
   PRESCRIPTION_PARSE_EVENT,
 } from "./prescriptionAi";
 import { lookupPrescriptionMedicine } from "./Medicines";
@@ -39,6 +41,8 @@ export default function PrescriptionReview() {
   const [menu, setMenu] = useState("");
   const [added, setAdded] = useState({});
   const [labPick, setLabPick] = useState({});
+  const [editingId, setEditingId] = useState("");
+  const [editName, setEditName] = useState("");
   const actionsRef = useRef(null);
 
   useEffect(() => {
@@ -104,6 +108,36 @@ export default function PrescriptionReview() {
     setParsed(null);
     setError("");
     setMenu("");
+    setEditingId("");
+    setEditName("");
+  };
+
+  const startNameEdit = (med) => {
+    setEditingId(med.id);
+    setEditName(med.name || "");
+    setMenu("");
+  };
+
+  const cancelNameEdit = () => {
+    setEditingId("");
+    setEditName("");
+  };
+
+  const saveNameEdit = (med) => {
+    const nextName = editName.trim();
+    if (!nextName) return;
+    const next = updatePrescriptionMedicine(med.id, {
+      name: nextName,
+      asWritten: med.asWritten || med.name,
+    });
+    if (next) setParsed(next);
+    setEditingId("");
+    setEditName("");
+  };
+
+  const toggleMedicinesConfirmed = (checked) => {
+    const next = setPrescriptionMedicinesConfirmed(checked);
+    if (next) setParsed(next);
   };
 
   const showImage = draft && prescriptionDraftIsImage(draft) && draft.fileData;
@@ -217,6 +251,7 @@ export default function PrescriptionReview() {
 
   const availableMeds = medOffers.filter((row) => row.offer).length;
   const availableTests = testOffers.filter((offer) => offer.matches.length).length;
+  const medicinesConfirmed = Boolean(parsed?.medicinesConfirmed) || medicines.length === 0;
 
   const orderAllAvailable = () => {
     const chosen = pickChosenTests();
@@ -374,16 +409,69 @@ export default function PrescriptionReview() {
               <p className="rx-empty">No medicines detected yet.</p>
             ) : (
               <ol className="rx-med-list">
-                {medicines.map((med) => (
+                {medicines.map((med) => {
+                  const offer = medOffers.find((row) => row.rx.id === med.id);
+                  const editing = editingId === med.id;
+                  return (
                   <li key={med.id}>
                     <div className="rx-med-title">
                       <strong>{med.name}</strong>
                       {med.strength ? <em>{med.strength}</em> : null}
                       {med.form ? <span className="rx-chip">{med.form}</span> : null}
-                      {med.verified === false ? (
+                      {med.userCorrected ? (
+                        <span className="rx-chip">Corrected</span>
+                      ) : med.verified === false ? (
                         <span className="rx-chip is-warn">As written — confirm</span>
                       ) : null}
                     </div>
+                    {editing ? (
+                      <div className="rx-name-edit">
+                        <label>
+                          Correct medicine name
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(event) => setEditName(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                saveNameEdit(med);
+                              }
+                              if (event.key === "Escape") cancelNameEdit();
+                            }}
+                            autoComplete="off"
+                            spellCheck={false}
+                          />
+                        </label>
+                        <div className="rx-name-edit-actions">
+                          <button
+                            type="button"
+                            className="rx-chip-btn"
+                            disabled={!editName.trim()}
+                            onClick={() => saveNameEdit(med)}
+                          >
+                            Save name
+                          </button>
+                          <button type="button" className="rx-rerun" onClick={cancelNameEdit}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rx-name-tools">
+                        <button type="button" className="rx-correct" onClick={() => startNameEdit(med)}>
+                          Make correction
+                        </button>
+                        {offer?.offer ? (
+                          <span className="rx-match">Catalogue: {offer.offer.brand || offer.offer.name}</span>
+                        ) : (
+                          <span className="rx-match is-miss">Not in catalogue — correct the name if needed</span>
+                        )}
+                      </div>
+                    )}
+                    {med.asWritten && med.asWritten !== med.name ? (
+                      <p className="rx-salt">Read as {med.asWritten}</p>
+                    ) : null}
                     {med.salt ? <p className="rx-salt">{med.salt}</p> : null}
                     <div className="rx-med-stats">
                       <div>
@@ -418,10 +506,34 @@ export default function PrescriptionReview() {
                       </dl>
                     )}
                   </li>
-                ))}
+                  );
+                })}
               </ol>
             )}
           </div>
+
+          {medicines.length > 0 ? (
+            <div className="rx-confirm-box">
+              <h3>Confirm medicines</h3>
+              <p>Are all medicine names on this digital prescription correct?</p>
+              <button
+                type="button"
+                className={`rx-confirm-tick${parsed?.medicinesConfirmed ? " is-on" : ""}`}
+                aria-pressed={Boolean(parsed?.medicinesConfirmed)}
+                onClick={() => toggleMedicinesConfirmed(!parsed?.medicinesConfirmed)}
+              >
+                <span className="rx-tick" aria-hidden="true">
+                  {parsed?.medicinesConfirmed ? "✓" : ""}
+                </span>
+                <span>I confirm all medicines are correct</span>
+              </button>
+              {parsed?.medicinesConfirmed ? (
+                <p className="rx-confirm-ok">Medicines confirmed. You can order now.</p>
+              ) : (
+                <p className="rx-confirm-wait">Tick the box above, then order.</p>
+              )}
+            </div>
+          ) : null}
 
           <div className="rx-list-block">
             <h3>Tests</h3>
@@ -451,7 +563,7 @@ export default function PrescriptionReview() {
               <button
                 type="button"
                 className="rx-primary"
-                disabled={!availableMeds && !availableTests}
+                disabled={!medicinesConfirmed || (!availableMeds && !availableTests)}
                 onClick={orderAllAvailable}
               >
                 Order all available
@@ -459,6 +571,7 @@ export default function PrescriptionReview() {
               <button
                 type="button"
                 className="rx-secondary"
+                disabled={!medicinesConfirmed}
                 aria-expanded={menu === "meds"}
                 onClick={() => setMenu((cur) => (cur === "meds" ? "" : "meds"))}
               >
@@ -476,7 +589,9 @@ export default function PrescriptionReview() {
                 Back to Home
               </button>
             </div>
-            {availableMeds || availableTests ? (
+            {medicines.length > 0 && !parsed?.medicinesConfirmed ? (
+              <p className="rx-all-hint">Confirm all medicine names with the tick above before ordering.</p>
+            ) : availableMeds || availableTests ? (
               <p className="rx-all-hint">
                 {`One click adds ${availableMeds} medicine${availableMeds === 1 ? "" : "s"} from the catalogue${
                   availableTests
@@ -656,6 +771,23 @@ const styles = `
 .rx-chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#e8f4f6;color:#1a6b7a}
 .rx-chip.is-warn{background:#fff3e6;color:#8a5a12}
 .rx-salt{margin:0 0 8px;font-size:12px;color:#5d7180}
+.rx-name-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px}
+.rx-correct{border:1px solid #c5d8e0;border-radius:999px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:700;cursor:pointer;min-height:28px;padding:0 10px}
+.rx-correct:hover,.rx-correct:focus-visible{background:#eef7f9}
+.rx-match{font-size:12px;color:#1a6b7a;font-weight:650}
+.rx-match.is-miss{color:#8a5a12}
+.rx-name-edit{display:grid;gap:8px;margin:0 0 10px;padding:10px;border-radius:8px;background:#f7fbfd;border:1px solid #d7e8ec}
+.rx-name-edit label{display:grid;gap:4px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
+.rx-name-edit input{min-height:38px;border:1px solid #c5d8e0;border-radius:8px;padding:0 10px;font:inherit;font-size:14px;font-weight:700;color:#143246}
+.rx-name-edit-actions{display:flex;flex-wrap:wrap;gap:8px}
+.rx-confirm-box{margin:8px 14px 4px;padding:12px;border:1px solid #c5d8e0;border-radius:10px;background:#f3fafb;position:relative;z-index:5;scroll-margin-bottom:140px}
+.rx-confirm-box h3{margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#1a6b7a}
+.rx-confirm-box p{margin:0 0 10px;font-size:13px;color:#34546b;line-height:1.4}
+.rx-confirm-tick{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid #c5d8e0;border-radius:10px;background:#fff;color:#143246;font:inherit;font-size:14px;font-weight:700;cursor:pointer;padding:10px 12px}
+.rx-confirm-tick.is-on{border-color:#1a6b7a;background:#e8f4f6}
+.rx-tick{flex:0 0 auto;width:22px;height:22px;border:2px solid #1a6b7a;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;line-height:1;color:#1a6b7a;background:#fff}
+.rx-confirm-ok{margin:10px 0 0 !important;color:#1a6b7a !important;font-weight:700}
+.rx-confirm-wait{margin:10px 0 0 !important;color:#8a5a12 !important}
 .rx-med-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 8px}
 .rx-med-stats > div{padding:8px 10px;border-radius:8px;background:#f3fafb;border:1px solid #d7e8ec}
 .rx-med-stats span{display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5d7180;margin-bottom:2px}
@@ -672,7 +804,7 @@ const styles = `
 .rx-actions{display:flex;flex-direction:column;gap:10px;padding:14px;position:relative;z-index:6;scroll-margin-bottom:140px}
 .rx-action-row{display:flex;flex-wrap:wrap;gap:8px}
 .rx-all-hint{margin:0;font-size:12px;color:#5d7180;line-height:1.4}
-.rx-primary:disabled{opacity:.55;cursor:not-allowed}
+.rx-primary:disabled,.rx-secondary:disabled{opacity:.55;cursor:not-allowed}
 .rx-menu-panel{width:100%;max-height:min(52vh,460px);overflow:auto;background:#fff;border:1px solid #d7e8ec;border-radius:12px;box-shadow:0 8px 24px rgba(20,50,70,.12);padding:10px;margin-bottom:8px}
 .rx-menu-title{margin:0 0 8px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#1a6b7a}
 .rx-menu-empty{margin:0;font-size:13px;color:#5d7180}

@@ -16,6 +16,7 @@ export const SPLIT_PLATFORM_PERCENT = {
   homecare: 20,
   vaccination: 20,
   psychologist: 20,
+  doctor: 20,
   stepdown: 10,
   ambulance: 15,
 };
@@ -28,6 +29,7 @@ export const PARTNER_SHARE_LABEL = {
   homecare: "Home Care professional",
   vaccination: "Vaccination nurse",
   psychologist: "Psychologist",
+  doctor: "Doctor",
   stepdown: "Step-down centre",
   ambulance: "Ambulance operator",
 };
@@ -49,6 +51,55 @@ export function platformPercentFor(kind, override) {
 
 export function partnerPercentFor(kind, override) {
   return 100 - platformPercentFor(kind, override);
+}
+
+export function clampSplitPercent(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(100, Math.max(0, Math.round(n)));
+}
+
+export function defaultPartnerPercentFor(kind) {
+  return partnerPercentFor(kind);
+}
+
+export function platformPercentFromPartnerShare(partnerPercent, kind) {
+  const partner = clampSplitPercent(partnerPercent);
+  if (partner == null) return platformPercentFor(kind);
+  return 100 - partner;
+}
+
+/** Recalculate an order's collection split using a staff-set partner %. */
+export function resplitOrder(order = {}, extras = {}) {
+  const kind = order.kind || order.orderType || "medicine";
+  const pin = order.pinCode || order.pin || "";
+  const payable = Number(
+    extras.payableRupees ??
+      order.split?.payableRupees ??
+      order.total ??
+      order.charges ??
+      0
+  );
+  const sale = Number(
+    extras.saleRupees ?? order.split?.saleRupees ?? order.saleRupees ?? payable
+  );
+  const platformPercent =
+    extras.platformPercent != null
+      ? clampSplitPercent(extras.platformPercent)
+      : platformPercentFromPartnerShare(extras.partnerPercent, kind);
+  const paymentMethod = extras.paymentMethod || order.paymentMethod || "";
+  const paidOn = extras.paidOn || order.paidOn || order.split?.paidOn || "";
+  return splitPayment(kind, payable, pin, {
+    saleRupees: sale,
+    payableRupees: payable,
+    couponCode:
+      extras.couponCode || order.split?.couponCode || order.couponCode || "",
+    couponLabel: extras.couponLabel || order.split?.couponLabel || "",
+    platformPercent,
+    paymentMethod,
+    paidOn,
+    collector: extras.collector || order.collector || order.split?.collector,
+  });
 }
 
 function roundRupees(amount) {
@@ -285,6 +336,8 @@ export function attachSettlement(split, { collector, paymentMethod, paidOn } = {
     dueToPartnerRupees,
     medihomeAccountRupees,
     partnerAccountRupees,
+    medihomeCreditDest: "settlement_bank",
+    medihomeCreditRupees: mhShare,
     ledger,
   };
 }

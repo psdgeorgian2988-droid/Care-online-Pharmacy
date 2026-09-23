@@ -30,6 +30,7 @@ export function paymentMethodLabel(method, cashLabel = "Cash On Visit") {
   if (key === "debit") return "Debit Card";
   if (key === "bank") return "Bank Account";
   if (key === "online") return "Online";
+  if (key === "split") return "Split payment";
   return cashLabel;
 }
 
@@ -62,14 +63,18 @@ export function parseUpiFromQr(raw) {
   return vpa && isValidUpi(vpa[0]) ? vpa[0].toLowerCase() : "";
 }
 
-export function paymentUpiUri({ amount, kind }) {
+export function paymentUpiUri({ amount, kind, pa, pn, tn, orderId } = {}) {
   const am = Math.max(0, Number(amount) || 0).toFixed(2);
+  const payee = isValidUpi(pa) ? String(pa).trim().toLowerCase() : "medihome@upi";
+  const note = String(
+    tn || `MediHome ${kind || "payment"}${orderId ? ` ${orderId}` : ""}`
+  ).slice(0, 50);
   const params = new URLSearchParams({
-    pa: "medihome@upi",
-    pn: "MediHome",
+    pa: payee,
+    pn: String(pn || "MediHome").slice(0, 99),
     am,
     cu: "INR",
-    tn: `MediHome ${kind || "payment"}`.slice(0, 50),
+    tn: note,
   });
   return `upi://pay?${params.toString()}`;
 }
@@ -154,11 +159,6 @@ export function validatePaymentDetails(method, details = {}) {
     return "";
   }
   if (key === "bank") {
-    const account = cardDigits(details.accountNumber);
-    if (details.savedId) return "";
-    if (!String(details.accountName || "").trim()) return "Enter the account holder name.";
-    if (account.length < 9 || account.length > 18) return "Enter a valid bank account number.";
-    if (!isValidIfsc(details.ifsc)) return "Enter a valid IFSC.";
     return "";
   }
   return "";

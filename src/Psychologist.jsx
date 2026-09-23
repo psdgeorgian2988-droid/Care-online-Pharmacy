@@ -1,9 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
-import { persistOrder, trackHref, withTracking } from "./orderTracking";
-import { partnerAcceptFields } from "./orderConfirm";
+import {
+  persistOrder,
+  refreshOrderFromServer,
+  trackHref,
+  withTracking,
+} from "./orderTracking";
+import {
+  appointmentSlotLabel,
+  diagnosticRequestFields,
+  isAwaitingCustomerSlotConfirm,
+} from "./orderConfirm";
+import SlotOfferCard from "./SlotOfferCard";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { useBusyOverlay } from "./BusyWait";
@@ -26,6 +36,7 @@ import {
 import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateToday } from "./personFields";
 import {
+  PSY_TIME_SLOTS,
   appointmentDateError,
   appointmentSlotError,
   bookingMaxDate,
@@ -42,14 +53,7 @@ const PLANS = [
   { value: "home-60", label: "Home visit 60 min", price: 1999, mode: "home" },
 ];
 
-const TIME_SLOTS = [
-  "08:00 AM – 10:00 AM",
-  "10:00 AM – 12:00 PM",
-  "12:00 PM – 02:00 PM",
-  "02:00 PM – 04:00 PM",
-  "04:00 PM – 06:00 PM",
-  "06:00 PM – 08:00 PM",
-];
+const TIME_SLOTS = PSY_TIME_SLOTS;
 
 const formatRupee = (amount) => `₹${Number(amount || 0).toLocaleString("en-IN")}`;
 
@@ -79,6 +83,21 @@ function Psychologist() {
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
   const busyWait = useBusyOverlay(submitting || paying, "psychologist");
+
+  useEffect(() => {
+    const id = booking?.bookingId;
+    if (!id) return undefined;
+    if (booking.partnerConfirmed && booking.slotConfirmed) return undefined;
+    let cancelled = false;
+    const timer = setInterval(async () => {
+      const latest = await refreshOrderFromServer(id);
+      if (!cancelled && latest) setBooking(latest);
+    }, 6000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [booking?.bookingId, booking?.partnerConfirmed, booking?.slotConfirmed]);
   const plan = PLANS.find((item) => item.value === form.carePlan) || PLANS[0];
   const openSlots = useMemo(
     () => openAppointmentSlots(TIME_SLOTS, form.date),
@@ -145,7 +164,7 @@ function Psychologist() {
         carePlanLabel: plan.label,
         sessionMode: plan.mode,
         serviceLabel: "Psychologist Consultation",
-        partner: "Psychologist Consultation",
+        partner: "",
         concern: form.concern.trim(),
         date: form.date,
         timeSlot: form.timeSlot,
@@ -156,9 +175,10 @@ function Psychologist() {
         highTrafficWait: queue.busy || queue.waited,
         bookedAt: new Date().toLocaleString(),
         bookedAtMs: Date.now(),
-        ...partnerAcceptFields(),
-        trackStatus: "assigned",
-        status: "Partner assigned — psychologist session",
+        ...diagnosticRequestFields("psychologist", {
+          date: form.date,
+          timeSlot: form.timeSlot,
+        }),
         paymentMethod: "pending",
         paymentStatus: "awaiting_payment",
         paid: false,
@@ -247,8 +267,20 @@ function Psychologist() {
             {flowStep === "placed" ? (
               <>
                 <div className="success-icon">✓</div>
-                <h1>Booking Confirmed</h1>
-                <p>Your psychologist session is confirmed. Track the visit below.</p>
+                <h1>
+                  {booking.partnerConfirmed
+                    ? "Session confirmed"
+                    : isAwaitingCustomerSlotConfirm(booking)
+                      ? "New time slot offered"
+                      : "Request sent"}
+                </h1>
+                <p>
+                  {booking.partnerConfirmed
+                    ? "The psychologist confirmed your slot. Track the session below."
+                    : isAwaitingCustomerSlotConfirm(booking)
+                      ? "Your requested slot was not available. Accept the psychologist’s offered slot to confirm the booking."
+                      : "Your request was sent to the psychologist. The session is confirmed after they accept your slot, or after you accept a new slot they offer."}
+                </p>
               </>
             ) : null}
             {flowStep === "pay" ? (
@@ -272,7 +304,11 @@ function Psychologist() {
               </div>
               <div className="confirm-row">
                 <span>Service</span>
-                <strong>{booking.partner || booking.serviceLabel}</strong>
+                <strong>
+                  {booking.partnerConfirmed
+                    ? booking.partnerName || booking.partner || booking.serviceLabel
+                    : booking.serviceLabel}
+                </strong>
               </div>
               <div className="confirm-row">
                 <span>Session</span>
@@ -316,9 +352,16 @@ function Psychologist() {
                 <strong>{booking.date}</strong>
               </div>
               <div className="confirm-row">
-                <span>Time slot</span>
-                <strong>{booking.timeSlot}</strong>
+                <span>
+                  {booking.slotConfirmed
+                    ? "Confirmed time slot"
+                    : isAwaitingCustomerSlotConfirm(booking)
+                      ? "Offered time slot"
+                      : "Requested time slot"}
+                </span>
+                <strong>{appointmentSlotLabel(booking)}</strong>
               </div>
+              <SlotOfferCard order={booking} onResolved={setBooking} />
               {booking.concern ? (
                 <div className="confirm-row">
                   <span>Note</span>
@@ -326,11 +369,13 @@ function Psychologist() {
                 </div>
               ) : null}
             </div>
-            {flowStep !== "pay" ? (
+            {flowStep !== "pay" && booking.partnerConfirmed ? (
               <AssignedAgent
                 record={{
                   ...booking,
-                  agentRole: "Psychologist coordinator",
+                  agentName: booking.agentName || booking.partnerName,
+                  agentMobile: booking.agentMobile || booking.partnerMobile,
+                  agentRole: "Psychologist",
                 }}
               />
             ) : null}
@@ -474,7 +519,7 @@ function Psychologist() {
 
           <div className="field">
             <label htmlFor="psy-slot">
-              Time slot <span>*</span>
+              Preferred time slot <span>*</span>
             </label>
             <select
               id="psy-slot"
@@ -493,7 +538,11 @@ function Psychologist() {
               <small>No time slots left today. Choose a later date.</small>
             ) : errors.timeSlot ? (
               <small>{errors.timeSlot}</small>
-            ) : null}
+            ) : (
+              <small className="booking-hint">
+                If this slot is not free, the psychologist will offer another time. The booking is confirmed only after you accept that slot.
+              </small>
+            )}
           </div>
 
           <div className="field full">
@@ -523,7 +572,7 @@ function Psychologist() {
           <button type="submit" className="service-submit" disabled={submitting}>
             {submitting
               ? "Holding your place…"
-              : `Confirm session · ${formatRupee(plan.price)}`}
+              : `Send request · ${formatRupee(plan.price)}`}
           </button>
           </BookingFlow>
         </form>

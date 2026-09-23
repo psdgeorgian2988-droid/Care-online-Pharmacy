@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { createStaffPartner, setStaffPartnerLogin } from "./adminApi";
+import { createStaffPartner, patchStaffPartner, setStaffPartnerLogin } from "./adminApi";
 import { kindLabel } from "./orderTracking";
+import { defaultPartnerPercentFor } from "./paymentSplit";
 
 const KIND_OPTIONS = [
   "medicine",
@@ -8,6 +9,7 @@ const KIND_OPTIONS = [
   "radiology",
   "homecare",
   "psychologist",
+  "doctor",
   "ambulance",
   "stepdown",
 ];
@@ -19,6 +21,7 @@ const emptyCreate = {
   mobile: "",
   loginId: "",
   password: "",
+  partnerPercent: defaultPartnerPercentFor("medicine"),
 };
 
 export default function AdminPartnerLogins({ partners, onChange }) {
@@ -29,7 +32,12 @@ export default function AdminPartnerLogins({ partners, onChange }) {
   const [error, setError] = useState("");
 
   const draftFor = (partner) =>
-    drafts[partner.id] || { loginId: partner.loginId || "", password: "" };
+    drafts[partner.id] || {
+      loginId: partner.loginId || "",
+      password: "",
+      partnerPercent:
+        partner.partnerPercent ?? defaultPartnerPercentFor(partner.kinds?.[0]),
+    };
 
   const saveLogin = async (partner) => {
     const draft = draftFor(partner);
@@ -44,11 +52,33 @@ export default function AdminPartnerLogins({ partners, onChange }) {
       onChange?.(data.partners || []);
       setDrafts((current) => ({
         ...current,
-        [partner.id]: { loginId: data.partner?.loginId || draft.loginId, password: "" },
+        [partner.id]: {
+          loginId: data.partner?.loginId || draft.loginId,
+          password: "",
+          partnerPercent: draft.partnerPercent,
+        },
       }));
       setNote(`Login Saved For ${partner.name}.`);
     } catch (err) {
       setError(err.message || "Could Not Save Partner Login.");
+    } finally {
+      setBusyId("");
+    }
+  };
+
+  const saveSplit = async (partner) => {
+    const draft = draftFor(partner);
+    setBusyId(`split-${partner.id}`);
+    setError("");
+    setNote("");
+    try {
+      const data = await patchStaffPartner(partner.id, {
+        partnerPercent: Number(draft.partnerPercent),
+      });
+      onChange?.(data.partners || []);
+      setNote(`Split saved for ${partner.name}: partner ${data.partner?.partnerPercent}%.`);
+    } catch (err) {
+      setError(err.message || "Could not save partner split.");
     } finally {
       setBusyId("");
     }
@@ -76,7 +106,8 @@ export default function AdminPartnerLogins({ partners, onChange }) {
       <h2>Partner Logins</h2>
       <p>
         Create The First Login ID And Password Here. Partners Sign In With Those
-        Details. Passwords Are Not Shown After You Save.
+        Details. Passwords Are Not Shown After You Save. Set The Partner Collection
+        Split Here. Only Staff Can Change It Later From This Panel Or Staff Orders.
       </p>
       {error ? <p className="admin-error">{error}</p> : null}
       {note ? <p className="admin-hint">{note}</p> : null}
@@ -88,6 +119,7 @@ export default function AdminPartnerLogins({ partners, onChange }) {
               <th>Role / Service</th>
               <th>Login ID</th>
               <th>Password</th>
+              <th>Partner %</th>
               <th>Status</th>
               <th></th>
             </tr>
@@ -95,7 +127,7 @@ export default function AdminPartnerLogins({ partners, onChange }) {
           <tbody>
             {partners.length === 0 ? (
               <tr>
-                <td colSpan="6">No Partners Yet. Add One Below.</td>
+                <td colSpan="7">No Partners Yet. Add One Below.</td>
               </tr>
             ) : (
               partners.map((partner) => {
@@ -145,6 +177,36 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                         placeholder={partner.hasLogin ? "New password" : "First password"}
                         autoComplete="new-password"
                       />
+                    </td>
+                    <td>
+                      <div className="admin-split-row">
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          aria-label={`Partner split percent for ${partner.name}`}
+                          value={draft.partnerPercent}
+                          onChange={(event) =>
+                            setDrafts((current) => ({
+                              ...current,
+                              [partner.id]: {
+                                ...draft,
+                                partnerPercent: event.target.value,
+                              },
+                            }))
+                          }
+                        />
+                        <span className="admin-outlet-area">
+                          MediHome {100 - Number(draft.partnerPercent || 0)}%
+                        </span>
+                        <button
+                          type="button"
+                          disabled={busyId === `split-${partner.id}`}
+                          onClick={() => saveSplit(partner)}
+                        >
+                          {busyId === `split-${partner.id}` ? "Saving…" : "Save Split"}
+                        </button>
+                      </div>
                     </td>
                     <td>{partner.hasLogin ? "Login Set" : "Needs First Login"}</td>
                     <td>
@@ -217,6 +279,25 @@ export default function AdminPartnerLogins({ partners, onChange }) {
               minLength={8}
             />
           </label>
+          <label>
+            Partner split %
+            <input
+              type="number"
+              min={0}
+              max={100}
+              required
+              value={create.partnerPercent}
+              onChange={(event) =>
+                setCreate((current) => ({
+                  ...current,
+                  partnerPercent: event.target.value,
+                }))
+              }
+            />
+            <span className="admin-outlet-area">
+              MediHome {100 - Number(create.partnerPercent || 0)}%. Partners do not see this.
+            </span>
+          </label>
           <fieldset>
             <legend>Service</legend>
             <div className="admin-partner-kinds">
@@ -231,7 +312,13 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                         const kinds = on
                           ? current.kinds.filter((row) => row !== kind)
                           : [...current.kinds, kind];
-                        return { ...current, kinds: kinds.length ? kinds : [kind] };
+                        const nextKinds = kinds.length ? kinds : [kind];
+                        const prevDefault = defaultPartnerPercentFor(current.kinds[0]);
+                        const keep =
+                          Number(current.partnerPercent) === prevDefault
+                            ? defaultPartnerPercentFor(nextKinds[0])
+                            : current.partnerPercent;
+                        return { ...current, kinds: nextKinds, partnerPercent: keep };
                       })
                     }
                   />

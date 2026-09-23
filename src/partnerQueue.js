@@ -12,6 +12,7 @@ export const TRAFFIC_KINDS = [
   "homecare",
   "vaccination",
   "psychologist",
+  "doctor",
   "stepdown",
   "ambulance",
 ];
@@ -24,6 +25,7 @@ const STORES = [
   ["mediHomeHomeCareBookings", "homecare"],
   ["mediHomeVaccinationBookings", "vaccination"],
   ["mediHomePsychologistBookings", "psychologist"],
+  ["mediHomeDoctorBookings", "doctor"],
   ["mediHomeStepDownBookings", "stepdown"],
   ["mediHomeAmbulanceRequests", "ambulance"],
 ];
@@ -51,6 +53,8 @@ function kindLabel(kind) {
       return "Vaccination";
     case "psychologist":
       return "Psychologist Consultation";
+    case "doctor":
+      return "Doctor Appointment";
     case "stepdown":
       return "Step-Down Care";
     case "ambulance":
@@ -69,6 +73,7 @@ export function kindFromRecord(row, fallback) {
     kind === "homecare" ||
     kind === "vaccination" ||
     kind === "psychologist" ||
+    kind === "doctor" ||
     kind === "stepdown" ||
     kind === "ambulance"
   ) {

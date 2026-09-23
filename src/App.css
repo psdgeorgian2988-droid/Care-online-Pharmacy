@@ -421,6 +421,13 @@ footer p {
   color: #34546b;
 }
 
+.checkout-rx.is-ready p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a6b7a;
+}
+
 .checkout-panel h2 {
   text-align: center;
   margin-bottom: 20px;
@@ -3357,38 +3364,81 @@ footer .logo {
   font-weight: 700;
 }
 
-.medicines-page .medicine-category-count {
-  min-width: 28px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #e8f6f7;
-  color: #0f6b70;
+.medicines-page .medicine-salt-row {
+  width: 100%;
+  margin: 12px 0 0;
+}
+
+.medicines-page .medicine-salt-kicker {
+  margin: 0 0 8px;
+  color: #3d6b66;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
-.medicines-page .medicine-category-box.active .medicine-category-count {
-  background: rgba(255, 255, 255, 0.22);
-  color: #fff;
-}
-
-#medicines .medicine-search-box,
-.medicines-page .medicine-search-box {
+.medicines-page .medicine-salt-boxes {
   display: flex !important;
   flex-wrap: wrap !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 10px !important;
+  gap: 8px !important;
   width: 100% !important;
   margin: 0 !important;
 }
 
+.medicines-page .medicine-salt-boxes .medicine-category-box {
+  width: auto;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 12px;
+  flex: 0 0 auto;
+  font-size: 13px;
+}
+
+
+#medicines .medicine-search-box,
+.medicines-page .medicine-search-box {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: stretch !important;
+  gap: 12px !important;
+  width: 100% !important;
+  margin: 12px 0 0 !important;
+}
+
+#medicines .medicine-search-box.is-large,
+.medicines-page .medicine-search-box.is-large {
+  max-width: 100% !important;
+}
+
 #medicines .medicine-search-box input,
-.medicines-page .medicine-search-box input {
-  flex: 0 1 520px !important;
-  width: min(520px, 100%) !important;
+.medicines-page .medicine-search-box input,
+#medicines .medicine-search-box input[type="search"],
+.medicines-page .medicine-search-box input[type="search"],
+#medicines .medicine-search-box input[type="text"],
+.medicines-page .medicine-search-box input[type="text"] {
+  flex: 1 1 auto !important;
+  width: 100% !important;
   min-width: 0 !important;
-  max-width: 520px !important;
+  max-width: none !important;
+  height: 56px !important;
+  min-height: 56px !important;
+  padding: 0 18px !important;
+  border: 1px solid #c5d6dc !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  font-size: 16px !important;
+  line-height: 56px !important;
+  color: #143246 !important;
+}
+
+#medicines .medicine-search-box .medicine-clear-button,
+.medicines-page .medicine-search-box .medicine-clear-button {
+  min-height: 56px !important;
+  height: 56px !important;
+  padding: 0 16px !important;
+  font-size: 15px !important;
 }
 
 #medicines.medicines-page > .medicine-grid {
@@ -4020,6 +4070,24 @@ body,
   pointer-events: auto;
 }
 
+.home-landing .home-search-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 420px;
+  min-height: 48px;
+  margin: 14px 0 0;
+  padding: 0 20px;
+  border: none;
+  border-radius: 12px;
+  background: #1a6b7a;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .home-landing .home-cta-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -4383,6 +4451,43 @@ footer .logo .logo-wordmark {
     min-width: 0 !important;
     flex: 1 1 auto !important;
   }
+}
+
+#medicines .medicine-search-box.is-large,
+.medicines-page .medicine-search-box.is-large {
+  display: flex !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 12px 0 0 !important;
+}
+
+#medicines .medicine-search-box.is-large input,
+#medicines .medicine-search-box.is-large input[type="search"],
+#medicines .medicine-search-box.is-large input[type="text"],
+.medicines-page .medicine-search-box.is-large input,
+.medicines-page .medicine-search-box.is-large input[type="search"],
+.medicines-page .medicine-search-box.is-large input[type="text"] {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 56px !important;
+  min-height: 56px !important;
+  padding: 0 18px !important;
+  border: 1.5px solid #b9cdd6 !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  font-size: 16px !important;
+  line-height: 56px !important;
+  color: #143246 !important;
+}
+
+#medicines .medicine-search-box.is-large .medicine-clear-button,
+.medicines-page .medicine-search-box.is-large .medicine-clear-button {
+  height: 56px !important;
+  min-height: 56px !important;
+  padding: 0 16px !important;
+  font-size: 15px !important;
 }
 
 .care-overlay {
@@ -6010,6 +6115,35 @@ body,
   line-height: 46px !important;
 }
 
+.app:not(.app-ops) .medicine-search-box.is-large input,
+.app:not(.app-ops) .medicine-search-box.is-large input[type="search"],
+.app:not(.app-ops) .medicine-search-box.is-large input[type="text"] {
+  height: 56px !important;
+  min-height: 56px !important;
+  padding: 0 18px !important;
+  font-size: 16px !important;
+  line-height: 56px !important;
+  border-radius: 12px !important;
+}
+
+#medicines .med-search-tools,
+.medicines-page .med-search-tools {
+  margin: 8px 0 0 !important;
+}
+
+#medicines .med-search-tools-row,
+.medicines-page .med-search-tools-row {
+  gap: 8px;
+}
+
+#medicines .med-search-tool,
+.medicines-page .med-search-tool {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
 .app:not(.app-ops) .care-compose input {
   height: 38px !important;
   min-height: 38px !important;
@@ -7084,6 +7218,7 @@ html.is-customer-app .app-chrome-header,
   }
 
   .home-rx-actions {
+    flex-wrap: wrap;
     justify-content: flex-start;
   }
 }
