@@ -15,6 +15,9 @@ test("social aliases and desk pages resolve correctly", () => {
   assert.equal(parseAppHash("#partners").route, "#partner");
   assert.equal(parseAppHash("#partner-desk").route, "#partner-desk");
   assert.equal(parseAppHash("#partnerdesk").route, "#partner-desk");
+  assert.equal(parseAppHash("#pharmacy").route, "#pharmacy-desk");
+  assert.equal(parseAppHash("#delivery").route, "#delivery-desk");
+  assert.equal(parseAppHash("#lab-desk").route, "#lab-desk");
   assert.equal(parseAppHash("#customer").route, "#customer");
   assert.equal(parseAppHash("#app").route, "#portals");
   assert.equal(parseAppHash("#apps").route, "#portals");

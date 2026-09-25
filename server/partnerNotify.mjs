@@ -1,7 +1,12 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { concernedPartnersForOrder, listPartners, orderKind } from "./partners.mjs";
+import {
+  concernedPartnersForOrder,
+  deliveryPartnersForOrder,
+  listPartners,
+  orderKind,
+} from "./partners.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataFile = path.join(root, "data", "partner-notifications.json");
@@ -70,12 +75,13 @@ function notificationBody(order, kind) {
     .join(" · ");
 }
 
-export function alreadyNotified(list, partnerId, orderId) {
-  return (list || []).some(
-    (row) =>
-      String(row.partnerId) === String(partnerId) &&
-      String(row.orderId) === String(orderId)
-  );
+export function alreadyNotified(list, partnerId, orderId, type) {
+  return (list || []).some((row) => {
+    if (String(row.partnerId) !== String(partnerId)) return false;
+    if (String(row.orderId) !== String(orderId)) return false;
+    if (type) return String(row.type || "new_order") === String(type);
+    return true;
+  });
 }
 
 export async function notifyPartnersForOrder(order) {
@@ -93,8 +99,36 @@ export async function notifyPartnersForOrder(order) {
       partnerId: partner.id,
       orderId,
       kind,
+      type: "new_order",
       title: kindTitle(kind),
       body: notificationBody(order, kind),
+      createdAt: Date.now(),
+      readAt: null,
+    };
+    store.notifications.unshift(row);
+    created.push(row);
+  }
+  if (created.length) await writeStore(store);
+  return created;
+}
+
+export async function notifyDeliveryPartnersForReturn(order) {
+  const orderId = orderIdOf(order);
+  if (!orderId) return [];
+  const partners = deliveryPartnersForOrder(order, await listPartners());
+  if (!partners.length) return [];
+  const store = await readStore();
+  const created = [];
+  for (const partner of partners) {
+    if (alreadyNotified(store.notifications, partner.id, orderId, "return")) continue;
+    const row = {
+      id: `N-${Date.now().toString(36)}-${partner.id}-ret-${created.length}`,
+      partnerId: partner.id,
+      orderId,
+      kind: "medicine",
+      type: "return",
+      title: "Return medicine ready for collection",
+      body: notificationBody(order, "medicine"),
       createdAt: Date.now(),
       readAt: null,
     };

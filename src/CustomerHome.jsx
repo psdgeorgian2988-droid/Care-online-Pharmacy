@@ -1,10 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLoginSession } from "./authSession";
 import {
   loadAllOrders,
+  refreshOrderFromServer,
   trackHref,
 } from "./orderTracking";
 import { orderCurrentStatus } from "./orderStatus";
+import { isAwaitingPartnerConfirm } from "./orderConfirm";
 import CustomerWelcome, { needsCustomerWelcome } from "./CustomerWelcome";
 import HomeServiceCatalog from "./HomeServiceCatalog";
 import HomePrescriptionUpload from "./HomePrescriptionUpload";
@@ -12,7 +14,29 @@ import HomePrescriptionUpload from "./HomePrescriptionUpload";
 export default function CustomerHome() {
   const user = useLoginSession();
   const [welcomeTick, setWelcomeTick] = useState(0);
-  const activeOrder = useMemo(() => activeOrderFromList(loadAllOrders()), []);
+  const [ordersTick, setOrdersTick] = useState(0);
+  const activeOrder = useMemo(() => activeOrderFromList(loadAllOrders()), [ordersTick]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      const rows = loadAllOrders();
+      const pending = rows.filter((order) => {
+        const kind = String(order?.kind || order?.orderType || "").toLowerCase();
+        return kind === "stepdown" || isAwaitingPartnerConfirm(order);
+      });
+      for (const order of pending) {
+        await refreshOrderFromServer(order.bookingId || order.id);
+      }
+      if (!cancelled) setOrdersTick((n) => n + 1);
+    };
+    tick();
+    const timer = setInterval(tick, 6000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
 
   if (needsCustomerWelcome(user)) {
     return (

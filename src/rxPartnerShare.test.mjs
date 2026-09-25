@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { applyPartnerMedicineCorrection } from "./rxPartnerShare.js";
+import {
+  applyPartnerMedicineCorrection,
+  hasPartnerRxShare,
+} from "./rxPartnerShare.js";
 
 test("partner can correct a generated digital Rx medicine name", () => {
   const result = applyPartnerMedicineCorrection(
@@ -29,4 +32,20 @@ test("rejects an empty partner name correction", () => {
     { id: "m1", name: "   " }
   );
   assert.equal(result.ok, false);
+});
+
+test("pharmacy can see handwritten upload or digital Rx on the order", () => {
+  assert.equal(
+    hasPartnerRxShare({
+      rxShare: { originalFile: "data:image/jpeg;base64,xx", fileName: "rx.jpg" },
+    }),
+    true
+  );
+  assert.equal(
+    hasPartnerRxShare({
+      rxShare: { digital: { medicines: [{ name: "Sitagliptin 50" }] } },
+    }),
+    true
+  );
+  assert.equal(hasPartnerRxShare({ prescription: "rx.pdf" }), true);
 });

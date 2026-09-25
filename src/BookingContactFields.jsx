@@ -39,9 +39,10 @@ export default function BookingContactFields({
   nameLabel = "Name",
   pinHint,
   addressTitle = "",
+  alwaysAsk = false,
 }) {
   const skin = LAYOUT[layout] || LAYOUT.service;
-  if (!shouldAskBookingDetails(values, profile)) return null;
+  if (!alwaysAsk && !shouldAskBookingDetails(values, profile)) return null;
   const Star = skin.star === "em" ? "em" : "span";
   const nameId = `${idPrefix}-name`;
   const genderId = `${idPrefix}-gender`;

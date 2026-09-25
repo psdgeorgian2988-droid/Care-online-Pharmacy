@@ -17,12 +17,18 @@ import {
   initialOrderStatus,
   isAwaitingCustomerSlotConfirm,
   isAwaitingPartnerConfirm,
+  medicineAwaitingPharmacyFields,
   needsPartnerConfirm,
 } from "../src/orderConfirm.js";
 import {
   listCustomerNotifications,
   markCustomerNotificationsRead,
+  notifyCustomerRefund,
   notifyCustomerSlotOffer,
+  notifyCustomerStepdownAccount,
+  notifyCustomerStepdownCharge,
+  notifyCustomerStepdownDecision,
+  notifyCustomerStepdownDischarge,
 } from "./customerNotify.mjs";
 import { openTrafficFromOrders } from "../src/partnerQueue.js";
 import {
@@ -37,6 +43,8 @@ import {
 } from "./payments.mjs";
 import {
   assignPartnerToOrder,
+  attachConcernedPharmacy,
+  attachDeliveryActor,
   createPartner,
   findPartner,
   listPartnerJobs,
@@ -47,6 +55,12 @@ import {
   setPartnerLogin,
   updatePartner,
 } from "./partners.mjs";
+import { deductOrderStock, listPartnerInventory } from "./stock.mjs";
+import { findBatch, publicCatalog, readCatalog } from "./catalog.mjs";
+import {
+  isDeliveryPartner,
+  isPharmacyStorePartner,
+} from "../src/partnerRetention.js";
 import {
   appendCustomerMessage,
   getThread,
@@ -57,6 +71,13 @@ import {
 import { readSettings, writeSettings } from "./settings.mjs";
 import { lookupPin, nearestPin, resolvePinFromLocation } from "./pincodes.mjs";
 import { parsePrescriptionPayload } from "./prescriptionAi.mjs";
+import { withDeliveryOutlet } from "../src/deliveryOutlets.js";
+import { notifyDeliveryPartnersForReturn, notifyPartnersForOrder } from "./partnerNotify.mjs";
+import {
+  isReturnPhoto,
+  returnCollectError,
+  returnRequestError,
+} from "../src/pharmacyTrack.js";
 
 const ADMIN_USER = process.env.MEDIHOME_ADMIN_USER || "admin";
 const ADMIN_PASSWORD = process.env.MEDIHOME_ADMIN_PASSWORD || "MediHome@26";
@@ -154,6 +175,13 @@ function enrichOrder(body) {
       Object.assign(next, initialOrderStatus(kind));
     }
   }
+  Object.assign(next, withDeliveryOutlet(next));
+  if (kind === "medicine") {
+    const confirm = String(next.partnerConfirmStatus || "").toLowerCase();
+    if (confirm !== "accepted" && confirm !== "declined") {
+      Object.assign(next, medicineAwaitingPharmacyFields(next));
+    }
+  }
   return next;
 }
 
@@ -172,6 +200,32 @@ export async function handleApi(req, res) {
   }
 
   try {
+    if (pathname === "/api/catalog" && req.method === "GET") {
+      send(res, 200, publicCatalog(await readCatalog()));
+      return true;
+    }
+
+    const batchReport = pathname.match(/^\/api\/catalog\/batches\/([^/]+)\/report$/);
+    if (batchReport && req.method === "GET") {
+      const batch = await findBatch(decodeURIComponent(batchReport[1]));
+      if (!batch) {
+        send(res, 404, { error: "Batch report not found." });
+        return true;
+      }
+      send(res, 200, {
+        id: batch.id,
+        productName: batch.productName,
+        batchNo: batch.batchNo,
+        mfgDate: batch.mfgDate,
+        expiryDate: batch.expiryDate,
+        notes: batch.notes,
+        fileName: batch.fileName,
+        fileType: batch.fileType,
+        fileData: batch.fileData || "",
+      });
+      return true;
+    }
+
     if (pathname === "/api/payments/config" && req.method === "GET") {
       send(res, 200, publicPaymentConfig());
       return true;
@@ -332,6 +386,26 @@ export async function handleApi(req, res) {
         return true;
       }
       send(res, 200, { jobs });
+      return true;
+    }
+
+    if (pathname === "/api/partner/stock" && req.method === "GET") {
+      const token = readToken(req) || url.searchParams.get("token") || "";
+      const partnerId =
+        url.searchParams.get("partnerId") || partnerIdFromToken(token) || "";
+      const allowed = partnerIdFromToken(token);
+      if (!allowed || allowed !== partnerId) {
+        send(res, 401, { error: "Partner login required." });
+        return true;
+      }
+      const partner = await findPartner(partnerId);
+      if (!partner || !isPharmacyStorePartner(partner)) {
+        send(res, 403, { error: "Inventory is only on the pharmacy partner desk." });
+        return true;
+      }
+      const jobs = await listPartnerJobs(partnerId, token);
+      const inventory = await listPartnerInventory(partner, jobs || []);
+      send(res, 200, inventory);
       return true;
     }
 
@@ -667,6 +741,121 @@ export async function handleApi(req, res) {
             staffSet: false,
           };
         }
+        if (isPharmacyStorePartner(partner)) {
+          patch.pharmacyPartnerId = partner.id;
+          patch.pharmacyPartnerName = partner.name;
+        }
+      }
+      if (Array.isArray(body.stayCharges)) patch.stayCharges = body.stayCharges;
+      if (Array.isArray(body.extendedDays)) patch.extendedDays = body.extendedDays;
+      if (body.total != null) patch.total = Number(body.total) || 0;
+      if (body.saleRupees != null) patch.saleRupees = Number(body.saleRupees) || 0;
+      if (body.dayRate != null) patch.dayRate = Number(body.dayRate) || 0;
+      if (body.billingStarted != null) patch.billingStarted = Boolean(body.billingStarted);
+      if (body.roomNo != null) patch.roomNo = String(body.roomNo || "").trim().slice(0, 20);
+      if (body.bedNo != null) patch.bedNo = String(body.bedNo || "").trim().slice(0, 20);
+      if (body.admitted != null) patch.admitted = Boolean(body.admitted);
+      if (body.admittedAt) patch.admittedAt = Number(body.admittedAt) || Date.now();
+      if (body.discharged != null) patch.discharged = Boolean(body.discharged);
+      if (body.dischargedAt) patch.dischargedAt = Number(body.dischargedAt) || Date.now();
+      if (body.billFinalized != null) patch.billFinalized = Boolean(body.billFinalized);
+      if (body.billFinalizedAt) patch.billFinalizedAt = Number(body.billFinalizedAt) || Date.now();
+      if (Array.isArray(body.headingTotals)) patch.headingTotals = body.headingTotals;
+      if (Array.isArray(body.billLines)) patch.billLines = body.billLines;
+      if (body.paid != null) patch.paid = Boolean(body.paid);
+      if (body.paymentStatus) patch.paymentStatus = String(body.paymentStatus).slice(0, 24);
+      if (body.paymentMethod) patch.paymentMethod = String(body.paymentMethod).slice(0, 20);
+      if (body.paidOn) patch.paidOn = String(body.paidOn).slice(0, 20);
+      if (body.paidAt) patch.paidAt = Number(body.paidAt) || Date.now();
+      if (body.patientReached != null) patch.patientReached = Boolean(body.patientReached);
+      if (body.patientAccountId) patch.patientAccountId = String(body.patientAccountId).slice(0, 40);
+      if (body.patientAccountName != null) {
+        patch.patientAccountName = String(body.patientAccountName || "").trim().slice(0, 80);
+      }
+      if (body.patientAccountMobile != null) {
+        patch.patientAccountMobile = String(body.patientAccountMobile || "").replace(/\D/g, "").slice(-10);
+      }
+      if (body.patientAccountOpened != null) {
+        patch.patientAccountOpened = Boolean(body.patientAccountOpened);
+      }
+      if (body.patientAccountCreatedAt) {
+        patch.patientAccountCreatedAt = Number(body.patientAccountCreatedAt) || Date.now();
+      }
+      if (body.inchargeName != null) patch.inchargeName = String(body.inchargeName || "").trim().slice(0, 80);
+      if (body.inchargeMobile != null) {
+        patch.inchargeMobile = String(body.inchargeMobile || "").replace(/\D/g, "").slice(-10);
+      }
+      if (body.inchargeRole != null) patch.inchargeRole = String(body.inchargeRole || "").trim().slice(0, 80);
+      if (body.agentName != null) patch.agentName = String(body.agentName || "").trim().slice(0, 80);
+      if (body.agentMobile != null) {
+        patch.agentMobile = String(body.agentMobile || "").replace(/\D/g, "").slice(-10);
+      }
+      if (body.agentRole != null) patch.agentRole = String(body.agentRole || "").trim().slice(0, 80);
+      if (body.status && !patch.status) patch.status = String(body.status).slice(0, 80);
+      for (const key of [
+        "checkPackAt",
+        "checkPickupAt",
+        "checkDeliverAt",
+        "qrPickedAt",
+        "qrReceivedAt",
+        "qrPackedAt",
+        "qrLastScan",
+        "trackStartedAt",
+        "returnStatus",
+        "returnRequestedAt",
+        "returnCollectedAt",
+        "returnReceivedAt",
+        "returnReason",
+        "returnCustomerPhotoName",
+        "returnCustomerPhotoType",
+        "returnCollectPhotoName",
+        "returnCollectPhotoType",
+      ]) {
+        if (body[key] != null) patch[key] = body[key];
+      }
+      if (body.returnCustomerPhoto != null) {
+        patch.returnCustomerPhoto = String(body.returnCustomerPhoto || "").slice(0, 2_000_000);
+      }
+      if (body.returnCollectPhoto != null) {
+        patch.returnCollectPhoto = String(body.returnCollectPhoto || "").slice(0, 2_000_000);
+      }
+      if (body.returnStatus === "requested") {
+        const err = returnRequestError({
+          returnCustomerPhoto: patch.returnCustomerPhoto || existing.returnCustomerPhoto,
+        });
+        if (err) {
+          send(res, 400, { error: err });
+          return true;
+        }
+        patch.status = String(body.status || "Return requested");
+      }
+      if (body.returnStatus === "collected") {
+        const err = returnCollectError({
+          returnCollectPhoto: patch.returnCollectPhoto || existing.returnCollectPhoto,
+        });
+        if (err) {
+          send(res, 400, { error: err });
+          return true;
+        }
+        patch.status = String(body.status || "Return collected");
+        if (isDeliveryPartner(partner)) {
+          Object.assign(patch, attachDeliveryActor(partner));
+        }
+      }
+      if (body.returnStatus === "received") {
+        patch.status = String(body.status || "Returned");
+      }
+      if (
+        isDeliveryPartner(partner) &&
+        (body.checkPickupAt ||
+          body.qrPickedAt ||
+          body.qrLastScan === "pickup" ||
+          body.qrLastScan === "deliver" ||
+          body.trackStatus === "picked_up" ||
+          body.trackStatus === "on_the_way" ||
+          body.trackStatus === "done")
+      ) {
+        Object.assign(patch, attachDeliveryActor(partner));
       }
       if (body.collectPayment) {
         const collected = partnerCollectPatch(existing, body);
@@ -684,6 +873,18 @@ export async function handleApi(req, res) {
           patch.partnerAssignedAt = Date.now();
         }
       }
+      if (
+        isPharmacyStorePartner(partner) &&
+        !existing.stockDeducted &&
+        (body.partnerConfirmStatus === "accepted" || body.trackStatus === "confirmed")
+      ) {
+        const deducted = await deductOrderStock({
+          ...existing,
+          ...patch,
+          outletId: partner.outletId || existing.outletId,
+        });
+        if (deducted?.stockDeducted) patch.stockDeducted = true;
+      }
       const updated = await patchOrder(orderId(existing), patch);
       if (
         updated &&
@@ -694,6 +895,77 @@ export async function handleApi(req, res) {
           await notifyCustomerSlotOffer(updated);
         } catch {
           /* keep the partner offer even if the notice store fails */
+        }
+      }
+      if (
+        updated &&
+        updated.returnStatus === "requested" &&
+        existing.returnStatus !== "requested"
+      ) {
+        try {
+          await notifyDeliveryPartnersForReturn(updated);
+        } catch {
+          /* keep the return even if the notice store fails */
+        }
+      }
+      if (
+        updated &&
+        updated.refundStatus &&
+        updated.refundStatus !== existing.refundStatus
+      ) {
+        try {
+          await notifyCustomerRefund(updated);
+        } catch {
+          /* keep the refund even if the notice store fails */
+        }
+      }
+      if (
+        updated &&
+        String(updated.kind || updated.orderType || "") === "stepdown" &&
+        updated.partnerConfirmStatus &&
+        updated.partnerConfirmStatus !== existing.partnerConfirmStatus &&
+        (updated.partnerConfirmStatus === "accepted" ||
+          updated.partnerConfirmStatus === "declined")
+      ) {
+        try {
+          await notifyCustomerStepdownDecision(updated);
+        } catch {
+          /* keep the decision even if the notice store fails */
+        }
+      }
+      if (
+        updated &&
+        String(updated.kind || updated.orderType || "") === "stepdown" &&
+        updated.patientAccountId &&
+        updated.patientAccountId !== existing.patientAccountId
+      ) {
+        try {
+          await notifyCustomerStepdownAccount(updated);
+        } catch {
+          /* keep the account even if the notice store fails */
+        }
+      }
+      if (
+        updated &&
+        String(updated.kind || updated.orderType || "") === "stepdown" &&
+        (updated.stayCharges || []).length > (existing.stayCharges || []).length
+      ) {
+        try {
+          await notifyCustomerStepdownCharge(updated);
+        } catch {
+          /* keep the charge even if the notice store fails */
+        }
+      }
+      if (
+        updated &&
+        String(updated.kind || updated.orderType || "") === "stepdown" &&
+        updated.discharged &&
+        !existing.discharged
+      ) {
+        try {
+          await notifyCustomerStepdownDischarge(updated);
+        } catch {
+          /* keep the discharge even if the notice store fails */
         }
       }
       send(res, 200, { order: updated });
@@ -752,12 +1024,98 @@ export async function handleApi(req, res) {
 
     if (pathname === "/api/orders" && req.method === "POST") {
       const body = await readJson(req);
-      const saved = await upsertOrder(enrichOrder(body));
+      const incoming = enrichOrder(body);
+      const wanted = orderId(incoming);
+      const existing = wanted
+        ? (await listOrders()).find((row) => orderId(row) === wanted)
+        : null;
+      if (
+        existing &&
+        String(existing.partnerConfirmStatus || "").toLowerCase() === "accepted"
+      ) {
+        incoming.partnerConfirmStatus = "accepted";
+        incoming.partnerConfirmed = true;
+        incoming.partnerId = existing.partnerId || incoming.partnerId;
+        incoming.partnerName = existing.partnerName || incoming.partnerName;
+        if (!incoming.trackStatus || incoming.trackStatus === "requested") {
+          incoming.trackStatus = existing.trackStatus || "confirmed";
+          incoming.status = existing.status || "Confirmed";
+        }
+      }
+      if (existing) {
+        incoming.pharmacyPartnerId =
+          incoming.pharmacyPartnerId || existing.pharmacyPartnerId;
+        incoming.pharmacyPartnerName =
+          incoming.pharmacyPartnerName || existing.pharmacyPartnerName;
+        incoming.deliveryPartnerId =
+          incoming.deliveryPartnerId || existing.deliveryPartnerId;
+        incoming.deliveryPartnerName =
+          incoming.deliveryPartnerName || existing.deliveryPartnerName;
+        incoming.returnStatus = incoming.returnStatus || existing.returnStatus;
+        incoming.returnRequestedAt = incoming.returnRequestedAt || existing.returnRequestedAt;
+        incoming.returnCollectedAt = incoming.returnCollectedAt || existing.returnCollectedAt;
+        incoming.returnReceivedAt = incoming.returnReceivedAt || existing.returnReceivedAt;
+        incoming.returnReason = incoming.returnReason || existing.returnReason;
+        incoming.returnCustomerPhoto =
+          incoming.returnCustomerPhoto || existing.returnCustomerPhoto;
+        incoming.returnCustomerPhotoName =
+          incoming.returnCustomerPhotoName || existing.returnCustomerPhotoName;
+        incoming.returnCollectPhoto =
+          incoming.returnCollectPhoto || existing.returnCollectPhoto;
+        incoming.returnCollectPhotoName =
+          incoming.returnCollectPhotoName || existing.returnCollectPhotoName;
+        incoming.refundStatus = incoming.refundStatus || existing.refundStatus;
+        incoming.refundAmount = incoming.refundAmount || existing.refundAmount;
+        incoming.refundNote = incoming.refundNote || existing.refundNote;
+        incoming.refundUpdatedAt = incoming.refundUpdatedAt || existing.refundUpdatedAt;
+      }
+      if (incoming.returnStatus === "requested") {
+        const err = returnRequestError(incoming);
+        if (err) {
+          send(res, 400, { error: err });
+          return true;
+        }
+      }
+      if (incoming.returnCustomerPhoto && !isReturnPhoto(incoming.returnCustomerPhoto)) {
+        incoming.returnCustomerPhoto = "";
+      }
+      if (String(incoming.kind || incoming.orderType || "") === "medicine") {
+        Object.assign(
+          incoming,
+          attachConcernedPharmacy(incoming, await listPartners())
+        );
+      }
+      const token = readToken(req);
+      const actorId = partnerIdFromToken(token);
+      if (actorId && (incoming.checkPickupAt || incoming.qrPickedAt || incoming.checkDeliverAt)) {
+        const actor = await findPartner(actorId);
+        Object.assign(incoming, attachDeliveryActor(actor));
+      }
+      const saved = await upsertOrder(incoming);
       if (!saved) {
         send(res, 400, { error: "Order id is required." });
         return true;
       }
-      send(res, 200, { ok: true, id: saved.id || saved.bookingId || saved.requestId });
+      try {
+        await notifyPartnersForOrder(saved);
+      } catch {
+        /* keep the order even if partner notify fails */
+      }
+      if (
+        saved.returnStatus === "requested" &&
+        existing?.returnStatus !== "requested"
+      ) {
+        try {
+          await notifyDeliveryPartnersForReturn(saved);
+        } catch {
+          /* keep the return even if the notice store fails */
+        }
+      }
+      send(res, 200, {
+        ok: true,
+        id: saved.id || saved.bookingId || saved.requestId,
+        order: saved,
+      });
       return true;
     }
 
@@ -850,10 +1208,23 @@ export async function handleApi(req, res) {
         send(res, 200, { order: current });
         return true;
       }
+      const existingAdmin = (await listOrders()).find(
+        (row) =>
+          String(row.id) === orderKey ||
+          String(row.bookingId) === orderKey ||
+          String(row.requestId) === orderKey
+      );
       const updated = await patchOrder(orderKey, body);
       if (!updated) {
         send(res, 404, { error: "Order not found." });
         return true;
+      }
+      if (body.refundStatus && updated.refundStatus !== existingAdmin?.refundStatus) {
+        try {
+          await notifyCustomerRefund(updated);
+        } catch {
+          /* keep the refund even if the notice store fails */
+        }
       }
       send(res, 200, { order: updated });
       return true;

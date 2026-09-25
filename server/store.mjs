@@ -50,6 +50,7 @@ export async function upsertOrder(record) {
   return next;
 }
 
+/** Admin and staff always receive the full history. Orders are never pruned. */
 export async function listOrders() {
   const store = await readStore();
   return [...store.orders].sort(

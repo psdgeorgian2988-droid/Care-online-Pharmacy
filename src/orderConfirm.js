@@ -18,6 +18,9 @@ export function needsPartnerConfirm(kind) {
 export function isAwaitingPartnerConfirm(order) {
   const kind = String(order?.kind || order?.orderType || "").toLowerCase();
   if (!needsPartnerConfirm(kind)) return false;
+  if (order?.cancelled === true || String(order?.status || "").toLowerCase() === "cancelled") {
+    return false;
+  }
   if (order?.partnerConfirmed === true) return false;
   const confirm = String(order?.partnerConfirmStatus || "").toLowerCase();
   if (confirm === "accepted" || confirm === "auto") return false;
@@ -47,6 +50,14 @@ export function isAwaitingCustomerSlotConfirm(order) {
 }
 
 export function initialOrderStatus(kind) {
+  if (String(kind || "").toLowerCase() === "stepdown") {
+    return {
+      trackStatus: "requested",
+      status: "New Booking",
+      partnerConfirmed: false,
+      partnerConfirmStatus: "pending",
+    };
+  }
   if (needsPartnerConfirm(kind)) {
     return {
       trackStatus: "requested",
@@ -124,6 +135,20 @@ export function medicineConfirmedFields(availability) {
   };
 }
 
+export function medicineAwaitingPharmacyFields(extras = {}) {
+  return {
+    trackStatus: "requested",
+    status: "Order placed",
+    partnerConfirmed: false,
+    partnerConfirmStatus: "pending",
+    availabilityChecked: Boolean(extras.availabilityChecked),
+    availabilityCheckedAt: extras.availabilityCheckedAt || Date.now(),
+    availabilityMessage:
+      extras.availabilityMessage ||
+      "Sent to the PIN pharmacy. Confirmed after they review the prescription.",
+  };
+}
+
 export function diagnosticRequestFields(kind, extras = {}) {
   const requestedTimeSlot = String(
     extras.timeSlot || extras.requestedTimeSlot || ""
@@ -154,7 +179,25 @@ export function firstAcceptRequestFields(kind) {
   };
 }
 
-export function partnerAcceptFields(now = Date.now()) {
+export function partnerAcceptFields(now = Date.now(), kind = "") {
+  if (String(kind || "").toLowerCase() === "medicine") {
+    return {
+      trackStatus: "confirmed",
+      status: "Approved by pharmacist",
+      partnerConfirmed: true,
+      partnerConfirmStatus: "accepted",
+      partnerConfirmedAt: now,
+    };
+  }
+  if (String(kind || "").toLowerCase() === "stepdown") {
+    return {
+      trackStatus: "confirmed",
+      status: "Booking Accepted",
+      partnerConfirmed: true,
+      partnerConfirmStatus: "accepted",
+      partnerConfirmedAt: now,
+    };
+  }
   return {
     trackStatus: "confirmed",
     status: "Confirmed",
@@ -278,10 +321,11 @@ export function appointmentSlotLabel(order) {
   return slot;
 }
 
-export function partnerDeclineFields(now = Date.now()) {
+export function partnerDeclineFields(now = Date.now(), kind = "") {
+  const stepdown = String(kind || "").toLowerCase() === "stepdown";
   return {
     trackStatus: "declined",
-    status: "Declined By Partner",
+    status: stepdown ? "Not Available" : "Declined By Partner",
     partnerConfirmed: false,
     partnerConfirmStatus: "declined",
     partnerConfirmedAt: now,
@@ -308,6 +352,9 @@ export function awaitingPartnerMessage(kind) {
   }
   if (key === "ambulance") {
     return "Your ambulance request has been sent. It is confirmed only after the ambulance partner accepts it.";
+  }
+  if (key === "stepdown") {
+    return "Your step-down booking request has been sent. It is confirmed only after the centre taps Confirm. If they tap Not Available, the booking is declined.";
   }
   return "Your booking request has been sent. It is confirmed only after the service partner accepts it.";
 }

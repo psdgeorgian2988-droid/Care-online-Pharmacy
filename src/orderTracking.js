@@ -119,7 +119,7 @@ export function partnerRole(kind) {
     case "doctor":
       return "Doctor";
     case "stepdown":
-      return "Admission coordinator";
+      return "Centre in-charge";
     case "lab":
       return "Sample collection executive";
     case "radiology":
@@ -259,7 +259,11 @@ export function stepLabel(kind, key) {
   if (isDiagnosticKind(kind)) return diagnosticStepLabel(key, kind);
   if (key === "requested") return "Awaiting Partner Confirmation";
   if (key === "slot_offered") return "Awaiting Customer Slot Confirmation";
-  if (key === "declined") return "Declined By Partner";
+  if (key === "declined") {
+    return String(kind || "").toLowerCase() === "stepdown"
+      ? "Not Available"
+      : "Declined By Partner";
+  }
   if (key === "done") return doneLabel(kind);
   if (key === "packed") return "Packed";
   return TRACK_STEPS.find((step) => step.key === key)?.label || "Confirmed";

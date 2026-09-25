@@ -158,6 +158,15 @@ export async function fileToPrescriptionDraft(file) {
   };
 }
 
+export async function fileToReturnPhoto(file) {
+  const type = String(file?.type || "");
+  const isImage = type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(file?.name || "");
+  if (!file || !isImage) {
+    throw new Error("Upload a photo of the medicine.");
+  }
+  return fileToPrescriptionDraft(file);
+}
+
 export function prescriptionDraftIsImage(draft) {
   if (!draft) return false;
   const type = String(draft.fileType || "");

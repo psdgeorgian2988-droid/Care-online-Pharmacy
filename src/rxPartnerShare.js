@@ -82,13 +82,21 @@ export function buildPartnerRxShare(kind = "") {
 
 export function hasPartnerRxShare(record) {
   const share = record?.rxShare;
-  if (!share) return Boolean(record?.prescription);
+  if (!share) {
+    return Boolean(
+      record?.prescription ||
+        record?.prescriptionFileData ||
+        record?.rxFileData
+    );
+  }
   return Boolean(
     share.originalFile ||
       share.hasOriginal ||
       share.fileName ||
       share.digital?.medicines?.length ||
-      share.digital?.tests?.length
+      share.digital?.tests?.length ||
+      share.digital?.patientName ||
+      share.digital?.doctorName
   );
 }
 

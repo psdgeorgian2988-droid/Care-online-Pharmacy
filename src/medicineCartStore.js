@@ -1,3 +1,5 @@
+import { withPickedBatch } from "./batchStore.js";
+
 export const MEDICINE_CART_KEY = "mediHomeMedicineCart";
 export const MEDICINE_CART_EVENT = "mediHomeMedicineCart";
 export const CART_OPEN_EVENT = "mediHomeCartOpen";
@@ -43,10 +45,12 @@ export function addMedicineToCart(selling, quantity = 1, store, options = {}) {
               ...selling,
               quantity: (item.quantity || 1) + qty,
               prescribedBrand: selling.prescribedBrand || item.prescribedBrand,
+              batchNo: item.batchNo || selling.batchNo,
+              batchId: item.batchId || selling.batchId,
             }
           : item
       )
-    : [...cart, { ...selling, quantity: qty }];
+    : [...cart, withPickedBatch({ ...selling, quantity: qty })];
   writeMedicineCart(next, store);
   if (options.open !== false) openShopCart();
   return next;
@@ -60,6 +64,15 @@ export function updateMedicineQuantity(id, quantity, store) {
       : readMedicineCart(store).map((item) =>
           item.id === id ? { ...item, quantity: qty } : item
         );
+  writeMedicineCart(next, store);
+  return next;
+}
+
+export function updateMedicineBatch(id, nextItem, store) {
+  const cart = readMedicineCart(store);
+  const next = cart.map((item) =>
+    String(item.id) === String(id) ? withPickedBatch({ ...item, ...nextItem }) : item
+  );
   writeMedicineCart(next, store);
   return next;
 }

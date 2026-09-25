@@ -1,7 +1,17 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { itemBrand, skuKey } from "../src/stockReport.js";
+import { outletById } from "../src/deliveryOutlets.js";
+import {
+  DEFAULT_OPENING_QTY,
+  itemBrand,
+  mergeStockRows,
+  openingQtyForSold,
+  ordersForPartnerStock,
+  skuKey,
+  soldFromOrders,
+  stockSummary,
+} from "../src/stockReport.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataFile = path.join(root, "data", "stock.json");
@@ -59,6 +69,41 @@ export async function setStock({ outletId, skuKey: key, qty, name, brand, salt, 
   else store.items.push(row);
   await writeStore(store);
   return row;
+}
+
+export async function listPartnerInventory(partner, orders = []) {
+  const outletId = String(partner?.outletId || "").trim() || "unassigned";
+  const outlet = outletById(outletId);
+  const outletName = outlet?.name || partner?.name || outletId;
+  const taggedOrders = ordersForPartnerStock(orders, {
+    ...partner,
+    outletId,
+    name: outletName,
+  });
+  const soldRows = soldFromOrders(taggedOrders);
+  const current = (await listStock()).filter((row) => String(row.outletId || "") === outletId);
+  for (const row of soldRows) {
+    const exists = current.some((item) => item.skuKey === row.skuKey);
+    if (exists) continue;
+    const created = await setStock({
+      outletId,
+      skuKey: row.skuKey,
+      qty: openingQtyForSold(row.sold, DEFAULT_OPENING_QTY),
+      name: row.name,
+      brand: row.brand,
+      salt: row.salt,
+      packSize: row.packSize,
+      outletName,
+    });
+    if (created) current.push(created);
+  }
+  const items = mergeStockRows(soldRows, current);
+  return {
+    outletId,
+    outletName,
+    items,
+    summary: stockSummary(items),
+  };
 }
 
 export async function deductOrderStock(order) {

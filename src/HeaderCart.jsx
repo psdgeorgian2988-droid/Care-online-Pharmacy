@@ -11,8 +11,10 @@ import {
   removeMedicineFromCart,
   removeTestFromCart,
   shopCartCount,
+  updateMedicineBatch,
   updateMedicineQuantity,
 } from "./medicineCartStore";
+import MedicineBatchPick from "./MedicineBatchPick.jsx";
 
 function CartIcon() {
   return (
@@ -213,6 +215,10 @@ export default function HeaderCart({ className = "" }) {
                             {money(item.price)} × {item.quantity || 1} ={" "}
                             {money(item.price * (item.quantity || 1))}
                           </span>
+                          <MedicineBatchPick
+                            item={item}
+                            onChange={(next) => updateMedicineBatch(item.id, next)}
+                          />
                         </div>
                         <div className="shop-cart-qty">
                           <button

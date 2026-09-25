@@ -4,7 +4,30 @@
   "services": [],
   "hiddenServiceIds": [],
   "purchases": [],
-  "batches": [],
+  "batches": [
+    {
+      "id": "bat-vd3-2408",
+      "productId": "1377",
+      "productName": "MediHome Vitamin D3 60,000 IU",
+      "composition": "Vitamin D3",
+      "strength": "60,000 IU",
+      "batchNo": "MH-VD3-2408",
+      "mfgDate": "2026-04-01",
+      "expiryDate": "2028-03-01",
+      "notes": "QC passed. Softgel lot for Delhi NCR pharmacy stock."
+    },
+    {
+      "id": "bat-vd3-2501",
+      "productId": "1377",
+      "productName": "MediHome Vitamin D3 60,000 IU",
+      "composition": "Vitamin D3",
+      "strength": "60,000 IU",
+      "batchNo": "MH-VD3-2501",
+      "mfgDate": "2026-07-01",
+      "expiryDate": "2028-06-01",
+      "notes": "QC passed. Current active lot."
+    }
+  ],
   "coupons": [],
   "app": {
     "ticker": "",

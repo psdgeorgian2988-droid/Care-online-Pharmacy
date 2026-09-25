@@ -32,6 +32,20 @@ test("notifies lab partners for a diagnostic booking without a login id", () => 
   );
 });
 
+test("does not notify a pharmacy partner about a lab booking", () => {
+  const hit = concernedPartnersForOrder(
+    { kind: "lab" },
+    [
+      { id: "P-TEST-01", kinds: ["medicine", "lab"] },
+      { id: "P-LAB-01", kinds: ["lab"] },
+    ]
+  );
+  assert.deepEqual(
+    hit.map((row) => row.id),
+    ["P-LAB-01"]
+  );
+});
+
 test("notifies medicine partners at the order outlet", () => {
   const hit = concernedPartnersForOrder(
     { kind: "medicine", outletId: "MH-OUT-CD" },

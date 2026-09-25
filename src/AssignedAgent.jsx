@@ -24,18 +24,24 @@ function waHref(mobile) {
 }
 
 function AssignedAgent({ record, compact = false }) {
-  if (!record?.agentName || !record?.agentMobile) return null;
-  const call = telHref(record.agentMobile);
-  const whatsapp = waHref(record.agentMobile);
+  const name = record?.agentName || record?.inchargeName;
+  const mobile = record?.agentMobile || record?.inchargeMobile;
+  const role = record?.agentRole || record?.inchargeRole || "Assigned professional";
+  const isIncharge =
+    Boolean(record?.inchargeName || record?.inchargeMobile) ||
+    role === "Centre in-charge";
+  if (!name || !mobile) return null;
+  const call = telHref(mobile);
+  const whatsapp = waHref(mobile);
 
   return (
     <>
       <style>{styles}</style>
       <aside className={`assigned-agent${compact ? " is-compact" : ""}`}>
-        <p className="assigned-kicker">Assigned to you now</p>
-        <h3>{record.agentRole || "Assigned professional"}</h3>
-        <p className="assigned-name">{record.agentName}</p>
-        <p className="assigned-phone">{formatMobile(record.agentMobile)}</p>
+        <p className="assigned-kicker">{isIncharge ? "Concerned / In-charge" : "Assigned to you now"}</p>
+        <h3>{role}</h3>
+        <p className="assigned-name">{name}</p>
+        <p className="assigned-phone">{formatMobile(mobile)}</p>
         {record.agentUnit ? (
           <p className="assigned-meta">Unit {record.agentUnit}</p>
         ) : null}

@@ -3,12 +3,24 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listOrders, patchOrder } from "./store.mjs";
-import { DELIVERY_OUTLETS, outletForPin } from "../src/deliveryOutlets.js";
+import {
+  DELIVERY_OUTLETS,
+  normalizeStorePins,
+  outletForPin,
+  partnerCoversPin,
+} from "../src/deliveryOutlets.js";
 import {
   clampSplitPercent,
   defaultPartnerPercentFor,
   resplitOrder,
 } from "../src/paymentSplit.js";
+import { partnerAppKind } from "../src/partnerApp.js";
+import {
+  deliveryRecordIsFresh,
+  isDeliveryPartner,
+  isPharmacyStorePartner,
+} from "../src/partnerRetention.js";
+import { pharmacyReturnKey } from "../src/pharmacyTrack.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataFile = path.join(root, "data", "partners.json");
@@ -176,6 +188,7 @@ function sanitizePartner(row) {
     kinds,
     mobile: String(row.mobile || "").replace(/\D/g, "").slice(0, 10),
     outletId: clipText(row.outletId, 40),
+    pins: normalizeStorePins(row.pins),
     loginId,
     passwordHash: String(row.passwordHash || "").trim(),
     partnerPercent: normalizePartnerPercent(row.partnerPercent, kinds),
@@ -298,6 +311,7 @@ export async function createPartner(body = {}) {
     kinds: body.kinds,
     mobile: body.mobile,
     outletId: body.outletId,
+    pins: body.pins,
     partnerPercent: body.partnerPercent,
   });
   list.push(row);
@@ -325,6 +339,7 @@ export async function updatePartner(id, body = {}) {
     kinds: body.kinds != null ? body.kinds : current.kinds,
     mobile: body.mobile != null ? body.mobile : current.mobile,
     outletId: body.outletId != null ? body.outletId : current.outletId,
+    pins: body.pins != null ? body.pins : current.pins,
     partnerPercent:
       body.partnerPercent != null ? body.partnerPercent : current.partnerPercent,
     id: current.id,
@@ -358,12 +373,62 @@ function isPendingPartnerConfirm(row) {
   );
 }
 
-export function partnerCanAccessJob(partner, row) {
+function isClosedJob(row) {
+  const status = String(row?.trackStatus || "").toLowerCase();
+  return status === "done" || status === "declined" || Boolean(row?.trackCompleted);
+}
+
+export function attachConcernedPharmacy(order, partners = []) {
+  if (order?.pharmacyPartnerId) {
+    return {
+      pharmacyPartnerId: order.pharmacyPartnerId,
+      pharmacyPartnerName: order.pharmacyPartnerName || "",
+    };
+  }
+  const concerned = concernedPartnersForOrder(order, partners);
+  const store =
+    concerned.find((row) => isPharmacyStorePartner(row)) ||
+    concerned.find((row) => !isDeliveryPartner(row));
+  if (!store) return {};
+  return {
+    pharmacyPartnerId: store.id,
+    pharmacyPartnerName: store.name || "",
+  };
+}
+
+export function attachDeliveryActor(partner) {
+  if (!partner || !isDeliveryPartner(partner)) return {};
+  return {
+    deliveryPartnerId: partner.id,
+    deliveryPartnerName: partner.name || "",
+  };
+}
+
+export function partnerCanAccessJob(partner, row, now = Date.now()) {
   if (!partner || !row) return false;
-  const kinds = Array.isArray(partner.kinds) ? partner.kinds : [];
   const kind = orderKind(row);
-  if (!kinds.includes(kind)) return false;
+  if (kind !== partnerAppKind(partner)) return false;
+  if (kind === "medicine") {
+    const pinOk = partnerCoversPin(partner, row.pinCode || row.pin);
+    const assignedToMe = Boolean(row.partnerId && row.partnerId === partner.id);
+    const pharmacyMine = Boolean(
+      row.pharmacyPartnerId && row.pharmacyPartnerId === partner.id
+    );
+    if (isDeliveryPartner(partner)) {
+      const returnOpen =
+        pharmacyReturnKey(row) === "return_requested" ||
+        pharmacyReturnKey(row) === "return_collected";
+      if (returnOpen && pinOk) return true;
+      const mine =
+        Boolean(row.deliveryPartnerId && row.deliveryPartnerId === partner.id) ||
+        assignedToMe;
+      if (mine) return deliveryRecordIsFresh(row, now);
+      return pinOk && !isClosedJob(row);
+    }
+    return assignedToMe || pharmacyMine || pinOk;
+  }
   if (row.partnerId && row.partnerId === partner.id) return true;
+  if (row.partnerId) return false;
   if (!isPendingPartnerConfirm(row)) return false;
   return true;
 }
@@ -376,15 +441,42 @@ export function concernedPartnersForOrder(order, partners = []) {
   const list = (Array.isArray(partners) ? partners : []).filter(Boolean);
   const exact = list.filter((row) => row.id === assignedId);
   if (exact.length) return exact;
-  const byKind = list.filter((row) =>
-    (Array.isArray(row.kinds) ? row.kinds : []).includes(kind)
-  );
-  const outletId = String(order?.outletId || "").trim();
-  if (kind === "medicine" && outletId) {
-    const byOutlet = byKind.filter((row) => row.outletId === outletId);
-    if (byOutlet.length) return byOutlet;
+  const byKind = list.filter((row) => partnerAppKind(row) === kind);
+  if (kind === "medicine") {
+    const pin = String(order?.pinCode || order?.pin || "").replace(/\D/g, "");
+    if (pin.length === 6) {
+      const byPin = byKind.filter((row) => partnerCoversPin(row, pin));
+      if (byPin.length) return byPin;
+    }
+    const outletId = String(order?.outletId || "").trim();
+    if (outletId) {
+      const byOutlet = byKind.filter((row) => row.outletId === outletId);
+      if (byOutlet.length) return byOutlet;
+    }
   }
   return byKind;
+}
+
+export function deliveryPartnersForOrder(order, partners = []) {
+  const list = (Array.isArray(partners) ? partners : []).filter((row) =>
+    isDeliveryPartner(row)
+  );
+  const assigned = String(order?.deliveryPartnerId || "").trim();
+  if (assigned) {
+    const exact = list.filter((row) => row.id === assigned);
+    if (exact.length) return exact;
+  }
+  const pin = String(order?.pinCode || order?.pin || "").replace(/\D/g, "");
+  if (pin.length === 6) {
+    const byPin = list.filter((row) => partnerCoversPin(row, pin));
+    if (byPin.length) return byPin;
+  }
+  const outletId = String(order?.outletId || "").trim();
+  if (outletId) {
+    const byOutlet = list.filter((row) => String(row.outletId || "") === outletId);
+    if (byOutlet.length) return byOutlet;
+  }
+  return [];
 }
 
 export async function listPartnerJobs(partnerId, token) {
@@ -412,6 +504,13 @@ export async function assignPartnerToOrder(orderId, body) {
     partnerMobile: partner.mobile,
     partnerRole: partner.role,
     partnerAssignedAt: Date.now(),
+    ...(isPharmacyStorePartner(partner)
+      ? {
+          pharmacyPartnerId: partner.id,
+          pharmacyPartnerName: partner.name,
+        }
+      : {}),
+    ...(isDeliveryPartner(partner) ? attachDeliveryActor(partner) : {}),
   };
   if (existing && !existing.split?.staffSet) {
     patch.split = {

@@ -7,7 +7,7 @@ import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import { buildPartnerRxShare } from "./rxPartnerShare";
 import {
   checkMedicineAvailability,
-  medicineConfirmedFields,
+  medicineAwaitingPharmacyFields,
 } from "./orderConfirm";
 import { buildIndiaCombos } from "./indiaMedicineCombos";
 import PaymentBlock from "./PaymentBlock";
@@ -38,6 +38,7 @@ import {
   takeRxMedicineCheckout,
   writeMedicineCart,
 } from "./medicineCartStore";
+import { withPickedBatch } from "./batchStore";
 import {
   fileFromPrescriptionDraft,
   hasPrescriptionDraft,
@@ -3266,7 +3267,7 @@ function Medicines({ initialSearch = "" }) {
         );
       }
 
-      return [...currentCart, { ...selling, quantity: 1 }];
+      return [...currentCart, withPickedBatch({ ...selling, quantity: 1 })];
     });
     openShopCart();
     setShowCheckout(false);
@@ -3369,6 +3370,10 @@ function Medicines({ initialSearch = "" }) {
           mrp: item.mrp,
           prescription: requiresPrescription(item),
           quantity: item.quantity || 1,
+          batchId: item.batchId || "",
+          batchNo: item.batchNo || "",
+          batchMfgDate: item.batchMfgDate || "",
+          batchExpiryDate: item.batchExpiryDate || "",
         })),
         total: pay.amountRupees,
         saleRupees: pay.saleRupees,
@@ -3383,7 +3388,7 @@ function Medicines({ initialSearch = "" }) {
         prescription: savedRxName,
         ...buildPartnerRxShare("medicine"),
         ...addr,
-        ...medicineConfirmedFields(availability),
+        ...medicineAwaitingPharmacyFields(availability),
         ...payment,
       };
 
@@ -3645,12 +3650,17 @@ function Medicines({ initialSearch = "" }) {
 
       {confirmedOrder && (
         <div className="checkout-panel">
-          <h2>Order Confirmed</h2>
+          <h2>
+            {confirmedOrder.partnerConfirmed
+              ? "Order Confirmed"
+              : "Request sent to pharmacy"}
+          </h2>
           <PatienceNote kind="medicine" shown={confirmedOrder.highTrafficWait} />
           <p>
-            Thank you, {confirmedOrder.fullName}. Your medicine order is confirmed
-            after availability check in the system.
-            successfully.
+            Thank you, {confirmedOrder.fullName}.{" "}
+            {confirmedOrder.partnerConfirmed
+              ? "Your medicine order is confirmed."
+              : "Your prescription was sent to the pharmacy for this PIN. The order is confirmed after they review the handwritten and digital Rx."}
           </p>
           <p>
             <strong>Order ID:</strong> #{confirmedOrder.id}

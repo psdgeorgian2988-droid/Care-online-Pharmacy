@@ -52,6 +52,19 @@ export function partnerLogout() {
   setPartnerSession("", null);
 }
 
+export async function fetchPartnerStock() {
+  const { token, partner } = partnerSession();
+  const params = new URLSearchParams({
+    partnerId: partner?.id || "",
+    token,
+  });
+  return parseResponse(
+    await apiFetch(`/api/partner/stock?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  );
+}
+
 export async function fetchPartnerJobs() {
   const { token, partner } = partnerSession();
   const params = new URLSearchParams({

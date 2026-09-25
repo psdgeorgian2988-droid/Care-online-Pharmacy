@@ -74,6 +74,8 @@ import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateToday, isoDateYearsAgo } from "./personFields";
 import OrderFullView from "./OrderFullView.jsx";
 import OrderListTable from "./OrderListTable.jsx";
+import RefundStatusPanel from "./RefundStatus.jsx";
+import { isRefundOrder, refundTrackKey } from "./refundTrack";
 
 function downloadCsv(filename, text) {
   const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
@@ -111,6 +113,7 @@ function Admin() {
   const [reportRows, setReportRows] = useState(null);
   const [chartPeriod, setChartPeriod] = useState("mtd");
   const [openOrderId, setOpenOrderId] = useState("");
+  const [refundFilter, setRefundFilter] = useState("all");
 
   const loadDesk = async () => {
     setLoading(true);
@@ -150,11 +153,18 @@ function Admin() {
   }, [token]);
 
   const filtered = useMemo(() => {
+    if (filter === "refund") {
+      return orders.filter((order) => {
+        if (!isRefundOrder(order)) return false;
+        if (refundFilter === "all") return true;
+        return refundTrackKey(order) === refundFilter;
+      });
+    }
     return orders.filter((order) => {
       if (filter !== "all" && serviceKind(order) !== filter) return false;
       return matchesStatusFilter(order, statusFilter);
     });
-  }, [orders, filter, statusFilter]);
+  }, [orders, filter, statusFilter, refundFilter]);
 
   const sales = useMemo(() => summarizeSales(orders), [orders]);
   const growth = useMemo(() => growthSnapshot(orders), [orders]);
@@ -265,6 +275,18 @@ function Admin() {
       await loadDesk();
     } catch (err) {
       setError(err.message || "Could Not Update Split.");
+    }
+  };
+
+  const handleRefund = async (order, fields) => {
+    const id = order.id || order.bookingId || order.requestId;
+    setError("");
+    try {
+      const data = await patchStaffOrder(id, fields);
+      persistOrder(order, data.order || fields);
+      await loadDesk();
+    } catch (err) {
+      setError(err.message || "Could not update refund.");
     }
   };
 
@@ -898,6 +920,9 @@ function Admin() {
           onStatus={handleStatus}
         />
 
+        <p className="admin-retention-note">
+          Staff and admin keep every order permanently. Pharmacy desks keep their PIN orders. Delivery partners keep completed drops for 30 days.
+        </p>
         <div id="staff-orders" className="lab-tabs admin-tabs" role="tablist">
           {[
             ["all", "All"],
@@ -910,6 +935,7 @@ function Admin() {
             ["psychologist", "Psychologist"],
             ["stepdown", "Step-Down"],
             ["ambulance", "Ambulance"],
+            ["refund", "Refund"],
           ].map(([value, label]) => (
             <button
               key={value}
@@ -922,31 +948,96 @@ function Admin() {
             </button>
           ))}
         </div>
-        <div className="lab-tabs admin-tabs" role="tablist" aria-label="Status Filter">
-          {[
-            ["all", "All Statuses"],
-            ["open", "Open"],
-            ["progress", "In Progress"],
-            ["unassigned", "Unassigned"],
-            ["requested", "Awaiting Partner"],
-            ["confirmed", "Confirmed"],
-            ["assigned", "Assigned"],
-            ["on_the_way", "On The Way"],
-            ["arriving", "Arriving"],
-            ["done", "Done"],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              className={statusFilter === value ? "is-on" : ""}
-              onClick={() => setStatusFilter(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {filter === "refund" ? (
+          <div className="lab-tabs admin-tabs" role="tablist" aria-label="Refund status">
+            {[
+              ["all", "All refunds"],
+              ["pending", "Pending"],
+              ["processing", "Processing"],
+              ["refunded", "Refunded"],
+              ["rejected", "Declined"],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={refundFilter === value ? "is-on" : ""}
+                onClick={() => setRefundFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="lab-tabs admin-tabs" role="tablist" aria-label="Status Filter">
+            {[
+              ["all", "All Statuses"],
+              ["open", "Open"],
+              ["progress", "In Progress"],
+              ["unassigned", "Unassigned"],
+              ["requested", "Awaiting Partner"],
+              ["confirmed", "Confirmed"],
+              ["assigned", "Assigned"],
+              ["on_the_way", "On The Way"],
+              ["arriving", "Arriving"],
+              ["done", "Done"],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={statusFilter === value ? "is-on" : ""}
+                onClick={() => setStatusFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {groupOrdersByKind(
+        {filter === "refund" ? (
+          <section className="order-category" aria-label="Refunds">
+            <h2>Refunds</h2>
+            <OrderListTable
+              orders={filtered}
+              audience="staff"
+              empty={loading ? "Loading…" : "No refund or return orders yet."}
+              openId={openOrderId}
+              onOpen={setOpenOrderId}
+              renderDetail={(order) => {
+                const id = order.id || order.bookingId || order.requestId;
+                const kind = serviceKind(order);
+                const step = trackKey(order);
+                return (
+                  <div className="admin-order-detail-inner">
+                    <OrderFullView order={order} audience="staff" />
+                    <RefundStatusPanel
+                      order={order}
+                      audience="staff"
+                      onUpdate={handleRefund}
+                    />
+                    <div className="admin-order-tools">
+                      <label>
+                        Status
+                        <select
+                          value={step}
+                          onChange={(event) => handleStatus(order, event.target.value)}
+                        >
+                          {TRACK_STEPS.map((row) => (
+                            <option key={row.key} value={row.key}>
+                              {row.key === "done" ? doneLabel(kind) : row.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <p>
+                      <a href={trackHref(id)}>Live Track</a>
+                    </p>
+                  </div>
+                );
+              }}
+            />
+          </section>
+        ) : groupOrdersByKind(
           filtered,
           filter === "all" ? SERVICE_ORDER_KINDS : [filter]
         ).map((group) => (
@@ -965,6 +1056,13 @@ function Admin() {
                 return (
                   <div className="admin-order-detail-inner">
                     <OrderFullView order={order} audience="staff" />
+                    {isRefundOrder(order) || String(kind) === "medicine" ? (
+                      <RefundStatusPanel
+                        order={order}
+                        audience="staff"
+                        onUpdate={handleRefund}
+                      />
+                    ) : null}
                     <div className="admin-order-tools">
                       <label>
                         Assigned to
@@ -1061,6 +1159,7 @@ const styles = `
 .admin-hero-actions button,.admin-report-controls button,.admin-scan-link{border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
 .admin-login{max-width:420px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}
+.admin-retention-note{margin:0 auto 12px;max-width:1240px;font-size:12px;line-height:1.45;color:#34546b}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}
 .order-category{margin:0 0 18px}
 .order-category h2{margin:0 0 8px;font-size:16px;color:#143246}

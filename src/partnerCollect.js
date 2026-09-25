@@ -1,5 +1,6 @@
 import { isOnlinePayment, paymentMethodLabel } from "./paymentMethods.js";
 import { resolveCollector, splitPayment } from "./paymentSplit.js";
+import { stepdownBalanceDue, stepdownBillTotal } from "./stepdownBill.js";
 
 export function lineItemsPayable(order = {}) {
   const rows = [
@@ -13,6 +14,13 @@ export function lineItemsPayable(order = {}) {
 }
 
 export function orderPayableRupees(order = {}) {
+  const kind = String(order?.kind || order?.orderType || "").toLowerCase();
+  if (kind === "stepdown") {
+    const stay = stepdownBalanceDue(order);
+    if (stay > 0) return stay;
+    const billed = stepdownBillTotal(order);
+    if (billed > 0) return billed;
+  }
   const named = Number(
     order.split?.payableRupees ?? order.total ?? order.charges ?? 0
   );

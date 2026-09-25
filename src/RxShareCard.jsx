@@ -14,17 +14,19 @@ export default function RxShareCard({
   title = "Prescription for partner confirm",
   editable = false,
   busy = false,
+  alwaysShow = false,
   onCorrectMedicine,
 }) {
   const [editingId, setEditingId] = useState("");
   const [editName, setEditName] = useState("");
   const [error, setError] = useState("");
 
-  if (!hasPartnerRxShare(record)) return null;
+  if (!alwaysShow && !hasPartnerRxShare(record)) return null;
   const share = record.rxShare || {};
   const digital = share.digital || null;
   const fileName = share.fileName || record.prescription || "";
-  const original = share.originalFile || "";
+  const original =
+    share.originalFile || record.prescriptionFileData || record.rxFileData || "";
   const isPdf = share.originalKind === "pdf" || /\.pdf$/i.test(fileName);
 
   const save = async (med) => {
@@ -44,28 +46,28 @@ export default function RxShareCard({
     <section className="rx-share-card" aria-label={title}>
       <p className="rx-share-kicker">{title}</p>
       <p className="rx-share-lead">
-        Original copy and AI digital prescription are shared with this partner for
-        confirmation.
+        Review the handwritten or uploaded copy and the digital prescription,
+        then confirm the order.
         {editable
           ? " If a generated medicine name is wrong, correct it here. The customer order uses the same name."
           : ""}
       </p>
       <div className="rx-share-split">
         <div className="rx-share-pane">
-          <h4>Original Rx</h4>
+          <h4>Handwritten / uploaded Rx</h4>
           {original && !isPdf ? (
-            <img src={original} alt={fileName || "Original prescription"} />
+            <img src={original} alt={fileName || "Uploaded prescription"} />
           ) : original && isPdf ? (
-            <iframe title={fileName || "Original prescription PDF"} src={original} />
+            <iframe title={fileName || "Uploaded prescription PDF"} src={original} />
           ) : fileName ? (
             <p>File on order: {fileName}</p>
           ) : (
-            <p>No original file attached.</p>
+            <p>No handwritten or uploaded copy attached.</p>
           )}
           {fileName && original ? <p className="rx-share-file">{fileName}</p> : null}
         </div>
         <div className="rx-share-pane">
-          <h4>AI digital Rx</h4>
+          <h4>Digital Rx</h4>
           {!digital ? (
             <p>No digital prescription generated.</p>
           ) : (

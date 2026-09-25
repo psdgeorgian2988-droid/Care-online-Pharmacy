@@ -30,7 +30,6 @@ import { reviewStats } from "./reviewStore";
 import CareChat from "./CareChat.jsx";
 import NeedHelp from "./NeedHelp.jsx";
 import HeaderCart from "./HeaderCart.jsx";
-import { CARE_WHATSAPP } from "./careChat.js";
 import ComingSoon from "./ComingSoon";
 import ErrorBoundary from "./ErrorBoundary";
 import AuthPage from "./AuthPage";
@@ -45,6 +44,7 @@ import { featureEnabled, pausedServiceTitle, routeEnabled } from "./salesReport"
 import { goToHash, parseAppHash } from "./hashRoute";
 import { peekRxLabCheckout } from "./medicineCartStore";
 import PortalsChooser, { CustomerPortal, PartnerPortal, StaffPortal } from "./RolePortals";
+import { isPartnerDeskRoute, partnerDeskKindFromRoute } from "./partnerApp";
 import CustomerHome from "./CustomerHome";
 import HomeServiceCatalog from "./HomeServiceCatalog";
 import LabsHub from "./LabsHub";
@@ -54,6 +54,8 @@ import AppBottomNav from "./AppBottomNav";
 import BackToHome from "./BackToHome";
 import WebinarNotice from "./WebinarNotice";
 import SlotOfferBanner from "./SlotOfferBanner";
+import RefundBanner from "./RefundBanner";
+import StepdownDecisionBanner from "./StepdownDecisionBanner";
 import CustomerWelcome, { needsCustomerWelcome } from "./CustomerWelcome";
 import {
   isAppShell,
@@ -103,10 +105,6 @@ const OPS_LINKS = [
   { href: "#partner-desk", label: "Partner Desk" },
 ];
 
-const HOME_WHATSAPP_URL = `https://wa.me/${CARE_WHATSAPP}?text=${encodeURIComponent(
-  "Hi MediHome, I would like to order medicines."
-)}`;
-
 const TICKER_TEXT = "YOUR COMPLETE HEALTHCARE ECOSYSTEM AT YOUR DOORSTEP";
 
 function SiteTicker() {
@@ -142,19 +140,6 @@ function SiteFloatingHelp({ needHelpOpen, setNeedHelpOpen }) {
       />
     </div>
   );
-}
-
-function openWhatsAppUrl(url, event) {
-  if (event) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-  const opened = window.open(url, "_blank");
-  if (opened) {
-    opened.opener = null;
-    return;
-  }
-  window.location.assign(url);
 }
 
 function PageFallback() {
@@ -218,55 +203,10 @@ function WebsiteHomePage() {
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const openMedicineSearch = () => {
-    try {
-      sessionStorage.setItem("mediHomeMedicineCategory", "Search");
-      sessionStorage.removeItem("mediHomeMedicineSearch");
-    } catch {
-      /* ignore */
-    }
-    goToHash("#medicine-search");
-  };
-
   return (
     <div className="home-content home-landing">
       <div className="home-shell">
         <div className="home-hero-row">
-          <div className="home-hero-main">
-            <section className="home-intro">
-              <p className="home-kicker">MediHome · Delhi NCR</p>
-              <h1>
-                Lab Tests, Radiology And Medicines Delivered To Your Doorstep
-              </h1>
-              <p className="home-lead">
-                Affordable care for patients across Delhi NCR, from one trusted
-                place.
-              </p>
-            </section>
-
-            {featureEnabled(features, "medicine") ? (
-              <button
-                type="button"
-                className="home-search-open"
-                onClick={openMedicineSearch}
-              >
-                Search medicines
-              </button>
-            ) : null}
-
-            <p className="home-whatsapp-line">
-              Prefer to talk?{" "}
-              <a
-                href={HOME_WHATSAPP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(event) => openWhatsAppUrl(HOME_WHATSAPP_URL, event)}
-              >
-                Order on WhatsApp
-              </a>
-            </p>
-          </div>
-
           <aside className="home-account-card" aria-label="Account">
             {user ? (
               <>
@@ -366,7 +306,9 @@ function App() {
     if (link.href === "#reports" && !loggedIn) return false;
     return true;
   });
-  const isOps = route === "#admin" || route === "#partner-desk";
+  const isOps = route === "#admin" || isPartnerDeskRoute(route);
+  const opsDeskKind = partnerDeskKindFromRoute(route);
+  const barePartnerDesk = opsDeskKind === "stepdown";
   const features = useFeatures();
   const appRole = readAppRole();
   const customerShell =
@@ -476,7 +418,17 @@ function App() {
       case "#partner":
         return <PartnerPortal />;
       case "#partner-desk":
-        return <Partner />;
+      case "#pharmacy-desk":
+      case "#delivery-desk":
+      case "#lab-desk":
+      case "#radiology-desk":
+      case "#homecare-desk":
+      case "#vaccination-desk":
+      case "#psychologist-desk":
+      case "#doctor-desk":
+      case "#ambulance-desk":
+      case "#stepdown-desk":
+        return <Partner deskKind={partnerDeskKindFromRoute(route)} />;
       case "#customer":
         return <CustomerPortal />;
       case "#staff":
@@ -498,34 +450,44 @@ function App() {
 
   if (isOps) {
     return (
-      <div className="app app-ops">
+      <div className={`app app-ops${barePartnerDesk ? " app-ops-bare" : ""}`}>
         <Seo route={route} />
-        <SiteTicker />
-        <header className="ops-bar">
-          <a className="ops-brand" href="#admin" aria-label="MediHome operations">
-            <LogoMark size="sm" />
-            <span>Operations</span>
-          </a>
-          <nav className="ops-nav" aria-label="Operations">
-            {OPS_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className={hashLinkActive(link.href, route, scanStep) ? "active" : undefined}
-              >
-                {link.label}
-              </a>
-            ))}
-            <a href="#home">Website</a>
-          </nav>
-        </header>
+        {barePartnerDesk ? null : <SiteTicker />}
+        {barePartnerDesk ? null : (
+          <header className="ops-bar">
+            <a className="ops-brand" href="#admin" aria-label="MediHome operations">
+              <LogoMark size="sm" />
+              <span>Operations</span>
+            </a>
+            <nav className="ops-nav" aria-label="Operations">
+              {isPartnerDeskRoute(route) ? (
+                <span className="ops-nav-stay">{opsDeskKind === "medicine" ? "Pharmacy Partner" : "Partner Desk"}</span>
+              ) : (
+                <>
+                  {OPS_LINKS.map((link) => (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      className={hashLinkActive(link.href, route, scanStep) ? "active" : undefined}
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                  <a href="#home">Website</a>
+                </>
+              )}
+            </nav>
+          </header>
+        )}
         <main>
           <ErrorBoundary key={route}>
             <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
           </ErrorBoundary>
         </main>
-        <SiteFooter />
-        <SiteFloatingHelp needHelpOpen={needHelpOpen} setNeedHelpOpen={setNeedHelpOpen} />
+        {barePartnerDesk ? null : <SiteFooter />}
+        {barePartnerDesk ? null : (
+          <SiteFloatingHelp needHelpOpen={needHelpOpen} setNeedHelpOpen={setNeedHelpOpen} />
+        )}
       </div>
     );
   }
@@ -556,6 +518,8 @@ function App() {
           <main id="app-scroll">
             {welcomeGate || isAuthRoute ? null : <WebinarNotice />}
             {welcomeGate || isAuthRoute ? null : <SlotOfferBanner />}
+            {welcomeGate || isAuthRoute ? null : <RefundBanner />}
+            {welcomeGate || isAuthRoute ? null : <StepdownDecisionBanner />}
             <ErrorBoundary key={welcomeGate ? "welcome" : route}>
               <Suspense fallback={<PageFallback />}>
                 {welcomeGate ? (
@@ -674,6 +638,8 @@ function App() {
         {welcomeGate || isAuthRoute ? null : <BackToHome show={showBackHome} />}
         {welcomeGate || isAuthRoute ? null : <WebinarNotice />}
         {welcomeGate || isAuthRoute ? null : <SlotOfferBanner />}
+        {welcomeGate || isAuthRoute ? null : <RefundBanner />}
+        {welcomeGate || isAuthRoute ? null : <StepdownDecisionBanner />}
         <ErrorBoundary key={welcomeGate ? "welcome" : route}>
           <Suspense fallback={<PageFallback />}>
             {welcomeGate ? (

@@ -25,6 +25,13 @@ import {
   isDiagnosticKind,
   mergeOrderReportIntoStore,
 } from "./labPipeline";
+import ReturnMedicinePanel from "./ReturnMedicine.jsx";
+import { pharmacyReturnRequestedFields } from "./pharmacyTrack";
+import RefundStatusPanel from "./RefundStatus.jsx";
+import { isRefundOrder } from "./refundTrack";
+import { stepdownBookingDecision } from "./stepdownDesk";
+import { isStepdownCancelled } from "./stepdownCancel";
+import StepdownCancelBlock from "./StepdownCancelBlock.jsx";
 
 function typeLabel(order) {
   return kindLabel(order?.kind || order?.orderType);
@@ -37,7 +44,8 @@ function MyOrders() {
   useEffect(() => {
     const needsSlot = selectedOrder && isAwaitingCustomerSlotConfirm(selectedOrder);
     const needsRx = Boolean(selectedOrder?.rxShare?.digital?.medicines?.length);
-    if (!needsSlot && !needsRx) {
+    const needsRefund = selectedOrder && isRefundOrder(selectedOrder);
+    if (!needsSlot && !needsRx && !needsRefund) {
       return undefined;
     }
     const id = selectedOrder.bookingId || selectedOrder.id;
@@ -60,6 +68,39 @@ function MyOrders() {
         mergeOrderReportIntoStore(order);
       }
     });
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      const rows = loadAllOrders();
+      const pending = rows.filter((order) => {
+        const kind = String(order?.kind || order?.orderType || "").toLowerCase();
+        return kind === "stepdown" || isAwaitingPartnerConfirm(order);
+      });
+      for (const order of pending) {
+        await refreshOrderFromServer(order.bookingId || order.id);
+      }
+      if (cancelled) return;
+      const next = loadAllOrders();
+      setOrders(next);
+      setSelectedOrder((current) => {
+        if (!current) return current;
+        return (
+          next.find(
+            (order) =>
+              String(order.id) === String(current.id) ||
+              String(order.bookingId) === String(current.bookingId || current.id)
+          ) || current
+        );
+      });
+    };
+    tick();
+    const timer = setInterval(tick, 6000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, []);
 
   const handleSelectedChange = (next) => {
@@ -137,6 +178,14 @@ function MyOrders() {
             <p className="lab-hint" role="status">
               {awaitingPartnerMessage(selectedOrder.kind || selectedOrder.orderType)}
             </p>
+          ) : isStepdownCancelled(selectedOrder) ? (
+            <p className="lab-hint" role="status">
+              This step-down booking has been cancelled.
+            </p>
+          ) : stepdownBookingDecision(selectedOrder) === "unavailable" ? (
+            <p className="lab-hint" role="status">
+              The centre marked this booking Not Available. It is not confirmed.
+            </p>
           ) : (
             <LiveTrackingPanel
               order={selectedOrder}
@@ -145,7 +194,27 @@ function MyOrders() {
             />
           )}
 
+          {String(selectedOrder.kind || selectedOrder.orderType || "").toLowerCase() ===
+          "stepdown" ? (
+            <StepdownCancelBlock
+              order={selectedOrder}
+              onCancel={(fields) => {
+                if (!fields) return;
+                handleSelectedChange(persistOrder(selectedOrder, fields));
+              }}
+            />
+          ) : null}
           <OrderFullView order={selectedOrder} audience="customer" />
+          <ReturnMedicinePanel
+            order={selectedOrder}
+            audience="customer"
+            onRequest={(order, reason, photo) => {
+              handleSelectedChange(
+                persistOrder(order, pharmacyReturnRequestedFields(Date.now(), { reason, photo }))
+              );
+            }}
+          />
+          <RefundStatusPanel order={selectedOrder} audience="customer" />
           {selectedOrder.partnerConfirmed &&
           !selectedOrder.paid &&
           (selectedOrder.paymentStatus === "awaiting_payment" ||

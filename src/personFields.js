@@ -198,6 +198,14 @@ export function maskMobile(value) {
   return `${digits.slice(0, 2)}${"*".repeat(digits.length - 5)}${digits.slice(-3)}`;
 }
 
+/** Partner desk: first three and last three digits, e.g. 9876543210 → 987****210 */
+export function maskPartnerMobile(value) {
+  const digits = normalizeMobile(value);
+  if (!digits) return "";
+  if (digits.length <= 6) return digits;
+  return `${digits.slice(0, 3)}${"*".repeat(digits.length - 6)}${digits.slice(-3)}`;
+}
+
 /** Show the first two letters of the mailbox only, e.g. asha@medihome.in → as**@medihome.in */
 export function maskEmail(value) {
   const email = normalizeEmail(value);

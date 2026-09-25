@@ -1,5 +1,13 @@
 import { isAwaitingPartnerConfirm } from "./orderConfirm.js";
+import { isStepdownCancelled } from "./stepdownCancel.js";
+import { stepdownStageLabel } from "./stepdownDesk.js";
 import { diagnosticStepLabel, isDiagnosticKind } from "./labPipeline.js";
+import {
+  isPharmacyOrder,
+  nextPharmacyStep,
+  pharmacyStatusLabel,
+  pharmacyTrackKey,
+} from "./pharmacyTrack.js";
 
 export const SERVICE_ORDER_KINDS = [
   "medicine",
@@ -20,6 +28,7 @@ export const TRACK_STATUS_STEPS = [
   { key: "sample_collected", label: "Sample Collected" },
   { key: "report_ready", label: "Report Ready" },
   { key: "packed", label: "Packed" },
+  { key: "picked_up", label: "Picked up" },
   { key: "on_the_way", label: "On The Way" },
   { key: "arriving", label: "Arriving" },
   { key: "done", label: "Done" },
@@ -67,6 +76,10 @@ export function groupOrdersByKind(orders, kinds = SERVICE_ORDER_KINDS) {
 }
 
 export function trackKey(order) {
+  if (isStepdownCancelled(order) || String(order?.trackStatus || "").toLowerCase() === "cancelled") {
+    return "declined";
+  }
+  if (isPharmacyOrder(order)) return pharmacyTrackKey(order);
   if (order?.trackCompleted && String(order?.trackStatus || "") !== "declined") {
     return "done";
   }
@@ -81,6 +94,7 @@ export function trackKey(order) {
 }
 
 export function isOpenOrder(order) {
+  if (isStepdownCancelled(order)) return false;
   const key = trackKey(order);
   return key !== "done" && key !== "declined";
 }
@@ -89,7 +103,10 @@ export function isUnassigned(order) {
   return isOpenOrder(order) && !order?.partnerId;
 }
 
-export function nextTrackStep(key) {
+export function nextTrackStep(key, kind = "") {
+  if (String(kind || "").toLowerCase() === "medicine") {
+    return nextPharmacyStep(key);
+  }
   if (key === "done" || key === "declined") return key;
   const index = TRACK_STATUS_STEPS.findIndex((step) => step.key === key);
   if (index < 0) return "assigned";
@@ -182,7 +199,10 @@ export function matchesStatusFilter(order, statusFilter) {
   return trackKey(order) === statusFilter;
 }
 
-export function statusLabel(key) {
+export function statusLabel(key, kind = "") {
+  if (String(kind || "").toLowerCase() === "medicine") {
+    return pharmacyStatusLabel(key);
+  }
   return TRACK_STATUS_STEPS.find((step) => step.key === key)?.label || key;
 }
 
@@ -192,6 +212,13 @@ export function isGenericTrackLabel(value) {
 
 export function orderCurrentStatus(order) {
   const kind = String(order?.kind || order?.orderType || "medicine").toLowerCase();
+  if (kind === "stepdown") {
+    if (isStepdownCancelled(order)) return "Cancelled";
+    return stepdownStageLabel(order);
+  }
+  if (isPharmacyOrder(order) || kind === "medicine") {
+    return pharmacyStatusLabel(pharmacyTrackKey(order));
+  }
   const raw = String(order?.status || order?.trackLabel || "")
     .replace(/technician assigned/i, "Partner Assigned")
     .trim();
@@ -201,7 +228,7 @@ export function orderCurrentStatus(order) {
   const key = String(order?.trackStatus || "").toLowerCase();
   const labeled = isDiagnosticKind(kind)
     ? diagnosticStepLabel(key, kind)
-    : statusLabel(key);
+    : statusLabel(key, kind);
   if (
     labeled &&
     !isGenericTrackLabel(labeled) &&

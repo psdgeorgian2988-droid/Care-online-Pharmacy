@@ -21,6 +21,9 @@ import AssignedAgent from "./AssignedAgent";
 import ScanActions from "./ScanActions";
 import OrderFeedbackCta from "./OrderFeedbackCta";
 import OrderFullView from "./OrderFullView.jsx";
+import ReturnMedicinePanel from "./ReturnMedicine.jsx";
+import { pharmacyReturnRequestedFields } from "./pharmacyTrack";
+import RefundStatusPanel from "./RefundStatus.jsx";
 
 function mercatorY(lat) {
   const rad = (lat * Math.PI) / 180;
@@ -366,6 +369,16 @@ export default function TrackPage({ trackId }) {
           </p>
           <LiveTrackingPanel order={order} onOrderChange={setOrder} />
           <OrderFullView order={order} audience="customer" />
+          <ReturnMedicinePanel
+            order={order}
+            audience="customer"
+            onRequest={(current, reason, photo) => {
+              setOrder(
+                persistOrder(current, pharmacyReturnRequestedFields(Date.now(), { reason, photo }))
+              );
+            }}
+          />
+          <RefundStatusPanel order={order} audience="customer" />
         </div>
       ) : (
         <div className="orders-empty">

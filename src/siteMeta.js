@@ -187,7 +187,35 @@ const PAGE_META = {
   },
   "partner-desk": {
     title: "Partner Desk | MediHome",
-    description: "Assigned jobs for MediHome delivery, lab, Home Care, psychologist, and ambulance partners.",
+    description: "Assigned jobs for the signed-in MediHome partner app only.",
+  },
+  "pharmacy-desk": {
+    title: "Pharmacy Partner | MediHome",
+    description: "Pharmacy partner jobs for MediHome medicine orders.",
+  },
+  "delivery-desk": {
+    title: "Delivery Partner | MediHome",
+    description: "Delivery partner pickup and drop jobs for MediHome medicine orders.",
+  },
+  "lab-desk": {
+    title: "Lab Partner | MediHome",
+    description: "Lab partner jobs for MediHome diagnostic bookings.",
+  },
+  "radiology-desk": {
+    title: "Radiology Partner | MediHome",
+    description: "Radiology partner jobs for MediHome imaging bookings.",
+  },
+  "homecare-desk": {
+    title: "Home Care Partner | MediHome",
+    description: "Home Care partner jobs for MediHome visits.",
+  },
+  "psychologist-desk": {
+    title: "Psychology Partner | MediHome",
+    description: "Psychology partner jobs for MediHome consultations.",
+  },
+  "doctor-desk": {
+    title: "Doctor Partner | MediHome",
+    description: "Doctor partner jobs for MediHome appointments.",
   },
 };
 

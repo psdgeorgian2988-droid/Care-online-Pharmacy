@@ -1,4 +1,32 @@
 export const STOCK_COVER = 1.5;
+export const DEFAULT_OPENING_QTY = 24;
+
+export function openingQtyForSold(soldQty, opening = DEFAULT_OPENING_QTY) {
+  return Math.max(0, Number(opening || 0) - Number(soldQty || 0));
+}
+
+export function ordersForPartnerStock(orders, partner) {
+  const outletId = String(partner?.outletId || "").trim() || "unassigned";
+  const outletName = String(partner?.name || "Pharmacy").trim() || outletId;
+  return (Array.isArray(orders) ? orders : []).map((row) => ({
+    ...row,
+    outletId,
+    outletName: row.outletName || outletName,
+  }));
+}
+
+export function stockOnHandForItem(item, stockItems = [], outletId = "") {
+  const key = skuKey(item);
+  const wantedOutlet = String(outletId || "").trim();
+  const row = (Array.isArray(stockItems) ? stockItems : []).find(
+    (entry) =>
+      entry.skuKey === key &&
+      (!wantedOutlet || String(entry.outletId || "") === wantedOutlet)
+  );
+  if (!row) return null;
+  const qty = Number(row.qty ?? row.current);
+  return Number.isFinite(qty) ? qty : null;
+}
 
 export function skuKey(item) {
   if (item?.id != null && String(item.id).trim() !== "") {

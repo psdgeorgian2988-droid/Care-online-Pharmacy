@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  formatOrderMobile,
   orderAssignedLabel,
   orderLineItems,
   orderOutletLabel,
@@ -94,6 +95,13 @@ test("Lab Update is replaced by the order current status", () => {
     }),
     "Partner Accepted"
   );
+});
+
+test("only the pharmacy partner desk hides the customer mobile", () => {
+  assert.equal(formatOrderMobile("9876543210", "partner", "medicine"), "987****210");
+  assert.equal(formatOrderMobile("9876543210", "partner", "lab"), "9876543210");
+  assert.equal(formatOrderMobile("9876543210", "partner", "doctor"), "9876543210");
+  assert.equal(formatOrderMobile("9876543210", "staff", "medicine"), "9876543210");
 });
 
 test("list row labels stay compact", () => {

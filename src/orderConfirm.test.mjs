@@ -7,6 +7,7 @@ import {
   initialOrderStatus,
   isAwaitingCustomerSlotConfirm,
   isAwaitingPartnerConfirm,
+  medicineAwaitingPharmacyFields,
   medicineConfirmedFields,
   needsPartnerConfirm,
   partnerAcceptFields,
@@ -67,6 +68,10 @@ test("medicine confirms only when catalogue has the cart items", () => {
   );
   assert.equal(confirmed.trackStatus, "confirmed");
   assert.equal(confirmed.availabilityChecked, true);
+  const awaiting = medicineAwaitingPharmacyFields();
+  assert.equal(awaiting.trackStatus, "requested");
+  assert.equal(awaiting.partnerConfirmStatus, "pending");
+  assert.equal(awaiting.partnerConfirmed, false);
 });
 
 test("partner accept and decline patches", () => {

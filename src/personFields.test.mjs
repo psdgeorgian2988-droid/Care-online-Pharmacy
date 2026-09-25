@@ -16,6 +16,7 @@ import {
   validateFamilyMembers,
   validatePerson,
   maskMobile,
+  maskPartnerMobile,
   maskEmail,
   isValidEmail,
   pickEmail,
@@ -166,6 +167,11 @@ test("account creator mobile stays the original number", () => {
 test("maskMobile keeps the first two and last three digits", () => {
   assert.equal(maskMobile("9876543210"), "98*****210");
   assert.equal(maskMobile(""), "");
+});
+
+test("pharmacy partner mask keeps the first three and last three digits", () => {
+  assert.equal(maskPartnerMobile("9876543210"), "987****210");
+  assert.equal(maskPartnerMobile(""), "");
 });
 
 test("maskEmail keeps the first two mailbox letters", () => {

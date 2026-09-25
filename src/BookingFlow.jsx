@@ -14,11 +14,12 @@ export default function BookingFlow({
   pinHint,
   askWho = true,
   alwaysAskAddress = false,
+  alwaysAskDetails = false,
   addressTitle = "",
   children,
 }) {
   const showWho = askWho && hasHouseholdProfile(profile);
-  const showDetails = shouldAskBookingDetails(values, profile);
+  const showDetails = alwaysAskDetails || shouldAskBookingDetails(values, profile);
   const showAddressOnly = alwaysAskAddress && !showDetails;
 
   return (
@@ -46,6 +47,7 @@ export default function BookingFlow({
             onChange={onChange}
             pinHint={pinHint}
             addressTitle={addressTitle}
+            alwaysAsk={alwaysAskDetails}
           />
         </div>
       ) : null}

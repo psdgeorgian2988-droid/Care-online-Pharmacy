@@ -1,7 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { splitPayment } from "./paymentSplit";
+import { goToHash } from "./hashRoute";
 import { groupOrdersByKind } from "./orderStatus";
+import {
+  jobsForPartnerApp,
+  partnerAppKind,
+  partnerAppTitle,
+  partnerDeskHash,
+} from "./partnerApp";
+import { isDeliveryPartner } from "./partnerRetention";
+import {
+  PHARMACY_DESK_TABS,
+  jobsForPharmacyDeskTab,
+  pharmacyDeskTab,
+  pharmacyReturnCollectedFields,
+  pharmacyReturnReceivedFields,
+} from "./pharmacyTrack";
+import ReturnMedicinePanel from "./ReturnMedicine.jsx";
 import {
   PAYMENT_METHOD_OPTIONS,
   isOnlinePayment,
@@ -21,15 +37,33 @@ import {
 import { fileToPrescriptionDraft } from "./prescriptionDraft";
 import {
   fetchPartnerJobs,
+  fetchPartnerStock,
   partnerLogin,
   partnerLogout,
   partnerSession,
   patchPartnerJob,
 } from "./partnerApi";
-import { isMedicineRiderPartner, scanHref } from "./orderQr";
+import { stockOnHandForItem } from "./stockReport";
+import OrderQr from "./OrderQr.jsx";
+import {
+  isMedicineOrder,
+  partnerScanAction,
+  scanHref,
+} from "./orderQr";
 import { rxShareCardStyles } from "./RxShareCard";
 import OrderFullView from "./OrderFullView.jsx";
+import { BillButton } from "./OrderBill.jsx";
 import OrderListTable from "./OrderListTable.jsx";
+import PharmacyReport from "./PharmacyReport.jsx";
+import { isPharmacyReportOrder } from "./pharmacyReport";
+import StepDownDesk from "./StepDownDesk.jsx";
+import {
+  isStepdownAdmitted,
+  stepdownAdmitFields,
+  stepdownDischargeFields,
+  stepdownInchargeFields,
+} from "./stepdownDesk";
+import { createStepdownPatientAccount } from "./stepdownBill";
 import {
   acceptRequestedSlotFields,
   isAwaitingCustomerSlotConfirm,
@@ -78,7 +112,7 @@ function previewPartnerSplit(job, paymentMethod) {
   });
 }
 
-export default function Partner() {
+export default function Partner({ deskKind = "" }) {
   const session = partnerSession();
   const [token, setToken] = useState(session.token);
   const [partner, setPartner] = useState(session.partner);
@@ -90,13 +124,23 @@ export default function Partner() {
   const [collectingId, setCollectingId] = useState("");
   const [collectMethodByJob, setCollectMethodByJob] = useState({});
   const [openJobId, setOpenJobId] = useState("");
+  const [pharmacyTab, setPharmacyTab] = useState("new");
+  const [inventory, setInventory] = useState(null);
 
   const loadJobs = async ({ quiet = false } = {}) => {
     if (!quiet) setLoading(true);
     setError("");
     try {
       const data = await fetchPartnerJobs();
-      setJobs(Array.isArray(data.jobs) ? data.jobs : []);
+      const sessionPartner = partner || partnerSession().partner;
+      setJobs(jobsForPartnerApp(data.jobs, sessionPartner));
+      if (deskKind === "medicine" || partnerAppKind(sessionPartner) === "medicine") {
+        try {
+          setInventory(await fetchPartnerStock());
+        } catch {
+          setInventory(null);
+        }
+      }
     } catch (err) {
       setError(err.message || "Could Not Load Jobs.");
       if (String(err.message || "").toLowerCase().includes("login")) {
@@ -108,6 +152,19 @@ export default function Partner() {
       if (!quiet) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!partner) return undefined;
+    const ownKind = partnerAppKind(partner);
+    const ownDesk = partnerDeskHash(ownKind, partner);
+    if (deskKind && deskKind !== ownKind) {
+      goToHash(ownDesk);
+      return undefined;
+    }
+    const current = String(window.location.hash || "").split("?")[0];
+    if (ownDesk && current !== ownDesk) goToHash(ownDesk);
+    return undefined;
+  }, [partner, deskKind]);
 
   useEffect(() => {
     if (token) loadJobs();
@@ -189,9 +246,12 @@ export default function Partner() {
       } else if (decision === "accept" && needsSlotConfirm(kind)) {
         fields = acceptRequestedSlotFields(kind, job);
       } else if (decision === "accept") {
-        fields = partnerAcceptFields();
+        fields = {
+          ...partnerAcceptFields(Date.now(), kind),
+          ...(kind === "stepdown" ? stepdownInchargeFields(partner, job) : {}),
+        };
       } else {
-        fields = partnerDeclineFields();
+        fields = partnerDeclineFields(Date.now(), kind);
       }
       await patchPartnerJob(id, {
         ...fields,
@@ -229,20 +289,97 @@ export default function Partner() {
     }
   };
 
+  const updatePharmacyJob = async (job, fields, nextTab = "") => {
+    const id = job.id || job.bookingId || job.requestId;
+    setCollectingId(id);
+    setError("");
+    try {
+      await patchPartnerJob(id, fields);
+      if (nextTab) setPharmacyTab(nextTab);
+      await loadJobs();
+    } catch (err) {
+      setError(err.message || "Could not update this order.");
+    } finally {
+      setCollectingId("");
+    }
+  };
+
   const handleLogin = async (event) => {
     event.preventDefault();
     setError("");
     try {
       const data = await partnerLogin(loginId, password);
+      const appKind = partnerAppKind(data.partner);
+      if (deskKind && appKind !== deskKind) {
+        partnerLogout();
+        setToken("");
+        setPartner(null);
+        setError(
+          `This login belongs to the ${partnerAppTitle(appKind, data.partner)} app. Open that app to continue.`
+        );
+        return;
+      }
       setToken(data.token);
       setPartner(data.partner);
       setPassword("");
+      const nextDesk = partnerDeskHash(appKind, data.partner);
+      if (nextDesk && window.location.hash.split("?")[0] !== nextDesk) {
+        goToHash(nextDesk);
+      }
     } catch (err) {
       setError(err.message || "Login Failed.");
     }
   };
 
-  const showScanCol = isMedicineRiderPartner(partner);
+  const showScanCol = isDeliveryPartner(partner);
+  const appKind = deskKind || (partner ? partnerAppKind(partner) : "");
+  const deskHash =
+    typeof window !== "undefined"
+      ? String(window.location.hash || "").split("?")[0]
+      : "";
+  const appTitle = partnerAppTitle(appKind, partner, deskHash);
+  const deliveryDesk = isDeliveryPartner(partner) || deskHash === "#delivery-desk";
+  const isStepDownDesk = appKind === "stepdown" || deskHash === "#stepdown-desk";
+  const sharedStayRef = useRef(new Set());
+
+  useEffect(() => {
+    if (!token || !partner || !isStepDownDesk) return undefined;
+    let cancelled = false;
+    const share = async () => {
+      let patched = false;
+      for (const job of jobs) {
+        const id = job.id || job.bookingId || job.requestId;
+        if (!id || sharedStayRef.current.has(String(id))) continue;
+        const accepted =
+          isStepdownAdmitted(job) ||
+          String(job.partnerConfirmStatus || "").toLowerCase() === "accepted";
+        const fields = {
+          ...(accepted && !job.inchargeMobile ? stepdownInchargeFields(partner, job) : {}),
+          ...(isStepdownAdmitted(job) && !job.patientAccountId
+            ? createStepdownPatientAccount(job)
+            : {}),
+        };
+        if (!fields.inchargeMobile && !fields.patientAccountId) {
+          if (!accepted || (job.inchargeMobile && (!isStepdownAdmitted(job) || job.patientAccountId))) {
+            sharedStayRef.current.add(String(id));
+          }
+          continue;
+        }
+        sharedStayRef.current.add(String(id));
+        try {
+          await patchPartnerJob(id, fields);
+          patched = true;
+        } catch {
+          sharedStayRef.current.delete(String(id));
+        }
+      }
+      if (!cancelled && patched) await loadJobs({ quiet: true });
+    };
+    share();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, partner, isStepDownDesk, jobs]);
 
   if (!token || !partner) {
     return (
@@ -250,8 +387,8 @@ export default function Partner() {
         <style>{styles}</style>
         <div className="service-page partner-page">
           <section className="service-hero">
-            <span className="service-kicker">Partner Operations</span>
-            <h1>Partner Login</h1>
+            <span className="service-kicker">{appTitle}</span>
+            <h1>{appTitle} Login</h1>
           </section>
           <form className="service-form admin-login" onSubmit={handleLogin}>
             <div className="field">
@@ -289,7 +426,7 @@ export default function Partner() {
       <div className="service-page partner-page">
         <section className="service-hero admin-hero">
           <div>
-            <span className="service-kicker">{partner.role}</span>
+            <span className="service-kicker">{appTitle}</span>
             <h1>{partner.name}</h1>
           </div>
           <div className="admin-hero-actions">
@@ -310,88 +447,343 @@ export default function Partner() {
           </div>
         </section>
         {error ? <p className="admin-error">{error}</p> : null}
-        {groupOrdersByKind(
-          jobs,
-          Array.isArray(partner.kinds) && partner.kinds.length
-            ? partner.kinds
-            : undefined
-        ).map((group) => (
-          <section key={group.kind} className="order-category" aria-label={group.title}>
-            <h2>{group.title}</h2>
-            <OrderListTable
-              orders={group.orders}
-              audience="partner"
-              empty={
-                loading
-                  ? "Loading…"
-                  : `No ${group.title.toLowerCase()} yet.`
+        {isStepDownDesk ? (
+          <StepDownDesk
+            orders={jobs}
+            loading={loading}
+            decidingId={collectingId}
+            partner={partner}
+            onDecide={(job, decision) => decideJob(job, decision)}
+            onAdmit={async (job, extras = {}) => {
+              const id = job.id || job.bookingId || job.requestId;
+              setCollectingId(id);
+              setError("");
+              try {
+                await patchPartnerJob(id, stepdownAdmitFields(job, { ...extras, partner }));
+                await loadJobs();
+              } catch (err) {
+                setError(err.message || "Could not shift the patient.");
+              } finally {
+                setCollectingId("");
               }
-              openId={openJobId}
-              onOpen={setOpenJobId}
-              renderDetail={(job) => {
-                const id = job.id || job.bookingId || job.requestId;
-                const paid =
-                  String(job.paymentStatus || "").toLowerCase() === "paid";
-                const paidElsewhere = paidOnCustomerApp(job);
-                const needsCollect = !paid;
-                const method = collectMethodByJob[id] || "qr";
-                const kind = job.kind || job.orderType || "medicine";
-                const preview = needsCollect
-                  ? previewPartnerSplit(job, method)
-                  : null;
-                return (
-                  <JobDetail
-                    id={id}
-                    job={job}
-                    kind={kind}
-                    paid={paid}
-                    paidElsewhere={paidElsewhere}
-                    needsCollect={needsCollect}
-                    method={method}
-                    preview={preview}
-                    partner={partner}
-                    collecting={collectingId === id}
-                    showScanCol={showScanCol}
-                    onMethodChange={(value) =>
-                      setCollectMethodByJob((prev) => ({
-                        ...prev,
-                        [id]: value,
-                      }))
-                    }
-                    onCollect={(payload) => collectJob(job, payload)}
-                    onCorrectMedicine={async (med, name) => {
-                      setCollectingId(id);
-                      setError("");
-                      try {
-                        await patchPartnerJob(id, {
-                          rxMedicineCorrection: {
-                            id: med.id || med.name,
-                            name,
-                          },
-                        });
-                        await loadJobs();
-                      } catch (err) {
-                        setError(
-                          err.message || "Could not correct the medicine name."
-                        );
-                        throw err;
-                      } finally {
-                        setCollectingId("");
-                      }
+            }}
+            onDischarge={async (job, extras = {}) => {
+              const id = job.id || job.bookingId || job.requestId;
+              setCollectingId(id);
+              setError("");
+              try {
+                await patchPartnerJob(id, stepdownDischargeFields(job, extras));
+                await loadJobs();
+              } catch (err) {
+                setError(err.message || "Could not discharge the patient.");
+              } finally {
+                setCollectingId("");
+              }
+            }}
+            onBillUpdate={async (job, fields) => {
+              const id = job.id || job.bookingId || job.requestId;
+              setCollectingId(id);
+              setError("");
+              try {
+                await patchPartnerJob(id, fields);
+                await loadJobs();
+              } catch (err) {
+                setError(err.message || "Could not update the bill.");
+              } finally {
+                setCollectingId("");
+              }
+            }}
+          />
+        ) : null}
+        {isStepDownDesk
+          ? null
+          : groupOrdersByKind(jobs, [appKind]).map((group) => {
+          const isMedicineDesk = group.kind === "medicine";
+          const isPharmacyStore = isMedicineDesk && !deliveryDesk;
+          const deliveryReturns = deliveryDesk && pharmacyTab === "returns";
+          const tabOrders = deliveryDesk
+            ? deliveryReturns
+              ? jobsForPharmacyDeskTab(group.orders, "returns")
+              : group.orders.filter((row) => pharmacyDeskTab(row) !== "returns")
+            : isPharmacyStore
+              ? jobsForPharmacyDeskTab(group.orders, pharmacyTab)
+              : group.orders;
+          const tabMeta =
+            PHARMACY_DESK_TABS.find((tab) => tab.id === pharmacyTab) ||
+            PHARMACY_DESK_TABS[0];
+          const returnCount = group.orders.filter((row) => pharmacyDeskTab(row) === "returns").length;
+          const pickupCount = group.orders.filter((row) => pharmacyDeskTab(row) !== "returns").length;
+          const renderDetail = (job) => {
+            const id = job.id || job.bookingId || job.requestId;
+            const paid =
+              String(job.paymentStatus || "").toLowerCase() === "paid";
+            const paidElsewhere = paidOnCustomerApp(job);
+            const kind = job.kind || job.orderType || "medicine";
+            const isPharmacyJob = kind === "medicine";
+            const needsCollect = !isPharmacyJob && !paid;
+            const method = collectMethodByJob[id] || "qr";
+            const preview = needsCollect
+              ? previewPartnerSplit(job, method)
+              : null;
+            return (
+              <JobDetail
+                id={id}
+                job={job}
+                kind={kind}
+                paid={paid}
+                paidElsewhere={paidElsewhere}
+                needsCollect={needsCollect}
+                method={method}
+                preview={preview}
+                partner={partner}
+                collecting={collectingId === id}
+                showScanCol={showScanCol}
+                inventoryItems={inventory?.items || []}
+                inventoryOutletId={inventory?.outletId || partner?.outletId || ""}
+                onMethodChange={(value) =>
+                  setCollectMethodByJob((prev) => ({
+                    ...prev,
+                    [id]: value,
+                  }))
+                }
+                onCollect={(payload) => collectJob(job, payload)}
+                onCorrectMedicine={async (med, name) => {
+                  setCollectingId(id);
+                  setError("");
+                  try {
+                    await patchPartnerJob(id, {
+                      rxMedicineCorrection: {
+                        id: med.id || med.name,
+                        name,
+                      },
+                    });
+                    await loadJobs();
+                  } catch (err) {
+                    setError(
+                      err.message || "Could not correct the medicine name."
+                    );
+                    throw err;
+                  } finally {
+                    setCollectingId("");
+                  }
+                }}
+                onAcceptRequested={() => decideJob(job, "accept")}
+                onOfferSlot={(slot) => decideJob(job, "offer-slot", slot)}
+                onDecline={() => decideJob(job, "decline")}
+                onAccept={() => decideJob(job, "accept")}
+                onAdvance={(fields) => advanceDiagnostic(job, fields)}
+                onReturnCollect={(current, photo) =>
+                  updatePharmacyJob(
+                    current,
+                    pharmacyReturnCollectedFields(Date.now(), { photo }),
+                    "returns"
+                  )
+                }
+                onReturnReceive={(current) =>
+                  updatePharmacyJob(
+                    current,
+                    pharmacyReturnReceivedFields(Date.now(), {
+                      refundAmount: orderPayableRupees(current),
+                    }),
+                    "returns"
+                  )
+                }
+              />
+            );
+          };
+          return (
+            <section key={group.kind} className="order-category" aria-label={group.title}>
+              <h2>{deliveryDesk ? "Deliveries" : group.title}</h2>
+              {deliveryDesk ? (
+                <div className="lab-tabs partner-order-tabs" role="tablist" aria-label="Delivery jobs">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={!deliveryReturns}
+                    className={!deliveryReturns ? "is-on" : ""}
+                    onClick={() => {
+                      setPharmacyTab("ready");
+                      setOpenJobId("");
                     }}
-                    onAcceptRequested={() => decideJob(job, "accept")}
-                    onOfferSlot={(slot) => decideJob(job, "offer-slot", slot)}
-                    onDecline={() => decideJob(job, "decline")}
-                    onAccept={() => decideJob(job, "accept")}
-                    onAdvance={(fields) => advanceDiagnostic(job, fields)}
-                  />
-                );
-              }}
-            />
-          </section>
-        ))}
+                  >
+                    Pickups
+                    <span>{pickupCount}</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={deliveryReturns}
+                    className={deliveryReturns ? "is-on" : ""}
+                    onClick={() => {
+                      setPharmacyTab("returns");
+                      setOpenJobId("");
+                    }}
+                  >
+                    Return medicine
+                    <span>{returnCount}</span>
+                  </button>
+                </div>
+              ) : isPharmacyStore ? (
+                <div className="lab-tabs partner-order-tabs" role="tablist" aria-label="Pharmacy order status">
+                  {PHARMACY_DESK_TABS.map((tab) => {
+                    const count = group.orders.filter((row) => pharmacyDeskTab(row) === tab.id).length;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={pharmacyTab === tab.id}
+                        className={pharmacyTab === tab.id ? "is-on" : ""}
+                        onClick={() => {
+                          setPharmacyTab(tab.id);
+                          setOpenJobId("");
+                        }}
+                      >
+                        {tab.label}
+                        <span>{count}</span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={pharmacyTab === "inventory"}
+                    className={pharmacyTab === "inventory" ? "is-on" : ""}
+                    onClick={() => {
+                      setPharmacyTab("inventory");
+                      setOpenJobId("");
+                    }}
+                  >
+                    Inventory
+                    <span>{inventory?.summary?.skus || 0}</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={pharmacyTab === "report"}
+                    className={pharmacyTab === "report" ? "is-on" : ""}
+                    onClick={() => {
+                      setPharmacyTab("report");
+                      setOpenJobId("");
+                    }}
+                  >
+                    Report
+                    <span>{group.orders.filter(isPharmacyReportOrder).length}</span>
+                  </button>
+                </div>
+              ) : null}
+              {isPharmacyStore && pharmacyTab === "inventory" ? (
+                <PharmacyInventory inventory={inventory} loading={loading} />
+              ) : isPharmacyStore && pharmacyTab === "report" ? (
+                <PharmacyReport orders={group.orders} loading={loading} />
+              ) : (
+                <OrderListTable
+                  orders={tabOrders}
+                  audience="partner"
+                  empty={
+                    loading
+                      ? "Loading…"
+                      : deliveryReturns
+                        ? "No return medicines yet."
+                        : isPharmacyStore
+                        ? `No ${tabMeta.label.toLowerCase()} yet.`
+                        : `No ${group.title.toLowerCase()} yet.`
+                  }
+                  openId={openJobId}
+                  onOpen={setOpenJobId}
+                  renderDetail={renderDetail}
+                />
+              )}
+            </section>
+          );
+        })}
       </div>
     </>
+  );
+}
+
+function PharmacyInventory({ inventory, loading }) {
+  const rows = Array.isArray(inventory?.items) ? inventory.items : [];
+  const summary = inventory?.summary;
+  return (
+    <div className="admin-table-wrap pharmacy-inventory">
+      <p className="partner-retention-note">
+        {inventory?.outletName
+          ? `Live stock from ${inventory.outletName}. Sold packs stay on this desk and on-hand qty updates when you approve an order.`
+          : "Stock is loaded from the pharmacy system for this store."}
+      </p>
+      {summary ? (
+        <p className="pharmacy-stock-summary">
+          {summary.skus} SKUs · {summary.onHand} on hand · {summary.outSkus} out of stock
+          {summary.needSkus ? ` · ${summary.needSkus} need restock` : ""}
+        </p>
+      ) : null}
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>Medicine</th>
+            <th>Brand</th>
+            <th>On hand</th>
+            <th>Sold</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={5}>{loading ? "Loading…" : "No inventory recorded for this pharmacy yet."}</td>
+            </tr>
+          ) : (
+            rows.map((row) => (
+              <tr key={`${row.outletId}-${row.skuKey}`}>
+                <td>
+                  <strong>{row.name}</strong>
+                  {row.salt ? <div className="pharmacy-stock-salt">{row.salt}</div> : null}
+                </td>
+                <td>{row.brand}</td>
+                <td>{row.current}</td>
+                <td>{row.sold}</td>
+                <td>
+                  <span className={`pharmacy-stock-status is-${String(row.status || "").toLowerCase().replace(/\s+/g, "-")}`}>
+                    {row.status}
+                  </span>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PharmacyJobStock({ job, items, outletId }) {
+  const lines = Array.isArray(job?.items) ? job.items : [];
+  if (!lines.length) return null;
+  return (
+    <div className="pharmacy-job-stock">
+      <h3>Pharmacy stock</h3>
+      <ul>
+        {lines.map((item) => {
+          const onHand = stockOnHandForItem(item, items, outletId);
+          const need = Math.max(1, Number(item.quantity || 1));
+          const label =
+            onHand == null
+              ? "Not in store list yet"
+              : onHand <= 0
+                ? "Out of stock"
+                : onHand < need
+                  ? `${onHand} on hand — short`
+                  : `${onHand} on hand`;
+          return (
+            <li key={item.id || item.name}>
+              <strong>{item.name}</strong>
+              <span>{label}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -407,6 +799,8 @@ function JobDetail({
   partner,
   collecting,
   showScanCol,
+  inventoryItems = [],
+  inventoryOutletId = "",
   onMethodChange,
   onCollect,
   onCorrectMedicine,
@@ -415,6 +809,8 @@ function JobDetail({
   onDecline,
   onAccept,
   onAdvance,
+  onReturnCollect,
+  onReturnReceive,
 }) {
   return (
     <div className="partner-job-detail-inner">
@@ -425,7 +821,14 @@ function JobDetail({
         rxBusy={collecting}
         onCorrectMedicine={onCorrectMedicine}
       />
-      {needsCollect ? (
+      {kind === "medicine" ? (
+        <PharmacyJobStock
+          job={job}
+          items={inventoryItems}
+          outletId={inventoryOutletId}
+        />
+      ) : null}
+      {kind !== "medicine" && needsCollect ? (
         <PartnerCollectPanel
           jobId={id}
           job={job}
@@ -437,7 +840,7 @@ function JobDetail({
           onMethodChange={onMethodChange}
           onCollect={onCollect}
         />
-      ) : paid ? (
+      ) : kind !== "medicine" && paid ? (
         <PaidOnDesk job={job} paidElsewhere={paidElsewhere} />
       ) : null}
       {needsSlotConfirm(kind) &&
@@ -454,7 +857,11 @@ function JobDetail({
           onDecline={onDecline}
         />
       ) : String(job.trackStatus || "").toLowerCase() === "requested" ||
-        job.partnerConfirmStatus === "pending" ? (
+        job.partnerConfirmStatus === "pending" ||
+        (kind === "medicine" &&
+          job.partnerConfirmStatus !== "accepted" &&
+          String(job.trackStatus || "") !== "declined" &&
+          String(job.trackStatus || "") !== "done") ? (
         <div className="partner-decide">
           <button
             type="button"
@@ -462,7 +869,7 @@ function JobDetail({
             disabled={collecting}
             onClick={onAccept}
           >
-            Accept
+            {kind === "medicine" ? "Confirm order" : "Accept"}
           </button>
           <button
             type="button"
@@ -483,13 +890,30 @@ function JobDetail({
       {job.reportFileName ? (
         <p className="partner-report-note">Report: {job.reportFileName}</p>
       ) : null}
-      {showScanCol ? (
+      {isMedicineOrder(job) ? (
+        <>
+          <ReturnMedicinePanel
+            order={job}
+            audience={showScanCol ? "delivery" : "partner"}
+            busy={collecting}
+            onCollect={onReturnCollect}
+            onReceive={showScanCol ? undefined : onReturnReceive}
+          />
+          <OrderQr order={job} compact audience={showScanCol ? "partner" : "pharmacy"} />
+          <BillButton order={job} className="partner-scan-link" />
+        </>
+      ) : null}
+      {showScanCol && partnerScanAction(job, partner) ? (
         <p>
           <a
             className="partner-scan-link"
-            href={scanHref({ id, step: "pickup", order: job })}
+            href={scanHref({
+              id,
+              step: partnerScanAction(job, partner).step,
+              order: job,
+            })}
           >
-            Scan Delivery
+            {partnerScanAction(job, partner).label}
           </a>
         </p>
       ) : null}
@@ -1111,6 +1535,22 @@ ${rxShareCardStyles}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}
 .order-category{margin:0 0 16px}
 .order-category h2{margin:0 0 8px;font-size:15px;color:#143246}
+.partner-order-tabs{display:flex;flex-wrap:wrap;margin:0 0 12px;padding:4px;border-radius:10px;background:#e8f1f6;gap:4px}
+.partner-order-tabs button{border:0;background:transparent;color:#3d5a6c;font:inherit;font-size:13px;font-weight:700;padding:8px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.partner-order-tabs button.is-on{background:#fff;color:#1a6b7a;box-shadow:0 1px 3px rgba(20,50,70,.08)}
+.partner-order-tabs span{min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#1a6b7a;color:#fff;font-size:11px;line-height:18px;text-align:center}
+.pharmacy-inventory{margin-top:4px}
+.pharmacy-stock-summary,.pharmacy-stock-salt{margin:0 0 8px;font-size:12px;color:#34546b}
+.pharmacy-stock-status{font-weight:800}
+.pharmacy-stock-status.is-ok{color:#0f7a4a}
+.pharmacy-stock-status.is-need-stock{color:#b36b00}
+.pharmacy-stock-status.is-out-of-stock{color:#b64b4b}
+.pharmacy-stock-status.is-surplus{color:#1a6b7a}
+.pharmacy-job-stock{margin:8px 0;padding:10px;border:1px solid #d2e8ef;border-radius:10px;background:#f7fbfd}
+.pharmacy-job-stock h3{margin:0 0 6px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#1a6b7a}
+.pharmacy-job-stock ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.pharmacy-job-stock li{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#34546b}
+.pharmacy-job-stock strong{color:#143246}
 .admin-table-wrap{overflow:auto;background:#fff;border:1px solid #e4ecef;border-radius:12px}
 .admin-table{width:100%;border-collapse:collapse;font-size:13px}
 .admin-table th,.admin-table td{padding:8px 10px;border-bottom:1px solid #edf1f3;text-align:left;vertical-align:top}

@@ -9,7 +9,7 @@ import {
   paymentMethodSummary,
 } from "./paymentMethods.js";
 import { orderPayableRupees, paymentPartsLabel } from "./partnerCollect.js";
-import { maskMobile } from "./personFields.js";
+import { maskMobile, maskPartnerMobile } from "./personFields.js";
 import { orderCurrentStatus } from "./orderStatus.js";
 
 export function orderRecordId(order) {
@@ -100,9 +100,12 @@ export function formatOrderRupee(amount) {
   return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 }
 
-export function formatOrderMobile(value, audience = "customer") {
+export function formatOrderMobile(value, audience = "customer", kind = "") {
   const raw = String(value || "").trim();
   if (!raw) return "";
+  if (audience === "partner" && String(kind || "").toLowerCase() === "medicine") {
+    return maskPartnerMobile(raw) || raw;
+  }
   if (audience === "customer") return maskMobile(raw) || raw;
   return raw;
 }
@@ -170,6 +173,12 @@ export function orderPaymentSummary(order, audience = "customer") {
   const method = order?.paymentMethod || "";
   const status = String(order?.paymentStatus || "").toLowerCase();
   const paid = status === "paid" || order?.paid === true;
+  const stayPay = String(order?.kind || order?.orderType || "").toLowerCase() === "stepdown";
+  const cashLabel = stayPay
+    ? "Cash"
+    : audience === "customer"
+      ? "Cash on delivery / visit"
+      : "Cash / COD";
   let methodText = "";
   if (status === "awaiting_partner" || isAwaitingPartnerConfirm(order)) {
     methodText = "After partner acceptance";
@@ -177,19 +186,16 @@ export function orderPaymentSummary(order, audience = "customer") {
     status === "awaiting_payment" ||
     (method === "pending" && !paid)
   ) {
-    methodText = "Pending — complete payment";
+    methodText = stayPay && order?.billFinalized ? "Payment pending" : "Pending — complete payment";
   } else if (method === "split" || (Array.isArray(order.paymentParts) && order.paymentParts.length > 1)) {
-    methodText = paymentPartsLabel(
-      order.paymentParts,
-      audience === "customer" ? "Cash on delivery / visit" : "Cash / COD"
-    );
+    methodText = paymentPartsLabel(order.paymentParts, cashLabel);
   } else if (method) {
     methodText =
       audience === "customer"
-        ? paymentMethodSummary(method, "Cash on delivery / visit")
+        ? paymentMethodSummary(method, cashLabel)
         : isOnlinePayment(method)
           ? paymentMethodLabel(method)
-          : "Cash / COD";
+          : cashLabel;
   }
   const statusText = paid
     ? order?.collector === "medihome" || order?.paidOn === "customer"
@@ -234,7 +240,7 @@ export function orderPaymentModeLabel(order, audience = "partner") {
   return orderPaymentSummary(order, audience).methodText || "—";
 }
 
-export function orderKindExtras(order) {
+export function orderKindExtras(order, audience = "partner") {
   const kind = orderKind(order);
   const rows = [];
   if (kind === "lab" || kind === "radiology") {
@@ -293,13 +299,103 @@ export function orderKindExtras(order) {
   }
   if (kind === "stepdown") {
     if (order.centreName) rows.push({ label: "Centre", value: order.centreName });
-    if (order.durationDays) rows.push({ label: "Days", value: String(order.durationDays) });
+    if (order.timeSlot) rows.push({ label: "Check-in time", value: order.timeSlot });
+    if (order.durationDays) rows.push({ label: "No of Days", value: String(order.durationDays) });
+    if (order.alternateMobile || order.attendantMobile) {
+      rows.push({
+        label: "Alternate Mobile No",
+        value: formatOrderMobile(order.alternateMobile || order.attendantMobile, "partner", "stepdown"),
+      });
+    }
+    if (order.dischargeSummaryName || order.dischargeSummaryFile) {
+      rows.push({
+        label: "Discharge Summary",
+        value: order.dischargeSummaryName || "Attached",
+        href: order.dischargeSummaryFile || "",
+      });
+    }
+    if (order.prescriptionName || order.prescriptionFile || order.prescription) {
+      rows.push({
+        label: "Prescription",
+        value: order.prescriptionName || order.prescription || "Attached",
+        href: order.prescriptionFile || "",
+      });
+    }
     rows.push({
       label: "Ambulance to centre",
-      value: order.needAmbulance ? "Yes (booked automatically)" : "No",
+      value: order.needAmbulance ? "Yes (booked with stay)" : "No",
     });
+    if (order.needAmbulance && (order.ambulancePickupAddress || order.ambulancePickupPin)) {
+      rows.push({
+        label: "Pickup Location",
+        value: [order.ambulancePickupLandmark, order.ambulancePickupAddress, order.ambulancePickupPin]
+          .filter(Boolean)
+          .join(" · "),
+      });
+    }
     if (order.ambulanceRequestId) {
       rows.push({ label: "Ambulance ID", value: order.ambulanceRequestId });
+    }
+    if (order.inchargeName || order.agentName) {
+      rows.push({
+        label: "Centre in-charge",
+        value: order.inchargeName || order.agentName,
+      });
+    }
+    if (order.inchargeMobile || order.agentMobile) {
+      rows.push({
+        label: "In-charge Mobile",
+        value: formatOrderMobile(
+          order.inchargeMobile || order.agentMobile,
+          audience,
+          "stepdown"
+        ),
+      });
+    }
+    if (order.roomNo) rows.push({ label: "Room No", value: String(order.roomNo) });
+    if (order.bedNo) rows.push({ label: "Bed No", value: String(order.bedNo) });
+    if (order.patientAccountId) {
+      rows.push({ label: "Patient account", value: order.patientAccountId });
+    }
+    if (order.discharged) {
+      const paidStay =
+        order.paid || String(order.paymentStatus || "").toLowerCase() === "paid";
+      rows.push({
+        label: "Stay",
+        value:
+          audience === "customer"
+            ? paidStay
+              ? "Back home · Paid"
+              : "Back home"
+            : paidStay
+              ? "Discharged · Paid"
+              : "Discharged",
+      });
+      if (order.billFinalized || order.total != null) {
+        rows.push({
+          label: "Complete bill",
+          value: formatOrderRupee(orderTotal(order)),
+        });
+      }
+      if (order.paymentMethod) {
+        rows.push({
+          label: "Payment",
+          value: orderPaymentModeLabel(order, audience),
+        });
+      }
+    } else if (order.admitted) {
+      rows.push({ label: "Stay", value: "Admitted" });
+    }
+    if (order.cancelled) {
+      rows.push({ label: "Booking", value: "Cancelled" });
+      if (order.remitRupees != null) {
+        rows.push({
+          label: "Advance remitted",
+          value: `₹${Number(order.remitRupees || 0).toLocaleString("en-IN")}${
+            order.remitPercent ? ` (${order.remitPercent}%)` : ""
+          }`,
+        });
+      }
     }
   }
   if (kind === "ambulance") {

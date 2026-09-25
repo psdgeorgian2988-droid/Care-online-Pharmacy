@@ -7,7 +7,7 @@ import { persistOrder, trackHref, withTracking } from "./orderTracking";
 import { buildPartnerRxShare } from "./rxPartnerShare";
 import {
   checkMedicineAvailability,
-  medicineConfirmedFields,
+  medicineAwaitingPharmacyFields,
   diagnosticRequestFields,
 } from "./orderConfirm";
 import PaymentBlock from "./PaymentBlock";
@@ -45,9 +45,11 @@ import {
   TEST_CART_EVENT,
   readMedicineCart,
   readTestCart,
+  updateMedicineBatch,
   writeMedicineCart,
   writeTestCart,
 } from "./medicineCartStore";
+import MedicineBatchPick from "./MedicineBatchPick.jsx";
 import {
   PRESCRIPTION_EVENT,
   hasPrescriptionDraft,
@@ -256,6 +258,10 @@ export default function CartCheckout() {
                 mrp: item.mrp,
                 prescription: requiresPrescription(item),
                 quantity: item.quantity || 1,
+                batchId: item.batchId || "",
+                batchNo: item.batchNo || "",
+                batchMfgDate: item.batchMfgDate || "",
+                batchExpiryDate: item.batchExpiryDate || "",
               })),
               total: medicineTotal,
               saleRupees: medicineMrp,
@@ -269,7 +275,7 @@ export default function CartCheckout() {
               prescription: rxName,
               ...buildPartnerRxShare("medicine"),
               ...addr,
-              ...medicineConfirmedFields(availability),
+              ...medicineAwaitingPharmacyFields(availability),
               ...payment,
               cartCheckout: true,
               paymentStatus: paid ? payment.paymentStatus || "paid" : payment.paymentStatus,
@@ -350,19 +356,30 @@ export default function CartCheckout() {
   if (confirmed) {
     const firstId =
       confirmed.medicineOrder?.id || confirmed.testOrders[0]?.bookingId || "";
+    const awaitingPharmacy =
+      Boolean(confirmed.medicineOrder) &&
+      !confirmed.medicineOrder.partnerConfirmed;
+    const onlyMedicine =
+      Boolean(confirmed.medicineOrder) && !confirmed.testOrders.length;
     return (
       <section className="cart-checkout-page">
         <div className="checkout-panel">
           <h1>
-            {confirmed.testOrders.some((row) => row.serviceType === "radiology") &&
-            !confirmed.medicineOrder
-              ? "Request sent"
-              : "Order confirmed"}
+            {awaitingPharmacy
+              ? "Request sent to pharmacy"
+              : confirmed.testOrders.some((row) => row.serviceType === "radiology") &&
+                !confirmed.medicineOrder
+                ? "Request sent"
+                : "Order confirmed"}
           </h1>
           <PatienceNote kind="medicine" shown={false} />
           <p>
-            Thank you, {confirmed.booked.patientName}. Medicines and tests in this
-            cart were billed together.
+            Thank you, {confirmed.booked.patientName}.{" "}
+            {awaitingPharmacy
+              ? "Your medicine order was sent to the pharmacy for this PIN. It is confirmed after they review the prescription."
+              : onlyMedicine
+                ? "Your medicine order is confirmed."
+                : "Medicines and tests in this cart were billed together."}
           </p>
           {confirmed.testOrders.some((row) => row.serviceType === "radiology") ? (
             <p>
@@ -394,7 +411,7 @@ export default function CartCheckout() {
             </p>
           ))}
           <PinGpsBlock record={confirmed.addr} />
-          {confirmed.medicineOrder ? (
+          {confirmed.medicineOrder && !awaitingPharmacy ? (
             <AssignedAgent record={confirmed.medicineOrder} />
           ) : null}
           <div className="cart-actions">
@@ -498,6 +515,10 @@ export default function CartCheckout() {
                     <li key={item.id}>
                       <span>
                         {item.name} × {item.quantity || 1}
+                        <MedicineBatchPick
+                          item={item}
+                          onChange={(next) => updateMedicineBatch(item.id, next)}
+                        />
                       </span>
                       <strong>
                         {money(item.price * (item.quantity || 1))}

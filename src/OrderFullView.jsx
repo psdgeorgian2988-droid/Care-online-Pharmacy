@@ -17,6 +17,7 @@ import {
   orderTotal,
   orderTrackLabel,
 } from "./orderFullFields";
+import { openBatchReport } from "./batchStore";
 
 function MetaRow({ label, value, href }) {
   if (!value) return null;
@@ -50,14 +51,18 @@ export default function OrderFullView({
   const slots = orderSlotLines(order);
   const pay = orderPaymentSummary(order, audience);
   const partner = orderPartnerAssignment(order);
-  const extras = orderKindExtras(order);
+  const extras = orderKindExtras(order, audience);
   const pin = orderPin(order);
   const address = orderAddress(order);
   const name = orderPatientName(order);
-  const mobile = formatOrderMobile(order.mobile, audience);
+  const mobile = formatOrderMobile(
+    order.mobile || order.mobileNumber,
+    audience,
+    kind
+  );
   const total = formatOrderRupee(orderTotal(order));
   const showPartner = audience !== "customer" || partner.assigned;
-  const partnerMobile = formatOrderMobile(partner.mobile, audience);
+  const partnerMobile = formatOrderMobile(partner.mobile, audience, kind);
 
   return (
     <section className={`order-full is-${audience}`} aria-label="Full order">
@@ -139,7 +144,23 @@ export default function OrderFullView({
               <span>
                 {item.name}
                 {item.quantity ? ` × ${item.quantity}` : ""}
+                {item.batchNo ? ` · Batch ${item.batchNo}` : ""}
                 {item.partnerCorrected ? " · partner corrected" : ""}
+                {item.batchNo ? (
+                  <button
+                    type="button"
+                    className="order-batch-report"
+                    onClick={() =>
+                      openBatchReport({
+                        ...item,
+                        productName: item.name,
+                        expiryDate: item.batchExpiryDate || item.expiryDate,
+                      })
+                    }
+                  >
+                    Show batch report
+                  </button>
+                ) : null}
               </span>
               <strong>{item.price != null && item.price !== "" ? formatOrderRupee(item.price) : ""}</strong>
             </li>
@@ -184,9 +205,14 @@ export default function OrderFullView({
       {showRx ? (
         <RxShareCard
           record={order}
-          title={rxTitle}
+          title={
+            audience === "partner" && kind === "medicine"
+              ? "Prescription — review and confirm"
+              : rxTitle
+          }
           editable={rxEditable}
           busy={rxBusy}
+          alwaysShow={audience === "partner" && kind === "medicine"}
           onCorrectMedicine={onCorrectMedicine}
         />
       ) : null}
@@ -205,6 +231,7 @@ const styles = `
 .order-full-items{list-style:none;margin:0;padding:0}
 .order-full-items li{display:flex;justify-content:space-between;gap:10px;margin:0;padding:5px 0;border-bottom:1px solid #edf1f3;font-size:13px;color:#34546b}
 .order-full-items strong{color:#143246;white-space:nowrap}
+.order-batch-report{display:block;margin-top:4px;border:0;background:none;padding:0;color:#1a6b7a;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
 .order-full-empty{margin:0;font-size:12px;color:#5d7180}
 .order-full-extras{margin-top:8px}
 .order-full-partner{margin-top:10px;padding:10px;border:1px solid #d2e8ef;border-radius:10px;background:#f7fbfd}

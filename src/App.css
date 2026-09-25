@@ -3924,23 +3924,20 @@ body,
 }
 
 .home-landing .home-hero-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
-  gap: 18px;
-  align-items: start;
-}
-
-.home-landing .home-hero-main {
-  display: grid;
-  gap: 12px;
-  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
 }
 
 .home-landing .home-account-card {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   justify-content: center;
-  gap: 10px;
+  align-items: center;
+  gap: 16px;
+  width: min(560px, 100%);
+  margin: 0 auto;
   padding: 16px;
   background: linear-gradient(180deg, #ffffff 0%, #eef8fb 100%);
   border: 1px solid #c5e0ea;
@@ -3953,7 +3950,9 @@ body,
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
   height: 42px;
   border-radius: 10px;
   border: 2px solid #1a6b7a;
@@ -4297,7 +4296,6 @@ body,
     white-space: normal !important;
   }
 
-  .home-landing .home-hero-row,
   .home-landing .home-cta-row,
   .home-landing .home-services {
     grid-template-columns: 1fr;
@@ -10537,6 +10535,46 @@ html[data-layout="phone"] .slideshow-review-text {
   color: #143246;
   font-weight: 700;
   cursor: pointer;
+}
+
+.medicine-batch-pick {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.medicine-batch-pick label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #34546b;
+}
+
+.medicine-batch-pick select {
+  min-height: 34px;
+  border: 1px solid #d7e2e9;
+  border-radius: 8px;
+  background: #fff;
+  color: #143246;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 8px;
+}
+
+.medicine-batch-report,
+.order-batch-report {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: #1a6b7a;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: left;
 }
 
 .shop-cart-remove {
