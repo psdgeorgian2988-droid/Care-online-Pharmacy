@@ -111,11 +111,12 @@ const PAGE_META = {
   },
   myorders: {
     title: "My Orders | MediHome",
-    description: "Track medicines, diagnostics, Home Care, psychologist, and ambulance bookings.",
+    description:
+      "View completed MediHome orders. Active bookings stay under Track Order.",
   },
   track: {
-    title: "Track Live | MediHome",
-    description: "Follow your MediHome order or visit on the live PIN map.",
+    title: "Track Order | MediHome",
+    description: "Follow active MediHome bookings on the live PIN map.",
   },
   scan: {
     title: "Scan Delivery | MediHome",

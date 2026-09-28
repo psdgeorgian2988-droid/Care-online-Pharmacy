@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ReferFamily from "./ReferFamily";
 import { awardOnce, POINT_VALUES, useWallet } from "./pointsStore";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import { maskMobile } from "./personFields";
+import { goToHash } from "./hashRoute";
 
 const GUIDES = [
   {
@@ -229,11 +230,40 @@ const QUIZZES = [
 
 const WEBINAR_KEY = "mediHomeWebinarSignups";
 const TABS = [
-  { id: "guides", label: "Guides" },
-  { id: "webinars", label: "Webinars" },
-  { id: "quiz", label: "Quiz" },
-  { id: "refer", label: "Refer" },
+  {
+    id: "guides",
+    label: "Guides",
+    title: "Health Guides",
+    lead: "Short, plain-language notes for patients. This is education, not a personal prescription — follow your clinician.",
+  },
+  {
+    id: "webinars",
+    label: "Webinars",
+    title: "Live Webinars",
+    lead: "Register for live sessions and collect MediHome points after you attend.",
+  },
+  {
+    id: "quiz",
+    label: "Quiz",
+    title: "Health Quiz",
+    lead: "Quick quizzes on diabetes, blood pressure, and medicines. Earn points when you finish.",
+  },
+  {
+    id: "refer",
+    label: "Refer",
+    title: "Refer Family",
+    lead: "Invite family members and earn MediHome points when they join for care.",
+  },
 ];
+
+function normalizeEduTab(value) {
+  const wanted = String(value || "").toLowerCase();
+  if (wanted === "webinar") return "webinars";
+  if (wanted === "quizzes" || wanted === "health-quiz") return "quiz";
+  if (wanted === "referral" || wanted === "refer-family") return "refer";
+  if (wanted === "guide" || wanted === "health-guides") return "guides";
+  return TABS.some((tab) => tab.id === wanted) ? wanted : "guides";
+}
 
 function readProfile() {
   try {
@@ -667,8 +697,20 @@ function QuizPanel() {
   );
 }
 
-function HealthEducation() {
-  const [tab, setTab] = useState("guides");
+function HealthEducation({ initialTab = "guides" }) {
+  const resolved = normalizeEduTab(initialTab);
+  const [tab, setTab] = useState(resolved);
+  const active = TABS.find((item) => item.id === tab) || TABS[0];
+
+  useEffect(() => {
+    setTab(normalizeEduTab(initialTab));
+  }, [initialTab]);
+
+  const selectTab = (nextId) => {
+    const next = normalizeEduTab(nextId);
+    setTab(next);
+    goToHash(`#education?tab=${next}`);
+  };
 
   return (
     <div className="service-page info-page edu-page">
@@ -676,11 +718,8 @@ function HealthEducation() {
       <section className="service-hero">
         <div>
           <span className="service-kicker">MediHome Health Education</span>
-          <h1>Guides, Live Webinars, And Quick Quizzes</h1>
-          <p>
-            Short, Plain-Language notes for Patients. This is
-            education, not a personal prescription — Follow your Clinician.
-          </p>
+          <h1>{active.title}</h1>
+          <p>{active.lead}</p>
         </div>
       </section>
 
@@ -692,7 +731,7 @@ function HealthEducation() {
             role="tab"
             aria-selected={tab === item.id}
             className={tab === item.id ? "edu-tab is-active" : "edu-tab"}
-            onClick={() => setTab(item.id)}
+            onClick={() => selectTab(item.id)}
           >
             {item.label}
           </button>

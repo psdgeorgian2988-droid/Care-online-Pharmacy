@@ -34,12 +34,11 @@ test("service hashes stay on their own pages", () => {
   assert.equal(parseAppHash("#homecare?service=nurse&plan=vaccination-child").plan, "vaccination-child");
 });
 
-test("medical records tabs come from reports or vaccination hashes", () => {
-  assert.equal(parseAppHash("#reports").route, "#reports");
-  assert.equal(parseAppHash("#reports").tab, "");
-  assert.equal(parseAppHash("#reports?tab=vaccination").route, "#reports");
-  assert.equal(parseAppHash("#reports?tab=vaccination").tab, "vaccination");
-  assert.equal(parseAppHash("#vaccination").route, "#vaccination");
-  assert.equal(parseAppHash("#vaccination").tab, "vaccination");
-  assert.equal(parseAppHash("#medical-records").route, "#reports");
+test("education tabs open only the requested section", () => {
+  assert.equal(parseAppHash("#education").route, "#education");
+  assert.equal(parseAppHash("#education").tab, "");
+  assert.equal(parseAppHash("#education?tab=quiz").tab, "quiz");
+  assert.equal(parseAppHash("#education?tab=webinars").tab, "webinars");
+  assert.equal(parseAppHash("#education?tab=guides").tab, "guides");
+  assert.equal(parseAppHash("#education?tab=refer").tab, "refer");
 });

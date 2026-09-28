@@ -5,7 +5,7 @@ import {
   etaLabel,
   haversineKm,
   kindLabel,
-  loadAllOrders,
+  loadActiveOrders,
   partnerCopy,
   persistOrder,
   resolveOrderById,
@@ -325,7 +325,7 @@ export default function TrackPage({ trackId }) {
       } else {
         setOrder(null);
         setMissing(Boolean(trackId));
-        setOthers(loadAllOrders());
+        setOthers(loadActiveOrders());
       }
     })();
     return () => {
@@ -338,13 +338,13 @@ export default function TrackPage({ trackId }) {
       <div className="orders-page-header">
         <div>
           <span className="orders-eyebrow">TRACKING</span>
-          <h1>Track Live</h1>
+          <h1>Track Order</h1>
           <p className="orders-subtitle">
-            Watch the assigned partner move toward your PIN in real time.
+            Active bookings only. Completed orders move to My Orders.
           </p>
         </div>
         <a className="orders-home-link" href="#myorders">
-          Back to My Orders
+          Completed orders
         </a>
       </div>
 
@@ -364,15 +364,15 @@ export default function TrackPage({ trackId }) {
           {missing ? (
             <p>No order found for this tracking link.</p>
           ) : (
-            <p>Choose an order to track.</p>
+            <p>Choose an active order to track.</p>
           )}
           <div className="orders-empty-actions">
-            {others.slice(0, 6).map((item) => (
+            {others.slice(0, 8).map((item) => (
               <a key={item.id} href={trackHref(item.id)}>
                 Track {kindLabel(item.kind)} #{item.id}
               </a>
             ))}
-            <a href="#myorders">Open My Orders</a>
+            <a href="#myorders">Open completed orders</a>
           </div>
         </div>
       )}

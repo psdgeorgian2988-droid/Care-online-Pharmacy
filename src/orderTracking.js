@@ -66,6 +66,26 @@ export function trackHref(id) {
   return `#track?id=${encodeURIComponent(String(id || ""))}`;
 }
 
+export function isOrderCompleted(order) {
+  if (!order) return false;
+  if (order.trackCompleted || order.checkDeliverAt || order.qrReceivedAt) return true;
+  const status = String(order.trackStatus || order.status || "").toLowerCase();
+  return (
+    status === "done" ||
+    status === "delivered" ||
+    status === "completed" ||
+    status === "arrived"
+  );
+}
+
+export function loadCompletedOrders() {
+  return loadAllOrders().filter((order) => isOrderCompleted(order));
+}
+
+export function loadActiveOrders() {
+  return loadAllOrders().filter((order) => !isOrderCompleted(order));
+}
+
 export function doneLabel(kind) {
   return kind === "medicine" ? "Delivered" : "Completed";
 }

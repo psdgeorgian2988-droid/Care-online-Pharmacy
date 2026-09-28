@@ -55,6 +55,7 @@ const NAV_LINKS = [
 
 const ACCOUNT_LINKS = [
   { href: "#myorders", label: "My Orders" },
+  { href: "#track", label: "Track Order" },
   { href: "#scan?step=deliver", label: "Scan Delivery" },
   { href: "#profile", label: "Profile" },
 ];
@@ -354,7 +355,7 @@ function App() {
     };
   }, []);
 
-  const { route, q: medicineQuery, id: trackId, step: scanStep, tab: recordsTab } =
+  const { route, q: medicineQuery, id: trackId, step: scanStep, tab: pageTab } =
     parseAppHash(hash);
   const isOps = route === "#admin" || route === "#partner";
   const features = useFeatures();
@@ -386,7 +387,7 @@ function App() {
       case "#vaccination":
         return (
           <MedicalRecords
-            initialTab={recordsTab === "reports" ? "reports" : "vaccination"}
+            initialTab={pageTab || "vaccination"}
           />
         );
       case "#psychologist":
@@ -398,7 +399,7 @@ function App() {
       case "#reports":
         return (
           <MedicalRecords
-            initialTab={recordsTab === "vaccination" ? "vaccination" : "reports"}
+            initialTab={pageTab || "lab"}
           />
         );
       case "#profile":
@@ -410,7 +411,7 @@ function App() {
       case "#track":
         return <TrackPage trackId={trackId} />;
       case "#education":
-        return <HealthEducation />;
+        return <HealthEducation initialTab={pageTab || "guides"} />;
       case "#about":
         return <About />;
       case "#contact":

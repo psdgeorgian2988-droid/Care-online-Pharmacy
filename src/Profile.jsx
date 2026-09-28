@@ -291,7 +291,7 @@ function Profile() {
           ) : (
             <p className="profile-ledger-empty">
               No points yet. Earn them in{" "}
-              <a href="#education">Health Education</a>.
+              <a href="#education?tab=guides">Health Education</a>.
             </p>
           )}
         </section>
