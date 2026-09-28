@@ -104,7 +104,7 @@ export function replyTo(rawText) {
       text: "Vaccination records and due dates follow the Government of India schedule. Book a nurse vaccination visit from Home Care.",
       needsStaff: false,
       links: [
-        { href: "#vaccination", label: "Vaccination Record" },
+        { href: "#reports?tab=vaccination", label: "Vaccination Record" },
         { href: "#homecare?service=nurse&plan=vaccination", label: "Book Nurse Visit" },
       ],
     };

@@ -433,7 +433,7 @@ function HomeCare() {
             <AssignedAgent record={booking} />
             <div className="confirm-actions">
               {isVaccinationPlan(booking.carePlan) ? (
-                <a className="service-submit" href="#vaccination">
+                <a className="service-submit" href="#reports?tab=vaccination">
                   Save Vaccination Record
                 </a>
               ) : null}
@@ -529,7 +529,7 @@ function HomeCare() {
                 onToggle={(id) => setVaxBooking(toggleBookingVaccine(id))}
                 idPrefix="hc-vac"
               />
-              <a className="vac-copy" href="#vaccination">
+              <a className="vac-copy" href="#reports?tab=vaccination">
                 Vaccination Record
               </a>
             </div>

@@ -56,8 +56,8 @@ function MyOrders() {
           </p>
         </div>
         <div className="orders-header-actions">
-          <a className="orders-nav-btn" href="#vaccination">
-            Vaccination Record
+          <a className="orders-nav-btn" href="#reports">
+            Medical Records
           </a>
           <a className="orders-nav-btn orders-nav-home" href="#home">
             Back to Home

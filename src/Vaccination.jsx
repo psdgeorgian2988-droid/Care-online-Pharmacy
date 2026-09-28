@@ -44,7 +44,7 @@ function personFromOption(option = {}) {
   };
 }
 
-function Vaccination() {
+function Vaccination({ embedded = false } = {}) {
   const today = isoDateToday();
   const session = useLoginSession();
   const stored = readUserProfile();
@@ -180,13 +180,9 @@ function Vaccination() {
   return (
     <>
       <style>{styles}</style>
-      <div className="service-page">
-        <section className="service-hero">
-          <div>
-            <span className="service-kicker">MediHome Vaccination</span>
-            <h1>Vaccination Record</h1>
-          </div>
-          <div className="vac-hero-actions">
+      <div className={embedded ? "vac-page is-embedded" : "service-page vac-page"}>
+        {embedded ? (
+          <div className="vac-hero-actions vac-embedded-actions">
             <button
               type="button"
               className="vac-schedule-btn"
@@ -198,7 +194,26 @@ function Vaccination() {
               Book Nurse Visit
             </a>
           </div>
-        </section>
+        ) : (
+          <section className="service-hero">
+            <div>
+              <span className="service-kicker">MediHome Vaccination</span>
+              <h1>Vaccination Record</h1>
+            </div>
+            <div className="vac-hero-actions">
+              <button
+                type="button"
+                className="vac-schedule-btn"
+                onClick={() => setShowSchedule(true)}
+              >
+                View Schedule
+              </button>
+              <a className="vac-schedule-btn is-fill" href={bookHref}>
+                Book Nurse Visit
+              </a>
+            </div>
+          </section>
+        )}
 
         {soon.length ? (
           <aside className="vac-banner" aria-live="polite">
@@ -483,6 +498,7 @@ const styles = `
 .service-kicker{display:block;margin-bottom:4px;font-size:11px;font-weight:800;letter-spacing:.6px;color:#1a6b7a}
 .service-hero h1{margin:0;font-size:22px}
 .vac-hero-actions{display:flex;flex-wrap:wrap;gap:8px}
+.vac-embedded-actions{max-width:760px;margin:0 auto 12px;justify-content:flex-end}
 .vac-banner{max-width:760px;margin:0 auto 12px;padding:12px 14px;border-radius:12px;background:#fff6e8;border:1px solid #f0d3a0;color:#7a4b12}
 .vac-banner strong{display:block;margin-bottom:6px}
 .vac-banner ul{margin:0;padding-left:18px;font-size:13px;line-height:1.45}

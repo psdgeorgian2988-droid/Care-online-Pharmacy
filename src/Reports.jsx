@@ -66,7 +66,7 @@ function loadReports() {
   }
 }
 
-function Reports() {
+function Reports({ embedded = false } = {}) {
   const today = isoDateToday();
   const minReport = isoDateYearsAgo(20);
   const session = useLoginSession();
@@ -287,14 +287,16 @@ function Reports() {
   return (
     <>
       <style>{styles}</style>
-      <div className="service-page reports-page">
-        <section className="service-hero">
-          <div>
-            <span className="service-kicker">MediHome Reports</span>
-            <h1>Save Health Reports</h1>
-            <p>Keep Lab PDFs or Images on this device. Nothing is Uploaded to a Server.</p>
-          </div>
-        </section>
+      <div className={embedded ? "reports-page is-embedded" : "service-page reports-page"}>
+        {embedded ? null : (
+          <section className="service-hero">
+            <div>
+              <span className="service-kicker">MediHome Reports</span>
+              <h1>Save Health Reports</h1>
+              <p>Keep Lab PDFs or Images on this device. Nothing is Uploaded to a Server.</p>
+            </div>
+          </section>
+        )}
 
         <form className="service-form" onSubmit={handleSubmit}>
           <div className="field full">

@@ -19,6 +19,7 @@ export function parseAppHash(rawHash) {
   let step = "";
   let plan = "";
   let service = "";
+  let tab = "";
   try {
     const params = new URLSearchParams(query);
     q = (params.get("q") || "").trim();
@@ -26,12 +27,14 @@ export function parseAppHash(rawHash) {
     step = (params.get("step") || "").trim();
     plan = (params.get("plan") || "").trim();
     service = (params.get("service") || "").trim();
+    tab = (params.get("tab") || "").trim().toLowerCase();
   } catch {
     q = "";
     id = "";
     step = "";
     plan = "";
     service = "";
+    tab = "";
   }
   const HASH_ALIASES = {
     social: "contact",
@@ -40,10 +43,13 @@ export function parseAppHash(rawHash) {
     partners: "partner",
     customer: "home",
     app: "apps",
+    "medical-records": "reports",
+    "medical-record": "reports",
   };
   const mapped = HASH_ALIASES[path] || path;
   const route = !mapped || mapped === "home" ? "#home" : `#${mapped}`;
-  return { route, q, id, step, plan, service };
+  if (route === "#vaccination" && !tab) tab = "vaccination";
+  return { route, q, id, step, plan, service, tab };
 }
 
 export function goToHash(nextHash) {

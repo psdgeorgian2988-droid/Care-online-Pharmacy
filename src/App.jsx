@@ -10,16 +10,15 @@ import {
   HomeCare,
   LabTests,
   Medicines,
+  MedicalRecords,
   MyOrders,
   Partner,
   Profile,
   Psychologist,
-  Reports,
   Reviews,
   ScanPage,
   StepDownCare,
   TrackPage,
-  Vaccination,
 } from "./routePages";
 import Seo from "./Seo";
 import SocialLinks from "./SocialLinks";
@@ -47,11 +46,10 @@ const NAV_LINKS = [
   { href: "#medicine-search", label: "Medicines" },
   { href: "#labs", label: "Lab Tests" },
   { href: "#homecare", label: "Home Care" },
-  { href: "#vaccination", label: "Vaccination Record" },
   { href: "#psychologist", label: "Psychologist" },
   { href: "#stepdown", label: "Step-Down" },
   { href: "#ambulance", label: "Ambulance" },
-  { href: "#reports", label: "Reports" },
+  { href: "#reports", label: "Medical Records" },
   { href: "#education", label: "Education" },
 ];
 
@@ -101,6 +99,7 @@ function PageFallback() {
 
 function hashLinkActive(linkHref, route, scanStep) {
   if (route === linkHref) return true;
+  if (linkHref === "#reports" && route === "#vaccination") return true;
   if (linkHref === "#myorders" && route === "#track") return true;
   if (linkHref.startsWith("#scan") && route === "#scan") {
     if (linkHref.includes("step=pack")) return scanStep === "pack";
@@ -276,13 +275,6 @@ function HomePage() {
               <span>Book a visit</span>
             </a>
           ) : null}
-          {features.vaccination !== false ? (
-            <a className="home-service-card" href="#vaccination">
-              <h2>Vaccination Record</h2>
-              <p>Record, schedule and due-date reminders.</p>
-              <span>View record</span>
-            </a>
-          ) : null}
           {features.psychologist !== false ? (
             <a className="home-service-card" href="#psychologist">
               <h2>Psychologist Consultation</h2>
@@ -309,11 +301,11 @@ function HomePage() {
             <p>Scan the order QR when medicines arrive.</p>
             <span>Open scanner</span>
           </a>
-          {features.reports !== false ? (
+          {features.reports !== false || features.vaccination !== false ? (
             <a className="home-service-card" href="#reports">
-              <h2>Reports</h2>
-              <p>Save lab PDFs on this device.</p>
-              <span>Save a report</span>
+              <h2>Medical Records</h2>
+              <p>Lab reports and vaccination record on this device.</p>
+              <span>Open records</span>
             </a>
           ) : null}
           {features.education !== false ? (
@@ -362,7 +354,8 @@ function App() {
     };
   }, []);
 
-  const { route, q: medicineQuery, id: trackId, step: scanStep } = parseAppHash(hash);
+  const { route, q: medicineQuery, id: trackId, step: scanStep, tab: recordsTab } =
+    parseAppHash(hash);
   const isOps = route === "#admin" || route === "#partner";
   const features = useFeatures();
 
@@ -391,7 +384,11 @@ function App() {
       case "#homecare":
         return <HomeCare />;
       case "#vaccination":
-        return <Vaccination />;
+        return (
+          <MedicalRecords
+            initialTab={recordsTab === "reports" ? "reports" : "vaccination"}
+          />
+        );
       case "#psychologist":
         return <Psychologist />;
       case "#stepdown":
@@ -399,7 +396,11 @@ function App() {
       case "#ambulance":
         return <Ambulance />;
       case "#reports":
-        return <Reports />;
+        return (
+          <MedicalRecords
+            initialTab={recordsTab === "vaccination" ? "vaccination" : "reports"}
+          />
+        );
       case "#profile":
         return <Profile />;
       case "#myorders":

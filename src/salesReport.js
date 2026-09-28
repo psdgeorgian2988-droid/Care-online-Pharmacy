@@ -7,11 +7,11 @@ export const FEATURE_CATALOG = [
   { key: "lab", label: "Lab Tests", href: "#labs" },
   { key: "radiology", label: "Radiology", href: "#labs" },
   { key: "homecare", label: "Home Care", href: "#homecare" },
-  { key: "vaccination", label: "Vaccination", href: "#vaccination" },
+  { key: "vaccination", label: "Vaccination", href: "#reports?tab=vaccination" },
   { key: "psychologist", label: "Psychologist Consultation", href: "#psychologist" },
   { key: "stepdown", label: "Step-Down Care", href: "#stepdown" },
   { key: "ambulance", label: "Ambulance", href: "#ambulance" },
-  { key: "reports", label: "Reports", href: "#reports" },
+  { key: "reports", label: "Medical Records", href: "#reports" },
   { key: "education", label: "Health Education", href: "#education" },
   { key: "scanDelivery", label: "Scan Delivery", href: "#scan?step=deliver" },
 ];
@@ -24,11 +24,11 @@ export const ROUTE_FEATURES = {
   "#medicine-search": ["medicine"],
   "#labs": ["lab", "radiology"],
   "#homecare": ["homecare"],
-  "#vaccination": ["vaccination"],
+  "#vaccination": ["vaccination", "reports"],
   "#psychologist": ["psychologist"],
   "#stepdown": ["stepdown"],
   "#ambulance": ["ambulance"],
-  "#reports": ["reports"],
+  "#reports": ["reports", "vaccination"],
   "#education": ["education"],
 };
 

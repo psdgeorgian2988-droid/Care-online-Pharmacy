@@ -10,6 +10,7 @@ export const Psychologist = lazy(() => import("./Psychologist"));
 export const StepDownCare = lazy(() => import("./StepDownCare"));
 export const Ambulance = lazy(() => import("./Ambulance"));
 export const Reports = lazy(() => import("./Reports"));
+export const MedicalRecords = lazy(() => import("./MedicalRecords"));
 export const TrackPage = lazy(() => import("./LiveTracking"));
 export const HealthEducation = lazy(() => import("./HealthEducation"));
 export const About = lazy(() => import("./About"));

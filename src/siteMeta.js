@@ -76,8 +76,13 @@ const PAGE_META = {
     description:
       "Book nurse visits, caregiver duty, and physiotherapy at home in Delhi NCR.",
   },
+  reports: {
+    title: "Medical Records | MediHome",
+    description:
+      "Keep lab reports and vaccination records on this device for clinic visits with MediHome.",
+  },
   vaccination: {
-    title: "Vaccination Schedule, Record And Reminders | MediHome",
+    title: "Vaccination Record | MediHome Medical Records",
     description:
       "Government of India UIP schedule for children and older persons, with a saved record and due-date reminders.",
   },
@@ -95,10 +100,6 @@ const PAGE_META = {
     title: "Request An Ambulance | MediHome",
     description:
       "Emergency or planned ambulance pickup in Delhi NCR, with live PIN tracking.",
-  },
-  reports: {
-    title: "Save Health Reports | MediHome",
-    description: "Keep lab PDFs on this device for clinic visits with MediHome Reports.",
   },
   login: {
     title: "Login | MediHome",
