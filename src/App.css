@@ -6306,8 +6306,7 @@ body,
 }
 
 .app:not(.app-ops) .lab-tabs,
-.app:not(.app-ops) .vac-tabs,
-.app:not(.app-ops) .edu-tabs {
+.app:not(.app-ops) .vac-tabs {
   display: flex !important;
   flex-wrap: wrap !important;
   width: 100% !important;
@@ -6328,18 +6327,12 @@ body,
   max-width: none !important;
 }
 
-.app:not(.app-ops) .edu-tab,
 .app:not(.app-ops) .lab-tabs button,
 .app:not(.app-ops) .vac-tabs button {
   border: 0 !important;
   border-radius: 8px !important;
   padding: 8px 14px !important;
   font-weight: 700 !important;
-}
-
-.app:not(.app-ops) .edu-tab.is-active {
-  background: #ffffff !important;
-  color: #1a6b7a !important;
 }
 
 .app:not(.app-ops) .vac-banner {

@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import ReferFamily from "./ReferFamily";
 import { awardOnce, POINT_VALUES, useWallet } from "./pointsStore";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import { maskMobile } from "./personFields";
-import { goToHash } from "./hashRoute";
 
 const GUIDES = [
   {
@@ -698,26 +697,18 @@ function QuizPanel() {
 }
 
 function HealthEducation({ initialTab = "" }) {
-  const hasTab = Boolean(String(initialTab || "").trim());
-  const resolved = hasTab ? normalizeEduTab(initialTab) : "";
-  const [tab, setTab] = useState(resolved);
+  // Hash is the only source of truth — no local tab state that can desync
+  // and accidentally leave more than one section mounted.
+  const tab = String(initialTab || "").trim()
+    ? normalizeEduTab(initialTab)
+    : "";
   const active = TABS.find((item) => item.id === tab) || null;
 
-  useEffect(() => {
-    const next = String(initialTab || "").trim();
-    setTab(next ? normalizeEduTab(next) : "");
-  }, [initialTab]);
-
-  const openSection = (nextId) => {
-    const next = normalizeEduTab(nextId);
-    setTab(next);
-    goToHash(`#education?tab=${next}`);
-  };
-
-  const backToMenu = () => {
-    setTab("");
-    goToHash("#education");
-  };
+  let panel = null;
+  if (tab === "guides") panel = <GuidesPanel />;
+  else if (tab === "webinars") panel = <WebinarsPanel />;
+  else if (tab === "quiz") panel = <QuizPanel />;
+  else if (tab === "refer") panel = <ReferFamily />;
 
   if (!active) {
     return (
@@ -735,16 +726,15 @@ function HealthEducation({ initialTab = "" }) {
         </section>
         <div className="edu-menu" aria-label="Health education sections">
           {TABS.map((item) => (
-            <button
+            <a
               key={item.id}
-              type="button"
               className="edu-menu-card"
-              onClick={() => openSection(item.id)}
+              href={`#education?tab=${item.id}`}
             >
               <strong>{item.title}</strong>
               <span>{item.lead}</span>
               <em>Open {item.label}</em>
-            </button>
+            </a>
           ))}
         </div>
       </div>
@@ -760,15 +750,12 @@ function HealthEducation({ initialTab = "" }) {
           <h1>{active.title}</h1>
           <p>{active.lead}</p>
         </div>
-        <button type="button" className="edu-back-btn" onClick={backToMenu}>
+        <a className="edu-back-btn" href="#education">
           All sections
-        </button>
+        </a>
       </section>
 
-      {tab === "guides" ? <GuidesPanel /> : null}
-      {tab === "webinars" ? <WebinarsPanel /> : null}
-      {tab === "quiz" ? <QuizPanel /> : null}
-      {tab === "refer" ? <ReferFamily /> : null}
+      {panel}
 
       <p className="info-footnote">
         Need a test or refill?{" "}
@@ -785,15 +772,14 @@ const styles = `
 .service-kicker{display:block;margin-bottom:4px;font-size:11px;font-weight:800;letter-spacing:.6px;color:#1a6b7a}
 .service-hero h1{margin:0 0 4px;font-size:22px}
 .service-hero p{margin:0;color:#5d7180;font-size:13px;line-height:1.4}
-.edu-back-btn{flex:0 0 auto;border:1px solid #1a6b7a;border-radius:8px;background:#fff;color:#1a6b7a;font:inherit;font-size:13px;font-weight:800;min-height:38px;padding:8px 12px;cursor:pointer}
+.edu-back-btn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;border:1px solid #1a6b7a;border-radius:8px;background:#fff;color:#1a6b7a;font:inherit;font-size:13px;font-weight:800;min-height:38px;padding:8px 12px;cursor:pointer;text-decoration:none;box-sizing:border-box}
 .edu-menu{max-width:760px;margin:0 auto;display:grid;gap:10px}
-.edu-menu-card{display:grid;gap:6px;width:100%;margin:0;padding:14px 16px;border:1px solid #e4ecef;border-radius:12px;background:#fff;text-align:left;cursor:pointer;font:inherit;color:#143246;box-shadow:0 2px 8px rgba(20,50,70,.05)}
+.edu-menu-card{display:grid;gap:6px;width:100%;margin:0;padding:14px 16px;border:1px solid #e4ecef;border-radius:12px;background:#fff;text-align:left;cursor:pointer;font:inherit;color:#143246;box-shadow:0 2px 8px rgba(20,50,70,.05);text-decoration:none;box-sizing:border-box}
 .edu-menu-card strong{font-size:16px}
 .edu-menu-card span{color:#5d7180;font-size:13px;line-height:1.4}
 .edu-menu-card em{font-style:normal;color:#1a6b7a;font-size:13px;font-weight:800}
-.info-stack,.edu-grid,.edu-tabs,.info-footnote,.points-refer-card{max-width:760px;margin-left:auto;margin-right:auto}
+.info-stack,.edu-grid,.info-footnote,.points-refer-card{max-width:760px;margin-left:auto;margin-right:auto}
 .edu-page{display:flex;flex-direction:column;min-height:0;width:100%;box-sizing:border-box}
-.edu-tabs{display:none}
 .info-card{background:#fff;border:1px solid #e4ecef;border-radius:12px;margin-bottom:10px;overflow:hidden}
 .info-card-toggle{width:100%;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px;border:0;background:#fff;text-align:left;cursor:pointer;font-family:inherit;color:#143246}
 .info-card-toggle strong{display:block;font-size:15px}
@@ -804,7 +790,6 @@ const styles = `
 .info-card li:last-child{margin-bottom:0}
 .info-footnote{margin:16px 2px 0;color:#5d7180;font-size:13px}
 .info-footnote a{color:#1a6b7a;font-weight:700;text-decoration:none}
-.edu-tab.is-active{background:#0639b8;color:#fff;box-shadow:0 3px 8px rgba(6,57,184,.22)}
 .edu-grid{display:grid;gap:12px}
 .edu-panel-card{padding:16px;border:1px solid #e4ecef;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(20,50,70,.06)}
 .edu-panel-card h2{margin:0 0 8px;font-size:18px;line-height:1.3}
