@@ -1,5 +1,6 @@
 node_modules/
 dist/
+server/data/uploads/
 .env
 .env.local
 *.log

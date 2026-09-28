@@ -14,11 +14,13 @@ import {
 } from "./payments.mjs";
 import {
   assignPartnerToOrder,
+  changePartnerPassword,
   createPartner,
   listPartnerJobs,
   listPartners,
   partnerIdFromToken,
   partnerLogin,
+  resetPartnerPassword,
   setPartnerLogin,
 } from "./partners.mjs";
 import {
@@ -30,6 +32,7 @@ import {
 } from "./chats.mjs";
 import { readSettings, writeSettings } from "./settings.mjs";
 import { lookupPin, nearestPin } from "./pincodes.mjs";
+import { readPartnerUpload } from "./partnerUploads.mjs";
 
 const ADMIN_USER = process.env.MEDIHOME_ADMIN_USER || "admin";
 const ADMIN_PASSWORD = process.env.MEDIHOME_ADMIN_PASSWORD || "MediHome@26";
@@ -294,7 +297,7 @@ export async function handleApi(req, res) {
       const body = await readJson(req);
       const result = await partnerLogin(body.loginId || body.user, body.password);
       if (!result) {
-        send(res, 401, { error: "Wrong login ID or password. Ask MediHome staff to create your first login." });
+        send(res, 401, { error: "Wrong login ID or password. Use the login ID from staff, or your mobile or email." });
         return true;
       }
       send(res, 200, result);
@@ -328,7 +331,64 @@ export async function handleApi(req, res) {
         send(res, 400, { error: created.error });
         return true;
       }
-      send(res, 200, { partner: created.partner, partners: await listPartners() });
+      send(res, 200, {
+        partner: created.partner,
+        partners: await listPartners(),
+        loginId: created.loginId,
+        password: created.password,
+      });
+      return true;
+    }
+
+    const partnerResetMatch = pathname.match(/^\/api\/admin\/partners\/([^/]+)\/reset-password$/);
+    if (partnerResetMatch && req.method === "POST") {
+      if (!requireStaff(req, res)) return true;
+      const updated = await resetPartnerPassword(decodeURIComponent(partnerResetMatch[1]));
+      if (!updated.ok) {
+        send(res, 400, { error: updated.error });
+        return true;
+      }
+      send(res, 200, {
+        partner: updated.partner,
+        partners: await listPartners(),
+        loginId: updated.loginId,
+        password: updated.password,
+      });
+      return true;
+    }
+
+    const partnerDocMatch = pathname.match(/^\/api\/admin\/partners\/([^/]+)\/document\/([^/]+)$/);
+    if (partnerDocMatch && req.method === "GET") {
+      if (!requireStaff(req, res)) return true;
+      const file = await readPartnerUpload(
+        decodeURIComponent(partnerDocMatch[1]),
+        decodeURIComponent(partnerDocMatch[2])
+      );
+      if (!file) {
+        send(res, 404, { error: "Document not found." });
+        return true;
+      }
+      res.statusCode = 200;
+      res.setHeader("Content-Type", file.mime);
+      res.setHeader("Cache-Control", "private, no-store");
+      res.end(file.buffer);
+      return true;
+    }
+
+    if (pathname === "/api/partner/password" && req.method === "PATCH") {
+      const token = readToken(req);
+      const partnerId = partnerIdFromToken(token);
+      if (!partnerId) {
+        send(res, 401, { error: "Partner login required." });
+        return true;
+      }
+      const body = await readJson(req);
+      const updated = await changePartnerPassword(partnerId, body);
+      if (!updated.ok) {
+        send(res, 400, { error: updated.error });
+        return true;
+      }
+      send(res, 200, { partner: updated.partner });
       return true;
     }
 

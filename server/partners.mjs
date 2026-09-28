@@ -3,10 +3,34 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listOrders, patchOrder } from "./store.mjs";
+import { savePartnerUpload } from "./partnerUploads.mjs";
+import {
+  digitsOnly,
+  displayPartnerName,
+  kindsFromServices,
+  loginIdFromContact,
+  needsHomeVisitDocs,
+  normalizeEmail,
+  roleForPartner,
+  uniqueLoginId,
+  validatePartnerOnboard,
+} from "../src/partnerProfile.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const dataFile = path.join(root, "data", "partners.json");
 const tokens = new Map();
+
+function partnersPath() {
+  return process.env.MEDIHOME_PARTNERS_FILE || path.join(root, "data", "partners.json");
+}
+
+const PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+
+export function generatePartnerPassword() {
+  const bytes = randomBytes(8);
+  let out = "Mh";
+  for (let i = 0; i < 8; i += 1) out += PASSWORD_ALPHABET[bytes[i] % PASSWORD_ALPHABET.length];
+  return out;
+}
 
 const KIND_OPTIONS = [
   "medicine",
@@ -103,6 +127,17 @@ function clipText(value, max = 80) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
 }
 
+function numberOrBlank(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : "";
+}
+
+function policeStatus(value) {
+  const key = String(value || "").toLowerCase();
+  if (key === "verified" || key === "received" || key === "pending") return key;
+  return "";
+}
+
 function normalizeKinds(raw) {
   const list = Array.isArray(raw) ? raw : [raw];
   const kinds = [
@@ -118,20 +153,45 @@ function normalizeKinds(raw) {
 function sanitizePartner(row) {
   if (!row || typeof row !== "object") return null;
   const id = clipText(row.id, 40);
-  const name = clipText(row.name, 80);
+  const contactName = clipText(row.contactName || row.name, 80);
+  const businessName = clipText(row.businessName, 80);
+  const name = clipText(displayPartnerName({ businessName, contactName, name: row.name }), 80);
   if (!id || !name) return null;
   const loginId = normalizePartnerLoginId(row.loginId);
-  const { pin, password, ...rest } = row;
+  const kinds = normalizeKinds(row.kinds);
+  const physiotherapy = Boolean(row.physiotherapy);
   return {
-    ...rest,
     id,
     name,
-    role: clipText(row.role, 80) || "Partner",
-    kinds: normalizeKinds(row.kinds),
-    mobile: String(row.mobile || "").replace(/\D/g, "").slice(0, 10),
+    businessName,
+    contactName: contactName || name,
+    role:
+      clipText(row.role, 80) ||
+      roleForPartner({ kinds, physiotherapy, businessName }),
+    kinds,
+    physiotherapy,
+    mobile: digitsOnly(row.mobile, 10),
+    email: normalizeEmail(row.email).slice(0, 80),
+    houseNo: clipText(row.houseNo, 40),
+    society: clipText(row.society, 80),
+    area: clipText(row.area, 80),
+    city: clipText(row.city, 80),
+    district: clipText(row.district, 80),
+    state: clipText(row.state, 80),
+    pinCode: digitsOnly(row.pinCode || row.pin, 6),
+    nearby: clipText(row.nearby, 80),
+    lat: numberOrBlank(row.lat),
+    lng: numberOrBlank(row.lng),
+    accountName: clipText(row.accountName, 80),
+    accountNumber: digitsOnly(row.accountNumber, 18),
+    ifsc: clipText(row.ifsc, 11).toUpperCase(),
+    aadhaarFile: clipText(row.aadhaarFile, 40),
+    policeFile: clipText(row.policeFile, 40),
+    policeVerificationStatus: policeStatus(row.policeVerificationStatus),
     outletId: clipText(row.outletId, 40),
     loginId,
     passwordHash: String(row.passwordHash || "").trim(),
+    mustChangePassword: Boolean(row.mustChangePassword),
   };
 }
 
@@ -139,15 +199,21 @@ export function publicPartner(row) {
   if (!row) return null;
   const clean = sanitizePartner(row);
   if (!clean) return null;
-  const { passwordHash, pin, ...rest } = clean;
+  const { passwordHash, pin, accountNumber, ...rest } = clean;
+  const last4 = String(accountNumber || "").slice(-4);
   return {
     ...rest,
     loginId: clean.loginId || "",
     hasLogin: Boolean(clean.loginId && passwordHash),
+    hasAadhaar: Boolean(clean.aadhaarFile),
+    hasPoliceVerification: Boolean(clean.policeFile),
+    accountLast4: last4,
+    accountNumber: accountNumber || "",
   };
 }
 
 async function ensureFile() {
+  const dataFile = partnersPath();
   await mkdir(path.dirname(dataFile), { recursive: true });
   try {
     await readFile(dataFile, "utf8");
@@ -158,17 +224,18 @@ async function ensureFile() {
 
 async function readPartners() {
   await ensureFile();
+  const dataFile = partnersPath();
   try {
     const parsed = JSON.parse(await readFile(dataFile, "utf8"));
-    const list = Array.isArray(parsed?.partners) ? parsed.partners : SEED;
-    const cleaned = list.map(sanitizePartner).filter(Boolean);
-    return cleaned.length ? cleaned : SEED.map(sanitizePartner);
+    if (!Array.isArray(parsed?.partners)) return SEED.map(sanitizePartner);
+    return parsed.partners.map(sanitizePartner).filter(Boolean);
   } catch {
     return SEED.map(sanitizePartner);
   }
 }
 
 async function writePartners(list) {
+  const dataFile = partnersPath();
   await mkdir(path.dirname(dataFile), { recursive: true });
   const partners = list.map(sanitizePartner).filter(Boolean);
   await writeFile(dataFile, `${JSON.stringify({ partners }, null, 2)}\n`);
@@ -185,9 +252,18 @@ export async function findPartner(id) {
 }
 
 function findByLoginId(list, loginId) {
-  const wanted = normalizePartnerLoginId(loginId);
-  if (!wanted) return null;
-  return list.find((row) => normalizePartnerLoginId(row.loginId) === wanted) || null;
+  const raw = String(loginId || "").trim();
+  const wanted = normalizePartnerLoginId(raw);
+  const mobile = digitsOnly(raw, 10);
+  const email = normalizeEmail(raw);
+  return (
+    list.find((row) => {
+      if (wanted && normalizePartnerLoginId(row.loginId) === wanted) return true;
+      if (mobile.length === 10 && row.mobile === mobile) return true;
+      if (email.includes("@") && normalizeEmail(row.email) === email) return true;
+      return false;
+    }) || null
+  );
 }
 
 export async function partnerLogin(loginId, password) {
@@ -234,9 +310,25 @@ export async function setPartnerLogin(id, { loginId, password } = {}) {
   return { ok: true, partner: publicPartner(list[index]) };
 }
 
+async function attachUploads(id, body, row) {
+  const next = { ...row };
+  if (body.aadhaar?.data || body.aadhaar?.dataUrl) {
+    const saved = await savePartnerUpload(id, "aadhaar", body.aadhaar);
+    if (!saved.ok) return saved;
+    next.aadhaarFile = saved.file;
+  }
+  if (body.policeVerification?.data || body.policeVerification?.dataUrl) {
+    const saved = await savePartnerUpload(id, "police", body.policeVerification);
+    if (!saved.ok) return saved;
+    next.policeFile = saved.file;
+    next.policeVerificationStatus = next.policeVerificationStatus || "received";
+  }
+  return { ok: true, row: next };
+}
+
 export async function createPartner(body = {}) {
-  const name = clipText(body.name, 80);
-  if (!name) return { ok: false, error: "Partner name is required." };
+  const error = validatePartnerOnboard(body);
+  if (error) return { ok: false, error };
   const list = await readPartners();
   const id =
     clipText(body.id, 40) ||
@@ -244,25 +336,103 @@ export async function createPartner(body = {}) {
   if (list.some((row) => row.id === id)) {
     return { ok: false, error: "A partner with that id already exists." };
   }
-  const row = sanitizePartner({
+  const physiotherapy = Boolean(
+    body.physiotherapy || (Array.isArray(body.kinds) && body.kinds.includes("physiotherapy"))
+  );
+  const kinds = kindsFromServices(body.kinds, physiotherapy);
+  const businessName = clipText(body.businessName, 80);
+  const contactName = clipText(body.contactName || body.name, 80);
+  const mobile = digitsOnly(body.mobile, 10);
+  const email = normalizeEmail(body.email);
+  const loginId = uniqueLoginId(
+    list.map((row) => row.loginId),
+    loginIdFromContact(mobile, email)
+  );
+  if (!loginId) return { ok: false, error: "Login ID could not be created from mobile and email." };
+  const password = generatePartnerPassword();
+  let row = sanitizePartner({
     id,
-    name,
-    role: body.role,
-    kinds: body.kinds,
-    mobile: body.mobile,
+    name: displayPartnerName({ businessName, contactName }),
+    businessName,
+    contactName,
+    role: body.role || roleForPartner({ kinds, physiotherapy, businessName }),
+    kinds,
+    physiotherapy,
+    mobile,
+    email,
+    houseNo: body.houseNo,
+    society: body.society,
+    area: body.area,
+    city: body.city,
+    district: body.district,
+    state: body.state,
+    pinCode: body.pinCode,
+    nearby: body.nearby,
+    lat: body.lat,
+    lng: body.lng,
+    accountName: body.accountName,
+    accountNumber: body.accountNumber,
+    ifsc: body.ifsc,
+    policeVerificationStatus: needsHomeVisitDocs(kinds, physiotherapy) ? "received" : "",
     outletId: body.outletId,
+    loginId,
+    passwordHash: hashPartnerPassword(password),
+    mustChangePassword: true,
   });
+  const uploaded = await attachUploads(id, body, row);
+  if (!uploaded.ok) return uploaded;
+  row = sanitizePartner(uploaded.row);
   list.push(row);
   await writePartners(list);
-  if (body.loginId || body.password) {
-    const login = await setPartnerLogin(id, {
-      loginId: body.loginId,
-      password: body.password,
-    });
-    if (!login.ok) return login;
-    return login;
+  return { ok: true, partner: publicPartner(row), loginId, password };
+}
+
+export async function resetPartnerPassword(id) {
+  const list = await readPartners();
+  const index = list.findIndex((row) => row.id === id);
+  if (index < 0) return { ok: false, error: "Partner not found." };
+  const current = list[index];
+  let loginId = normalizePartnerLoginId(current.loginId);
+  if (!loginId) {
+    loginId = uniqueLoginId(
+      list.map((row) => row.loginId),
+      loginIdFromContact(current.mobile, current.email)
+    );
   }
-  return { ok: true, partner: publicPartner(row) };
+  if (!loginId) {
+    return { ok: false, error: "Add A Mobile Number Or Email Before Resetting The Password." };
+  }
+  const password = generatePartnerPassword();
+  list[index] = {
+    ...current,
+    loginId,
+    passwordHash: hashPartnerPassword(password),
+    mustChangePassword: true,
+  };
+  await writePartners(list);
+  return { ok: true, partner: publicPartner(list[index]), loginId, password };
+}
+
+export async function changePartnerPassword(partnerId, { currentPassword, newPassword } = {}) {
+  const list = await readPartners();
+  const index = list.findIndex((row) => row.id === partnerId);
+  if (index < 0) return { ok: false, error: "Partner not found." };
+  const current = list[index];
+  if (!verifyPartnerPassword(String(currentPassword || ""), current.passwordHash)) {
+    return { ok: false, error: "Current password is incorrect." };
+  }
+  const next = String(newPassword || "");
+  if (next.length < 8) return { ok: false, error: "New password must be at least 8 characters." };
+  if (next === String(currentPassword || "")) {
+    return { ok: false, error: "Choose a new password that is different from the current one." };
+  }
+  list[index] = {
+    ...current,
+    passwordHash: hashPartnerPassword(next),
+    mustChangePassword: false,
+  };
+  await writePartners(list);
+  return { ok: true, partner: publicPartner(list[index]) };
 }
 
 export function partnerIdFromToken(token) {

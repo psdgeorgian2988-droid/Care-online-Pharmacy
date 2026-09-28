@@ -3,7 +3,7 @@ import { kindLabel } from "./orderTracking";
 import { partnerSettlementNote, splitModeLabel } from "./paymentSplit";
 import { shareSettlement } from "./shareSettlement";
 import { isOnlinePayment } from "./paymentMethods";
-import { fetchPartnerJobs, partnerLogin, partnerLogout, partnerSession, patchPartnerJob } from "./partnerApi";
+import { fetchPartnerJobs, partnerLogin, partnerLogout, partnerSession, patchPartnerJob, changePartnerPassword } from "./partnerApi";
 import { isMedicineRiderPartner, scanHref } from "./orderQr";
 
 export default function Partner() {
@@ -16,6 +16,11 @@ export default function Partner() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [collectingId, setCollectingId] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordNote, setPasswordNote] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
 
   const loadJobs = async () => {
     setLoading(true);
@@ -76,11 +81,11 @@ export default function Partner() {
           <section className="service-hero">
             <span className="service-kicker">Partner Operations</span>
             <h1>Partner Login</h1>
-            <p>Use The Login ID And Password Created For You By MediHome Staff.</p>
+            <p>Use The Login ID Created From Your Mobile Number And Email, Or Sign In With Either One.</p>
           </section>
           <form className="service-form admin-login" onSubmit={handleLogin}>
             <div className="field">
-              <label htmlFor="partner-login-id">Login ID</label>
+              <label htmlFor="partner-login-id">Login ID / Mobile / Email</label>
               <input
                 id="partner-login-id"
                 autoComplete="username"
@@ -100,7 +105,7 @@ export default function Partner() {
             </div>
             {error ? <p className="admin-error">{error}</p> : null}
             <p className="admin-hint">
-              First-Time Login ID And Password Are Created On The Staff Desk.
+              First Login Is Created On The Staff Desk. Change Your Password After The First Sign-In.
             </p>
             <button type="submit" className="service-submit">
               Sign In
@@ -120,6 +125,9 @@ export default function Partner() {
             <span className="service-kicker">{partner.role}</span>
             <h1>{partner.name}</h1>
             <p>Assigned Jobs Only. Settlement Ledger Is Shared On Each Job.</p>
+            {partner.mustChangePassword ? (
+              <p className="admin-error">Please Change The First Password Before You Continue.</p>
+            ) : null}
           </div>
           <div className="admin-hero-actions">
             <button type="button" onClick={loadJobs} disabled={loading}>
@@ -139,6 +147,71 @@ export default function Partner() {
           </div>
         </section>
         {error ? <p className="admin-error">{error}</p> : null}
+        <form
+          className="partner-password"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            setPasswordNote("");
+            setError("");
+            if (newPassword !== confirmPassword) {
+              setError("New Password And Confirm Password Must Match.");
+              return;
+            }
+            setPasswordBusy(true);
+            try {
+              const data = await changePartnerPassword(currentPassword, newPassword);
+              setPartner(data.partner);
+              setCurrentPassword("");
+              setNewPassword("");
+              setConfirmPassword("");
+              setPasswordNote("Password Changed.");
+            } catch (err) {
+              setError(err.message || "Could Not Change Password.");
+            } finally {
+              setPasswordBusy(false);
+            }
+          }}
+        >
+          <h2>Change Password</h2>
+          <div className="partner-password-grid">
+            <label>
+              Current Password
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              New Password
+              <input
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Confirm New Password
+              <input
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                required
+              />
+            </label>
+          </div>
+          {passwordNote ? <p className="admin-hint">{passwordNote}</p> : null}
+          <button type="submit" disabled={passwordBusy}>
+            {passwordBusy ? "Saving…" : "Save Password"}
+          </button>
+        </form>
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
@@ -308,5 +381,10 @@ const styles = `
 .partner-page label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .partner-page input,.partner-page .service-submit{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit}
 .partner-page .service-submit{border:none;background:#1a6b7a;color:#fff;font-weight:700;min-height:40px;cursor:pointer}
-@media (max-width:800px){.admin-hero{flex-direction:column}}
+.partner-password{margin:0 0 14px;padding:14px;background:#fff;border:1px solid #e4ecef;border-radius:12px}
+.partner-password h2{margin:0 0 10px;font-size:16px}
+.partner-password-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.partner-password label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;color:#34546b}
+.partner-password button{border:1px solid #1a6b7a;border-radius:8px;background:#1a6b7a;color:#fff;font:inherit;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer}
+@media (max-width:800px){.admin-hero{flex-direction:column}.partner-password-grid{grid-template-columns:1fr}}
 `;

@@ -50,6 +50,22 @@ export function partnerLogout() {
   setPartnerSession("", null);
 }
 
+export async function changePartnerPassword(currentPassword, newPassword) {
+  const { token } = partnerSession();
+  const data = await parseResponse(
+    await fetch("/api/partner/password", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    })
+  );
+  if (data.partner) setPartnerSession(token, data.partner);
+  return data;
+}
+
 export async function fetchPartnerJobs() {
   const { token, partner } = partnerSession();
   const params = new URLSearchParams({
