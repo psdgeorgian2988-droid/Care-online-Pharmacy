@@ -4,7 +4,7 @@ import { partnerSettlementNote, splitModeLabel } from "./paymentSplit";
 import { shareSettlement } from "./shareSettlement";
 import { isOnlinePayment } from "./paymentMethods";
 import { fetchPartnerJobs, partnerLogin, partnerLogout, partnerSession, patchPartnerJob } from "./partnerApi";
-import { isMedicineRiderPartner, scanHref } from "./orderQr";
+import { partnerScanLink, partnerUsesScanColumn, scanHref } from "./orderQr";
 
 export default function Partner() {
   const session = partnerSession();
@@ -66,7 +66,7 @@ export default function Partner() {
     }
   };
 
-  const showScanCol = isMedicineRiderPartner(partner);
+  const showScanCol = partnerUsesScanColumn(partner);
 
   if (!token || !partner) {
     return (
@@ -166,6 +166,7 @@ export default function Partner() {
                   const id = job.id || job.bookingId || job.requestId;
                   const paid = String(job.paymentStatus || "").toLowerCase() === "paid";
                   const needsCollect = !paid;
+                  const scanLink = partnerScanLink(job, partner);
                   return (
                     <tr key={id}>
                       <td>#{id}</td>
@@ -242,12 +243,16 @@ export default function Partner() {
                       <td>{job.status || job.trackStatus || "—"}</td>
                       {showScanCol ? (
                         <td>
-                          <a
-                            className="partner-scan-link"
-                            href={scanHref({ id, step: "pickup", order: job })}
-                          >
-                            Scan Delivery
-                          </a>
+                          {scanLink ? (
+                            <a
+                              className="partner-scan-link"
+                              href={scanHref({ id, step: scanLink.step, order: job })}
+                            >
+                              {scanLink.label}
+                            </a>
+                          ) : (
+                            "—"
+                          )}
                         </td>
                       ) : null}
                     </tr>

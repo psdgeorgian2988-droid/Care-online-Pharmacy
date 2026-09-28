@@ -17,11 +17,12 @@ test("care replies route medicine, track, ambulance, and human handoff", () => {
     true
   );
   const scanHelp = replyTo("How do I scan the QR?");
-  assert.match(scanHelp.text, /Coming Soon/);
+  assert.match(scanHelp.text, /My Orders/);
   assert.equal(
     scanHelp.links.some((link) => String(link.href).startsWith("#scan")),
-    true
+    false
   );
+  assert.equal(scanHelp.links[0].href, "#myorders");
   const welcome = welcomeMessage();
   assert.match(welcome.text, /72920 94000/);
   assert.equal(welcome.links[0].href, "tel:+917292094000");

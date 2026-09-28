@@ -45,21 +45,54 @@ function ScanDeliveryComingSoon() {
     <div className="service-page">
       <ComingSoon
         name="Scan Delivery"
-        lead="Scan Delivery will assist you when you receive a medicine order. We are preparing this with extra care."
+        lead="Scan Delivery will assist you when you receive medicines, start a home-care visit, confirm a lab sample, or check in at an imaging centre. We are preparing this with extra care."
         thanks="Thank you for your patience. MediHome will open Scan Delivery as soon as it is set up for you."
       />
     </div>
   );
 }
 
+function scanAccessSubtitle(app, kind) {
+  if (app === "partner") {
+    if (kind === "lab") return "Scan when you collect this lab sample.";
+    if (kind === "homecare") return "Scan when you start or complete this home visit.";
+    return "Scan at the retailer to receive this medicine order.";
+  }
+  if (app === "customer") {
+    if (kind === "radiology") {
+      return "Scan this QR at the assigned imaging centre before your test starts.";
+    }
+    if (kind === "lab") return "Scan when the collected sample has been received.";
+    if (kind === "homecare") {
+      return "Scan when the home-care partner arrives and serves you.";
+    }
+    return "Scan when this medicine order is handed to you.";
+  }
+  return "Staff controls for packing, partner checkpoints, and customer handover.";
+}
+
+function scanCheckpointPrompt(kind, next, serviceType) {
+  const title = scanStepTitle(kind, next, serviceType);
+  if (kind === "radiology") {
+    return `Checkpoint ${title} — confirm you are at the assigned imaging centre before the test starts.`;
+  }
+  if (kind === "homecare") {
+    return `Checkpoint ${title} — confirm this home visit matches the booking.`;
+  }
+  if (kind === "lab") {
+    return `Checkpoint ${title} — confirm this sample matches the booking.`;
+  }
+  return `Checkpoint ${title} — confirm the packed medicines match this order.`;
+}
+
 function scanBlockedCopy(app) {
   if (app === "partner") {
-    return "Scan Delivery is only available while you receive a medicine order from the retailer.";
+    return "Scan Delivery is only available for retailer medicine pickup, home-care visit scans, or lab collection start.";
   }
   if (app === "admin") {
-    return "Scan Delivery controls on this page are for staff packing, rider retailer pickup, and customer medicine receipt.";
+    return "Scan Delivery controls on this page are for staff packing, partner checkpoints, medicine receipt, home-care visits, lab samples, and radiology centre check-in.";
   }
-  return "Scan Delivery is only available while you receive a medicine order. Open that order from My Orders.";
+  return "Scan Delivery opens from My Orders at the right moment: when a medicine order is arriving, a home-care partner is serving you, a lab sample has been collected, or you check in at the assigned imaging centre before the test.";
 }
 
 async function resolveOrder(id) {
@@ -150,7 +183,7 @@ export default function ScanPage({ scanId, scanStep }) {
       const stage = nextQrScanAction(result.order);
       if (matched && requestedStep && stage !== "already_done" && stage !== requestedStep) {
         setError(
-          `This ${scanStepTitle(result.order.kind, requestedStep, result.order.serviceType)} is for a different checkpoint. Current check is ${checkpointLabel(stage)}.`
+          `This ${scanStepTitle(result.order.kind, requestedStep, result.order.serviceType)} is for a different checkpoint. Current check is ${checkpointLabel(stage, result.order.kind)}.`
         );
         return;
       }
@@ -314,13 +347,11 @@ export default function ScanPage({ scanId, scanStep }) {
           <h1>{heading}</h1>
           <p className="orders-subtitle">
             {accessOk
-              ? app === "partner"
-                ? "Scan at the retailer to receive this medicine order."
-                : app === "customer"
-                  ? "Scan when this medicine order is handed to you."
-                  : scanStepHint(kind || "medicine", requestedStep || next, serviceType)
+              ? app === "admin"
+                ? scanStepHint(kind || "medicine", requestedStep || next, serviceType)
+                : scanAccessSubtitle(app, kind)
               : app === "admin"
-                ? "Staff controls for packing, retailer pickup, and customer medicine receipt."
+                ? "Staff controls for packing, partner checkpoints, and customer handover."
                 : scanBlockedCopy(app)}
           </p>
         </div>
@@ -339,7 +370,9 @@ export default function ScanPage({ scanId, scanStep }) {
               {result.action === "pack"
                 ? " — packing confirmed. Next scan is pickup."
                 : result.action === "pickup"
-                  ? " — pickup confirmed. Tracking is live until delivery."
+                  ? kind === "radiology"
+                    ? " — check-in confirmed. Stay at the assigned centre until the test is finished."
+                    : " — pickup confirmed. Tracking is live until delivery."
                   : result.action === "deliver"
                     ? " — delivery confirmed. This order is complete."
                     : result.action === "mismatch"
@@ -357,8 +390,8 @@ export default function ScanPage({ scanId, scanStep }) {
                 : next === "already_done"
                   ? "All three checks are already complete."
                   : stepMismatch
-                    ? `This screen is ${scanStepTitle(kind, requestedStep, serviceType)}. Current check is ${checkpointLabel(next)}.`
-                    : `Checkpoint ${scanStepTitle(kind, next, serviceType)} — confirm the packed medicines match this order.`}
+                    ? `This screen is ${scanStepTitle(kind, requestedStep, serviceType)}. Current check is ${checkpointLabel(next, kind)}.`
+                    : scanCheckpointPrompt(kind, next, serviceType)}
             </p>
           )}
 
@@ -366,7 +399,7 @@ export default function ScanPage({ scanId, scanStep }) {
           {Number(result.order.redeliveryCount || 0) > 0 ? (
             <p className="scan-redeliver">
               Redelivery #{result.order.redeliveryCount}. Previous mismatch at{" "}
-              {checkpointLabel(result.order.lastMismatchStage) || "a checkpoint"}.
+              {checkpointLabel(result.order.lastMismatchStage, kind) || "a checkpoint"}.
             </p>
           ) : null}
 
@@ -396,7 +429,7 @@ export default function ScanPage({ scanId, scanStep }) {
                   disabled={busy}
                   onClick={() => applyDecision(true)}
                 >
-                  Matches Order — Confirm {checkpointLabel(next)}
+                  Matches Order — Confirm {checkpointLabel(next, kind)}
                 </button>
               ) : null}
               <button
@@ -405,7 +438,9 @@ export default function ScanPage({ scanId, scanStep }) {
                 disabled={busy}
                 onClick={() => applyDecision(false)}
               >
-                Mismatch — Stop And Redeliver
+                {kind === "radiology"
+                  ? "Mismatch — Stop Check-In"
+                  : "Mismatch — Stop And Redeliver"}
               </button>
             </div>
           ) : null}
