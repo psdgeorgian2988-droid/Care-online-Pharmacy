@@ -66,7 +66,8 @@ function loadReports() {
   }
 }
 
-function Reports({ embedded = false } = {}) {
+function Reports({ embedded = false, docType = "lab" } = {}) {
+  void docType;
   const today = isoDateToday();
   const minReport = isoDateYearsAgo(20);
   const session = useLoginSession();

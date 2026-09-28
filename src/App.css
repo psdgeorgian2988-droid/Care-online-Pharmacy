@@ -1282,16 +1282,17 @@ max-width: none;
   align-items: center;
   gap: 10px;
   margin: 0;
-  padding: 12px 14px;
+  padding: 14px 16px;
   border: 1px solid #d7e2e9;
   border-radius: 10px;
   background: #fff;
   color: #143246;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   text-align: left;
   cursor: pointer;
+  box-shadow: 0 1px 2px rgba(20, 50, 70, 0.04);
 }
 
 .order-number-btn:hover,
@@ -1303,13 +1304,21 @@ max-width: none;
 
 .order-serial {
   flex: 0 0 auto;
-  min-width: 1.5em;
+  min-width: 1.75em;
   color: #5d7180;
   font-weight: 800;
 }
 
 .order-number-id {
   color: #1a6b7a;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+/* Hide the old cluttered order chips on My Orders */
+.my-orders-page .orders-grid,
+.my-orders-page .order-chip {
+  display: none !important;
 }
 
 .orders-home-link {
