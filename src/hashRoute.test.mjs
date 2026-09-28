@@ -34,7 +34,7 @@ test("service hashes stay on their own pages", () => {
   assert.equal(parseAppHash("#homecare?service=nurse&plan=vaccination-child").plan, "vaccination-child");
 });
 
-test("education tabs open only the requested section", () => {
+.test("education opens a menu, then only the chosen section", () => {
   assert.equal(parseAppHash("#education").route, "#education");
   assert.equal(parseAppHash("#education").tab, "");
   assert.equal(parseAppHash("#education?tab=quiz").tab, "quiz");

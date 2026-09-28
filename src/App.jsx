@@ -101,7 +101,6 @@ function PageFallback() {
 function hashLinkActive(linkHref, route, scanStep) {
   if (route === linkHref) return true;
   if (linkHref === "#reports" && route === "#vaccination") return true;
-  if (linkHref === "#myorders" && route === "#track") return true;
   if (linkHref.startsWith("#scan") && route === "#scan") {
     if (linkHref.includes("step=pack")) return scanStep === "pack";
     if (linkHref.includes("step=pickup")) return scanStep === "pickup";
@@ -411,7 +410,7 @@ function App() {
       case "#track":
         return <TrackPage trackId={trackId} />;
       case "#education":
-        return <HealthEducation initialTab={pageTab || "guides"} />;
+        return <HealthEducation initialTab={pageTab || ""} />;
       case "#about":
         return <About />;
       case "#contact":
