@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { handleApi } from "./handler.mjs";
 import { serveStatic } from "./static.mjs";
+import { ensureWebsiteBuild } from "./ensureBuild.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(
@@ -30,11 +31,13 @@ const server = http.createServer(async (req, res) => {
   );
 });
 
+try {
+  await ensureWebsiteBuild(distDir);
+} catch (err) {
+  console.error(err instanceof Error ? err.message : err);
+  process.exit(1);
+}
+
 server.listen(port, host, () => {
-  const hasSite = existsSync(distDir);
-  console.log(
-    hasSite
-      ? `MediHome website + API on http://${host}:${port}`
-      : `MediHome API only on http://${host}:${port} (run npm run build for the website)`
-  );
+  console.log(`MediHome website + API on http://${host}:${port}`);
 });
