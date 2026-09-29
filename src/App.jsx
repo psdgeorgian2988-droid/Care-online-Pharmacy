@@ -25,7 +25,6 @@ import {
 } from "./routePages";
 import Seo from "./Seo";
 import SocialLinks from "./SocialLinks";
-import { reviewStats } from "./reviewStore";
 import CareChat from "./CareChat.jsx";
 import NeedHelp from "./NeedHelp.jsx";
 import HeaderCart from "./HeaderCart.jsx";
@@ -34,15 +33,13 @@ import ErrorBoundary from "./ErrorBoundary";
 import AuthPage from "./AuthPage";
 import {
   hasAccountSession,
-  logoutSession,
   rememberReturnHash,
   useLoginSession,
 } from "./authSession";
 import { useFeatures } from "./featureFlags";
-import { featureEnabled, pausedServiceTitle, routeEnabled } from "./salesReport";
+import { pausedServiceTitle, routeEnabled } from "./salesReport";
 import {
   goToHash,
-  homeCatalogSectionKeys,
   isHomeSectionKey,
   MEDICAL_RECORD_HOME_HASH,
   parseAppHash,
@@ -51,10 +48,7 @@ import { peekRxLabCheckout } from "./medicineCartStore";
 import PortalsChooser, { CustomerPortal, PartnerPortal, StaffPortal } from "./RolePortals";
 import { isPartnerDeskRoute, partnerDeskKindFromRoute } from "./partnerApp";
 import CustomerHome from "./CustomerHome";
-import HomeServiceCatalog from "./HomeServiceCatalog";
 import LabsHub from "./LabsHub";
-import HomePrescriptionUpload from "./HomePrescriptionUpload";
-import { useIsPhoneLayout } from "./useLayoutMode";
 import AppBottomNav from "./AppBottomNav";
 import BackToHome from "./BackToHome";
 import WebinarNotice from "./WebinarNotice";
@@ -64,7 +58,6 @@ import StepdownDecisionBanner from "./StepdownDecisionBanner";
 import ReportReadyBanner from "./ReportReadyBanner";
 import CustomerWelcome, { needsCustomerWelcome } from "./CustomerWelcome";
 import {
-  isAppShell,
   isInstalledApp,
   launchHashForRole,
   readAppRole,
@@ -140,122 +133,8 @@ function hashLinkActive(linkHref, route, scanStep) {
   return false;
 }
 
-function HomeReviewsTeaser() {
-  const stats = reviewStats();
-  return (
-    <section className="home-reviews-teaser" aria-label="Customer reviews">
-      <p>
-        {stats.count
-          ? `Patients rate MediHome ${stats.average} / 5 from ${stats.count} reviews.`
-          : "Be the first to rate MediHome."}
-      </p>
-      <div>
-        <a href="#reviews">Read reviews</a>
-      </div>
-    </section>
-  );
-}
-
-function WebsiteHomePage({ sectionKey = "" } = {}) {
-  const features = useFeatures();
-  const user = useLoginSession();
-  const isPhone = useIsPhoneLayout();
-
-  const guestStartHref = featureEnabled(features, "lab") || featureEnabled(features, "radiology")
-    ? "#labs"
-    : featureEnabled(features, "medicine")
-      ? "#medicine-search"
-      : featureEnabled(features, "homecare")
-        ? "#homecare"
-        : "#home-services";
-
-  const startGuestOrder = () => {
-    if (guestStartHref.startsWith("#") && guestStartHref !== "#home-services") {
-      goToHash(guestStartHref);
-      return;
-    }
-    document
-      .getElementById("home-services")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  if (sectionKey) {
-    const keys = homeCatalogSectionKeys(sectionKey);
-    return (
-      <div className="home-content home-landing">
-        <div className="home-shell">
-          <div className="home-services-catalog" id="home-services">
-            <HomeServiceCatalog
-              className={isPhone ? "is-mobile-web" : "is-desktop-web"}
-              sectionKeys={keys}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="home-content home-landing">
-      <div className="home-shell">
-        <div className="home-hero-row">
-          <aside className="home-account-card" aria-label="Account">
-            {user ? (
-              <>
-                <a className="home-account-btn is-primary" href="#profile">
-                  Profile
-                </a>
-                <a className="home-account-btn" href="#register">
-                  Edit Account
-                </a>
-                <button
-                  type="button"
-                  className="home-account-btn"
-                  onClick={() => {
-                    logoutSession();
-                    goToHash("#home");
-                  }}
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <a className="home-account-btn is-primary" href="#login">
-                  Login / Register
-                </a>
-                <button
-                  type="button"
-                  className="home-account-btn is-guest"
-                  onClick={startGuestOrder}
-                >
-                  Order As Guest
-                </button>
-              </>
-            )}
-          </aside>
-        </div>
-
-        <HomePrescriptionUpload />
-
-        <div className="home-services-catalog" id="home-services">
-          <HomeServiceCatalog
-            className={isPhone ? "is-mobile-web" : "is-desktop-web"}
-            sectionKeys={sectionKey ? [sectionKey] : undefined}
-          />
-        </div>
-
-        <HomeReviewsTeaser />
-      </div>
-    </div>
-  );
-}
-
 function HomePage({ sectionKey = "" } = {}) {
-  if (isAppShell()) {
-    return <CustomerHome sectionKey={sectionKey} />;
-  }
-  return <WebsiteHomePage sectionKey={sectionKey} />;
+  return <CustomerHome sectionKey={sectionKey} />;
 }
 
 function PausedService({ route, features }) {
@@ -312,7 +191,7 @@ function App() {
   const features = useFeatures();
   const appRole = readAppRole();
   const customerShell =
-    isAppShell() && !isOps && appRole !== "staff" && appRole !== "partner";
+    !isOps && appRole !== "staff" && appRole !== "partner";
 
   useEffect(() => {
     const root = document.documentElement;

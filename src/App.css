@@ -6063,23 +6063,23 @@ a.order-details-btn {
   margin-top: 10px;
 }
 
-/* Dedicated staff / partner shell — not the public website chrome */
+/* Dedicated customer app shell — no leftover website sidebar */
 .app.app-customer {
-  grid-template-columns: 210px minmax(0, 1fr) !important;
-  grid-template-rows: minmax(0, 1fr) !important;
-  grid-template-areas:
-    "sidebar main" !important;
-  background: #eef3f6 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  grid-template-areas: none !important;
+  background: #d7ebe6 !important;
 }
 
 .app.app-customer .sidebar {
-  border-top: 0 !important;
-  border-bottom: 0 !important;
-  padding-top: 14px !important;
+  display: none !important;
 }
 
 .app.app-customer > main {
-  background: #eef3f6 !important;
+  background: transparent !important;
 }
 
 .app.app-customer .home-content,
@@ -6089,12 +6089,6 @@ a.order-details-btn {
 
 .app.app-customer .home-welcome h1 {
   font-size: 24px !important;
-}
-
-@media (max-width: 800px) {
-  .app.app-customer {
-    grid-template-columns: 180px minmax(0, 1fr) !important;
-  }
 }
 
 .app.app-ops {
@@ -7074,8 +7068,8 @@ html:not(.is-native-app):not(.is-customer-app):not(.is-installed-app) #root {
   --app-muted: #5d7180;
   --app-frame: 430px;
   --app-nav-h: 64px;
-  --app-ticker-h: 40px;
-  --app-footer-h: 44px;
+  --app-ticker-h: 0px;
+  --app-footer-h: 0px;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
