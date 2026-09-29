@@ -456,7 +456,7 @@ function App() {
                 {link.label}
               </a>
             ))}
-            <a href="#home">Website</a>
+            <a href="#home">Customer App</a>
           </nav>
         </header>
         <main>
