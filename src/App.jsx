@@ -520,7 +520,6 @@ function App() {
     return (
       <div className={`app app-customer${welcomeGate ? " is-welcome-gate" : ""}`}>
         <Seo route={route} />
-        <SiteTicker />
         <div className="app-frame">
           <AppHeader />
           <main id="app-scroll">
@@ -543,7 +542,6 @@ function App() {
           </main>
           {welcomeGate || isAuthRoute ? null : <AppBottomNav route={route} service={hashService} />}
         </div>
-        <SiteFooter />
         <SiteFloatingHelp needHelpOpen={needHelpOpen} setNeedHelpOpen={setNeedHelpOpen} />
       </div>
     );
