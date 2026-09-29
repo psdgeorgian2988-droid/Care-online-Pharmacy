@@ -5742,6 +5742,39 @@ a.order-details-btn {
 }
 
 /* Dedicated staff / partner shell — not the public website chrome */
+.app.app-customer {
+  grid-template-columns: 210px minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  grid-template-areas:
+    "sidebar main" !important;
+  background: #eef3f6 !important;
+}
+
+.app.app-customer .sidebar {
+  border-top: 0 !important;
+  border-bottom: 0 !important;
+  padding-top: 14px !important;
+}
+
+.app.app-customer > main {
+  background: #eef3f6 !important;
+}
+
+.app.app-customer .home-content,
+.app.app-customer .home-content.home-landing {
+  padding: 20px 22px 28px;
+}
+
+.app.app-customer .home-welcome h1 {
+  font-size: 24px !important;
+}
+
+@media (max-width: 800px) {
+  .app.app-customer {
+    grid-template-columns: 180px minmax(0, 1fr) !important;
+  }
+}
+
 .app.app-ops {
   grid-template-columns: minmax(0, 1fr) !important;
   grid-template-rows: 52px minmax(0, 1fr) !important;

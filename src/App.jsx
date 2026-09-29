@@ -21,7 +21,6 @@ import {
   TrackPage,
 } from "./routePages";
 import Seo from "./Seo";
-import SocialLinks from "./SocialLinks";
 import MedicineSearchTools from "./MedicineSearchTools";
 import { reviewStats } from "./reviewStore";
 import CareChat from "./CareChat";
@@ -470,24 +469,8 @@ function App() {
   }
 
   return (
-    <div className="app">
+    <div className="app app-customer">
       <Seo route={route} />
-      <div className="top-ticker">
-        <div className="ticker-track">
-          <span className="ticker-item">
-            YOUR COMPLETE HEALTH PARTNER AT YOUR DOORSTEP
-          </span>
-          <span className="ticker-item">
-            YOUR COMPLETE HEALTH PARTNER AT YOUR DOORSTEP
-          </span>
-          <span className="ticker-item">
-            YOUR COMPLETE HEALTH PARTNER AT YOUR DOORSTEP
-          </span>
-          <span className="ticker-item">
-            YOUR COMPLETE HEALTH PARTNER AT YOUR DOORSTEP
-          </span>
-        </div>
-      </div>
 
       <aside className="sidebar">
         <a className="sidebar-logo" href="#home" aria-label="MediHome home">
@@ -576,12 +559,6 @@ function App() {
           <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
         </ErrorBoundary>
       </main>
-
-      <footer className="app-footer">
-        <LogoMark />
-        <p>© 2026 MediHome. All rights reserved.</p>
-        <SocialLinks className="footer-social" />
-      </footer>
 
       <CareChat
         open={careOpen}
