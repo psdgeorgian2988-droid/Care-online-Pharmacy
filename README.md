@@ -36,14 +36,16 @@ docker run --rm -p 3001:3001 medihome
 
 The domain is already at GoDaddy. This app is set up for [GoDaddy Node.js Hosting](https://www.godaddy.com/hosting/nodejs): `npm run build` then `npm start`, `PORT` from the host, Vite in `dependencies` so production install can build.
 
-`medihome.co.in` still answers Cloudflare **1001** while Website Builder owns the A record (`160.153.0.189`). The cutover script publishes the Node app, attaches the domain, and points DNS at the Node anycast IP.
+`https://medihome.co.in` already answers GoDaddy Node.js Hosting with an older MediHome bundle (website ticker/footer). The customer app-layout is this repo; it goes live when the Node app is republished from `main`.
 
-**From GitHub Actions (this agent can finish once the secret exists):**
+The cutover script uploads this repo, publishes production, attaches **medihome.co.in**, and fails unless live CSS is the customer app (`--app-ticker-h:0px`, no website ticker chrome). Apex A may still be Website Builder `160.153.0.189` until DNS is switched.
+
+**From GitHub Actions (finishes once `GDDY_PAT` exists):**
 
 1. Create a [GoDaddy personal access token](https://developer.godaddy.com/personal-access-token) with: `hosting.application:read`, `hosting.application:create`, `hosting.source:write`, `hosting.source:read`, `hosting.deployment:execute`, `hosting.subscription:read`, `hosting.subscription:write`, `hosting.domain:read`, `hosting.domain:write`, `domains.domain:read`, `domains.dns:update`.
 2. Add it as repository secret **`GDDY_PAT`**.
-3. Run Actions → **Publish to GoDaddy** (defaults publish `medihome.co.in`).
-4. If the live check still returns 1001, Website Builder still owns the domain. In GoDaddy: **My Products → Website Builder → Settings → Unpublish / Disconnect domain** for medihome.co.in, then run the workflow again. The apex A record must not stay on `160.153.0.189` (that Cloudflare address is what returns 1001). `www` can stay a CNAME to the apex.
+3. Merge to **main** (the Publish to GoDaddy workflow runs on push) or run Actions → **Publish to GoDaddy**.
+4. If the live check still sees ticker CSS or Cloudflare **1001**, unpublish Website Builder for medihome.co.in, then run the workflow again. The apex A record should not stay on `160.153.0.189` if that origin is still the old site. `www` can stay a CNAME to the apex.
 
 **Or from the laptop:**
 
@@ -51,6 +53,8 @@ The domain is already at GoDaddy. This app is set up for [GoDaddy Node.js Hostin
 export GDDY_PAT=gd_pat_...
 bash scripts/godaddy-publish.sh
 ```
+
+If you are already logged into GoDaddy in a browser, `gddy auth login --credential-store file --timeout 10m` can cache a session instead of a PAT.
 
 **Or by hand in the dashboard:** open [godaddy.com/hosting/nodejs](https://www.godaddy.com/hosting/nodejs), connect `psdgeorgian2988-droid/Care-online-Pharmacy` branch `main`, Preview, Publish, attach **medihome.co.in**, turn off Website Builder.
 

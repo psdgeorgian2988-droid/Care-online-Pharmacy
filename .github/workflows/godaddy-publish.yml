@@ -11,6 +11,8 @@ on:
         description: "Hostname to attach (apex plus www)"
         required: false
         default: "medihome.co.in"
+  push:
+    branches: [main]
 
 jobs:
   publish:
@@ -22,7 +24,7 @@ jobs:
           GDDY_PAT: ${{ secrets.GDDY_PAT }}
         run: |
           if [ -z "$GDDY_PAT" ]; then
-            echo "Add repository secret GDDY_PAT, then run this workflow again."
+            echo "Add repository secret GDDY_PAT, then merge to main or run this workflow again."
             echo "Create the token at https://developer.godaddy.com/personal-access-token"
             echo "Required scopes: hosting.application:read hosting.application:create hosting.source:write hosting.source:read hosting.deployment:execute hosting.subscription:read hosting.subscription:write hosting.domain:read hosting.domain:write domains.domain:read domains.dns:update"
             exit 1
@@ -33,7 +35,7 @@ jobs:
         env:
           GDDY_PAT: ${{ secrets.GDDY_PAT }}
           GODADDY_APP_ID: ${{ vars.GODADDY_APP_ID }}
-          GODADDY_PUBLISH: ${{ github.event.inputs.publish }}
-          GODADDY_DOMAIN: ${{ github.event.inputs.domain }}
+          GODADDY_PUBLISH: ${{ github.event.inputs.publish || '1' }}
+          GODADDY_DOMAIN: ${{ github.event.inputs.domain || 'medihome.co.in' }}
           PATH: /home/runner/.local/bin:/usr/bin:/bin
         run: bash scripts/godaddy-publish.sh

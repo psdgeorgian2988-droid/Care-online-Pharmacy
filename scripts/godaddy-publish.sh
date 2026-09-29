@@ -104,16 +104,43 @@ wait_status() {
   return 1
 }
 
-if [[ -z "${GDDY_PAT:-}" ]]; then
-  echo "Set GDDY_PAT (GoDaddy personal access token) and re-run." >&2
-  echo "Create one at https://developer.godaddy.com/personal-access-token with scopes:" >&2
-  echo "  $REQUIRED_SCOPES" >&2
-  exit 1
-fi
-
 if ! command -v gddy >/dev/null 2>&1; then
   curl -fsSL https://github.com/godaddy/cli/releases/latest/download/install.sh | bash
   export PATH="${HOME}/.local/bin:${PATH}"
+fi
+
+gddy_prod_login() {
+  python3 - <<'PY'
+import json, subprocess, sys
+try:
+    raw = subprocess.check_output(
+        ["gddy", "auth", "status", "--json"],
+        text=True,
+        stderr=subprocess.DEVNULL,
+    )
+except Exception:
+    sys.exit(1)
+payload = json.loads(raw)
+items = payload.get("data") if isinstance(payload, dict) else payload
+if not isinstance(items, list):
+    sys.exit(1)
+for item in items:
+    if item.get("env") == "prod" and item.get("expired") is False and item.get("identity"):
+        sys.exit(0)
+sys.exit(1)
+PY
+}
+
+if [[ -z "${GDDY_PAT:-}" ]]; then
+  if gddy_prod_login; then
+    echo "Using cached GoDaddy login (no GDDY_PAT)."
+  else
+    echo "Set GDDY_PAT (GoDaddy personal access token) and re-run." >&2
+    echo "Create one at https://developer.godaddy.com/personal-access-token with scopes:" >&2
+    echo "  $REQUIRED_SCOPES" >&2
+    echo "Or run: gddy auth login --credential-store file --timeout 10m" >&2
+    exit 1
+  fi
 fi
 if ! command -v zip >/dev/null 2>&1; then
   echo "zip is required to pack the app for upload." >&2
@@ -252,20 +279,58 @@ echo "App id: $app_id"
 echo "Save GODADDY_APP_ID=$app_id for the next publish."
 
 verify_live() {
-  local url body code
-  for url in "http://$DOMAIN/" "http://www.$DOMAIN/"; do
-    code="$(curl -sS -o /tmp/godaddy-live-body --max-time 20 -w '%{http_code}' "$url" || true)"
-    body="$(head -c 400 /tmp/godaddy-live-body 2>/dev/null || true)"
-    echo "GET $url -> $code"
-    echo "$body"
-    if printf '%s' "$body" | grep -qi 'error code: 1001'; then
-      return 1
-    fi
-    if printf '%s' "$body" | grep -qi 'MediHome'; then
-      return 0
-    fi
-  done
-  return 1
+  DOMAIN="$DOMAIN" python3 - <<'PY'
+import os, re, sys, urllib.request
+
+domain = os.environ["DOMAIN"]
+hosts = [f"https://{domain}/", f"https://www.{domain}/", f"http://{domain}/"]
+ua = {"User-Agent": "MediHome-cutover-check"}
+
+def fetch(url):
+    req = urllib.request.Request(url, headers=ua)
+    with urllib.request.urlopen(req, timeout=20) as res:
+        return res.read().decode("utf-8", "replace")
+
+def css_urls(html, page):
+    found = re.findall(r'href="([^"]+\.css[^"]*)"', html)
+    out = []
+    for href in found:
+        if href.startswith("http"):
+            out.append(href)
+        elif href.startswith("//"):
+            out.append("https:" + href)
+        else:
+            origin = page.split("/", 3)
+            base = origin[0] + "//" + origin[2]
+            out.append(base + "/" + href.lstrip("/"))
+    return out
+
+for page in hosts:
+    try:
+        html = fetch(page)
+    except Exception as exc:
+        print(f"GET {page} failed: {exc}", file=sys.stderr)
+        continue
+    print(f"GET {page} bytes={len(html)}")
+    if "error code: 1001" in html.lower():
+        print("Cloudflare 1001", file=sys.stderr)
+        continue
+    if "MediHome" not in html:
+        continue
+    for css in css_urls(html, page):
+        try:
+            body = fetch(css)
+        except Exception as exc:
+            print(f"GET {css} failed: {exc}", file=sys.stderr)
+            continue
+        if "--app-ticker-h:0px" in body:
+            print(f"customer app CSS at {css}")
+            sys.exit(0)
+        if "--app-ticker-h:40px" in body:
+            print(f"old website chrome CSS at {css}", file=sys.stderr)
+    print("MediHome HTML without customer-app CSS", file=sys.stderr)
+sys.exit(1)
+PY
 }
 
 if [[ -n "$DOMAIN" && "$PUBLISH" == "1" ]]; then
@@ -279,8 +344,8 @@ if [[ -n "$DOMAIN" && "$PUBLISH" == "1" ]]; then
     sleep 10
   done
   if [[ "$ok" != "1" ]]; then
-    echo "$DOMAIN is not serving the customer app yet (still Website Builder/Cloudflare 1001, or DNS not switched)." >&2
-    echo "Website Builder still owns the domain until it is unpublished. In GoDaddy:" >&2
+    echo "$DOMAIN is not serving the customer app layout yet (ticker CSS still live, 1001, or DNS not switched)." >&2
+    echo "Website Builder can still own the domain until it is unpublished. In GoDaddy:" >&2
     echo "  1. My Products → Website Builder → Settings → Unpublish / Disconnect domain for $DOMAIN" >&2
     echo "  2. DNS for $DOMAIN: apex A must NOT be $WEBSITE_BUILDER_IP (that Cloudflare IP returns 1001)" >&2
     echo "  3. Re-run this script so Node hosting can attach $DOMAIN and set the A record" >&2
