@@ -237,11 +237,12 @@ fi
 
 if [[ "$FIX_DNS" == "1" && -n "$DOMAIN" ]]; then
   echo "Current DNS for $DOMAIN:"
-  gddy dns list "$DOMAIN" --json || true
+  dns_json="$(gddy dns list "$DOMAIN" --json || true)"
+  echo "$dns_json"
   if [[ -n "$anycast_ip" ]]; then
-    echo "Pointing $DOMAIN and www at Node anycast $anycast_ip (replaces Website Builder $WEBSITE_BUILDER_IP)…"
+    echo "Pointing apex $DOMAIN A at Node anycast $anycast_ip (replaces Website Builder $WEBSITE_BUILDER_IP)."
+    echo "Leaving www as CNAME to the apex if it already is."
     gddy dns set --type A --name @ --data "$anycast_ip" --ttl 600 --replace-conflicting-types "$DOMAIN"
-    gddy dns set --type A --name www --data "$anycast_ip" --ttl 600 --replace-conflicting-types "$DOMAIN" || true
   else
     echo "No anycast IP from domain attach yet; GoDaddy may still be issuing SSL." >&2
   fi
@@ -279,7 +280,10 @@ if [[ -n "$DOMAIN" && "$PUBLISH" == "1" ]]; then
   done
   if [[ "$ok" != "1" ]]; then
     echo "$DOMAIN is not serving the customer app yet (still Website Builder/Cloudflare 1001, or DNS not switched)." >&2
-    echo "In GoDaddy: turn off Website Builder for $DOMAIN, then re-run this script." >&2
+    echo "Website Builder still owns the domain until it is unpublished. In GoDaddy:" >&2
+    echo "  1. My Products → Website Builder → Settings → Unpublish / Disconnect domain for $DOMAIN" >&2
+    echo "  2. DNS for $DOMAIN: apex A must NOT be $WEBSITE_BUILDER_IP (that Cloudflare IP returns 1001)" >&2
+    echo "  3. Re-run this script so Node hosting can attach $DOMAIN and set the A record" >&2
     exit 1
   fi
   echo "Live check passed: $DOMAIN is serving MediHome."

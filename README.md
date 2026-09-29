@@ -43,7 +43,7 @@ The domain is already at GoDaddy. This app is set up for [GoDaddy Node.js Hostin
 1. Create a [GoDaddy personal access token](https://developer.godaddy.com/personal-access-token) with: `hosting.application:read`, `hosting.application:create`, `hosting.source:write`, `hosting.source:read`, `hosting.deployment:execute`, `hosting.subscription:read`, `hosting.subscription:write`, `hosting.domain:read`, `hosting.domain:write`, `domains.domain:read`, `domains.dns:update`.
 2. Add it as repository secret **`GDDY_PAT`**.
 3. Run Actions → **Publish to GoDaddy** (defaults publish `medihome.co.in`).
-4. If the live check still returns 1001, turn off Website Builder for the domain and run the workflow again.
+4. If the live check still returns 1001, Website Builder still owns the domain. In GoDaddy: **My Products → Website Builder → Settings → Unpublish / Disconnect domain** for medihome.co.in, then run the workflow again. The apex A record must not stay on `160.153.0.189` (that Cloudflare address is what returns 1001). `www` can stay a CNAME to the apex.
 
 **Or from the laptop:**
 
