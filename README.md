@@ -36,11 +36,27 @@ docker run --rm -p 3001:3001 medihome
 
 The domain is already at GoDaddy. This app is set up for [GoDaddy Node.js Hosting](https://www.godaddy.com/hosting/nodejs): `npm run build` then `npm start`, `PORT` from the host, Vite in `dependencies` so production install can build.
 
-1. Merge this repo’s latest `main` (or connect the branch that has these hosting fixes).
-2. Open [godaddy.com/hosting/nodejs](https://www.godaddy.com/hosting/nodejs) while logged into the account that owns **medihome.co.in**.
-3. Start for Free → connect GitHub repo `psdgeorgian2988-droid/Care-online-Pharmacy` (or upload a zip with no `node_modules`).
-4. Wait for the private preview, then **Publish** and connect **medihome.co.in**. GoDaddy sets DNS and HTTPS when the domain is on that account.
-5. Turn off Website Builder / forwarding for this domain so the builder page is not still answering.
+`https://medihome.co.in` already answers GoDaddy Node.js Hosting with an older MediHome bundle (website ticker/footer). The customer app-layout is this repo; it goes live when the Node app is republished from `main`.
+
+The cutover script uploads this repo, publishes production, attaches **medihome.co.in**, and fails unless live CSS is the customer app (`--app-ticker-h:0px`, no website ticker chrome). Apex A may still be Website Builder `160.153.0.189` until DNS is switched.
+
+**From GitHub Actions (finishes once `GDDY_PAT` exists):**
+
+1. Create a [GoDaddy personal access token](https://developer.godaddy.com/personal-access-token) with: `hosting.application:read`, `hosting.application:create`, `hosting.source:write`, `hosting.source:read`, `hosting.deployment:execute`, `hosting.subscription:read`, `hosting.subscription:write`, `hosting.domain:read`, `hosting.domain:write`, `domains.domain:read`, `domains.dns:update`.
+2. Add it as repository secret **`GDDY_PAT`**.
+3. Merge to **main** (the Publish to GoDaddy workflow runs on push) or run Actions → **Publish to GoDaddy**.
+4. If the live check still sees ticker CSS or Cloudflare **1001**, unpublish Website Builder for medihome.co.in, then run the workflow again. The apex A record should not stay on `160.153.0.189` if that origin is still the old site. `www` can stay a CNAME to the apex.
+
+**Or from the laptop:**
+
+```bash
+export GDDY_PAT=gd_pat_...
+bash scripts/godaddy-publish.sh
+```
+
+If you are already logged into GoDaddy in a browser, `gddy auth login --credential-store file --timeout 10m` can cache a session instead of a PAT.
+
+**Or by hand in the dashboard:** open [godaddy.com/hosting/nodejs](https://www.godaddy.com/hosting/nodejs), connect `psdgeorgian2988-droid/Care-online-Pharmacy` branch `main`, Preview, Publish, attach **medihome.co.in**, turn off Website Builder.
 
 A free preview is private (GoDaddy login). Publishing on the domain needs a GoDaddy Web Hosting plan if you do not already have one.
 
