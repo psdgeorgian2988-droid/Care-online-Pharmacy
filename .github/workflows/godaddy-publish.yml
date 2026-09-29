@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: "Set to 1 to promote PREVIEW to PUBLISH (needs a hosting plan)"
+        description: "Set to 1 to publish production and attach the domain"
         required: false
-        default: "0"
+        default: "1"
       domain:
-        description: "Optional hostname to attach (e.g. medihome.co.in)"
+        description: "Hostname to attach (apex plus www)"
         required: false
-        default: ""
+        default: "medihome.co.in"
 
 jobs:
   publish:
@@ -22,7 +22,9 @@ jobs:
           GDDY_PAT: ${{ secrets.GDDY_PAT }}
         run: |
           if [ -z "$GDDY_PAT" ]; then
-            echo "Add repository secret GDDY_PAT (GoDaddy personal access token), then run this workflow again."
+            echo "Add repository secret GDDY_PAT, then run this workflow again."
+            echo "Create the token at https://developer.godaddy.com/personal-access-token"
+            echo "Required scopes: hosting.application:read hosting.application:create hosting.source:write hosting.source:read hosting.deployment:execute hosting.subscription:read hosting.subscription:write hosting.domain:read hosting.domain:write domains.domain:read domains.dns:update"
             exit 1
           fi
       - name: Install gddy CLI

@@ -36,11 +36,23 @@ docker run --rm -p 3001:3001 medihome
 
 The domain is already at GoDaddy. This app is set up for [GoDaddy Node.js Hosting](https://www.godaddy.com/hosting/nodejs): `npm run build` then `npm start`, `PORT` from the host, Vite in `dependencies` so production install can build.
 
-1. Merge this repo’s latest `main` (or connect the branch that has these hosting fixes).
-2. Open [godaddy.com/hosting/nodejs](https://www.godaddy.com/hosting/nodejs) while logged into the account that owns **medihome.co.in**.
-3. Start for Free → connect GitHub repo `psdgeorgian2988-droid/Care-online-Pharmacy` (or upload a zip with no `node_modules`).
-4. Wait for the private preview, then **Publish** and connect **medihome.co.in**. GoDaddy sets DNS and HTTPS when the domain is on that account.
-5. Turn off Website Builder / forwarding for this domain so the builder page is not still answering.
+`medihome.co.in` still answers Cloudflare **1001** while Website Builder owns the A record (`160.153.0.189`). The cutover script publishes the Node app, attaches the domain, and points DNS at the Node anycast IP.
+
+**From GitHub Actions (this agent can finish once the secret exists):**
+
+1. Create a [GoDaddy personal access token](https://developer.godaddy.com/personal-access-token) with: `hosting.application:read`, `hosting.application:create`, `hosting.source:write`, `hosting.source:read`, `hosting.deployment:execute`, `hosting.subscription:read`, `hosting.subscription:write`, `hosting.domain:read`, `hosting.domain:write`, `domains.domain:read`, `domains.dns:update`.
+2. Add it as repository secret **`GDDY_PAT`**.
+3. Run Actions → **Publish to GoDaddy** (defaults publish `medihome.co.in`).
+4. If the live check still returns 1001, turn off Website Builder for the domain and run the workflow again.
+
+**Or from the laptop:**
+
+```bash
+export GDDY_PAT=gd_pat_...
+bash scripts/godaddy-publish.sh
+```
+
+**Or by hand in the dashboard:** open [godaddy.com/hosting/nodejs](https://www.godaddy.com/hosting/nodejs), connect `psdgeorgian2988-droid/Care-online-Pharmacy` branch `main`, Preview, Publish, attach **medihome.co.in**, turn off Website Builder.
 
 A free preview is private (GoDaddy login). Publishing on the domain needs a GoDaddy Web Hosting plan if you do not already have one.
 
