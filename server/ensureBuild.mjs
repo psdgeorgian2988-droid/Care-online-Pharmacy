@@ -21,9 +21,10 @@ export async function ensureWebsiteBuild(distDir) {
   }
 
   console.log("No website build found; running npm run build…");
+  const heapMb = String(process.env.MEDIHOME_BUILD_HEAP_MB || "1024");
   await execFileAsync(
     process.execPath,
-    ["--max-old-space-size=4096", viteBin, "build"],
+    [`--max-old-space-size=${heapMb}`, viteBin, "build"],
     {
       cwd: projectRoot,
       env: { ...process.env, NODE_ENV: "production" },

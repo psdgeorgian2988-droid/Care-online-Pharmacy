@@ -4,40 +4,51 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { handleApi } from "./handler.mjs";
 import { serveStatic } from "./static.mjs";
-import { ensureWebsiteBuild } from "./ensureBuild.mjs";
+import { distIndex, ensureWebsiteBuild } from "./ensureBuild.mjs";
+import { bindHttpServer, productionListen } from "./listenOptions.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(
   process.env.MEDIHOME_DIST || path.join(root, "..", "dist")
 );
-const port = Number(process.env.PORT || process.env.MEDIHOME_API_PORT || 3001);
-const host = process.env.MEDIHOME_HOST || "0.0.0.0";
+const listen = productionListen(process.env);
+
+let distReady = existsSync(distIndex(distDir));
+let distError = "";
 
 const server = http.createServer(async (req, res) => {
   const handled = await handleApi(req, res);
   if (handled) return;
 
-  if (existsSync(distDir)) {
+  if (distReady || existsSync(distIndex(distDir))) {
+    distReady = true;
     await serveStatic(req, res, distDir);
     return;
   }
 
-  res.statusCode = 404;
+  res.statusCode = 503;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Retry-After", "10");
   res.end(
     JSON.stringify({
-      error: "Website build not found. Run npm run build, then npm start.",
+      error: distError || "Website is building. Refresh in a few seconds.",
     })
   );
 });
 
-try {
-  await ensureWebsiteBuild(distDir);
-} catch (err) {
-  console.error(err instanceof Error ? err.message : err);
-  process.exit(1);
-}
-
-server.listen(port, host, () => {
-  console.log(`MediHome website + API on http://${host}:${port}`);
+// Bind before the Vite build so Passenger / GoDaddy's proxy does not 502.
+bindHttpServer(server, listen, () => {
+  const where = listen.host ? `${listen.host}:${listen.port}` : String(listen.port);
+  console.log(`MediHome website + API on http://${where}`);
 });
+
+if (!distReady) {
+  ensureWebsiteBuild(distDir)
+    .then(() => {
+      distReady = true;
+    })
+    .catch((err) => {
+      distError = err instanceof Error ? err.message : String(err);
+      console.error(distError);
+    });
+}

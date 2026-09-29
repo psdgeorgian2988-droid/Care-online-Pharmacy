@@ -34,12 +34,22 @@ docker run --rm -p 3001:3001 medihome
 
 ### GoDaddy Node.js Hosting (same account as the domain)
 
-The domain is already at GoDaddy. This app is set up for [GoDaddy Node.js Hosting](https://www.godaddy.com/hosting/nodejs): `npm run build` then `npm start`, `PORT` from the host, Vite in `dependencies` so production install can build.
+The domain is already at GoDaddy. Production is `npm start` (`node app.js`), which serves `dist/` plus the API. Do **not** start with `npm run dev` or Vite (port 5173). Vite is in `dependencies` so a missing `dist/` can be built on first start.
 
-1. Merge this repo’s latest `main` (or connect the branch that has these hosting fixes).
+**cPanel Application Manager / Passenger**
+
+- Application root: the folder with `package.json` (repo root)
+- Application startup file: `app.js`
+- Node.js version: **20 or 22** (18 will fail; Vite 8 needs Node 20+)
+- Start command, if the panel asks: `npm start`
+- Leave `PORT` to GoDaddy. Do not set 5173.
+
+**GitHub Node.js hosting**
+
+1. Merge this repo’s latest `main`.
 2. Open [godaddy.com/hosting/nodejs](https://www.godaddy.com/hosting/nodejs) while logged into the account that owns **medihome.co.in**.
-3. Start for Free → connect GitHub repo `psdgeorgian2988-droid/Care-online-Pharmacy` (or upload a zip with no `node_modules`).
-4. Wait for the private preview, then **Publish** and connect **medihome.co.in**. GoDaddy sets DNS and HTTPS when the domain is on that account.
+3. Connect GitHub repo `psdgeorgian2988-droid/Care-online-Pharmacy` (or upload a zip with no `node_modules`).
+4. Wait for the private preview, then **Publish** and connect **medihome.co.in**.
 5. Turn off Website Builder / forwarding for this domain so the builder page is not still answering.
 
 A free preview is private (GoDaddy login). Publishing on the domain needs a GoDaddy Web Hosting plan if you do not already have one.
@@ -57,7 +67,7 @@ Staff create each partner’s first **Login ID** and **password** on the Staff D
 - `npm run dev` — Vite customer site on port 5173 (API via the Vite plugin)
 - `npm test` — unit tests
 - `npm run build` — production website into `dist/`
-- `npm start` — website + API together
+- `npm start` — website + API together (`app.js`, `PORT`, `0.0.0.0`)
 - `npm run app:sync` — build the website and copy it into the Android / iOS projects
 
 ## Phone apps (Customer, Staff, Partner)
