@@ -10188,15 +10188,19 @@ html:has(.app-customer) .app-bottom-nav {
   --content-pad-y: 28px;
 }
 
-/* Website shell: 90% zoom so desktop content fits the viewport */
-html:has(.app:not(.app-customer):not(.app-ops)) {
-  zoom: 0.9;
+/* Website shell: fill the viewport. CSS zoom left a dark canvas letterbox on desktop. */
+html:has(.app:not(.app-customer):not(.app-ops)),
+html:has(.app:not(.app-customer):not(.app-ops)) body,
+html:has(.app:not(.app-customer):not(.app-ops)) #root {
+  zoom: 1;
+  background: #eaf4fb;
 }
 
 .app:not(.app-ops):not(.app-customer) {
   --shell-ticker-h: 40px;
   --shell-topbar-h: 72px;
   --shell-footer-h: 44px;
+  background: #eaf4fb !important;
   grid-template-rows:
     var(--shell-ticker-h)
     var(--shell-topbar-h)
@@ -10349,7 +10353,7 @@ html[data-layout="laptop"] {
   --shell-topbar-h: 76px;
   --shell-footer-h: 44px;
   --shell-pad-x: 28px;
-  --content-max: min(1200px, 92vw);
+  --content-max: 100%;
   --content-pad-x: 36px;
   --content-pad-y: 40px;
 }
@@ -10371,16 +10375,26 @@ html[data-layout="laptop"] .trust-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
 }
 
-html[data-layout="laptop"] .app-customer {
-  --app-frame: min(100vw, 1100px);
+html[data-layout="laptop"] .app-customer,
+html[data-layout="laptop"].is-customer-app .app.app-customer,
+html[data-layout="laptop"]:has(.app-customer) .app.app-customer {
+  --app-frame: 100%;
   align-items: stretch !important;
-  background: #0c323b !important;
+  background: #eaf6f3 !important;
+}
+
+html[data-layout="laptop"].is-customer-app,
+html[data-layout="laptop"].is-customer-app body,
+html[data-layout="laptop"]:has(.app-customer),
+html[data-layout="laptop"]:has(.app-customer) body,
+html[data-layout="laptop"]:has(.app-customer) #root {
+  background: #eaf6f3 !important;
 }
 
 html[data-layout="laptop"] .app-customer .app-frame {
-  max-width: min(100vw, 1100px);
+  max-width: none;
   width: 100%;
-  margin: 0 auto;
+  margin: 0;
   box-shadow: none !important;
 }
 
@@ -10571,10 +10585,10 @@ html[data-layout="phone"] .slideshow-review-text {
   max-width: min(440px, 100%);
 }
 
-/* Ultra-wide / cinematic landscape: stretch content a bit more */
+/* Ultra-wide / cinematic landscape: keep full-width fill, slightly roomier padding */
 @media (min-aspect-ratio: 16/9) and (min-width: 1280px) {
   html[data-layout="laptop"] {
-    --content-max: min(1360px, 90vw);
+    --content-max: 100%;
     --shell-pad-x: 40px;
     --content-pad-x: 48px;
   }
