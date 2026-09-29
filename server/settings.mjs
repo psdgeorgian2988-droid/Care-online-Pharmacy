@@ -1,23 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_FEATURES } from "../src/salesReport.js";
+import { normalizeWebinars } from "../src/webinars.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataFile = path.join(root, "data", "settings.json");
-
-export const DEFAULT_FEATURES = {
-  medicine: true,
-  lab: true,
-  radiology: true,
-  homecare: true,
-  vaccination: true,
-  psychologist: true,
-  stepdown: true,
-  ambulance: true,
-  reports: true,
-  education: true,
-  scanDelivery: true,
-};
 
 function normalizeFeatures(raw) {
   const next = { ...DEFAULT_FEATURES };
@@ -37,7 +25,7 @@ async function ensureFile() {
   } catch {
     await writeFile(
       dataFile,
-      `${JSON.stringify({ features: DEFAULT_FEATURES }, null, 2)}\n`
+      `${JSON.stringify({ features: { ...DEFAULT_FEATURES } }, null, 2)}\n`
     );
   }
 }
@@ -46,9 +34,12 @@ export async function readSettings() {
   await ensureFile();
   try {
     const parsed = JSON.parse(await readFile(dataFile, "utf8"));
-    return { features: normalizeFeatures(parsed?.features) };
+    return {
+      features: normalizeFeatures(parsed?.features),
+      webinars: normalizeWebinars(parsed?.webinars),
+    };
   } catch {
-    return { features: { ...DEFAULT_FEATURES } };
+    return { features: { ...DEFAULT_FEATURES }, webinars: [] };
   }
 }
 
@@ -59,6 +50,10 @@ export async function writeSettings(patch) {
       ...current.features,
       ...(patch?.features || {}),
     }),
+    webinars:
+      patch && Object.prototype.hasOwnProperty.call(patch, "webinars")
+        ? normalizeWebinars(patch.webinars)
+        : current.webinars,
   };
   await mkdir(path.dirname(dataFile), { recursive: true });
   await writeFile(dataFile, `${JSON.stringify(next, null, 2)}\n`);

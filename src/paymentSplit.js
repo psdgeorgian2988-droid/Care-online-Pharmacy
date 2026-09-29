@@ -4,28 +4,37 @@ import {
   couponDiscountOnSale,
   findCoupon,
 } from "./offers.js";
-import { isOnlinePayment } from "./paymentMethods.js";
-import { coinsToRupees, quoteWalletSpend } from "./walletQuote.js";
+import { isOnlinePayment, isPaidCheckoutMethod } from "./paymentMethods.js";
+import {
+  canRedeemPoints,
+  coinsToRupees,
+  pointsRedeemAllowedForKind,
+  quoteWalletSpend,
+} from "./walletQuote.js";
 
 /** Platform share of each rupee of MRP / sale. Remainder is for the working partner. */
 export const SPLIT_PLATFORM_PERCENT = {
   medicine: 40,
+  cart: 25,
   lab: 15,
   radiology: 15,
   homecare: 20,
   vaccination: 20,
   psychologist: 20,
+  doctor: 20,
   stepdown: 10,
   ambulance: 15,
 };
 
 export const PARTNER_SHARE_LABEL = {
   medicine: "Delivery outlet",
+  cart: "MediHome partners",
   lab: "Lab partner",
   radiology: "Imaging centre",
   homecare: "Home Care professional",
   vaccination: "Vaccination nurse",
   psychologist: "Psychologist",
+  doctor: "Doctor",
   stepdown: "Step-down centre",
   ambulance: "Ambulance operator",
 };
@@ -49,33 +58,107 @@ export function partnerPercentFor(kind, override) {
   return 100 - platformPercentFor(kind, override);
 }
 
+export function clampSplitPercent(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(100, Math.max(0, Math.round(n)));
+}
+
+export function defaultPartnerPercentFor(kind) {
+  return partnerPercentFor(kind);
+}
+
+export function platformPercentFromPartnerShare(partnerPercent, kind) {
+  const partner = clampSplitPercent(partnerPercent);
+  if (partner == null) return platformPercentFor(kind);
+  return 100 - partner;
+}
+
+/** Recalculate an order's collection split using a staff-set partner %. */
+export function resplitOrder(order = {}, extras = {}) {
+  const kind = order.kind || order.orderType || "medicine";
+  const pin = order.pinCode || order.pin || "";
+  const payable = Number(
+    extras.payableRupees ??
+      order.split?.payableRupees ??
+      order.total ??
+      order.charges ??
+      0
+  );
+  const sale = Number(
+    extras.saleRupees ?? order.split?.saleRupees ?? order.saleRupees ?? payable
+  );
+  const platformPercent =
+    extras.platformPercent != null
+      ? clampSplitPercent(extras.platformPercent)
+      : platformPercentFromPartnerShare(extras.partnerPercent, kind);
+  const paymentMethod = extras.paymentMethod || order.paymentMethod || "";
+  const paidOn = extras.paidOn || order.paidOn || order.split?.paidOn || "";
+  return splitPayment(kind, payable, pin, {
+    saleRupees: sale,
+    payableRupees: payable,
+    couponCode:
+      extras.couponCode || order.split?.couponCode || order.couponCode || "",
+    couponLabel: extras.couponLabel || order.split?.couponLabel || "",
+    platformPercent,
+    paymentMethod,
+    paidOn,
+    collector: extras.collector || order.collector || order.split?.collector,
+  });
+}
+
 function roundRupees(amount) {
   return Math.round((Number(amount) || 0) * 100) / 100;
 }
 
 /**
- * Partner is paid their % of MRP / sale.
- * Coupons and other offers are taken only from MediHome's share.
- * MediHome keeps: (amount the customer pays after discount) − partner share of MRP.
+ * Partner is paid their % of MRP / sale — never reduced by discounts or points.
+ * Coupons, offers and MediHome points are deducted only from MediHome's share.
+ * Service charge / platform fee (if any) is credited only to MediHome.
+ *
+ * payable (customer pays) = sale − discounts − points + serviceCharge
+ * partnerShare           = partner% × sale
+ * medihomeShare          = payable − partnerShare
+ *                        = platform% × sale − discounts − points + serviceCharge
  */
 export function splitPayment(kind, amountRupees, pin, options = {}) {
   const sale = Math.max(
     0,
     Number(options.saleRupees ?? options.mrpRupees ?? amountRupees) || 0
   );
-  const payable = Math.max(
+  const offerDiscount = Math.max(0, Number(options.offerDiscountRupees) || 0);
+  const couponDiscount = Math.max(0, Number(options.couponDiscountRupees) || 0);
+  const pointsDiscount = Math.max(
     0,
-    Number(options.payableRupees ?? amountRupees) || 0
+    Number(options.pointsDiscountRupees ?? options.walletDiscountRupees) || 0
   );
+  const serviceCharge = Math.max(
+    0,
+    Number(options.serviceChargeRupees ?? options.platformFeeRupees) || 0
+  );
+  const namedDiscount = roundRupees(offerDiscount + couponDiscount + pointsDiscount);
+
+  let payable;
+  if (options.payableRupees != null && Number.isFinite(Number(options.payableRupees))) {
+    payable = Math.max(0, Number(options.payableRupees) || 0);
+  } else {
+    payable = Math.max(0, roundRupees(sale - namedDiscount + serviceCharge));
+  }
+
   const salePaise = rupeesToPaise(sale);
   const payablePaise = rupeesToPaise(payable);
-  const discountPaise = Math.max(0, salePaise - payablePaise);
+  const serviceChargePaise = rupeesToPaise(serviceCharge);
+  const goodsPayablePaise = Math.max(0, payablePaise - serviceChargePaise);
+  const discountPaise = Math.max(0, salePaise - goodsPayablePaise);
   const platformPct = platformPercentFor(kind, options.platformPercent);
   const partnerPct = 100 - platformPct;
+
+  // Partner share is always % of MRP / sale, not of discounted payable.
   const partnerPaise = Math.round((salePaise * partnerPct) / 100);
-  const platformPaise = payablePaise - partnerPaise;
-  const partnerTransferPaise = Math.min(partnerPaise, payablePaise);
+  // MediHome absorbs all discounts/points; fee is added to MediHome only.
+  const partnerTransferPaise = Math.min(partnerPaise, goodsPayablePaise);
   const platformSettledPaise = payablePaise - partnerTransferPaise;
+  const platformGoodsPaise = platformSettledPaise - serviceChargePaise;
   const outlet = outletForPin(pin);
   const couponCode = String(options.couponCode || "").trim();
   const split = {
@@ -91,13 +174,20 @@ export function splitPayment(kind, amountRupees, pin, options = {}) {
     discountPaise,
     discountPercent:
       salePaise > 0 ? Math.round((discountPaise / salePaise) * 1000) / 10 : 0,
+    offerDiscountRupees: roundRupees(offerDiscount),
+    couponDiscountRupees: roundRupees(couponDiscount),
+    pointsDiscountRupees: roundRupees(pointsDiscount),
+    serviceChargeRupees: paiseToRupees(serviceChargePaise),
+    serviceChargePaise,
+    platformFeeRupees: paiseToRupees(serviceChargePaise),
     couponCode,
     couponLabel: String(options.couponLabel || ""),
     discountFrom: "medihome",
+    serviceChargeTo: "medihome",
     platformPercent: platformPct,
     partnerPercent: partnerPct,
-    platformPaise,
-    platformRupees: paiseToRupees(platformPaise),
+    platformPaise: platformGoodsPaise,
+    platformRupees: paiseToRupees(platformGoodsPaise),
     platformSettledPaise,
     platformSettledRupees: paiseToRupees(platformSettledPaise),
     partnerPaise,
@@ -154,6 +244,8 @@ export function attachSettlement(split, { collector, paymentMethod, paidOn } = {
   const collected = Number(split.payableRupees || 0);
   const partnerShare = Number(split.partnerTransferRupees || 0);
   const mhShare = Number(split.platformSettledRupees || 0);
+  const fee = Number(split.serviceChargeRupees || split.platformFeeRupees || 0);
+  const discount = Number(split.discountRupees || 0);
   let dueFromPartnerRupees = 0;
   let dueToPartnerRupees = 0;
   let medihomeAccountRupees = 0;
@@ -167,7 +259,15 @@ export function attachSettlement(split, { collector, paymentMethod, paidOn } = {
     ledger = [
       moneyLine("MediHome", "medihome", "Collected online from customer", collected, "collected"),
       moneyLine(partnerLabel, "partner", "Partner share credited to partner account", partnerShare, "credit"),
-      moneyLine("MediHome", "medihome", "MediHome share retained", mhShare, "retain"),
+      moneyLine(
+        "MediHome",
+        "medihome",
+        discount > 0
+          ? "MediHome share retained (discounts/points deducted from MediHome)"
+          : "MediHome share retained",
+        mhShare,
+        "retain"
+      ),
     ];
   } else if (!reverse && !online) {
     dueToPartnerRupees = partnerShare;
@@ -175,7 +275,15 @@ export function attachSettlement(split, { collector, paymentMethod, paidOn } = {
     ledger = [
       moneyLine("MediHome", "medihome", "Cash collected from customer", collected, "collected"),
       moneyLine(partnerLabel, "partner", "Partner share payable to partner", partnerShare, "due"),
-      moneyLine("MediHome", "medihome", "MediHome share retained from cash", mhShare, "retain"),
+      moneyLine(
+        "MediHome",
+        "medihome",
+        discount > 0
+          ? "MediHome share retained from cash (discounts/points deducted from MediHome)"
+          : "MediHome share retained from cash",
+        mhShare,
+        "retain"
+      ),
     ];
   } else if (reverse && online) {
     medihomeAccountRupees = mhShare;
@@ -183,7 +291,15 @@ export function attachSettlement(split, { collector, paymentMethod, paidOn } = {
     ledger = [
       moneyLine(partnerLabel, "partner", "Collected online by service provider", collected, "collected"),
       moneyLine(partnerLabel, "partner", "Partner share credited to partner account", partnerShare, "credit"),
-      moneyLine("MediHome", "medihome", "Balance credited to MediHome account", mhShare, "credit"),
+      moneyLine(
+        "MediHome",
+        "medihome",
+        discount > 0
+          ? "Balance credited to MediHome (discounts/points deducted from MediHome)"
+          : "Balance credited to MediHome account",
+        mhShare,
+        "credit"
+      ),
     ];
   } else {
     dueFromPartnerRupees = mhShare;
@@ -194,11 +310,25 @@ export function attachSettlement(split, { collector, paymentMethod, paidOn } = {
       moneyLine(
         "MediHome",
         "medihome",
-        "MediHome portion — balance towards service provider",
+        discount > 0
+          ? "MediHome portion due (discounts/points deducted from MediHome)"
+          : "MediHome portion — balance towards service provider",
         mhShare,
         "due"
       ),
     ];
+  }
+
+  if (fee > 0) {
+    ledger.push(
+      moneyLine(
+        "MediHome",
+        "medihome",
+        "Service charge / platform fee credited to MediHome",
+        fee,
+        "fee"
+      )
+    );
   }
 
   return {
@@ -211,6 +341,8 @@ export function attachSettlement(split, { collector, paymentMethod, paidOn } = {
     dueToPartnerRupees,
     medihomeAccountRupees,
     partnerAccountRupees,
+    medihomeCreditDest: "settlement_bank",
+    medihomeCreditRupees: mhShare,
     ledger,
   };
 }
@@ -305,9 +437,16 @@ export function quoteCheckout({
   useWallet,
   walletCoins,
   walletMoneyRupees,
+  walletEligibleRupees,
+  serviceChargeRupees,
+  platformFeeRupees,
 } = {}) {
   const sale = Math.max(0, Number(saleRupees) || 0);
   const list = Math.max(0, Number(listRupees ?? sale) || 0);
+  const fee = Math.max(
+    0,
+    Number(serviceChargeRupees ?? platformFeeRupees) || 0
+  );
   const coupon = findCoupon(couponCode);
   const couponDiscount = coupon ? couponDiscountOnSale(coupon, sale) : 0;
   const couponResult = couponCode
@@ -317,17 +456,35 @@ export function quoteCheckout({
     ? 0
     : Math.max(0, roundRupees(sale - list));
   const afterOffers = Math.max(0, roundRupees(sale - offerDiscount - couponDiscount));
-  const wallet = useWallet
+  const pointsAllowed = pointsRedeemAllowedForKind(kind);
+  const eligibleCap = pointsAllowed
+    ? Math.max(0, Number(walletEligibleRupees ?? afterOffers) || 0)
+    : 0;
+  const remainingForPoints = Math.min(afterOffers, eligibleCap);
+  const applyWallet =
+    Boolean(useWallet) &&
+    canRedeemPoints(walletCoins) &&
+    remainingForPoints > 0 &&
+    isPaidCheckoutMethod(paymentMethod);
+  const wallet = applyWallet
     ? quoteWalletSpend({
         moneyRupees: walletMoneyRupees,
         coins: walletCoins,
-        remainingRupees: afterOffers,
+        remainingRupees: remainingForPoints,
       })
     : { moneyRupees: 0, coins: 0, rupees: 0 };
-  const payable = Math.max(0, roundRupees(afterOffers - wallet.rupees));
+  const pointsDiscount = coinsToRupees(wallet.coins);
+  const walletDiscount = wallet.rupees;
+  const goodsPayable = Math.max(0, roundRupees(afterOffers - walletDiscount));
+  const payable = Math.max(0, roundRupees(goodsPayable + fee));
   const split = splitPayment(kind, payable, pin, {
     saleRupees: sale,
     payableRupees: payable,
+    offerDiscountRupees: offerDiscount,
+    couponDiscountRupees: roundRupees(couponDiscount),
+    pointsDiscountRupees: pointsDiscount,
+    walletDiscountRupees: walletDiscount,
+    serviceChargeRupees: fee,
     couponCode: coupon?.code || "",
     couponLabel: coupon?.label || "",
     platformPercent,
@@ -344,11 +501,13 @@ export function quoteCheckout({
     couponLabel: coupon?.label || "",
     couponDiscountRupees: roundRupees(couponDiscount),
     couponError: couponResult.ok ? "" : couponResult.error,
-    walletDiscountRupees: wallet.rupees,
+    walletDiscountRupees: walletDiscount,
     walletMoneyRupees: wallet.moneyRupees,
     walletCoins: wallet.coins,
-    pointsDiscountRupees: coinsToRupees(wallet.coins),
+    pointsDiscountRupees: pointsDiscount,
     pointsUsed: wallet.coins,
+    serviceChargeRupees: fee,
+    platformFeeRupees: fee,
     payableRupees: payable,
     split,
   };

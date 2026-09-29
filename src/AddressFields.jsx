@@ -4,7 +4,7 @@ import {
   addressConfirmRows,
   isAddressConfirmed,
 } from "./addressFields";
-import { lookupPinDirectory, detectPinFromLocation } from "./pinLocation";
+import { lookupPinDirectory, detectPinFromLocation, locationErrorMessage } from "./pinLocation";
 
 function pinAreas(values) {
   return Array.isArray(values.areas) ? values.areas.filter(Boolean) : [];
@@ -46,14 +46,21 @@ export default function AddressFields({
 }) {
   const [pinStatus, setPinStatus] = useState("");
   const [locating, setLocating] = useState(false);
+  const [areaOptions, setAreaOptions] = useState(() => pinAreas(values));
+  const [areaOpen, setAreaOpen] = useState(false);
+  const [areaQuery, setAreaQuery] = useState("");
   const pinRequest = useRef(0);
   const suggestedArea = useRef("");
+  const areaBox = useRef(null);
 
   const patch = (name, value) => {
     onChange?.({ target: { name, value } });
   };
 
   const clearPinFields = () => {
+    setAreaOptions([]);
+    setAreaOpen(false);
+    setAreaQuery("");
     if (values.area) patch("area", "");
     if (pinAreas(values).length) patch("areas", []);
     if (values.city) patch("city", "");
@@ -81,6 +88,9 @@ export default function AddressFields({
       }
       const areas = Array.isArray(row.areas) ? row.areas : [];
       setPinStatus("");
+      setAreaOptions(areas);
+      setAreaOpen(false);
+      setAreaQuery("");
       patch("areas", areas);
       const hint = suggestedArea.current;
       suggestedArea.current = "";
@@ -108,7 +118,10 @@ export default function AddressFields({
       const found = await detectPinFromLocation();
       suggestedArea.current = found.suggestedArea || "";
       if (digitsPin(values.pinCode) === found.pin) {
-        const matched = matchAreaName(pinAreas(values), found.suggestedArea);
+        const matched = matchAreaName(
+          areaOptions.length ? areaOptions : pinAreas(values),
+          found.suggestedArea
+        );
         if (matched && values.area !== matched) patch("area", matched);
         setPinStatus("");
       } else {
@@ -117,7 +130,8 @@ export default function AddressFields({
       }
     } catch (error) {
       setPinStatus(
-        error?.message || "Could not detect a PIN Code. Please enter it."
+        locationErrorMessage(error) ||
+          "Could not detect a PIN Code. Please enter it."
       );
     } finally {
       setLocating(false);
@@ -134,8 +148,24 @@ export default function AddressFields({
     }
   };
 
+  useEffect(() => {
+    if (!areaOpen) return undefined;
+    const onDoc = (event) => {
+      if (!areaBox.current?.contains(event.target)) setAreaOpen(false);
+    };
+    const onKey = (event) => {
+      if (event.key === "Escape") setAreaOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [areaOpen]);
+
   const pin = digitsPin(values.pinCode);
-  const areas = pinAreas(values);
+  const areas = areaOptions.length ? areaOptions : pinAreas(values);
   const pinMissing = pinStatus.includes("not found");
   const showAfterPin = pin.length === 6 && !pinMissing;
   const confirmId = `${idPrefix}-addressConfirmed`;
@@ -158,32 +188,80 @@ export default function AddressFields({
               key={field.name}
               className={`addr-field${auto ? " addr-auto" : ""}${
                 selectable ? " addr-select" : ""
-              }`}
+              }${selectable && areaOpen ? " is-open" : ""}`}
             >
               <label htmlFor={id}>
                 {field.label}
                 {field.required === false ? null : <span> *</span>}
               </label>
               {selectable ? (
-                <select
-                  id={id}
-                  name="area"
-                  value={values.area || ""}
-                  onChange={handleChange}
-                  required
-                  disabled={!areas.length}
+                <div
+                  className={`addr-area-picker${areaOpen ? " is-open" : ""}`}
+                  ref={areaBox}
                 >
-                  <option value="">
-                    {areas.length
-                      ? "Select Village / Sector / Mohalla"
-                      : "Looking up PIN…"}
-                  </option>
-                  {areas.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
+                  <button
+                    id={id}
+                    type="button"
+                    className="addr-area-btn"
+                    aria-haspopup="listbox"
+                    aria-expanded={areaOpen}
+                    disabled={!areas.length}
+                    onClick={() => {
+                      if (!areas.length) return;
+                      setAreaOpen((open) => !open);
+                      setAreaQuery("");
+                    }}
+                  >
+                    {values.area ||
+                      (areas.length
+                        ? "Select Village / Sector / Mohalla"
+                        : pinStatus || "Looking up PIN…")}
+                  </button>
+                  {areaOpen && areas.length ? (
+                    <div className="addr-area-menu" role="listbox" aria-label="Village / Sector / Mohalla">
+                      {areas.length > 8 ? (
+                        <input
+                          className="addr-area-filter"
+                          type="search"
+                          value={areaQuery}
+                          onChange={(event) => setAreaQuery(event.target.value)}
+                          placeholder="Type to filter"
+                          aria-label="Filter village, sector or mohalla"
+                          autoFocus
+                        />
+                      ) : null}
+                      <div className="addr-area-list">
+                        {areas
+                          .filter((option) => {
+                            const q = areaQuery.trim().toLowerCase();
+                            if (!q) return true;
+                            return option.toLowerCase().includes(q);
+                          })
+                          .map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              role="option"
+                              aria-selected={values.area === option}
+                              className={values.area === option ? "is-on" : undefined}
+                              onClick={() => {
+                                onChange?.({ target: { name: "area", value: option } });
+                                if (isAddressConfirmed(values.addressConfirmed)) {
+                                  onChange?.({
+                                    target: { name: "addressConfirmed", value: "" },
+                                  });
+                                }
+                                setAreaOpen(false);
+                                setAreaQuery("");
+                              }}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               ) : field.name === "pinCode" ? (
                 <div
                   className={`addr-pin-row${showUseMyLocation ? "" : " is-pin-only"}`}
@@ -230,7 +308,10 @@ export default function AddressFields({
               ) : field.name === "pinCode" && pinStatus ? (
                 <small
                   className={
-                    pinMissing || /allow location|could not|not available/i.test(pinStatus)
+                    pinMissing ||
+                    /allow location|could not|not available|turn on location|gps|emulator|unavailable/i.test(
+                      pinStatus
+                    )
                       ? "addr-error"
                       : "addr-hint"
                   }
@@ -295,8 +376,16 @@ const styles = `
 .addr-field input:focus,
 .addr-field select:focus{outline:none;border-color:#1a6b7a;box-shadow:none}
 .addr-field.addr-auto input{background:#f3f7fa;color:#3a5568;border-color:#d3e0e8;cursor:default}
-.addr-field.addr-select select{background:#fff;cursor:pointer;height:38px}
-.addr-field.addr-select select:disabled{background:#f3f7fa;color:#7a8a92;cursor:default}
+.addr-field.addr-select{position:relative;z-index:3;overflow:visible}
+.addr-field.addr-select.is-open,.addr-area-picker.is-open{z-index:8}
+.addr-area-picker{position:relative}
+.addr-area-btn{width:100%;box-sizing:border-box;height:38px;min-height:38px;margin:0!important;padding:8px 34px 8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%23143246' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1.5 1.8 6 6.2 10.5 1.8'/%3E%3C/svg%3E") no-repeat right 10px center;background-size:12px 8px;color:#143246;font:inherit;font-size:14px;font-weight:600;text-align:left;cursor:pointer}
+.addr-area-btn:disabled{background-color:#f3f7fa;color:#7a8a92;cursor:default}
+.addr-area-menu{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:12;max-height:240px;display:flex;flex-direction:column;border:1px solid #c5dde7;border-radius:10px;background:#fff;box-shadow:0 12px 28px rgba(20,70,90,.16)}
+.addr-area-filter{width:100%;box-sizing:border-box;height:36px;margin:0;padding:8px 11px;border:0;border-bottom:1px solid #e2eef3;border-radius:10px 10px 0 0;font:inherit;font-size:14px}
+.addr-area-list{overflow:auto;max-height:200px;padding:4px 0}
+.addr-area-list button{display:block;width:100%;margin:0!important;padding:9px 12px;border:0;background:transparent;color:#143246;font:inherit;font-size:14px;font-weight:600;text-align:left;cursor:pointer}
+.addr-area-list button:hover,.addr-area-list button.is-on{background:#e8f4f8;color:#1a6b7a}
 .addr-pin-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
 .addr-pin-row.is-pin-only{grid-template-columns:1fr}
 .addr-pin-row input{flex:1;min-width:0;height:38px}

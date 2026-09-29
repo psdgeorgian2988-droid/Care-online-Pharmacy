@@ -10,81 +10,112 @@ import {
   HomeCare,
   LabTests,
   Medicines,
-  MedicalRecords,
   MyOrders,
   Partner,
   Profile,
+  DoctorAppointment,
   Psychologist,
+  Reports,
   Reviews,
+  PrescriptionReview,
+  CartCheckout,
   ScanPage,
   StepDownCare,
   TrackPage,
 } from "./routePages";
 import Seo from "./Seo";
-import MedicineSearchTools from "./MedicineSearchTools";
+import SocialLinks from "./SocialLinks";
 import { reviewStats } from "./reviewStore";
-import CareChat from "./CareChat";
-import { CARE_WHATSAPP } from "./careChat";
+import CareChat from "./CareChat.jsx";
+import NeedHelp from "./NeedHelp.jsx";
+import HeaderCart from "./HeaderCart.jsx";
 import ComingSoon from "./ComingSoon";
 import ErrorBoundary from "./ErrorBoundary";
 import AuthPage from "./AuthPage";
-import { logoutSession, useLoginSession } from "./authSession";
-import { useFeatures } from "./featureFlags";
-import { pausedServiceTitle, routeEnabled } from "./salesReport";
-import { goToHash, parseAppHash } from "./hashRoute";
-import AppPicker from "./AppPicker";
 import {
+  hasAccountSession,
+  logoutSession,
+  rememberReturnHash,
+  useLoginSession,
+} from "./authSession";
+import { useFeatures } from "./featureFlags";
+import { featureEnabled, pausedServiceTitle, routeEnabled } from "./salesReport";
+import {
+  goToHash,
+  homeCatalogSectionKeys,
+  isHomeSectionKey,
+  MEDICAL_RECORD_HOME_HASH,
+  parseAppHash,
+} from "./hashRoute";
+import { peekRxLabCheckout } from "./medicineCartStore";
+import PortalsChooser, { CustomerPortal, PartnerPortal, StaffPortal } from "./RolePortals";
+import { isPartnerDeskRoute, partnerDeskKindFromRoute } from "./partnerApp";
+import CustomerHome from "./CustomerHome";
+import HomeServiceCatalog from "./HomeServiceCatalog";
+import LabsHub from "./LabsHub";
+import HomePrescriptionUpload from "./HomePrescriptionUpload";
+import { useIsPhoneLayout } from "./useLayoutMode";
+import AppBottomNav from "./AppBottomNav";
+import BackToHome from "./BackToHome";
+import WebinarNotice from "./WebinarNotice";
+import SlotOfferBanner from "./SlotOfferBanner";
+import RefundBanner from "./RefundBanner";
+import StepdownDecisionBanner from "./StepdownDecisionBanner";
+import ReportReadyBanner from "./ReportReadyBanner";
+import CustomerWelcome, { needsCustomerWelcome } from "./CustomerWelcome";
+import {
+  isAppShell,
   isInstalledApp,
   launchHashForRole,
   readAppRole,
   shouldShowAppPicker,
 } from "./appRuntime";
+import LogoMark from "./LogoMark";
+import MediHomeLogoLink from "./MediHomeLogoLink";
+import AppHeader from "./AppHeader";
 
-const NAV_LINKS = [
-  { href: "#home", label: "Home" },
-  { href: "#medicine-search", label: "Medicines" },
-  { href: "#labs", label: "Lab Tests" },
-  { href: "#homecare", label: "Home Care" },
-  { href: "#psychologist", label: "Psychologist" },
-  { href: "#stepdown", label: "Step-Down" },
-  { href: "#ambulance", label: "Ambulance" },
-  { href: "#reports", label: "Medical Records" },
-  { href: "#education", label: "Education" },
-];
-
-const ACCOUNT_LINKS = [
-  { href: "#myorders", label: "My Orders" },
-  { href: "#track", label: "Track Order" },
-  { href: "#scan?step=deliver", label: "Scan Delivery" },
-  { href: "#profile", label: "Profile" },
-];
-
-const BOTTOM_LINKS = [
-  { href: "#about", label: "About" },
-  { href: "#contact", label: "Contact" },
-  { href: "#apps", label: "Apps" },
-];
+const AUTH_ROUTES = new Set(["#login", "#register", "#forgot"]);
 
 const OPS_LINKS = [
-  { href: "#admin", label: "Staff Orders" },
-  { href: "#partner", label: "Partner Desk" },
+  { href: "#admin", label: "Admin Panel" },
+  { href: "#partner-desk", label: "Partner Desk" },
 ];
 
-const HOME_WHATSAPP_URL = `https://wa.me/${CARE_WHATSAPP}?text=${encodeURIComponent(
-  "Hi MediHome, I would like to order medicines."
-)}`;
+const TICKER_TEXT = "YOUR COMPLETE HEALTHCARE ECOSYSTEM AT YOUR DOORSTEP";
 
-function openWhatsAppUrl(url, event) {
-  if (event) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-  const opened = window.open(url, "_blank");
-  if (opened) {
-    opened.opener = null;
-    return;
-  }
-  window.location.assign(url);
+function SiteTicker() {
+  return (
+    <div className="top-ticker">
+      <div className="ticker-track">
+        <span className="ticker-item">{TICKER_TEXT}</span>
+        <span className="ticker-item">{TICKER_TEXT}</span>
+        <span className="ticker-item">{TICKER_TEXT}</span>
+        <span className="ticker-item">{TICKER_TEXT}</span>
+      </div>
+    </div>
+  );
+}
+
+function SiteFooter() {
+  return (
+    <footer className="app-footer">
+      <p>© 2026 MediHome. All rights reserved.</p>
+      <SocialLinks className="footer-social" />
+    </footer>
+  );
+}
+
+function SiteFloatingHelp({ needHelpOpen, setNeedHelpOpen }) {
+  return (
+    <div className="site-floating-help" aria-label="Help">
+      <CareChat />
+      <NeedHelp
+        open={needHelpOpen}
+        onOpen={() => setNeedHelpOpen(true)}
+        onClose={() => setNeedHelpOpen(false)}
+      />
+    </div>
+  );
 }
 
 function PageFallback() {
@@ -99,7 +130,7 @@ function PageFallback() {
 
 function hashLinkActive(linkHref, route, scanStep) {
   if (route === linkHref) return true;
-  if (linkHref === "#reports" && route === "#vaccination") return true;
+  if (linkHref === "#myorders" && route === "#track") return true;
   if (linkHref.startsWith("#scan") && route === "#scan") {
     if (linkHref.includes("step=pack")) return scanStep === "pack";
     if (linkHref.includes("step=pickup")) return scanStep === "pickup";
@@ -107,24 +138,6 @@ function hashLinkActive(linkHref, route, scanStep) {
     return true;
   }
   return false;
-}
-
-function LogoMark() {
-  return (
-    <span className="logo-mark" aria-hidden="true">
-      <svg className="logo-house-svg" viewBox="0 0 40 40">
-        <rect width="40" height="40" rx="9" fill="#1a6b7a" />
-        <path
-          d="M20 8.2 32.4 19.2h-3V31.2H10.6V19.2h-3L20 8.2z"
-          fill="#ffffff"
-        />
-        <path
-          d="M19 17.5h2v3.3h3.3v2H21v3.3h-2v-3.3h-3.3v-2H19v-3.3z"
-          fill="#1a6b7a"
-        />
-      </svg>
-    </span>
-  );
 }
 
 function HomeReviewsTeaser() {
@@ -143,77 +156,49 @@ function HomeReviewsTeaser() {
   );
 }
 
-function HomePage() {
+function WebsiteHomePage({ sectionKey = "" } = {}) {
   const features = useFeatures();
   const user = useLoginSession();
-  const [query, setQuery] = useState("");
+  const isPhone = useIsPhoneLayout();
 
-  const applyMedicineQuery = (value) => {
-    const next = String(value || "").trim();
-    setQuery(next);
-    try {
-      if (next) sessionStorage.setItem("mediHomeMedicineSearch", next);
-      else sessionStorage.removeItem("mediHomeMedicineSearch");
-    } catch {
-      /* ignore */
+  const guestStartHref = featureEnabled(features, "lab") || featureEnabled(features, "radiology")
+    ? "#labs"
+    : featureEnabled(features, "medicine")
+      ? "#medicine-search"
+      : featureEnabled(features, "homecare")
+        ? "#homecare"
+        : "#home-services";
+
+  const startGuestOrder = () => {
+    if (guestStartHref.startsWith("#") && guestStartHref !== "#home-services") {
+      goToHash(guestStartHref);
+      return;
     }
-    goToHash(
-      next
-        ? `#medicine-search?q=${encodeURIComponent(next)}`
-        : "#medicine-search"
-    );
+    document
+      .getElementById("home-services")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const goToMedicines = (event) => {
-    event.preventDefault();
-    applyMedicineQuery(query);
-  };
+  if (sectionKey) {
+    const keys = homeCatalogSectionKeys(sectionKey);
+    return (
+      <div className="home-content home-landing">
+        <div className="home-shell">
+          <div className="home-services-catalog" id="home-services">
+            <HomeServiceCatalog
+              className={isPhone ? "is-mobile-web" : "is-desktop-web"}
+              sectionKeys={keys}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="home-content home-landing">
       <div className="home-shell">
         <div className="home-hero-row">
-          <div className="home-hero-main">
-            <section className="home-intro">
-              <p className="home-kicker">MediHome · Delhi NCR</p>
-              <h1>
-                Lab Tests, Radiology And Medicines Delivered To Your Doorstep
-              </h1>
-              <p className="home-lead">
-                Affordable care for patients across Delhi NCR, from one trusted
-                place.
-              </p>
-            </section>
-
-            {features.medicine !== false ? (
-              <>
-                <form className="home-search-form" onSubmit={goToMedicines}>
-                  <input
-                    type="search"
-                    placeholder="Search by brand, name or salt (e.g. Dolo, Crocin)"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    aria-label="Search medicines"
-                  />
-                  <button type="submit">Search</button>
-                </form>
-                <MedicineSearchTools onQuery={applyMedicineQuery} />
-              </>
-            ) : null}
-
-            <p className="home-whatsapp-line">
-              Prefer to talk?{" "}
-              <a
-                href={HOME_WHATSAPP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(event) => openWhatsAppUrl(HOME_WHATSAPP_URL, event)}
-              >
-                Order on WhatsApp
-              </a>
-            </p>
-          </div>
-
           <aside className="home-account-card" aria-label="Account">
             {user ? (
               <>
@@ -223,6 +208,16 @@ function HomePage() {
                 <a className="home-account-btn" href="#register">
                   Edit Account
                 </a>
+                <button
+                  type="button"
+                  className="home-account-btn"
+                  onClick={() => {
+                    logoutSession();
+                    goToHash("#home");
+                  }}
+                >
+                  Logout
+                </button>
               </>
             ) : (
               <>
@@ -232,11 +227,7 @@ function HomePage() {
                 <button
                   type="button"
                   className="home-account-btn is-guest"
-                  onClick={() => {
-                    document
-                      .getElementById("home-services")
-                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }}
+                  onClick={startGuestOrder}
                 >
                   Order As Guest
                 </button>
@@ -245,84 +236,26 @@ function HomePage() {
           </aside>
         </div>
 
-        <section className="home-services" id="home-services" aria-label="Services">
-          {features.medicine !== false ? (
-            <a className="home-service-card" href="#medicine-search">
-              <h2>Medicines</h2>
-              <p>Doorstep delivery, cash on delivery.</p>
-              <span>View medicines</span>
-            </a>
-          ) : null}
-          {features.lab !== false ? (
-            <a className="home-service-card" href="#labs">
-              <h2>Lab Tests</h2>
-              <p>Home sample collection.</p>
-              <span>Book a test</span>
-            </a>
-          ) : null}
-          {features.radiology !== false ? (
-            <a className="home-service-card" href="#labs">
-              <h2>Radiology</h2>
-              <p>Scans at partner centres.</p>
-              <span>Book a scan</span>
-            </a>
-          ) : null}
-          {features.homecare !== false ? (
-            <a className="home-service-card" href="#homecare">
-              <h2>Home Care</h2>
-              <p>Nurse, Caregiver or Physiotherapy at Home.</p>
-              <span>Book a visit</span>
-            </a>
-          ) : null}
-          {features.psychologist !== false ? (
-            <a className="home-service-card" href="#psychologist">
-              <h2>Psychologist Consultation</h2>
-              <p>Video or home visit sessions.</p>
-              <span>Book a session</span>
-            </a>
-          ) : null}
-          {features.stepdown !== false ? (
-            <a className="home-service-card" href="#stepdown">
-              <h2>Step-Down Care</h2>
-              <p>Find a recovery centre near you.</p>
-              <span>Find a centre</span>
-            </a>
-          ) : null}
-          {features.ambulance !== false ? (
-            <a className="home-service-card" href="#ambulance">
-              <h2>Ambulance</h2>
-              <p>Emergency or planned pickup.</p>
-              <span>Request now</span>
-            </a>
-          ) : null}
-          <a className="home-service-card" href="#scan?step=deliver">
-            <h2>Scan Delivery</h2>
-            <p>Scan the order QR when medicines arrive.</p>
-            <span>Open scanner</span>
-          </a>
-          {features.reports !== false || features.vaccination !== false ? (
-            <a className="home-service-card" href="#reports">
-              <h2>Medical Records</h2>
-              <p>Lab reports and vaccination record on this device.</p>
-              <span>Open records</span>
-            </a>
-          ) : null}
-          {features.education !== false ? (
-            <a className="home-service-card" href="#education">
-              <h2>Health Education</h2>
-              <p>Guides, live webinars, and quick quizzes.</p>
-              <span>Open education</span>
-            </a>
-          ) : null}
-        </section>
+        <HomePrescriptionUpload />
 
-        <p className="home-trust">
-          Cash on delivery · Home collection · Delhi NCR
-        </p>
+        <div className="home-services-catalog" id="home-services">
+          <HomeServiceCatalog
+            className={isPhone ? "is-mobile-web" : "is-desktop-web"}
+            sectionKeys={sectionKey ? [sectionKey] : undefined}
+          />
+        </div>
+
         <HomeReviewsTeaser />
       </div>
     </div>
   );
+}
+
+function HomePage({ sectionKey = "" } = {}) {
+  if (isAppShell()) {
+    return <CustomerHome sectionKey={sectionKey} />;
+  }
+  return <WebsiteHomePage sectionKey={sectionKey} />;
 }
 
 function PausedService({ route, features }) {
@@ -336,8 +269,19 @@ function PausedService({ route, features }) {
 
 function App() {
   const [hash, setHash] = useState(window.location.hash);
-  const [careOpen, setCareOpen] = useState(false);
+  const [needHelpOpen, setNeedHelpOpen] = useState(false);
+  const [sessionTick, setSessionTick] = useState(0);
   const user = useLoginSession();
+
+  useEffect(() => {
+    const bump = () => setSessionTick((n) => n + 1);
+    window.addEventListener("mediHomeSession", bump);
+    window.addEventListener("storage", bump);
+    return () => {
+      window.removeEventListener("mediHomeSession", bump);
+      window.removeEventListener("storage", bump);
+    };
+  }, []);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -353,10 +297,41 @@ function App() {
     };
   }, []);
 
-  const { route, q: medicineQuery, id: trackId, step: scanStep, tab: pageTab } =
-    parseAppHash(hash);
-  const isOps = route === "#admin" || route === "#partner";
+  const {
+    route,
+    q: medicineQuery,
+    id: trackId,
+    step: scanStep,
+    lab: selectedLab,
+    service: hashService,
+  } = parseAppHash(hash);
+  const isAuthRoute = AUTH_ROUTES.has(route);
+  const isOps = route === "#admin" || isPartnerDeskRoute(route);
+  const opsDeskKind = partnerDeskKindFromRoute(route);
+  const barePartnerDesk = opsDeskKind === "stepdown" || opsDeskKind === "lab";
   const features = useFeatures();
+  const appRole = readAppRole();
+  const customerShell =
+    isAppShell() && !isOps && appRole !== "staff" && appRole !== "partner";
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const body = document.body;
+    root.classList.toggle("is-customer-app", customerShell);
+    root.classList.toggle("is-installed-app", isInstalledApp());
+    body.classList.toggle("is-customer-app", customerShell);
+    return () => {
+      root.classList.remove("is-customer-app");
+      root.classList.remove("is-installed-app");
+      body.classList.remove("is-customer-app");
+    };
+  }, [customerShell]);
+
+  useEffect(() => {
+    if (!customerShell) return undefined;
+    window.scrollTo(0, 0);
+    return undefined;
+  }, [customerShell, route]);
 
   useEffect(() => {
     if (route === "#social") goToHash("#contact");
@@ -368,9 +343,27 @@ function App() {
     if (next) goToHash(next);
   }, [route]);
 
+  useEffect(() => {
+    if (isOps || appRole === "staff" || appRole === "partner") return undefined;
+    if (AUTH_ROUTES.has(route)) return undefined;
+    if (needsCustomerWelcome(user) && route !== "#home" && route !== "#checkout") {
+      goToHash("#home");
+    }
+    return undefined;
+  }, [appRole, isOps, route, sessionTick, user]);
+
+  useEffect(() => {
+    const recordsHome = route === "#home" && hashService === "reports";
+    if (route !== "#reports" && !recordsHome) return undefined;
+    if (hasAccountSession(user)) return undefined;
+    rememberReturnHash(MEDICAL_RECORD_HOME_HASH);
+    goToHash("#login");
+    return undefined;
+  }, [hashService, route, user]);
+
   const renderPage = () => {
     if (shouldShowAppPicker(route)) {
-      return <AppPicker />;
+      return <PortalsChooser />;
     }
     if (!routeEnabled(route, features)) {
       return <PausedService route={route} features={features} />;
@@ -379,15 +372,17 @@ function App() {
       case "#medicine-search":
         return <Medicines initialSearch={medicineQuery} />;
       case "#labs":
-        return <LabTests />;
+        return selectedLab || peekRxLabCheckout()?.tests?.length ? (
+          <LabTests />
+        ) : (
+          <LabsHub />
+        );
       case "#homecare":
         return <HomeCare />;
       case "#vaccination":
-        return (
-          <MedicalRecords
-            initialTab={pageTab || "vaccination"}
-          />
-        );
+        return <HomePage sectionKey="vaccination" />;
+      case "#doctor":
+        return <DoctorAppointment />;
       case "#psychologist":
         return <Psychologist />;
       case "#stepdown":
@@ -395,11 +390,11 @@ function App() {
       case "#ambulance":
         return <Ambulance />;
       case "#reports":
-        return (
-          <MedicalRecords
-            initialTab={pageTab || "lab"}
-          />
-        );
+        return <Reports initialTab={hashService} />;
+      case "#prescription":
+        return <PrescriptionReview />;
+      case "#checkout":
+        return <CartCheckout />;
       case "#profile":
         return <Profile />;
       case "#myorders":
@@ -409,7 +404,7 @@ function App() {
       case "#track":
         return <TrackPage trackId={trackId} />;
       case "#education":
-        return <HealthEducation initialTab={pageTab || ""} />;
+        return <HealthEducation />;
       case "#about":
         return <About />;
       case "#contact":
@@ -422,149 +417,175 @@ function App() {
       case "#admin":
         return <Admin />;
       case "#partner":
-        return <Partner />;
+        return <PartnerPortal />;
+      case "#partner-desk":
+      case "#pharmacy-desk":
+      case "#delivery-desk":
+      case "#lab-desk":
+      case "#radiology-desk":
+      case "#homecare-desk":
+      case "#vaccination-desk":
+      case "#psychologist-desk":
+      case "#doctor-desk":
+      case "#ambulance-desk":
+      case "#stepdown-desk":
+        return <Partner deskKind={partnerDeskKindFromRoute(route)} />;
+      case "#customer":
+        return <CustomerPortal />;
+      case "#staff":
+        return <StaffPortal />;
+      case "#portals":
+      case "#apps":
+        return <PortalsChooser />;
       case "#login":
         return <AuthPage mode="login" />;
       case "#register":
         return <AuthPage mode="register" />;
       case "#forgot":
         return <AuthPage mode="forgot" />;
-      case "#apps":
-        return <AppPicker />;
       case "#home":
       default:
-        return <HomePage />;
+        return (
+          <HomePage
+            sectionKey={
+              route === "#home" && isHomeSectionKey(hashService) ? hashService : ""
+            }
+          />
+        );
     }
   };
 
   if (isOps) {
     return (
-      <div className="app app-ops">
+      <div className={`app app-ops${barePartnerDesk ? " app-ops-bare" : ""}`}>
         <Seo route={route} />
-        <header className="ops-bar">
-          <a className="ops-brand" href="#admin" aria-label="MediHome operations">
-            <LogoMark />
-            <span>MediHome Operations</span>
-          </a>
-          <nav className="ops-nav" aria-label="Operations">
-            {OPS_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className={hashLinkActive(link.href, route, scanStep) ? "active" : undefined}
-              >
-                {link.label}
-              </a>
-            ))}
-            <a href="#home">Customer App</a>
-          </nav>
-        </header>
+        {barePartnerDesk ? null : <SiteTicker />}
+        {barePartnerDesk ? null : (
+          <header className="ops-bar">
+            <a className="ops-brand" href="#admin" aria-label="MediHome operations">
+              <LogoMark size="sm" />
+              <span>Operations</span>
+            </a>
+            <nav className="ops-nav" aria-label="Operations">
+              {isPartnerDeskRoute(route) ? (
+                <span className="ops-nav-stay">{opsDeskKind === "medicine" ? "Pharmacy Partner" : "Partner Desk"}</span>
+              ) : (
+                <>
+                  {OPS_LINKS.map((link) => (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      className={hashLinkActive(link.href, route, scanStep) ? "active" : undefined}
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                  <a href="#home">Website</a>
+                </>
+              )}
+            </nav>
+          </header>
+        )}
         <main>
           <ErrorBoundary key={route}>
             <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
           </ErrorBoundary>
         </main>
+        {barePartnerDesk ? null : <SiteFooter />}
+        {barePartnerDesk ? null : (
+          <SiteFloatingHelp needHelpOpen={needHelpOpen} setNeedHelpOpen={setNeedHelpOpen} />
+        )}
+      </div>
+    );
+  }
+
+  const showBackHome =
+    route !== "#home" &&
+    route !== "#portals" &&
+    route !== "#apps" &&
+    route !== "#customer" &&
+    route !== "#partner" &&
+    route !== "#staff";
+
+  const welcomeGate =
+    !isOps &&
+    appRole !== "staff" &&
+    appRole !== "partner" &&
+    !isAuthRoute &&
+    route !== "#checkout" &&
+    needsCustomerWelcome(user) &&
+    sessionTick >= 0;
+
+  if (customerShell) {
+    return (
+      <div className={`app app-customer${welcomeGate ? " is-welcome-gate" : ""}`}>
+        <Seo route={route} />
+        <SiteTicker />
+        <div className="app-frame">
+          <AppHeader />
+          <main id="app-scroll">
+            {welcomeGate || isAuthRoute ? null : <WebinarNotice />}
+            {welcomeGate || isAuthRoute ? null : <SlotOfferBanner />}
+            {welcomeGate || isAuthRoute ? null : <RefundBanner />}
+            {welcomeGate || isAuthRoute ? null : <StepdownDecisionBanner />}
+            {welcomeGate || isAuthRoute ? null : <ReportReadyBanner />}
+            <ErrorBoundary key={welcomeGate ? "welcome" : route}>
+              <Suspense fallback={<PageFallback />}>
+                {welcomeGate ? (
+                  <CustomerWelcome
+                    onDone={() => setSessionTick((n) => n + 1)}
+                  />
+                ) : (
+                  renderPage()
+                )}
+              </Suspense>
+            </ErrorBoundary>
+          </main>
+          {welcomeGate || isAuthRoute ? null : <AppBottomNav route={route} service={hashService} />}
+        </div>
+        <SiteFooter />
+        <SiteFloatingHelp needHelpOpen={needHelpOpen} setNeedHelpOpen={setNeedHelpOpen} />
       </div>
     );
   }
 
   return (
-    <div className="app app-customer">
+    <div className={`app is-wide-main${welcomeGate ? " is-welcome-gate" : ""}`}>
       <Seo route={route} />
+      <SiteTicker />
 
-      <aside className="sidebar">
-        <a className="sidebar-logo" href="#home" aria-label="MediHome home">
-          <LogoMark />
-          <span className="logo-wordmark">MediHome</span>
-        </a>
-
-        <div className="sidebar-links">
-          <nav className="sidebar-nav" aria-label="Main">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className={
-                  hashLinkActive(link.href, route, scanStep) ? "active" : undefined
-                }
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
-
-          <nav className="sidebar-account" aria-label="Account">
-            {user ? (
-              <>
-                {ACCOUNT_LINKS.map((link) => (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    className={
-                      hashLinkActive(link.href, route, scanStep) ? "active" : undefined
-                    }
-                  >
-                    {link.label}
-                  </a>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => {
-                    logoutSession();
-                    goToHash("#home");
-                  }}
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <a
-                href="#login"
-                className={
-                  route === "#login" || route === "#register" || route === "#forgot"
-                    ? "active"
-                    : undefined
-                }
-              >
-                Login / Register
-              </a>
-            )}
-          </nav>
-
-          <div className="sidebar-bottom">
-            {BOTTOM_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className={route === link.href ? "active" : undefined}
-              >
-                {link.label}
-              </a>
-            ))}
-            <button
-              type="button"
-              className={careOpen ? "active" : undefined}
-              aria-haspopup="dialog"
-              aria-expanded={careOpen}
-              onClick={() => setCareOpen(true)}
-            >
-              Customer Care
-            </button>
-          </div>
+      <header className="site-topbar">
+        <div className="site-topbar-inner">
+          <div className="site-topbar-slot is-start" aria-hidden="true" />
+          <MediHomeLogoLink
+            className="site-topbar-brand"
+            size="lg"
+            aria-label="MediHome welcome"
+          />
+          <HeaderCart className="site-topbar-header-cart" />
         </div>
-      </aside>
+      </header>
 
       <main>
-        <ErrorBoundary key={route}>
-          <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
+        {welcomeGate || isAuthRoute ? null : <BackToHome show={showBackHome} />}
+        {welcomeGate || isAuthRoute ? null : <WebinarNotice />}
+        {welcomeGate || isAuthRoute ? null : <SlotOfferBanner />}
+        {welcomeGate || isAuthRoute ? null : <RefundBanner />}
+        {welcomeGate || isAuthRoute ? null : <StepdownDecisionBanner />}
+        {welcomeGate || isAuthRoute ? null : <ReportReadyBanner />}
+        <ErrorBoundary key={welcomeGate ? "welcome" : route}>
+          <Suspense fallback={<PageFallback />}>
+            {welcomeGate ? (
+              <CustomerWelcome onDone={() => setSessionTick((n) => n + 1)} />
+            ) : (
+              renderPage()
+            )}
+          </Suspense>
         </ErrorBoundary>
       </main>
 
-      <CareChat
-        open={careOpen}
-        onOpen={() => setCareOpen(true)}
-        onClose={() => setCareOpen(false)}
-      />
+      <SiteFooter />
+      <SiteFloatingHelp needHelpOpen={needHelpOpen} setNeedHelpOpen={setNeedHelpOpen} />
     </div>
   );
 }

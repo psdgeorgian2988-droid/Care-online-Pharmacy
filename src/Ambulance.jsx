@@ -13,14 +13,23 @@ import {
   validateAmbulanceDrop,
 } from "./icuHospitals";
 import { noContactFieldProps } from "./noContactAutofill";
-import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import { persistAndSendOrder, persistOrder, trackHref, withTracking } from "./orderTracking";
+import { goHomeAfterPaidCheckout } from "./checkoutComplete";
+import { parseAppHash } from "./hashRoute";
+import { partnerAcceptFields } from "./orderConfirm";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
-import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
+import {
+  checkoutPaymentPersistFields,
+  checkoutUsesPayCta,
+  paymentMethodSummary,
+  persistUnsettledCheckoutFields,
+  showCustomerPayNow,
+} from "./paymentMethods";
+import BusyWait, { useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
-import { BillButton } from "./OrderBill";
+import { BillButton } from "./OrderBill.jsx";
 import BookingFlow from "./BookingFlow";
-import { paymentMethodSummary } from "./paymentMethods";
 import {
   applyResolvedPin,
   pickAddress,
@@ -50,20 +59,45 @@ function Ambulance() {
     mobile: profile.mobile,
     ...pickAddress(profile),
     ...accountOwnerBooking(profile),
-    emergencyType: "emergency",
+    emergencyType:
+      parseAppHash(typeof window !== "undefined" ? window.location.hash : "").service ===
+      "non-emergency"
+        ? "non-emergency"
+        : "emergency",
     notes: "",
     ...hospitalDestination(null),
   });
   const [errors, setErrors] = useState({});
   const [request, setRequest] = useState(null);
+  const [flowStep, setFlowStep] = useState("placed");
   const [submitting, setSubmitting] = useState(false);
+  const [paying, setPaying] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
+  const [payReady, setPayReady] = useState(true);
   const [payQuote, setPayQuote] = useState(null);
   const [icuHospitals, setIcuHospitals] = useState([]);
   const urgentRide = form.emergencyType === "emergency";
-  const busyWait = useBusyOverlay(submitting, "ambulance", urgentRide);
+  const busyWait = useBusyOverlay(submitting || paying, "ambulance", urgentRide);
   const ambFee = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
   const pickupPin = String(form.pinCode || "").replace(/\D/g, "");
+
+  useEffect(() => {
+    const applyHash = () => {
+      const { service } = parseAppHash(window.location.hash);
+      const next =
+        service === "non-emergency" || service === "transfer"
+          ? "non-emergency"
+          : service === "emergency"
+            ? "emergency"
+            : "";
+      if (!next) return;
+      setForm((prev) =>
+        prev.emergencyType === next ? prev : { ...prev, emergencyType: next }
+      );
+    };
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
+  }, []);
 
   useEffect(() => {
     if (!/^\d{6}$/.test(pickupPin)) {
@@ -159,19 +193,7 @@ function Ambulance() {
       const gps = await resolvePinLocation(booked.pinCode);
       const addr = applyResolvedPin(booked, gps);
       const total = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
-      const method =
-        form.emergencyType === "emergency" ? "cod" : payMethod;
       const pay = paymentFromQuote(payQuote, total);
-      const payment = await settleCheckoutPayment({
-        method,
-        ...pay,
-        kind: "ambulance",
-        pin: gps.pinCode,
-        name: booked.patientName,
-        mobile: booked.mobile,
-        reference: `amb-${Date.now()}`,
-        description: "MediHome ambulance",
-      });
 
       const requestDetails = {
         requestId: "MH-AMB-" + Math.floor(100000 + Math.random() * 900000),
@@ -190,6 +212,7 @@ function Ambulance() {
                 pin: form.destinationPin,
               });
         })(),
+        partner: "MediHome Ambulance",
         total: pay.amountRupees,
         saleRupees: pay.saleRupees,
         couponCode: pay.couponCode,
@@ -197,20 +220,60 @@ function Ambulance() {
         highTrafficWait: queue.busy || queue.waited,
         requestedAt: new Date().toLocaleString(),
         requestedAtMs: Date.now(),
-        ...payment,
+        ...partnerAcceptFields(),
+        trackStatus: "assigned",
+        status: "Partner assigned — ambulance dispatched",
+        ...persistUnsettledCheckoutFields(
+          form.emergencyType === "emergency" ? "cod" : payMethod
+        ),
       };
 
       const trackedRequest = persistOrder(withTracking(requestDetails, "ambulance"));
       setRequest(trackedRequest);
+      setFlowStep("placed");
     } catch (error) {
-      alert(error.message || "Ambulance request could not be completed.");
+      alert(error.message || "Ambulance request could not be submitted.");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handlePayment = async (event) => {
+    event.preventDefault();
+    if (!request) return;
+    setPaying(true);
+    try {
+      const amount = Number(request.total) || 0;
+      const method =
+        request.emergencyType === "emergency" ? "cod" : payMethod;
+      const pay = paymentFromQuote(payQuote, amount);
+      const payment = await settleCheckoutPayment({
+        method,
+        ...pay,
+        kind: "ambulance",
+        pin: request.pinCode || request.pin,
+        name: request.patientName,
+        mobile: request.mobile,
+        reference: request.requestId,
+        description: "MediHome ambulance",
+      });
+      await persistAndSendOrder(request, {
+        ...payment,
+        paymentStatus: "paid",
+        paid: true,
+        status: request.partnerConfirmed ? "Confirmed" : request.status,
+      });
+      goHomeAfterPaidCheckout();
+    } catch (error) {
+      alert(error.message || "Payment could not be completed.");
+    } finally {
+      setPaying(false);
+    }
+  };
+
   const startNew = () => {
     setRequest(null);
+    setFlowStep("placed");
     setForm({
       patientName: profile.name,
       mobile: profile.mobile,
@@ -221,24 +284,47 @@ function Ambulance() {
       ...hospitalDestination(null),
     });
     setPayMethod("cod");
+    setPayQuote(null);
     setIcuHospitals([]);
     setErrors({});
   };
 
-  if (request) {
+  if (request && (flowStep === "placed" || flowStep === "pay" || flowStep === "paid")) {
     return (
       <>
         <style>{styles}</style>
+        {busyWait ? <BusyWait kind="ambulance" traffic={busyWait} /> : null}
         <div className="service-page">
           <section className="service-confirm">
-            <div className="success-icon">✓</div>
-            <h1>Ambulance Requested</h1>
-            <PatienceNote kind="ambulance" shown={request.highTrafficWait} />
-            <p>Share this request ID if our team calls you to confirm pickup.</p>
+            {flowStep === "placed" ? (
+              <>
+                <div className="success-icon">✓</div>
+                <h1>Booking Confirmed</h1>
+                <p>Your ambulance is confirmed. Track the unit toward your pickup below.</p>
+              </>
+            ) : null}
+            {flowStep === "pay" ? (
+              <>
+                <div className="success-icon">₹</div>
+                <h1>Payment</h1>
+                <p>Pay now or continue tracking — you can also pay later from My Orders.</p>
+              </>
+            ) : null}
+            {flowStep === "paid" ? (
+              <>
+                <div className="success-icon">✓</div>
+                <h1>Payment Received</h1>
+                <p>Thank you. Track the ambulance from My Orders anytime.</p>
+              </>
+            ) : null}
             <div className="confirm-card">
               <div className="confirm-head">
                 <h2>Request Details</h2>
                 <span>{request.requestId}</span>
+              </div>
+              <div className="confirm-row">
+                <span>Service</span>
+                <strong>{request.partner || "MediHome Ambulance"}</strong>
               </div>
               <div className="confirm-row">
                 <span>Type</span>
@@ -257,7 +343,11 @@ function Ambulance() {
               <div className="confirm-row">
                 <span>Payment</span>
                 <strong>
-                  {paymentMethodSummary(request.paymentMethod, "Cash on arrival")}
+                  {flowStep === "paid" ||
+                  request.paid ||
+                  !showCustomerPayNow(request)
+                    ? paymentMethodSummary(request.paymentMethod, "Cash on arrival")
+                    : "Pending — pay anytime from My Orders"}
                 </strong>
               </div>
               <div className="confirm-row">
@@ -318,25 +408,86 @@ function Ambulance() {
                 </div>
               ) : null}
             </div>
-            <AssignedAgent record={request} />
-            <p className="confirm-note">
-              Live tracking follows the assigned ambulance toward your pickup PIN.
-            </p>
-            <div className="confirm-actions">
-              <BillButton order={request} />
-              <button
-                type="button"
-                className="service-submit"
-                onClick={() => {
-                  window.location.hash = trackHref(request.requestId);
+            {flowStep !== "pay" ? (
+              <AssignedAgent
+                record={{
+                  ...request,
+                  agentRole: "Ambulance unit",
                 }}
-              >
-                Track live
-              </button>
-              <button type="button" className="service-submit" onClick={startNew}>
-                Request another ambulance
-              </button>
-            </div>
+              />
+            ) : null}
+            {flowStep === "pay" && showCustomerPayNow(request) ? (
+              <form className="service-pay-form" onSubmit={handlePayment}>
+                <PaymentBlock
+                  kind="ambulance"
+                  amount={Number(request.total) || 0}
+                  pin={request.pinCode}
+                  method={
+                    request.emergencyType === "emergency" ? "cod" : payMethod
+                  }
+                  onMethodChange={setPayMethod}
+                  onQuoteChange={setPayQuote}
+                  onReadyChange={setPayReady}
+                  guestDetails={request}
+                  cashLabel="Cash on arrival"
+                />
+                <div className="confirm-actions">
+                  <button type="submit" className="service-submit" disabled={paying || !payReady}>
+                    {paying ? "Processing…" : "Pay now"}
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => setFlowStep("placed")}
+                  >
+                    Back
+                  </button>
+                </div>
+              </form>
+            ) : null}
+            {flowStep === "placed" ? (
+              <div className="confirm-actions">
+                <button
+                  type="button"
+                  className="service-submit"
+                  onClick={() => {
+                    window.location.hash = trackHref(request.requestId);
+                  }}
+                >
+                  Track live
+                </button>
+                {showCustomerPayNow(request) ? (
+                  <button
+                    type="button"
+                    className="service-submit"
+                    onClick={() => setFlowStep("pay")}
+                  >
+                    Pay now
+                  </button>
+                ) : null}
+                <BillButton order={request} />
+                <button type="button" className="ghost-button" onClick={startNew}>
+                  Request another ambulance
+                </button>
+              </div>
+            ) : null}
+            {flowStep === "paid" ? (
+              <div className="confirm-actions">
+                <button
+                  type="button"
+                  className="service-submit"
+                  onClick={() => {
+                    window.location.hash = trackHref(request.requestId);
+                  }}
+                >
+                  Track live
+                </button>
+                <BillButton order={request} />
+                <button type="button" className="ghost-button" onClick={startNew}>
+                  Request another ambulance
+                </button>
+              </div>
+            ) : null}
           </section>
         </div>
       </>
@@ -512,13 +663,14 @@ function Ambulance() {
                 method={payMethod}
                 onMethodChange={setPayMethod}
                 onQuoteChange={setPayQuote}
+                onReadyChange={setPayReady}
                 guestDetails={form}
               />
             </div>
           )}
 
           <button type="submit" className="service-submit" disabled={submitting}>
-            {submitting ? "Connecting PIN to map…" : "Submit ambulance request"}
+            {submitting ? "Connecting PIN to map…" : "Confirm request"}
           </button>
           </BookingFlow>
         </form>
@@ -553,7 +705,10 @@ const styles = `
 .amb-hospital-meta{color:#1a6b7a !important;font-weight:700}
 .service-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:40px;cursor:pointer;font-family:inherit}
 .confirm-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
-.confirm-actions .service-submit{grid-column:auto;min-width:180px}
+.confirm-actions .service-submit,.confirm-actions .ghost-button{grid-column:auto;min-width:180px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.ghost-button{border:1px solid #d8e3e9;border-radius:8px;background:#fff;color:#34546b;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;min-height:40px;padding:8px 14px;box-sizing:border-box}
+.ghost-button:hover{background:#f7fbfe}
+.service-pay-form{max-width:640px;margin:0 auto 14px;text-align:left}
 .service-confirm{max-width:640px;margin:12px auto;text-align:center}
 .success-icon{width:52px;height:52px;margin:0 auto 10px;border-radius:50%;background:#e5f8ee;color:#1c9b61;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
 .service-confirm h1{margin:0 0 6px;font-size:22px}

@@ -61,6 +61,11 @@ const PAGE_META = {
     title: "MediHome | Medicines, Lab Tests And Home Care In Delhi NCR",
     description: SITE.description,
   },
+  checkout: {
+    title: "Checkout | MediHome",
+    description:
+      "Pay for prescribed medicines and lab tests together through MediHome.",
+  },
   "medicine-search": {
     title: "Order Medicines Online | MediHome Delhi NCR",
     description:
@@ -76,15 +81,15 @@ const PAGE_META = {
     description:
       "Book nurse visits, caregiver duty, and physiotherapy at home in Delhi NCR.",
   },
-  reports: {
-    title: "Medical Records | MediHome",
-    description:
-      "Keep lab reports and vaccination records on this device for clinic visits with MediHome.",
-  },
   vaccination: {
-    title: "Vaccination Record | MediHome Medical Records",
+    title: "Vaccination Schedule, Record And Reminders | MediHome",
     description:
       "Government of India UIP schedule for children and older persons, with a saved record and due-date reminders.",
+  },
+  doctor: {
+    title: "Doctor Appointment | MediHome Delhi NCR",
+    description:
+      "Book a clinic visit, video consult, or home visit with a MediHome doctor in Delhi NCR.",
   },
   psychologist: {
     title: "Psychologist Consultation | MediHome",
@@ -101,6 +106,10 @@ const PAGE_META = {
     description:
       "Emergency or planned ambulance pickup in Delhi NCR, with live PIN tracking.",
   },
+  reports: {
+    title: "Medical Record | MediHome",
+    description: "Keep lab reports, imaging reports, and prescriptions on this device with MediHome Medical Record.",
+  },
   login: {
     title: "Login | MediHome",
     description: "Log in to MediHome with your registered mobile and PIN.",
@@ -111,12 +120,11 @@ const PAGE_META = {
   },
   myorders: {
     title: "My Orders | MediHome",
-    description:
-      "View completed MediHome orders. Active bookings stay under Track Order.",
+    description: "Track medicines, diagnostics, Home Care, psychologist, and ambulance bookings.",
   },
   track: {
-    title: "Track Order | MediHome",
-    description: "Follow active MediHome bookings on the live PIN map.",
+    title: "Current Status | MediHome",
+    description: "Follow your MediHome order or visit on the live PIN map.",
   },
   scan: {
     title: "Scan Delivery | MediHome",
@@ -129,9 +137,21 @@ const PAGE_META = {
       "Practical guides, live webinars, and short quizzes for chronic care at home from MediHome.",
   },
   apps: {
-    title: "MediHome Apps | Customer, Staff And Partner",
+    title: "MediHome Desks | Customer, Partner And Staff",
+    description: "Open the MediHome customer, partner, or staff webpage.",
+  },
+  portals: {
+    title: "MediHome Desks | Customer, Partner And Staff",
+    description: "Open the MediHome customer, partner, or staff webpage.",
+  },
+  customer: {
+    title: "Customer | MediHome",
     description:
-      "Open the MediHome customer app, staff operations desk, or partner jobs desk.",
+      "Customer webpage for medicines, lab tests, Home Care, orders, and account on MediHome.",
+  },
+  staff: {
+    title: "Staff | MediHome",
+    description: "Staff webpage for MediHome operations, orders, and partner coordination.",
   },
   about: {
     title: "About MediHome | Chronic Care At Your Doorstep",
@@ -157,12 +177,45 @@ const PAGE_META = {
     description: "Read what MediHome customers say about medicines, labs, and home visits.",
   },
   admin: {
-    title: "Staff Login | MediHome",
+    title: "Admin Panel | MediHome",
     description: "MediHome operations desk for incoming orders.",
   },
   partner: {
+    title: "Partner | MediHome",
+    description:
+      "Partner webpage for MediHome delivery, lab collection, radiology, and home-visit partners.",
+  },
+  "partner-desk": {
     title: "Partner Desk | MediHome",
-    description: "Assigned jobs for MediHome delivery, lab, Home Care, psychologist, and ambulance partners.",
+    description: "Assigned jobs for the signed-in MediHome partner app only.",
+  },
+  "pharmacy-desk": {
+    title: "Pharmacy Partner | MediHome",
+    description: "Pharmacy partner jobs for MediHome medicine orders.",
+  },
+  "delivery-desk": {
+    title: "Delivery Partner | MediHome",
+    description: "Delivery partner pickup and drop jobs for MediHome medicine orders.",
+  },
+  "lab-desk": {
+    title: "Lab Partner | MediHome",
+    description: "Lab partner jobs for MediHome diagnostic bookings.",
+  },
+  "radiology-desk": {
+    title: "Radiology Partner | MediHome",
+    description: "Radiology partner jobs for MediHome imaging bookings.",
+  },
+  "homecare-desk": {
+    title: "Home Care Partner | MediHome",
+    description: "Home Care partner jobs for MediHome visits.",
+  },
+  "psychologist-desk": {
+    title: "Psychology Partner | MediHome",
+    description: "Psychology partner jobs for MediHome consultations.",
+  },
+  "doctor-desk": {
+    title: "Doctor Partner | MediHome",
+    description: "Doctor partner jobs for MediHome appointments.",
   },
 };
 

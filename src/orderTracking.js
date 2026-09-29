@@ -1,3 +1,4 @@
+import { apiFetch } from "./apiBase.js";
 import {
   locationFromPinSync,
   normalizePin,
@@ -7,6 +8,23 @@ import {
 import { publishOrder } from "./adminApi";
 import { withDeliveryOutlet } from "./deliveryOutlets";
 import { checkpointState, ensureOrderCodes, gatedTrackStatus } from "./orderQr";
+import {
+  isAwaitingCustomerSlotConfirm,
+  isAwaitingPartnerConfirm,
+} from "./orderConfirm.js";
+import { diagnosticStepLabel, isDiagnosticKind } from "./labPipeline.js";
+import { isOngoingTrackOrder } from "./orderStatus.js";
+import { customerMobilesFromOrders } from "./orderSync.js";
+
+export { customerMobilesFromOrders };
+
+export {
+  completedOrders,
+  isCompletedOrder,
+  isOngoingTrackOrder,
+  isPartnerEnRoute,
+  ongoingTrackOrders,
+} from "./orderStatus.js";
 
 export const ORDER_STORAGE = {
   medicine: "mediHomeOrders",
@@ -15,17 +33,23 @@ export const ORDER_STORAGE = {
   homecare: "mediHomeHomeCareBookings",
   vaccination: "mediHomeVaccinationBookings",
   psychologist: "mediHomePsychologistBookings",
+  doctor: "mediHomeDoctorBookings",
   stepdown: "mediHomeStepDownBookings",
   ambulance: "mediHomeAmbulanceRequests",
 };
 
 export const TRACK_STEPS = [
+  { key: "requested", label: "Awaiting Partner Confirmation" },
+  { key: "slot_offered", label: "Awaiting Customer Slot Confirmation" },
   { key: "confirmed", label: "Confirmed" },
   { key: "assigned", label: "Partner Assigned" },
+  { key: "sample_collected", label: "Sample Collected" },
+  { key: "report_ready", label: "Report Ready" },
   { key: "packed", label: "Packed" },
   { key: "on_the_way", label: "On The Way" },
   { key: "arriving", label: "Arriving" },
   { key: "done", label: "Delivered" },
+  { key: "declined", label: "Declined" },
 ];
 
 const DURATION_MS = {
@@ -35,6 +59,7 @@ const DURATION_MS = {
   homecare: 170000,
   vaccination: 170000,
   psychologist: 170000,
+  doctor: 170000,
   stepdown: 180000,
   ambulance: 90000,
 };
@@ -102,6 +127,8 @@ export function kindLabel(kind) {
       return "Vaccination";
     case "psychologist":
       return "Psychologist Consultation";
+    case "doctor":
+      return "Doctor Appointment";
     case "stepdown":
       return "Step-Down Care";
     case "ambulance":
@@ -121,8 +148,10 @@ export function partnerRole(kind) {
       return "Vaccination nurse";
     case "psychologist":
       return "Psychologist";
+    case "doctor":
+      return "Doctor";
     case "stepdown":
-      return "Admission coordinator";
+      return "Centre in-charge";
     case "lab":
       return "Sample collection executive";
     case "radiology":
@@ -163,6 +192,12 @@ const AGENT_ROSTER = {
     { name: "Dr. Rhea Kapoor", mobile: "9999183340" },
     { name: "Dr. Imran Qureshi", mobile: "9818894412" },
   ],
+  doctor: [
+    { name: "Dr. Neha Bansal", mobile: "9813346701" },
+    { name: "Dr. Amit Khurana", mobile: "9876612098" },
+    { name: "Dr. Sana Qureshi", mobile: "9999183302" },
+    { name: "Dr. Rohit Malhotra", mobile: "9818894408" },
+  ],
   lab: [
     { name: "Phlebotomist Kiran Das", mobile: "9815567023" },
     { name: "Phlebotomist Farhan Ali", mobile: "9871204456" },
@@ -182,6 +217,16 @@ const AGENT_ROSTER = {
 };
 
 export function withAssignedAgent(record, kind = recordKind(record)) {
+  if (isAwaitingPartnerConfirm(record) || isAwaitingCustomerSlotConfirm(record)) {
+    return {
+      ...record,
+      agentName: record.agentName || "",
+      agentMobile: record.agentMobile || "",
+      agentVehicle: record.agentVehicle || "",
+      agentUnit: record.agentUnit || "",
+      agentRole: record.agentRole || partnerRole(kind),
+    };
+  }
   const id = recordId(record, kind) || record?.bookingId || record?.requestId || record?.id;
   const pool = AGENT_ROSTER[kind] || AGENT_ROSTER.medicine;
   const pick = pool[hashSeed(String(id || "medihome")) % pool.length];
@@ -243,6 +288,14 @@ export function partnerCopy(kind) {
 }
 
 export function stepLabel(kind, key) {
+  if (isDiagnosticKind(kind)) return diagnosticStepLabel(key, kind);
+  if (key === "requested") return "Awaiting Partner Confirmation";
+  if (key === "slot_offered") return "Awaiting Customer Slot Confirmation";
+  if (key === "declined") {
+    return String(kind || "").toLowerCase() === "stepdown"
+      ? "Not Available"
+      : "Declined By Partner";
+  }
   if (key === "done") return doneLabel(kind);
   if (key === "packed") return "Packed";
   return TRACK_STEPS.find((step) => step.key === key)?.label || "Confirmed";
@@ -266,6 +319,9 @@ export function recordKind(record, fallback = "medicine") {
   ) {
     return "psychologist";
   }
+  if (record?.orderType === "doctor" || record?.bookingId?.startsWith("MH-DOC-")) {
+    return "doctor";
+  }
   if (record?.orderType === "stepdown" || record?.bookingId?.startsWith("MH-SD-")) {
     return "stepdown";
   }
@@ -279,6 +335,7 @@ function usesBookingId(kind) {
     kind === "homecare" ||
     kind === "vaccination" ||
     kind === "psychologist" ||
+    kind === "doctor" ||
     kind === "stepdown" ||
     kind === "lab" ||
     kind === "radiology"
@@ -409,7 +466,12 @@ export function withTracking(record, kind = recordKind(record)) {
       ? lerpPath(start, { lat: destLat, lng: destLng }, progress, id)
       : { lat: start.lat, lng: start.lng };
   const progressKey = completed ? "done" : statusFromProgress(progress);
-  const statusKey = gatedTrackStatus({ ...record, trackCompleted: completed }, progressKey);
+  const statusKey = isDiagnosticKind(kind)
+    ? gatedTrackStatus(
+        { ...record, trackCompleted: completed },
+        completed ? "done" : String(record.trackStatus || "confirmed")
+      )
+    : gatedTrackStatus({ ...record, trackCompleted: completed }, progressKey);
   const assigned = withAssignedAgent({ ...record, kind }, kind);
   const freezeAtStart = !checks.pickup && !completed;
   return {
@@ -439,6 +501,9 @@ export function withTracking(record, kind = recordKind(record)) {
 }
 
 export function tickTracking(record, now = Date.now()) {
+  if (!isOngoingTrackOrder(record)) {
+    return record;
+  }
   const kind = recordKind(record);
   if (!Number.isFinite(Number(record?.destLat)) || !Number.isFinite(Number(record?.destLng))) {
     return record;
@@ -551,9 +616,10 @@ export function loadAllOrders() {
   const psychologist = readList(ORDER_STORAGE.psychologist).map((row) =>
     unifyOrder(row, "psychologist")
   );
+  const doctor = readList(ORDER_STORAGE.doctor).map((row) => unifyOrder(row, "doctor"));
   const stepDown = readList(ORDER_STORAGE.stepdown).map((row) => unifyOrder(row, "stepdown"));
   const ambulance = readList(ORDER_STORAGE.ambulance).map((row) => unifyOrder(row, "ambulance"));
-  return [...diagnostics, ...homeCare, ...vaccination, ...psychologist, ...stepDown, ...ambulance, ...medicines].sort(
+  return [...diagnostics, ...homeCare, ...vaccination, ...psychologist, ...doctor, ...stepDown, ...ambulance, ...medicines].sort(
     (a, b) => (b.sortKey || 0) - (a.sortKey || 0)
   );
 }
@@ -567,20 +633,25 @@ export function findOrderById(id) {
 export async function resolveOrderById(id) {
   const local = findOrderById(id);
   if (local) return local;
+  return refreshOrderFromServer(id);
+}
+
+export async function refreshOrderFromServer(id) {
   const wanted = decodeURIComponent(String(id || "")).trim();
-  if (!wanted) return null;
+  const local = findOrderById(wanted);
+  if (!wanted) return local || null;
   try {
-    const res = await fetch(`/api/orders/lookup?id=${encodeURIComponent(wanted)}`);
+    const res = await apiFetch(`/api/orders/lookup?id=${encodeURIComponent(wanted)}`);
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.order) return null;
-    const kind = data.order.kind || data.order.orderType || "medicine";
-    return persistOrder(withTracking(data.order, kind));
+    if (!res.ok || !data.order) return local || null;
+    const kind = data.order.kind || data.order.orderType || recordKind(data.order);
+    return persistLocalOrder(withTracking({ ...(local || {}), ...data.order, kind }, kind));
   } catch {
-    return null;
+    return local || null;
   }
 }
 
-export function persistOrder(unified, patch = {}) {
+function writePersistedOrder(unified, patch = {}) {
   const kind = unified.kind || recordKind(unified);
   const merged = { ...unified, ...patch, kind };
   const next = { ...merged, ...ensureOrderCodes(merged) };
@@ -591,9 +662,69 @@ export function persistOrder(unified, patch = {}) {
     ? list.map((row) => (sameRecord(row, next) ? stripViewFields({ ...row, ...next }) : row))
     : [stripViewFields(next), ...list];
   writeList(key, nextList);
-  const saved = unifyOrder(next, kind);
-  publishOrder(saved);
+  return unifyOrder(next, kind);
+}
+
+export function persistLocalOrder(unified, patch = {}) {
+  return writePersistedOrder(unified, patch);
+}
+
+export function persistOrder(unified, patch = {}) {
+  const saved = writePersistedOrder(unified, patch);
+  publishOrder({
+    ...saved,
+    kind: saved.kind,
+    orderType: saved.orderType || saved.kind,
+  });
   return saved;
+}
+
+export async function persistAndSendOrder(unified, patch = {}) {
+  const saved = writePersistedOrder(unified, patch);
+  await publishOrder({
+    ...saved,
+    kind: saved.kind,
+    orderType: saved.orderType || saved.kind,
+  });
+  return saved;
+}
+
+function readProfileForOrders() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem("mediHomeUser") || "null");
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function syncMyOrdersFromServer(orders = loadAllOrders()) {
+  const mobiles = customerMobilesFromOrders(orders, readProfileForOrders());
+  const seen = new Set();
+  for (const mobile of mobiles) {
+    try {
+      const res = await apiFetch(`/api/orders/mine?mobile=${encodeURIComponent(mobile)}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !Array.isArray(data.orders)) continue;
+      for (const row of data.orders) {
+        const kind = row.kind || row.orderType || recordKind(row);
+        const id = recordId({ ...row, kind }, kind);
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        persistLocalOrder(withTracking({ ...row, kind }, kind));
+      }
+    } catch {
+      /* keep local rows if the list endpoint is down */
+    }
+  }
+  for (const order of Array.isArray(orders) ? orders : []) {
+    const id = String(order.bookingId || order.id || order.requestId || "");
+    if (!id || seen.has(id)) continue;
+    if (!isOngoingTrackOrder(order) && !isAwaitingPartnerConfirm(order)) continue;
+    const latest = await refreshOrderFromServer(id);
+    if (latest) seen.add(String(latest.id || latest.bookingId || id));
+  }
+  return loadAllOrders();
 }
 
 function stripViewFields(record) {
@@ -626,6 +757,24 @@ export async function attachPinAndTracking(record, pinValue) {
 
 export function ensureTracking(record) {
   const kind = recordKind(record);
+  if (!isOngoingTrackOrder(record)) {
+    return unifyOrder(record, kind);
+  }
+  if (isAwaitingPartnerConfirm(record)) {
+    return unifyOrder(
+      withTracking(
+        {
+          ...record,
+          trackStatus: "requested",
+          status: record.status || "Awaiting Partner Confirmation",
+          partnerConfirmed: false,
+          partnerConfirmStatus: record.partnerConfirmStatus || "pending",
+        },
+        kind
+      ),
+      kind
+    );
+  }
   const pin = normalizePin(record?.pin || record?.pinCode);
   if (!/^\d{6}$/.test(pin)) return unifyOrder(record, kind);
   const dest = destFromRecord(record);
@@ -636,7 +785,11 @@ export function ensureTracking(record) {
       withTracking({ ...seeded, trackStartedAt: Date.now() }, kind)
     );
   }
-  if (seeded.trackStartedAt && Number.isFinite(Number(seeded.destLat))) {
+  if (
+    seeded.trackStartedAt &&
+    Number.isFinite(Number(seeded.destLat)) &&
+    !isDiagnosticKind(kind)
+  ) {
     return unifyOrder(tickTracking(withTracking(seeded, kind)), kind);
   }
   return persistOrder(withTracking(seeded, kind));

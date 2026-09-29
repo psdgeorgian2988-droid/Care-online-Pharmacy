@@ -1,18 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  fetchStaffChats,
   fetchStaffOrders,
   fetchStaffPartners,
   fetchStaffSettings,
   patchStaffOrder,
   patchStaffSettings,
   publishOrder,
-  replyStaffChat,
   staffLogin,
   staffLogout,
   staffToken,
 } from "./adminApi";
 import { cacheFeatures } from "./featureFlags";
+import AdminWebinars from "./AdminWebinars";
+import { cacheWebinars } from "./webinars";
 import {
   TRACK_STEPS,
   doneLabel,
@@ -27,6 +27,7 @@ import {
   analysisRange,
   analysisToCsv,
   compareGroups,
+  featureEnabled,
   filterReport,
   formatInr,
   formatPct,
@@ -61,24 +62,21 @@ import {
   MonthStackChart,
 } from "./adminCharts";
 import {
-  isUnassigned,
+  ADMIN_SERVICE_TABS,
+  SERVICE_ORDER_KINDS,
+  countOrdersForAdminTab,
+  groupOrdersByKind,
   matchesStatusFilter,
   serviceKind,
+  statusMatrix,
   trackKey,
 } from "./orderStatus";
 import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateToday, isoDateYearsAgo } from "./personFields";
-import { paymentMethodLabel } from "./paymentMethods";
-import { settlementOpsNote } from "./paymentSplit";
-
-function personName(order) {
-  return (
-    order.patientName ||
-    order.fullName ||
-    order.name ||
-    "Not provided"
-  );
-}
+import OrderFullView from "./OrderFullView.jsx";
+import OrderListTable from "./OrderListTable.jsx";
+import RefundStatusPanel from "./RefundStatus.jsx";
+import { isRefundOrder, refundTrackKey } from "./refundTrack";
 
 function downloadCsv(filename, text) {
   const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
@@ -96,37 +94,45 @@ function Admin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [orders, setOrders] = useState([]);
-  const [chats, setChats] = useState([]);
-  const [chatId, setChatId] = useState("");
-  const [chatDraft, setChatDraft] = useState("");
   const [partners, setPartners] = useState([]);
   const [features, setFeatures] = useState(DEFAULT_FEATURES);
+  const [featureDraft, setFeatureDraft] = useState(DEFAULT_FEATURES);
+  const [featureSaving, setFeatureSaving] = useState(false);
+  const [featureSavedNote, setFeatureSavedNote] = useState("");
+  const featuresDirtyRef = useRef(false);
+  const [webinars, setWebinars] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [filter, setFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [reportPeriod, setReportPeriod] = useState("mtd");
   const [reportKind, setReportKind] = useState("all");
   const [reportFrom, setReportFrom] = useState("");
   const [reportTo, setReportTo] = useState("");
   const [reportRows, setReportRows] = useState(null);
   const [chartPeriod, setChartPeriod] = useState("mtd");
+  const [openOrderId, setOpenOrderId] = useState("");
+  const [refundFilter, setRefundFilter] = useState("");
 
-  const loadDesk = async () => {
-    setLoading(true);
-    setError("");
+  const loadDesk = async ({ quiet = false } = {}) => {
+    if (!quiet) setLoading(true);
+    if (!quiet) setError("");
     try {
-      const [data, partnerData, settings, chatData] = await Promise.all([
+      const [data, partnerData, settings] = await Promise.all([
         fetchStaffOrders(),
         fetchStaffPartners().catch(() => ({ partners: [] })),
         fetchStaffSettings().catch(() => ({ features: DEFAULT_FEATURES })),
-        fetchStaffChats().catch(() => ({ threads: [] })),
       ]);
       setOrders(Array.isArray(data.orders) ? data.orders : []);
       setPartners(Array.isArray(partnerData.partners) ? partnerData.partners : []);
-      setChats(Array.isArray(chatData.threads) ? chatData.threads : []);
       const nextFeatures = mergeFeatures(settings.features);
       setFeatures(nextFeatures);
+      if (!featuresDirtyRef.current) {
+        setFeatureDraft(nextFeatures);
+      }
       cacheFeatures(nextFeatures);
+      const nextWebinars = Array.isArray(settings.webinars) ? settings.webinars : [];
+      setWebinars(nextWebinars);
+      cacheWebinars(nextWebinars);
     } catch (err) {
       setError(err.message || "Could Not Load Orders.");
       if (String(err.message || "").toLowerCase().includes("login")) {
@@ -134,7 +140,7 @@ function Admin() {
         setToken("");
       }
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   };
 
@@ -142,12 +148,44 @@ function Admin() {
     if (token) loadDesk();
   }, [token]);
 
+  useEffect(() => {
+    if (!token) return undefined;
+    const timer = setInterval(() => {
+      loadDesk({ quiet: true });
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [token]);
+
   const filtered = useMemo(() => {
+    if (!filter) return [];
+    if (filter === "refund") {
+      return orders.filter((order) => {
+        if (!isRefundOrder(order)) return false;
+        if (!refundFilter || refundFilter === "all") return true;
+        return refundTrackKey(order) === refundFilter;
+      });
+    }
     return orders.filter((order) => {
       if (filter !== "all" && serviceKind(order) !== filter) return false;
       return matchesStatusFilter(order, statusFilter);
     });
-  }, [orders, filter, statusFilter]);
+  }, [orders, filter, statusFilter, refundFilter]);
+
+  const serviceStatus = useMemo(() => {
+    if (!filter || filter === "refund") {
+      return { open: 0, inProgress: 0, done: 0, unassigned: 0, total: filtered.length };
+    }
+    const scope =
+      filter === "all" ? orders : orders.filter((order) => serviceKind(order) === filter);
+    const matrix = statusMatrix(scope);
+    return {
+      open: matrix.open,
+      inProgress: matrix.inProgress,
+      done: matrix.done,
+      unassigned: matrix.unassigned,
+      total: scope.length,
+    };
+  }, [orders, filter, filtered.length]);
 
   const sales = useMemo(() => summarizeSales(orders), [orders]);
   const growth = useMemo(() => growthSnapshot(orders), [orders]);
@@ -244,6 +282,35 @@ function Admin() {
     }
   };
 
+  const handleSplit = async (order, partnerPercent) => {
+    const id = order.id || order.bookingId || order.requestId;
+    const next = Number(partnerPercent);
+    if (!Number.isFinite(next) || next < 0 || next > 100) {
+      setError("Partner split must be between 0 and 100.");
+      return;
+    }
+    setError("");
+    try {
+      const data = await patchStaffOrder(id, { partnerPercent: next });
+      persistOrder(order, data.order || { split: { ...order.split, partnerPercent: next } });
+      await loadDesk();
+    } catch (err) {
+      setError(err.message || "Could Not Update Split.");
+    }
+  };
+
+  const handleRefund = async (order, fields) => {
+    const id = order.id || order.bookingId || order.requestId;
+    setError("");
+    try {
+      const data = await patchStaffOrder(id, fields);
+      persistOrder(order, data.order || fields);
+      await loadDesk();
+    } catch (err) {
+      setError(err.message || "Could not update refund.");
+    }
+  };
+
   const importBrowserOrders = async () => {
     setError("");
     const local = loadAllOrders();
@@ -251,36 +318,70 @@ function Admin() {
     await loadDesk();
   };
 
-  const handleChatReply = async (event) => {
-    event.preventDefault();
-    const id = chatId || chats[0]?.sessionId;
-    if (!id || !chatDraft.trim()) return;
+  const saveWebinars = async (next) => {
+    const saved = await patchStaffSettings({ webinars: next });
+    const rows = Array.isArray(saved.webinars) ? saved.webinars : next;
+    setWebinars(rows);
+    cacheWebinars(rows);
+  };
+
+  const toggleFeature = (key) => {
+    setFeatureDraft((prev) => ({ ...prev, [key]: !featureEnabled(prev, key) }));
+  };
+
+  const featuresDirty = useMemo(
+    () =>
+      FEATURE_CATALOG.some(
+        (row) => featureEnabled(featureDraft, row.key) !== featureEnabled(features, row.key)
+      ),
+    [featureDraft, features]
+  );
+  featuresDirtyRef.current = featuresDirty;
+
+  const saveFeatures = async () => {
+    setFeatureSaving(true);
     setError("");
+    setFeatureSavedNote("");
     try {
-      const data = await replyStaffChat(id, chatDraft.trim());
-      setChatDraft("");
-      setChats((rows) =>
-        rows.map((row) => (row.sessionId === id ? data.thread : row))
-      );
+      const saved = await patchStaffSettings({ features: featureDraft });
+      const merged = mergeFeatures(saved.features);
+      setFeatures(merged);
+      setFeatureDraft(merged);
+      cacheFeatures(merged);
+      setFeatureSavedNote("Saved. Customers now see these On/Off settings.");
     } catch (err) {
-      setError(err.message || "Could Not Send Care Reply.");
+      setError(err.message || "Could Not Save Feature Switches.");
+      await loadDesk();
+    } finally {
+      setFeatureSaving(false);
     }
   };
 
-  const toggleFeature = async (key) => {
-    const next = { ...features, [key]: !features[key] };
-    setFeatures(next);
-    cacheFeatures(next);
-    try {
-      const saved = await patchStaffSettings({ features: next });
-      const merged = mergeFeatures(saved.features);
-      setFeatures(merged);
-      cacheFeatures(merged);
-    } catch (err) {
-      setError(err.message || "Could Not Save Feature Switch.");
-      await loadDesk();
-    }
+  const resetFeatureDraft = () => {
+    setFeatureDraft(features);
+    setFeatureSavedNote("");
   };
+
+  const renderFeatureActions = () => (
+    <div className="admin-feature-actions">
+      <button
+        type="button"
+        className="admin-feature-save"
+        onClick={saveFeatures}
+        disabled={!featuresDirty || featureSaving}
+      >
+        {featureSaving ? "Saving…" : "Save"}
+      </button>
+      <button
+        type="button"
+        className="admin-feature-reset"
+        onClick={resetFeatureDraft}
+        disabled={!featuresDirty || featureSaving}
+      >
+        Discard
+      </button>
+    </div>
+  );
 
   const generateReport = () => {
     const rows = filterReport(orders, {
@@ -336,8 +437,7 @@ function Admin() {
         <div className="service-page admin-page">
           <section className="service-hero">
             <span className="service-kicker">Operations</span>
-            <h1>Staff Login</h1>
-            <p>Assign Partners, Update Status, And See Payment Splits. This Desk Is Separate From The Public Website.</p>
+            <h1>Admin Panel</h1>
           </section>
           <form className="service-form admin-login" onSubmit={handleLogin}>
             <div className="field">
@@ -376,23 +476,8 @@ function Admin() {
         <section className="service-hero admin-hero">
           <div>
             <span className="service-kicker">Operations</span>
-            <h1>Staff Desk</h1>
-            <p>
-              Sales, Feature Switches, Growth Charts, And Partner Assignment.
-              Scan Delivery Controls Stay On This Desk. Customers And Riders Only
-              See Scan Delivery While Receiving A Medicine Order.
-            </p>
           </div>
           <div className="admin-hero-actions">
-            <a className="admin-scan-link" href="#scan?step=pack">
-              Scan Packing
-            </a>
-            <a className="admin-scan-link" href="#scan?step=pickup">
-              Scan Pickup
-            </a>
-            <a className="admin-scan-link" href="#scan?step=deliver">
-              Scan Delivery
-            </a>
             <button type="button" onClick={loadDesk} disabled={loading}>
               {loading ? "Refreshing…" : "Refresh"}
             </button>
@@ -414,52 +499,277 @@ function Admin() {
 
         {error ? <p className="admin-error">{error}</p> : null}
 
-        <section className="admin-panel" aria-label="Customer Care Inbox">
-          <h2>Customer Care Inbox</h2>
-          <p>Replies From This Desk Show In The Public Chatbox.</p>
-          {chats.length === 0 ? (
-            <p className="admin-muted">No Website Chats Yet.</p>
-          ) : (
-            <div className="admin-chat-layout">
-              <ul className="admin-chat-list">
-                {chats.map((row) => (
-                  <li key={row.sessionId}>
-                    <button
-                      type="button"
-                      className={
-                        (chatId || chats[0]?.sessionId) === row.sessionId ? "is-on" : ""
-                      }
-                      onClick={() => setChatId(row.sessionId)}
-                    >
-                      <strong>{row.name || "Guest"}</strong>
-                      <span>
-                        {row.needsStaff ? "Needs Staff · " : ""}
-                        {row.messages?.at(-1)?.text?.slice(0, 48) || "Empty"}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <div className="admin-chat-thread">
-                {(chats.find((row) => row.sessionId === (chatId || chats[0]?.sessionId))
-                  ?.messages || []
-                ).map((row) => (
-                  <p key={row.id} className={`admin-chat-line is-${row.from}`}>
-                    <strong>{row.from === "user" ? "Customer" : row.from === "staff" ? "You" : "Bot"}:</strong>{" "}
-                    {row.text}
-                  </p>
-                ))}
-                <form onSubmit={handleChatReply} className="admin-chat-compose">
-                  <input
-                    value={chatDraft}
-                    onChange={(event) => setChatDraft(event.target.value)}
-                    placeholder="Reply To This Chat"
-                  />
-                  <button type="submit">Send</button>
-                </form>
-              </div>
+        <section className="admin-panel admin-feature-panel" aria-label="Feature Switches">
+          <div className="admin-feature-head">
+            <div>
+              <h2>Turn Services On Or Off</h2>
             </div>
-          )}
+          </div>
+          {featuresDirty ? (
+            <p className="admin-feature-note" role="status">
+              Unsaved changes — website and app still use the last saved
+              settings until you Save.
+            </p>
+          ) : null}
+          {featureSavedNote && !featuresDirty ? (
+            <p className="admin-feature-ok" role="status">
+              {featureSavedNote}
+            </p>
+          ) : null}
+          <div className="admin-switches">
+            {FEATURE_CATALOG.map((row) => {
+              const draftOn = featureEnabled(featureDraft, row.key);
+              const liveOn = featureEnabled(features, row.key);
+              const dirty = draftOn !== liveOn;
+              return (
+                <button
+                  key={row.key}
+                  type="button"
+                  role="switch"
+                  aria-checked={draftOn}
+                  className={`${draftOn ? "is-on" : ""}${dirty ? " is-dirty" : ""}`}
+                  onClick={() => {
+                    setFeatureSavedNote("");
+                    toggleFeature(row.key);
+                  }}
+                  disabled={featureSaving}
+                >
+                  <span>
+                    {row.label}
+                    {dirty ? (
+                      <em className="admin-feature-draft"> · draft</em>
+                    ) : null}
+                  </span>
+                  <strong>{draftOn ? "On" : "Off"}</strong>
+                </button>
+              );
+            })}
+          </div>
+          {renderFeatureActions()}
+        </section>
+
+        <section
+          className="admin-panel admin-feature-panel admin-orders-box"
+          id="staff-orders"
+          aria-label="Order status"
+        >
+          <div className="admin-feature-head">
+            <div>
+              <h2>Order status</h2>
+            </div>
+          </div>
+          <div
+            className="admin-switches admin-order-service-tiles"
+            role="tablist"
+            aria-label="Service"
+          >
+            {ADMIN_SERVICE_TABS.map((tab) => {
+              const count = countOrdersForAdminTab(orders, tab.value);
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === tab.value}
+                  className={filter === tab.value ? "is-on" : ""}
+                  onClick={() => {
+                    setFilter(tab.value);
+                    setStatusFilter("");
+                    setRefundFilter("");
+                  }}
+                >
+                  <span>{tab.label}</span>
+                  <strong>{count}</strong>
+                </button>
+              );
+            })}
+          </div>
+          {filter && filter !== "refund" ? (
+          <div className="admin-order-status-row" aria-label="Order status">
+            {[
+              ["all", "All", serviceStatus.total],
+              ["open", "Open", serviceStatus.open],
+              ["progress", "In progress", serviceStatus.inProgress],
+              ["done", "Done", serviceStatus.done],
+              ["unassigned", "Unassigned", serviceStatus.unassigned],
+            ].map(([value, label, count]) => (
+              <button
+                key={value}
+                type="button"
+                className={statusFilter === value ? "is-on" : ""}
+                onClick={() => setStatusFilter(value)}
+              >
+                <span>{label}</span>
+                <strong>{count}</strong>
+              </button>
+            ))}
+          </div>
+          ) : null}
+          {filter === "refund" ? (
+            <div className="lab-tabs admin-tabs" role="tablist" aria-label="Refund status">
+              {[
+                ["all", "All refunds"],
+                ["pending", "Pending"],
+                ["processing", "Processing"],
+                ["refunded", "Refunded"],
+                ["rejected", "Declined"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={refundFilter === value ? "is-on" : ""}
+                  onClick={() => setRefundFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <div className="admin-orders-box-body">
+        {!filter ? null : filter === "refund" ? (
+          <section className="order-category" aria-label="Refunds">
+            <h2>Refunds</h2>
+            <OrderListTable
+              orders={filtered}
+              audience="staff"
+              empty={loading ? "Loading…" : "No refund or return orders yet."}
+              openId={openOrderId}
+              onOpen={setOpenOrderId}
+              renderDetail={(order) => {
+                const id = order.id || order.bookingId || order.requestId;
+                const kind = serviceKind(order);
+                const step = trackKey(order);
+                return (
+                  <div className="admin-order-detail-inner">
+                    <OrderFullView order={order} audience="staff" />
+                    <RefundStatusPanel
+                      order={order}
+                      audience="staff"
+                      onUpdate={handleRefund}
+                    />
+                    <div className="admin-order-tools">
+                      <label>
+                        Status
+                        <select
+                          value={step}
+                          onChange={(event) => handleStatus(order, event.target.value)}
+                        >
+                          {TRACK_STEPS.map((row) => (
+                            <option key={row.key} value={row.key}>
+                              {row.key === "done" ? doneLabel(kind) : row.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <p>
+                      <a href={trackHref(id)}>Live Track</a>
+                    </p>
+                  </div>
+                );
+              }}
+            />
+          </section>
+        ) : groupOrdersByKind(
+          filtered,
+          filter === "all" ? SERVICE_ORDER_KINDS : [filter]
+        ).map((group) => (
+          <section key={group.kind} className="order-category" aria-label={group.title}>
+            <h2>{group.title}</h2>
+            <OrderListTable
+              orders={group.orders}
+              audience="staff"
+              empty={loading ? "Loading…" : `No ${group.title.toLowerCase()}.`}
+              openId={openOrderId}
+              onOpen={setOpenOrderId}
+              renderDetail={(order) => {
+                const id = order.id || order.bookingId || order.requestId;
+                const kind = serviceKind(order);
+                const step = trackKey(order);
+                return (
+                  <div className="admin-order-detail-inner">
+                    <OrderFullView order={order} audience="staff" />
+                    {isRefundOrder(order) || String(kind) === "medicine" ? (
+                      <RefundStatusPanel
+                        order={order}
+                        audience="staff"
+                        onUpdate={handleRefund}
+                      />
+                    ) : null}
+                    <div className="admin-order-tools">
+                      <label>
+                        Assigned to
+                        <select
+                          value={order.partnerId || ""}
+                          onChange={(event) => handleAssign(order, event.target.value)}
+                        >
+                          <option value="">Unassigned</option>
+                          {partners
+                            .filter(
+                              (row) =>
+                                !row.kinds?.length ||
+                                row.kinds.includes(kind) ||
+                                row.id === order.partnerId
+                            )
+                            .map((row) => (
+                              <option key={row.id} value={row.id}>
+                                {row.name}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                      <label>
+                        Status
+                        <select
+                          value={step}
+                          onChange={(event) => handleStatus(order, event.target.value)}
+                        >
+                          {TRACK_STEPS.map((row) => (
+                            <option key={row.key} value={row.key}>
+                              {row.key === "done" ? doneLabel(kind) : row.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Partner %
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          defaultValue={
+                            order.split?.partnerPercent ??
+                            partners.find((row) => row.id === order.partnerId)
+                              ?.partnerPercent ??
+                            ""
+                          }
+                          key={`${id}-${order.split?.partnerPercent ?? ""}-${order.updatedAt || ""}`}
+                          aria-label={`Partner split percent for order ${id}`}
+                          onBlur={(event) => {
+                            const next = Number(event.target.value);
+                            const current = Number(order.split?.partnerPercent);
+                            if (Number.isFinite(next) && next !== current) {
+                              handleSplit(order, next);
+                            }
+                          }}
+                        />
+                      </label>
+                      {order.split?.partnerPercent != null ? (
+                        <span className="admin-outlet-area">
+                          MediHome {100 - Number(order.split.partnerPercent)}%
+                        </span>
+                      ) : null}
+                    </div>
+                    <p>
+                      <a href={trackHref(id)}>Live Track</a>
+                    </p>
+                  </div>
+                );
+              }}
+            />
+          </section>
+        ))}
+          </div>
         </section>
 
         <section className="admin-kpis" aria-label="Sales Figures">
@@ -518,29 +828,11 @@ function Admin() {
           {storeDown ? `Store Drop: ${storeDown.label} (${formatPct(storeDown.pct)}).` : ""}
         </p>
 
-        <section className="admin-panel" aria-label="Feature Switches">
-          <h2>Turn Features On Or Off</h2>
-          <p>
-            Off Services Stay On The Menu And Show Coming Soon Until You Turn Them Back On.
-            Scan Delivery Buttons Stay Visible. When This Switch Is Off, A Customer Click
-            Opens Coming Soon.
-          </p>
-          <div className="admin-switches">
-            {FEATURE_CATALOG.map((row) => (
-              <button
-                key={row.key}
-                type="button"
-                role="switch"
-                aria-checked={features[row.key] !== false}
-                className={features[row.key] !== false ? "is-on" : ""}
-                onClick={() => toggleFeature(row.key)}
-              >
-                <span>{row.label}</span>
-                <strong>{features[row.key] !== false ? "On" : "Off"}</strong>
-              </button>
-            ))}
-          </div>
-        </section>
+        <AdminWebinars
+          webinars={webinars}
+          onChange={saveWebinars}
+          onError={setError}
+        />
 
         <AdminPartnerLogins partners={partners} onChange={setPartners} />
 
@@ -793,207 +1085,6 @@ function Admin() {
           }}
           onStatus={handleStatus}
         />
-
-        <div id="staff-orders" className="lab-tabs admin-tabs" role="tablist">
-          {[
-            ["all", "All"],
-            ["medicine", "Medicines"],
-            ["lab", "Lab"],
-            ["radiology", "Radiology"],
-            ["homecare", "Home Care"],
-            ["vaccination", "Vaccination"],
-            ["psychologist", "Psychologist"],
-            ["stepdown", "Step-Down"],
-            ["ambulance", "Ambulance"],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              className={filter === value ? "is-on" : ""}
-              onClick={() => setFilter(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="lab-tabs admin-tabs" role="tablist" aria-label="Status Filter">
-          {[
-            ["all", "All Statuses"],
-            ["open", "Open"],
-            ["progress", "In Progress"],
-            ["unassigned", "Unassigned"],
-            ["confirmed", "Confirmed"],
-            ["assigned", "Assigned"],
-            ["on_the_way", "On The Way"],
-            ["arriving", "Arriving"],
-            ["done", "Done"],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              className={statusFilter === value ? "is-on" : ""}
-              onClick={() => setStatusFilter(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Order</th>
-                <th>Type</th>
-                <th>Patient</th>
-                <th>PIN</th>
-                <th>Outlet</th>
-                <th>When</th>
-                <th>Amount</th>
-                <th>Pay / Split</th>
-                <th>Partner</th>
-                <th>Status</th>
-                <th>Track</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan="11">
-                    {loading
-                      ? "Loading…"
-                      : "No Orders In This Status. Place A Booking, Then Refresh, Or Choose All Statuses."}
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((order) => {
-                  const id = order.id || order.bookingId || order.requestId;
-                  const kind = serviceKind(order);
-                  const step = trackKey(order);
-                  return (
-                    <tr
-                      key={`${kind}-${id}`}
-                      className={isUnassigned(order) ? "is-unassigned" : ""}
-                    >
-                      <td>#{id}</td>
-                      <td>{kindLabel(kind)}</td>
-                      <td>{personName(order)}</td>
-                      <td>{order.pinCode || order.pin || "—"}</td>
-                      <td>
-                        {order.outletName ? (
-                          <>
-                            {order.outletName}
-                            {order.outletArea ? (
-                              <span className="admin-outlet-area">
-                                {" "}
-                                · {order.outletArea}
-                              </span>
-                            ) : null}
-                          </>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td>{order.date || order.bookedAt || order.requestedAt || "—"}</td>
-                      <td>
-                        {order.total != null && order.total !== ""
-                          ? `₹${Number(order.total).toLocaleString("en-IN")}`
-                          : "—"}
-                        {order.split?.discountRupees > 0 ? (
-                          <span className="admin-outlet-area">
-                            <br />
-                            Sale ₹
-                            {Number(order.split.saleRupees || order.saleRupees || 0).toLocaleString("en-IN")}
-                            {" · Disc ₹"}
-                            {Number(order.split.discountRupees).toLocaleString("en-IN")}
-                            {order.split.couponCode ? ` · ${order.split.couponCode}` : ""}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td>
-                        {paymentMethodLabel(order.paymentMethod, "COD")}
-                        {order.paymentStatus ? ` · ${order.paymentStatus}` : ""}
-                        {order.split ? (
-                          <span className="admin-outlet-area">
-                            <br />
-                            MH ₹{Number(order.split.platformRupees || 0).toLocaleString("en-IN")}
-                            {" · "}
-                            Partner ₹
-                            {Number(order.split.partnerRupees || 0).toLocaleString("en-IN")}
-                            {order.split.partnerPercent != null
-                              ? ` (${order.split.partnerPercent}% MRP)`
-                              : ""}
-                            {settlementOpsNote(order.split, {
-                              collector: order.collector,
-                              paymentMethod: order.paymentMethod,
-                            }) ? (
-                              <>
-                                <br />
-                                {settlementOpsNote(order.split, {
-                                  collector: order.collector,
-                                  paymentMethod: order.paymentMethod,
-                                })}
-                              </>
-                            ) : null}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td>
-                        <select
-                          value={order.partnerId || ""}
-                          onChange={(event) => handleAssign(order, event.target.value)}
-                        >
-                          <option value="">Unassigned</option>
-                          {partners
-                            .filter(
-                              (row) =>
-                                !row.kinds?.length ||
-                                row.kinds.includes(kind) ||
-                                row.id === order.partnerId
-                            )
-                            .map((row) => (
-                              <option key={row.id} value={row.id}>
-                                {row.name}
-                              </option>
-                            ))}
-                        </select>
-                      </td>
-                      <td>
-                        <span className={`admin-status-pill is-${step}`}>
-                          {step === "done" ? doneLabel(kind) : TRACK_STEPS.find((row) => row.key === step)?.label}
-                        </span>
-                        <select
-                          value={step}
-                          onChange={(event) => handleStatus(order, event.target.value)}
-                        >
-                          {TRACK_STEPS.map((row) => (
-                            <option key={row.key} value={row.key}>
-                              {row.key === "done" ? doneLabel(kind) : row.label}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <a href={trackHref(id)}>Live Track</a>
-                        {String(kind) === "medicine" ? (
-                          <>
-                            {" · "}
-                            <a href={`#scan?id=${encodeURIComponent(id)}&step=pack`}>Scan Packing</a>
-                            {" · "}
-                            <a href={`#scan?id=${encodeURIComponent(id)}&step=pickup`}>Scan Pickup</a>
-                            {" · "}
-                            <a href={`#scan?id=${encodeURIComponent(id)}&step=deliver`}>Scan Delivery</a>
-                          </>
-                        ) : null}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
       </div>
     </>
   );
@@ -1007,7 +1098,10 @@ const styles = `
 .admin-hero-actions button,.admin-report-controls button,.admin-scan-link{border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
 .admin-login{max-width:420px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}
+.admin-retention-note{margin:0 auto 12px;max-width:1240px;font-size:12px;line-height:1.45;color:#34546b}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}
+.order-category{margin:0 0 18px}
+.order-category h2{margin:0 0 8px;font-size:16px;color:#143246}
 .admin-table-wrap{overflow:auto;background:#fff;border:1px solid #e4ecef;border-radius:12px;margin-bottom:16px}
 .admin-table{width:100%;border-collapse:collapse;font-size:13px}
 .admin-table th,.admin-table td{padding:8px 10px;border-bottom:1px solid #edf1f3;text-align:left;vertical-align:middle}
@@ -1036,11 +1130,34 @@ const styles = `
 .admin-panel{background:#fff;border:1px solid #e4ecef;border-radius:12px;padding:14px;margin-bottom:14px}
 .admin-panel h2{margin:0 0 6px;font-size:16px}
 .admin-panel p{margin:0 0 10px;color:#5d7180;font-size:13px}
+.admin-feature-panel{border-color:#b7d0dc;box-shadow:0 1px 0 rgba(26,107,122,.06)}
+.admin-orders-box .admin-order-service-tiles{margin-bottom:12px}
+.admin-order-status-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 12px}
+.admin-order-status-row button{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid #d7e2e9;border-radius:10px;background:#f7fafc;padding:10px 12px;font:inherit;cursor:pointer}
+.admin-order-status-row button.is-on{background:#e7f1f6;border-color:#b7d0dc}
+.admin-order-status-row span{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
+.admin-order-status-row strong{font-size:16px;color:#123b5d}
+.admin-orders-box-body .order-category{margin:0 0 12px}
+.admin-orders-box-body .order-category:last-child{margin-bottom:0}
+.admin-orders-box-body .admin-table-wrap{margin-bottom:0}
+.admin-feature-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
+.admin-feature-head h2{margin:0 0 6px}
+.admin-feature-head p{margin:0;max-width:42rem}
 .admin-switches{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .admin-switches button{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid #d7e2e9;border-radius:10px;background:#f7fafc;padding:10px 12px;font:inherit;cursor:pointer}
 .admin-switches button.is-on{background:#e7f6ef;border-color:#b7e0c8}
+.admin-switches button.is-dirty{outline:2px solid #e2a30b;outline-offset:1px}
 .admin-switches strong{font-size:12px;color:#5d7180}
 .admin-switches button.is-on strong{color:#1a7a45}
+.admin-feature-draft{font-style:normal;font-weight:700;color:#a56a00;font-size:11px}
+.admin-feature-note{margin:0 0 10px;padding:10px 12px;border-radius:8px;background:#fff7e6;color:#7a4b00;font-size:13px;font-weight:700}
+.admin-feature-ok{margin:0 0 10px;padding:10px 12px;border-radius:8px;background:#e7f6ef;color:#1a7a45;font-size:13px;font-weight:700}
+.admin-feature-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.admin-feature-head .admin-feature-actions{margin-top:0}
+.admin-feature-save,.admin-feature-reset{min-height:40px;padding:8px 18px;border-radius:8px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+.admin-feature-save{border:none;background:#1a6b7a;color:#fff}
+.admin-feature-save:disabled,.admin-feature-reset:disabled{opacity:.55;cursor:not-allowed}
+.admin-feature-reset{border:1px solid #d7e2e9;background:#fff;color:#34546b}
 .admin-chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .admin-chart{background:#fff;border:1px solid #e4ecef;border-radius:12px;padding:14px}
 .admin-chart-wide{margin-bottom:14px}
@@ -1110,37 +1227,34 @@ const styles = `
 .admin-partner-create{margin-top:14px;padding:12px;border:1px solid #e4ecef;border-radius:12px;background:#fff}
 .admin-partner-create h3{margin:0 0 10px;font-size:14px}
 .admin-partner-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.admin-partner-grid select{min-height:36px;border:1px solid #d7e2e9;border-radius:8px;padding:6px 8px;font:inherit}
 .admin-partner-grid label,.admin-partner-grid fieldset{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;color:#34546b;border:0;margin:0;padding:0}
 .admin-partner-grid legend{font-size:12px;font-weight:700;color:#34546b}
 .admin-partner-kinds{display:flex;flex-wrap:wrap;gap:8px;font-weight:600}
 .admin-partner-kinds label{flex-direction:row;align-items:center;gap:6px;font-weight:600}
 .admin-partner-create button{border:1px solid #1a6b7a;border-radius:6px;background:#1a6b7a;color:#fff;font:inherit;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer}
+.admin-order-toggle{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;border:0;background:transparent;padding:0;font:inherit;font-weight:800;color:#1a6b7a;cursor:pointer}
+.admin-order-toggle span{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
+.admin-order-toggle.is-on span{color:#1a6b7a}
+.admin-order-detail td{background:#f7fbfd;vertical-align:top}
+.admin-split-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
+.admin-split-row input[type=number]{width:72px;min-width:72px;max-width:80px}
+.admin-split-row label{display:flex;flex-direction:column;gap:2px;font-size:11px;font-weight:700;color:#5d7180}
+.admin-order-tools{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:12px 0 8px}
+.admin-order-tools label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;color:#5d7180}
+.admin-order-tools input[type=number]{width:72px}
 @media (max-width:800px){.admin-partner-grid{grid-template-columns:1fr}}
-.admin-chat-layout{display:grid;grid-template-columns:220px 1fr;gap:10px}
-.admin-chat-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:240px;overflow:auto}
-.admin-chat-list button{width:100%;border:1px solid #e4ecef;border-radius:8px;background:#f7fafc;padding:8px;text-align:left;font:inherit;cursor:pointer}
-.admin-chat-list button.is-on{background:#e7f1f6;border-color:#b7d0dc}
-.admin-chat-list strong{display:block;font-size:13px}
-.admin-chat-list span{display:block;color:#5d7180;font-size:11px}
-.admin-chat-thread{border:1px solid #e4ecef;border-radius:8px;padding:8px;max-height:240px;overflow:auto;background:#f7fafc}
-.admin-chat-line{margin:0 0 6px;font-size:12px}
-.admin-chat-line.is-user{color:#123b5d}
-.admin-chat-line.is-staff{color:#1a7a45}
-.admin-chat-compose{display:flex;gap:6px;margin-top:8px}
-.admin-chat-compose input{flex:1;min-height:34px;border:1px solid #d7e2e9;border-radius:8px;padding:0 8px;font:inherit}
-.admin-chat-compose button{border:0;border-radius:8px;background:#1a6b7a;color:#fff;font:inherit;font-weight:700;padding:0 10px;cursor:pointer}
-@media (max-width:800px){
-  .admin-chat-layout{grid-template-columns:1fr}
-}
+.admin-care-tag{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#e8f1f6;color:#1a6b7a;font-size:13px;font-weight:700;letter-spacing:.01em;flex:none}
+.admin-care-tag em{font-style:normal;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:#1a6b7a;color:#fff;font-size:11px;line-height:18px;text-align:center}
 @media (max-width:1100px){
   .admin-pipe{grid-template-columns:repeat(5,minmax(180px,1fr))}
 }
 @media (max-width:900px){
-  .admin-kpis,.admin-chart-grid,.admin-switches,.admin-status-kpis{grid-template-columns:1fr 1fr}
+  .admin-kpis,.admin-chart-grid,.admin-switches,.admin-status-kpis,.admin-order-status-row{grid-template-columns:1fr 1fr}
 }
 @media (max-width:800px){.admin-hero{flex-direction:column}}
 @media (max-width:640px){
-  .admin-kpis,.admin-chart-grid,.admin-switches,.admin-status-kpis{grid-template-columns:1fr}
+  .admin-kpis,.admin-chart-grid,.admin-switches,.admin-status-kpis,.admin-order-status-row{grid-template-columns:1fr}
 }
 `;
 

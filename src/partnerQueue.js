@@ -1,3 +1,5 @@
+import { apiFetch } from "./apiBase.js";
+
 const PEAK_HOURS = new Set([8, 9, 10, 11, 18, 19, 20, 21, 22]);
 const BUSY_OPEN_COUNT = 1;
 const BUSY_HOLD_MS = 3600;
@@ -10,6 +12,7 @@ export const TRAFFIC_KINDS = [
   "homecare",
   "vaccination",
   "psychologist",
+  "doctor",
   "stepdown",
   "ambulance",
 ];
@@ -22,6 +25,7 @@ const STORES = [
   ["mediHomeHomeCareBookings", "homecare"],
   ["mediHomeVaccinationBookings", "vaccination"],
   ["mediHomePsychologistBookings", "psychologist"],
+  ["mediHomeDoctorBookings", "doctor"],
   ["mediHomeStepDownBookings", "stepdown"],
   ["mediHomeAmbulanceRequests", "ambulance"],
 ];
@@ -49,6 +53,8 @@ function kindLabel(kind) {
       return "Vaccination";
     case "psychologist":
       return "Psychologist Consultation";
+    case "doctor":
+      return "Doctor Appointment";
     case "stepdown":
       return "Step-Down Care";
     case "ambulance":
@@ -67,6 +73,7 @@ export function kindFromRecord(row, fallback) {
     kind === "homecare" ||
     kind === "vaccination" ||
     kind === "psychologist" ||
+    kind === "doctor" ||
     kind === "stepdown" ||
     kind === "ambulance"
   ) {
@@ -100,7 +107,12 @@ function readBrowserOrders() {
 
 export function isOpenPartnerJob(order) {
   const status = String(order?.trackStatus || order?.status || "").toLowerCase();
-  return status !== "done" && status !== "delivered" && status !== "completed";
+  return (
+    status !== "done" &&
+    status !== "delivered" &&
+    status !== "completed" &&
+    status !== "declined"
+  );
 }
 
 export function openTrafficFromOrders(orders) {
@@ -121,7 +133,7 @@ export async function refreshLiveTraffic() {
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), LIVE_TRAFFIC_MS);
-    const res = await fetch("/api/traffic", {
+    const res = await apiFetch("/api/traffic", {
       signal: ctrl.signal,
       headers: { Accept: "application/json" },
     });

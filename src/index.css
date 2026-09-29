@@ -3,6 +3,12 @@
   --mh-heading: #123b5d;
   --mh-bg: #f5f8fb;
   --mh-accent: #087f8c;
+  --mh-surface: #ffffff;
+  --mh-ink: #143246;
+  --mh-muted: #5d7180;
+  --mh-teal: #1a6b7a;
+  --mh-border: #b7d7e2;
+  --mh-mid: #d2e8ef;
   --mh-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
@@ -48,8 +54,8 @@ body {
   gap: 8px;
   padding: 24px;
   text-align: center;
-  background: #eaf4fb;
-  color: #143246;
+  background: var(--mh-bg);
+  color: var(--mh-ink);
 }
 
 h1,
@@ -62,4 +68,10 @@ h3 {
 
 p {
   margin: 0;
+}
+
+.site-menu-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }

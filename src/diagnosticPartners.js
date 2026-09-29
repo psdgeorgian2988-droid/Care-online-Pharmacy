@@ -1,3 +1,5 @@
+import { PATHCARE_TESTS } from "./data/pathcareTests.js";
+
 export const MEDIHOME_BILLING = {
   id: "MH-GST",
   name: "MediHome Healthcare Private Limited",
@@ -50,7 +52,7 @@ export const DIAGNOSTIC_LABS = [
   },
   {
     id: "lal-pathlabs",
-    name: "Lal PathLabs",
+    name: "Lal Path Lab",
     area: "Rohini",
     address: "Rohini, New Delhi 110085",
     gstin: "07AAACL0582L1Z2",
@@ -68,7 +70,7 @@ export const DIAGNOSTIC_LABS = [
   },
   {
     id: "agilus",
-    name: "Agilus Diagnostics",
+    name: "Agilus Healthcare",
     area: "Okhla",
     address: "Okhla, New Delhi 110020",
     gstin: "07AAACA4471A1Z6",
@@ -83,12 +85,42 @@ export const DIAGNOSTIC_LABS = [
       { id: "stool-occult", name: "Stool Occult Blood", price: 329 },
     ],
   },
+  {
+    id: "pathcare",
+    name: "Pathcare Diagnostics",
+    area: "Delhi NCR",
+    address: "Pathcare Diagnostics, Delhi NCR",
+    gstin: "07AABCP4821D1Z9",
+    dlNo: "DMC/LAB/2019/1630",
+    licenseLabel: "Lab Licence No.",
+    tests: PATHCARE_TESTS,
+  },
+  {
+    id: "others",
+    name: "Others",
+    area: "Delhi NCR",
+    address: "Partner network, Delhi NCR",
+    gstin: "07AAMCM2608Q1Z3",
+    dlNo: "DMC/LAB/NET/0001",
+    licenseLabel: "Lab Licence No.",
+    tests: [
+      { id: "cbc", name: "Complete Blood Count (CBC)", price: 399 },
+      { id: "hba1c", name: "HbA1c - Diabetes Test", price: 499 },
+      { id: "lipid", name: "Lipid Profile", price: 599 },
+      { id: "thyroid", name: "Thyroid Profile", price: 649 },
+      { id: "lft", name: "Liver Function Test (LFT)", price: 749 },
+      { id: "kft", name: "Kidney Function Test (KFT)", price: 749 },
+      { id: "vitd", name: "Vitamin D Test", price: 699 },
+      { id: "vitb12", name: "Vitamin B12", price: 699 },
+      { id: "urine", name: "Complete Urine Examination", price: 279 },
+    ],
+  },
 ];
 
 export const IMAGING_CENTRES = [
   {
-    id: "rad1",
-    name: "MediHome Imaging Centre - Gurgaon",
+    id: "rad-gurgaon",
+    name: "MediHome Gurgaon",
     area: "Sector 29, Gurugram",
     address: "Sector 29, Gurugram 122001",
     gstin: "06AAMHM1220G1Z4",
@@ -103,8 +135,24 @@ export const IMAGING_CENTRES = [
     ],
   },
   {
-    id: "rad2",
-    name: "MediHome Imaging Centre - Noida",
+    id: "rad-delhi",
+    name: "MediHome Delhi",
+    area: "Green Park",
+    address: "Green Park, New Delhi 110016",
+    gstin: "07AAMHM1100D1Z8",
+    dlNo: "AERB/RSD/DL-0440",
+    licenseLabel: "AERB / Centre Licence No.",
+    tests: [
+      { id: "mri-brain", name: "MRI Brain", price: 3000 },
+      { id: "ct-chest", name: "CT Scan Chest", price: 2200 },
+      { id: "usg-abdomen", name: "Ultrasound Abdomen", price: 800 },
+      { id: "xray-chest", name: "X-Ray Chest", price: 350 },
+      { id: "mammography", name: "Mammography", price: 1300 },
+    ],
+  },
+  {
+    id: "rad-noida",
+    name: "MediHome Noida",
     area: "Sector 18, Noida",
     address: "Sector 18, Noida 201301",
     gstin: "09AAMHM2013N1Z1",
@@ -119,12 +167,12 @@ export const IMAGING_CENTRES = [
     ],
   },
   {
-    id: "rad3",
-    name: "MediHome Imaging Centre - Delhi",
-    area: "Green Park",
-    address: "Green Park, New Delhi 110016",
-    gstin: "07AAMHM1100D1Z8",
-    dlNo: "AERB/RSD/DL-0440",
+    id: "rad-others",
+    name: "Others",
+    area: "Delhi NCR",
+    address: "Partner imaging network, Delhi NCR",
+    gstin: "07AAMCM2608Q1Z3",
+    dlNo: "AERB/RSD/NET/0001",
     licenseLabel: "AERB / Centre Licence No.",
     tests: [
       { id: "mri-brain", name: "MRI Brain", price: 3000 },
@@ -132,6 +180,7 @@ export const IMAGING_CENTRES = [
       { id: "usg-abdomen", name: "Ultrasound Abdomen", price: 800 },
       { id: "xray-chest", name: "X-Ray Chest", price: 350 },
       { id: "mammography", name: "Mammography", price: 1300 },
+      { id: "doppler-leg", name: "Doppler Lower Limb", price: 1700 },
     ],
   },
 ];

@@ -5,12 +5,33 @@ import {
   brandStoreMatrix,
   itemBrand,
   mergeStockRows,
+  openingQtyForSold,
+  ordersForPartnerStock,
   skuKey,
   soldFromOrders,
+  stockOnHandForItem,
   stockStatus,
   stockTarget,
   toMaintain,
 } from "./stockReport.js";
+
+test("opening pharmacy stock subtracts packs already sold", () => {
+  assert.equal(openingQtyForSold(0), 24);
+  assert.equal(openingQtyForSold(5), 19);
+  assert.equal(openingQtyForSold(40), 0);
+});
+
+test("partner stock is tracked on the pharmacy outlet, not a mismatched delivery tag", () => {
+  const orders = ordersForPartnerStock(
+    [{ kind: "medicine", outletId: "MH-OUT-GGN", items: [{ id: 1377, name: "Vitamin D3", quantity: 1 }] }],
+    { outletId: "MH-OUT-CD", name: "Test Pharmacy Desk" }
+  );
+  assert.equal(orders[0].outletId, "MH-OUT-CD");
+  assert.equal(
+    stockOnHandForItem({ id: 1377 }, [{ skuKey: "id:1377", outletId: "MH-OUT-CD", qty: 23 }], "MH-OUT-CD"),
+    23
+  );
+});
 
 test("target stock is sales times 1.5, then minus current", () => {
   assert.equal(STOCK_COVER, 1.5);

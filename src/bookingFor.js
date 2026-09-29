@@ -3,7 +3,7 @@ import {
   pickAddress,
   validateAddress,
 } from "./addressFields.js";
-import { normalizeAge, normalizeGender, pickFamilyMembers } from "./personFields.js";
+import { normalizeAge, normalizeGender, pickFamilyMembers, maxDobAgeYears } from "./personFields.js";
 
 export const SELF_BOOKING_ID = "self";
 export const OTHER_BOOKING_ID = "other";
@@ -116,13 +116,13 @@ export function shouldAskBookingContact(source = {}, profile = {}) {
   return shouldAskBookingDetails(source, profile);
 }
 
-export function withBookingIdentity(source = {}, profile = {}) {
+export function withBookingIdentity(source = {}, profile = {}, { forceDetails = false } = {}) {
   const option = findBookingFor(profile, source.bookedFor);
   const household =
     option && option.id !== OTHER_BOOKING_ID
       ? bookingForPatch(option, profile)
       : {};
-  const askContact = shouldAskBookingContact(source, profile);
+  const askContact = forceDetails || shouldAskBookingContact(source, profile);
   const contact = askContact
     ? {
         mobile: String(source.mobile || "")
@@ -139,7 +139,7 @@ export function withBookingIdentity(source = {}, profile = {}) {
         ...pickAddress(profile),
         addressConfirmed: "yes",
       };
-  const askDetails = shouldAskBookingDetails(source, profile);
+  const askDetails = forceDetails || shouldAskBookingDetails(source, profile);
   const patientName = askDetails
     ? String(source.patientName || "").trim()
     : String(
@@ -160,14 +160,14 @@ export function withBookingIdentity(source = {}, profile = {}) {
   };
 }
 
-export function validateBookingContact(source = {}, profile = {}) {
-  const contact = withBookingIdentity(source, profile);
+export function validateBookingContact(source = {}, profile = {}, { forceDetails = false } = {}) {
+  const contact = withBookingIdentity(source, profile, { forceDetails });
   const errors = {};
   const mobile = String(contact.mobile || "").replace(/\D/g, "");
   if (!/^[6-9]\d{9}$/.test(mobile)) {
     errors.mobile = "Enter a valid 10-digit mobile number.";
   }
-  const ask = shouldAskBookingContact(source, profile);
+  const ask = forceDetails || shouldAskBookingContact(source, profile);
   Object.assign(
     errors,
     validateAddress(ask ? contact : { ...contact, addressConfirmed: "yes" })
@@ -175,11 +175,11 @@ export function validateBookingContact(source = {}, profile = {}) {
   return errors;
 }
 
-export function validateBookingDetails(source = {}, profile = {}) {
+export function validateBookingDetails(source = {}, profile = {}, { forceDetails = false } = {}) {
   const errors = {
     ...validateBookingFor(source, profile),
   };
-  if (!shouldAskBookingDetails(source, profile)) return errors;
+  if (!forceDetails && !shouldAskBookingDetails(source, profile)) return errors;
   const identity = withBookingIdentity(source, profile);
   if (!identity.patientName) {
     errors.patientName = "Patient name is required.";
@@ -188,10 +188,10 @@ export function validateBookingDetails(source = {}, profile = {}) {
     errors.gender = "Select Male or Female.";
   }
   const age = Number(normalizeAge(identity.age || source.age));
-  if (!Number.isInteger(age) || String(source.age || identity.age || "") === "" || age < 0 || age > 120) {
+  if (!Number.isInteger(age) || String(source.age || identity.age || "") === "" || age < 0 || age > maxDobAgeYears()) {
     errors.age = "Enter age in years.";
   }
-  Object.assign(errors, validateBookingContact(source, profile));
+  Object.assign(errors, validateBookingContact(source, profile, { forceDetails }));
   return errors;
 }
 

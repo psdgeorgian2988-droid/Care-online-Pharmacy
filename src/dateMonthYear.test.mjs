@@ -32,7 +32,7 @@ test("appointment dates cannot pick months or days before the minimum", () => {
 });
 
 test("date of birth cannot pick a future month in the current year", () => {
-  const min = "1906-08-28";
+  const min = "1901-01-01";
   const max = "2026-08-28";
   assert.deepEqual(
     monthsInRange(min, max, "2026").map((row) => row.value),

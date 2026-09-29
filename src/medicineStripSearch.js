@@ -102,6 +102,114 @@ export function cleanOcrQuery(raw) {
   return unique.slice(0, 10).join(" ").trim();
 }
 
+function foldPhotoText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function strengthNumbers(value) {
+  const withUnit = String(value || "")
+    .toLowerCase()
+    .match(/\d+(?:\.\d+)?\s*(?:mg|mcg|iu|ml)/g);
+  if (withUnit?.length) {
+    return withUnit.map((token) => token.match(/\d+(?:\.\d+)?/)[0]);
+  }
+  return (String(value || "").match(/\d+(?:\.\d+)?/g) || []);
+}
+
+function exactStrengthNumbers(strength, query) {
+  const fromQuery = strengthNumbers(query);
+  const fromSku = strengthNumbers(strength);
+  if (!fromQuery.length || !fromSku.length) return false;
+  if (fromQuery.length !== fromSku.length) return false;
+  const left = [...fromQuery].sort().join("|");
+  const right = [...fromSku].sort().join("|");
+  return left === right;
+}
+
+function photoFieldHit(queryFold, field) {
+  const compact = foldPhotoText(field);
+  return compact.length >= 4 && queryFold.includes(compact);
+}
+
+/**
+ * Map OCR / photo text to the exact MediHome SKU (same salt + strength).
+ */
+export function matchExactMediHomeFromPhoto(list = [], query = "") {
+  const raw = String(query || "").trim();
+  const q = foldPhotoText(raw);
+  if (q.length < 2) {
+    return {
+      items: [],
+      brandMatch: null,
+      emptyHint: "Could not read brand or salt from this photo.",
+    };
+  }
+
+  const house = list.filter((medicine) => medicine.isMediHome);
+  const brands = list.filter((medicine) => !medicine.isMediHome);
+  const hasStrength = strengthNumbers(raw).length > 0;
+
+  const brandHits = brands.filter((medicine) => {
+    const fields = [medicine.brand, medicine.name, ...(medicine.aliases || [])];
+    if (!fields.some((field) => photoFieldHit(q, field))) return false;
+    return hasStrength ? exactStrengthNumbers(medicine.strength, raw) : true;
+  });
+
+  const brandMatch =
+    brandHits.find((medicine) => exactStrengthNumbers(medicine.strength, raw)) ||
+    brandHits[0] ||
+    null;
+
+  if (brandMatch) {
+    const key = foldPhotoText(`${brandMatch.salt || ""} ${brandMatch.strength || ""}`);
+    const home =
+      house.find(
+        (medicine) =>
+          foldPhotoText(`${medicine.salt || ""} ${medicine.strength || ""}`) === key
+      ) || null;
+    return {
+      items: home ? [home] : [],
+      brandMatch,
+      emptyHint: home
+        ? ""
+        : "No exact MediHome medicine matches this combination.",
+    };
+  }
+
+  const hits = house.filter((medicine) => {
+    const salt = foldPhotoText(medicine.salt);
+    const aliases = (medicine.aliases || []).filter((alias) => foldPhotoText(alias).length >= 4);
+    const saltHit = salt.length >= 4 && q.includes(salt);
+    const aliasHit = aliases.some((alias) => photoFieldHit(q, alias));
+    const nameHit = photoFieldHit(
+      q,
+      String(medicine.name || "").replace(/^medihome\s+/i, "")
+    );
+    if (!(saltHit || aliasHit || nameHit)) return false;
+    if (hasStrength) return exactStrengthNumbers(medicine.strength, raw);
+    const parts = String(medicine.salt || "")
+      .split(/\s*\+\s*/)
+      .map((part) => foldPhotoText(part))
+      .filter(Boolean);
+    if (parts.length > 1) {
+      return parts.every((part) => part.length >= 4 && q.includes(part));
+    }
+    return true;
+  });
+
+  if (hits.length) {
+    return { items: hits, brandMatch: null, emptyHint: "" };
+  }
+
+  return {
+    items: [],
+    brandMatch: null,
+    emptyHint: "No exact MediHome medicine matches this photo.",
+  };
+}
+
 export async function textFromStripPhoto(file) {
   if (!file) throw new Error("Please choose a photo of the strip.");
   await loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");

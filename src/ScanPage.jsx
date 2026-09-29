@@ -3,13 +3,13 @@ import { staffToken } from "./adminApi";
 import ComingSoon from "./ComingSoon";
 import { useFeatures } from "./featureFlags";
 import { LiveTrackingPanel } from "./LiveTracking";
-import { CheckpointStrip } from "./OrderQr";
 import {
   ensureTracking,
   persistOrder,
   resolveOrderById,
 } from "./orderTracking";
 import { partnerSession } from "./partnerApi";
+import { isDeliveryPartner } from "./partnerRetention";
 import { normalizePin } from "./pinLocation";
 import {
   canUseScanDelivery,
@@ -157,6 +157,14 @@ export default function ScanPage({ scanId, scanStep }) {
       const { action, patch } = matched
         ? qrScanPatch(result.order)
         : mismatchRedeliveryPatch(result.order, stage === "already_done" ? "deliver" : stage);
+      if (
+        partner &&
+        isDeliveryPartner(partner) &&
+        (action === "pickup" || action === "deliver")
+      ) {
+        patch.deliveryPartnerId = partner.id;
+        patch.deliveryPartnerName = partner.name;
+      }
       const updated =
         action === "already_done" ? result.order : persistOrder(result.order, patch);
       const ready =
@@ -290,7 +298,7 @@ export default function ScanPage({ scanId, scanStep }) {
     next !== "already_done" &&
     !result?.autoMismatch &&
     !stepMismatch;
-  const backHref = app === "partner" ? "#partner" : app === "admin" ? "#admin" : "#myorders";
+  const backHref = app === "partner" ? "#partner-desk" : app === "admin" ? "#admin" : "#myorders";
   const backLabel =
     app === "partner" ? "Partner Desk" : app === "admin" ? "Staff Desk" : "My Orders";
   const showComingSoon =
@@ -336,15 +344,13 @@ export default function ScanPage({ scanId, scanStep }) {
           ) : result.decided ? (
             <p className={`scan-result is-${result.action}`}>
               {scanActionLabel(result.action)}
-              {result.action === "pack"
-                ? " — packing confirmed. Next scan is pickup."
-                : result.action === "pickup"
-                  ? " — pickup confirmed. Tracking is live until delivery."
-                  : result.action === "deliver"
-                    ? " — delivery confirmed. This order is complete."
-                    : result.action === "mismatch"
-                      ? " — delivery stopped. Pack the correct medicines or service and start again from packing."
-                      : " — this order already passed all three checks."}
+              {result.action === "pack" || result.action === "pickup"
+                ? " — this order is picked up. The customer scans the same QR on delivery."
+                : result.action === "deliver"
+                  ? " — delivery confirmed. This order is complete."
+                  : result.action === "mismatch"
+                    ? " — this is not the right order. Stop and pick up the correct parcel."
+                    : " — this order is already delivered."}
             </p>
           ) : (
             <p
@@ -355,14 +361,15 @@ export default function ScanPage({ scanId, scanStep }) {
               {result.autoMismatch
                 ? "This QR does not match the ordered items. Stop and restart redelivery of the correct medicines or service."
                 : next === "already_done"
-                  ? "All three checks are already complete."
+                  ? "This order is already delivered."
                   : stepMismatch
-                    ? `This screen is ${scanStepTitle(kind, requestedStep, serviceType)}. Current check is ${checkpointLabel(next)}.`
-                    : `Checkpoint ${scanStepTitle(kind, next, serviceType)} — confirm the packed medicines match this order.`}
+                    ? `This screen is for ${scanStepTitle(kind, requestedStep, serviceType)}. Scan the QR for this order.`
+                    : next === "deliver"
+                      ? "Customer: scan this QR to confirm delivery of this order."
+                      : "Scan this QR to pick up this order."}
             </p>
           )}
 
-          <CheckpointStrip order={result.order} />
           {Number(result.order.redeliveryCount || 0) > 0 ? (
             <p className="scan-redeliver">
               Redelivery #{result.order.redeliveryCount}. Previous mismatch at{" "}

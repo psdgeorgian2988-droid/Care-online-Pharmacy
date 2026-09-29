@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   accountCreatorMobile,
   ageFromDob,
+  DOB_MIN_ISO,
   daysInMonth,
   joinIsoDate,
   RELATION_OPTIONS,
@@ -15,11 +16,13 @@ import {
   validateFamilyMembers,
   validatePerson,
   maskMobile,
+  maskPartnerMobile,
   maskEmail,
   isValidEmail,
   pickEmail,
   validateEmail,
   isoDateDaysAhead,
+  maxDobAgeYears,
 } from "./personFields.js";
 
 test("mail ID is required and stored in lowercase", () => {
@@ -79,8 +82,14 @@ test("age is calculated from date of birth", () => {
 test("future or impossible dates of birth fail", () => {
   const tomorrow = yearsAgoIso(0, 1);
   assert.equal(Boolean(validatePerson({ gender: "F", dob: tomorrow }).dob), true);
-  assert.equal(Boolean(validatePerson({ gender: "M", dob: "1890-01-01" }).dob), true);
+  assert.equal(Boolean(validatePerson({ gender: "M", dob: "1900-12-31" }).dob), true);
   assert.equal(Boolean(validatePerson({ gender: "M", dob: "not-a-date" }).dob), true);
+});
+
+test("date of birth years start at 1901", () => {
+  assert.equal(DOB_MIN_ISO, "1901-01-01");
+  assert.deepEqual(validatePerson({ gender: "M", dob: "1901-06-15" }), {});
+  assert.equal(ageFromDob("1901-01-01", new Date(2026, 5, 15)), String(maxDobAgeYears(new Date(2026, 5, 15))));
 });
 
 test("family members can be added with male/female and date of birth", () => {
@@ -158,6 +167,11 @@ test("account creator mobile stays the original number", () => {
 test("maskMobile keeps the first two and last three digits", () => {
   assert.equal(maskMobile("9876543210"), "98*****210");
   assert.equal(maskMobile(""), "");
+});
+
+test("pharmacy partner mask keeps the first three and last three digits", () => {
+  assert.equal(maskPartnerMobile("9876543210"), "987****210");
+  assert.equal(maskPartnerMobile(""), "");
 });
 
 test("maskEmail keeps the first two mailbox letters", () => {

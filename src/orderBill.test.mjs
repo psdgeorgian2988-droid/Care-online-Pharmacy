@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { billingPartyFor, buildOrderBill } from "./orderBill.js";
+import {
+  billingPartyFor,
+  buildAddressSlip,
+  buildOrderBill,
+  orderShowsDeliverySlip,
+} from "./orderBill.js";
 import { MEDIHOME_BILLING } from "./diagnosticPartners.js";
 
 test("medicine bills use the PIN-assigned retail counter GST and DL", () => {
@@ -18,9 +23,9 @@ test("lab bills use the assigned lab GST and licence", () => {
   const party = billingPartyFor({
     kind: "lab",
     partnerId: "lal-pathlabs",
-    partner: "Lal PathLabs",
+    partner: "Lal Path Lab",
   });
-  assert.equal(party.name, "Lal PathLabs");
+  assert.equal(party.name, "Lal Path Lab");
   assert.equal(party.gstin, "07AAACL0582L1Z2");
   assert.match(party.dlNo, /LAB/);
 });
@@ -28,7 +33,7 @@ test("lab bills use the assigned lab GST and licence", () => {
 test("imaging bills use the assigned centre GST and AERB licence", () => {
   const party = billingPartyFor({
     kind: "radiology",
-    partner: "MediHome Imaging Centre - Gurgaon",
+    partner: "MediHome Gurgaon",
   });
   assert.equal(party.gstin, "06AAMHM1220G1Z4");
   assert.match(party.dlNo, /AERB/);
@@ -57,4 +62,26 @@ test("invoice lists medicines and payable total", () => {
   assert.equal(bill.lines[0].amount, 64);
   assert.equal(bill.payable, 64);
   assert.match(bill.invoiceNo, /1001/);
+});
+
+test("address slip uses the same order QR and delivery address", () => {
+  const slip = buildAddressSlip({
+    kind: "medicine",
+    id: "1790137218769",
+    fullName: "Rohan Mehta",
+    mobile: "9876501234",
+    deliveryAddress: "12A, Connaught Place, New Delhi 110001",
+    pinCode: "110001",
+    items: [{ name: "MediHome Vitamin D3 60,000 IU", quantity: 1 }],
+  });
+  assert.equal(slip.id, "1790137218769");
+  assert.equal(slip.name, "Rohan Mehta");
+  assert.equal(slip.pin, "110001");
+  assert.match(slip.qrPath, /1790137218769/);
+  assert.equal(slip.items[0], "MediHome Vitamin D3 60,000 IU");
+});
+
+test("step-down bills do not use a delivery slip QR", () => {
+  assert.equal(orderShowsDeliverySlip({ kind: "stepdown" }), false);
+  assert.equal(orderShowsDeliverySlip({ kind: "medicine" }), true);
 });

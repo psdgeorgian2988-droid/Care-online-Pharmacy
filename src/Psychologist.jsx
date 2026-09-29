@@ -1,15 +1,35 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
-import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import {
+  persistAndSendOrder,
+  persistOrder,
+  refreshOrderFromServer,
+  trackHref,
+  withTracking,
+} from "./orderTracking";
+import { goHomeAfterPaidCheckout } from "./checkoutComplete";
+import { parseAppHash } from "./hashRoute";
+import {
+  appointmentSlotLabel,
+  diagnosticRequestFields,
+  isAwaitingCustomerSlotConfirm,
+} from "./orderConfirm";
+import SlotOfferCard from "./SlotOfferCard";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
-import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
+import BusyWait, { useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
-import { BillButton } from "./OrderBill";
+import { BillButton } from "./OrderBill.jsx";
 import BookingFlow from "./BookingFlow";
-import { paymentMethodSummary } from "./paymentMethods";
+import {
+  checkoutPaymentPersistFields,
+  checkoutUsesPayCta,
+  paymentMethodSummary,
+  persistUnsettledCheckoutFields,
+  showCustomerPayNow,
+} from "./paymentMethods";
 import { maskMobile } from "./personFields";
 import {
   applyResolvedPin,
@@ -25,6 +45,7 @@ import {
 import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateToday } from "./personFields";
 import {
+  PSY_TIME_SLOTS,
   appointmentDateError,
   appointmentSlotError,
   bookingMaxDate,
@@ -40,15 +61,15 @@ const PLANS = [
   { value: "couple-60", label: "Couple / family 60 min", price: 2499, mode: "video" },
   { value: "home-60", label: "Home visit 60 min", price: 1999, mode: "home" },
 ];
+const PSY_SERVICE_PLAN = {
+  video: "video-45",
+  followup: "followup-30",
+  child: "child-45",
+  couple: "couple-60",
+  "home-visit": "home-60",
+};
 
-const TIME_SLOTS = [
-  "08:00 AM – 10:00 AM",
-  "10:00 AM – 12:00 PM",
-  "12:00 PM – 02:00 PM",
-  "02:00 PM – 04:00 PM",
-  "04:00 PM – 06:00 PM",
-  "06:00 PM – 08:00 PM",
-];
+const TIME_SLOTS = PSY_TIME_SLOTS;
 
 const formatRupee = (amount) => `₹${Number(amount || 0).toLocaleString("en-IN")}`;
 
@@ -65,17 +86,47 @@ function Psychologist() {
     mobile: profile.mobile,
     ...pickAddress(profile),
     ...initialBookingFor(profile),
-    carePlan: "video-45",
+    carePlan:
+      PSY_SERVICE_PLAN[
+        parseAppHash(typeof window !== "undefined" ? window.location.hash : "").service
+      ] || "video-45",
     date: "",
     timeSlot: "",
     concern: "",
   });
   const [errors, setErrors] = useState({});
   const [booking, setBooking] = useState(null);
+  const [flowStep, setFlowStep] = useState("placed");
   const [submitting, setSubmitting] = useState(false);
+  const [paying, setPaying] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
+  const [payReady, setPayReady] = useState(true);
   const [payQuote, setPayQuote] = useState(null);
-  const busyWait = useBusyOverlay(submitting, "psychologist");
+  const busyWait = useBusyOverlay(submitting || paying, "psychologist");
+
+  useEffect(() => {
+    const applyHash = () => {
+      const plan = PSY_SERVICE_PLAN[parseAppHash(window.location.hash).service];
+      if (plan) setForm((prev) => (prev.carePlan === plan ? prev : { ...prev, carePlan: plan }));
+    };
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
+  }, []);
+
+  useEffect(() => {
+    const id = booking?.bookingId;
+    if (!id) return undefined;
+    if (booking.partnerConfirmed && booking.slotConfirmed) return undefined;
+    let cancelled = false;
+    const timer = setInterval(async () => {
+      const latest = await refreshOrderFromServer(id);
+      if (!cancelled && latest) setBooking(latest);
+    }, 6000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [booking?.bookingId, booking?.partnerConfirmed, booking?.slotConfirmed]);
   const plan = PLANS.find((item) => item.value === form.carePlan) || PLANS[0];
   const openSlots = useMemo(
     () => openAppointmentSlots(TIME_SLOTS, form.date),
@@ -127,16 +178,6 @@ function Psychologist() {
       const gps = await resolvePinLocation(booked.pinCode);
       const addr = applyResolvedPin(booked, gps);
       const pay = paymentFromQuote(payQuote, plan.price);
-      const payment = await settleCheckoutPayment({
-        method: payMethod,
-        ...pay,
-        kind: "psychologist",
-        pin: gps.pinCode,
-        name: booked.patientName,
-        mobile: booked.mobile,
-        reference: `psy-${Date.now()}`,
-        description: "MediHome Psychologist Consultation",
-      });
 
       const bookingDetails = {
         bookingId: "MH-PSY-" + Math.floor(100000 + Math.random() * 900000),
@@ -152,6 +193,7 @@ function Psychologist() {
         carePlanLabel: plan.label,
         sessionMode: plan.mode,
         serviceLabel: "Psychologist Consultation",
+        partner: "",
         concern: form.concern.trim(),
         date: form.date,
         timeSlot: form.timeSlot,
@@ -162,7 +204,11 @@ function Psychologist() {
         highTrafficWait: queue.busy || queue.waited,
         bookedAt: new Date().toLocaleString(),
         bookedAtMs: Date.now(),
-        ...payment,
+        ...diagnosticRequestFields("psychologist", {
+          date: form.date,
+          timeSlot: form.timeSlot,
+        }),
+        ...persistUnsettledCheckoutFields(payMethod),
       };
 
       const trackedBooking = persistOrder(
@@ -180,15 +226,48 @@ function Psychologist() {
         )
       );
       setBooking(trackedBooking);
+      setFlowStep("placed");
     } catch (error) {
-      alert(error.message || "Payment or booking could not be completed.");
+      alert(error.message || "Booking could not be submitted.");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handlePayment = async (event) => {
+    event.preventDefault();
+    if (!booking) return;
+    setPaying(true);
+    try {
+      const amount = Number(booking.total) || 0;
+      const pay = paymentFromQuote(payQuote, amount);
+      const payment = await settleCheckoutPayment({
+        method: payMethod,
+        ...pay,
+        kind: "psychologist",
+        pin: booking.pinCode || booking.pin,
+        name: booking.patientName,
+        mobile: booking.mobile,
+        reference: booking.bookingId,
+        description: "MediHome Psychologist Consultation",
+      });
+      await persistAndSendOrder(booking, {
+        ...payment,
+        paymentStatus: "paid",
+        paid: true,
+        status: booking.partnerConfirmed ? "Confirmed" : booking.status,
+      });
+      goHomeAfterPaidCheckout();
+    } catch (error) {
+      alert(error.message || "Payment could not be completed.");
+    } finally {
+      setPaying(false);
+    }
+  };
+
   const startNew = () => {
     setBooking(null);
+    setFlowStep("placed");
     setForm({
       patientName: profile.name,
       mobile: profile.mobile,
@@ -200,19 +279,50 @@ function Psychologist() {
       concern: "",
     });
     setPayMethod("cod");
+    setPayQuote(null);
     setErrors({});
   };
 
-  if (booking) {
+  if (booking && (flowStep === "placed" || flowStep === "pay" || flowStep === "paid")) {
     return (
       <>
         <style>{styles}</style>
+        {busyWait ? <BusyWait kind="psychologist" traffic={busyWait} /> : null}
         <div className="service-page">
           <section className="service-confirm">
-            <div className="success-icon">✓</div>
-            <h1>Consultation Booked</h1>
-            <PatienceNote kind="psychologist" shown={booking.highTrafficWait} />
-            <p>Your psychologist session is saved. Share this ID if care calls you.</p>
+            {flowStep === "placed" ? (
+              <>
+                <div className="success-icon">✓</div>
+                <h1>
+                  {booking.partnerConfirmed
+                    ? "Session confirmed"
+                    : isAwaitingCustomerSlotConfirm(booking)
+                      ? "New time slot offered"
+                      : "Request sent"}
+                </h1>
+                <p>
+                  {booking.partnerConfirmed
+                    ? "The psychologist confirmed your slot. Track the session below."
+                    : isAwaitingCustomerSlotConfirm(booking)
+                      ? "Your requested slot was not available. Accept the psychologist’s offered slot to confirm the booking."
+                      : "Your request was sent to the psychologist. The session is confirmed after they accept your slot, or after you accept a new slot they offer."}
+                </p>
+              </>
+            ) : null}
+            {flowStep === "pay" ? (
+              <>
+                <div className="success-icon">₹</div>
+                <h1>Payment</h1>
+                <p>Pay now or continue tracking — you can also pay later from My Orders.</p>
+              </>
+            ) : null}
+            {flowStep === "paid" ? (
+              <>
+                <div className="success-icon">✓</div>
+                <h1>Payment Received</h1>
+                <p>Thank you. Track the session from My Orders anytime.</p>
+              </>
+            ) : null}
             <div className="confirm-card">
               <div className="confirm-head">
                 <h2>Booking Details</h2>
@@ -220,7 +330,11 @@ function Psychologist() {
               </div>
               <div className="confirm-row">
                 <span>Service</span>
-                <strong>{booking.serviceLabel}</strong>
+                <strong>
+                  {booking.partnerConfirmed
+                    ? booking.partnerName || booking.partner || booking.serviceLabel
+                    : booking.serviceLabel}
+                </strong>
               </div>
               <div className="confirm-row">
                 <span>Session</span>
@@ -237,7 +351,11 @@ function Psychologist() {
               <div className="confirm-row">
                 <span>Payment</span>
                 <strong>
-                  {paymentMethodSummary(booking.paymentMethod, "Pay at session")}
+                  {flowStep === "paid" ||
+                  booking.paid ||
+                  !showCustomerPayNow(booking)
+                    ? paymentMethodSummary(booking.paymentMethod, "Pay at session")
+                    : "Pending — pay anytime from My Orders"}
                 </strong>
               </div>
               <div className="confirm-row">
@@ -262,9 +380,16 @@ function Psychologist() {
                 <strong>{booking.date}</strong>
               </div>
               <div className="confirm-row">
-                <span>Time slot</span>
-                <strong>{booking.timeSlot}</strong>
+                <span>
+                  {booking.slotConfirmed
+                    ? "Confirmed time slot"
+                    : isAwaitingCustomerSlotConfirm(booking)
+                      ? "Offered time slot"
+                      : "Requested time slot"}
+                </span>
+                <strong>{appointmentSlotLabel(booking)}</strong>
               </div>
+              <SlotOfferCard order={booking} onResolved={setBooking} />
               {booking.concern ? (
                 <div className="confirm-row">
                   <span>Note</span>
@@ -272,22 +397,86 @@ function Psychologist() {
                 </div>
               ) : null}
             </div>
-            <AssignedAgent record={booking} />
-            <div className="confirm-actions">
-              <BillButton order={booking} />
-              <button
-                type="button"
-                className="service-submit"
-                onClick={() => {
-                  window.location.hash = trackHref(booking.bookingId);
+            {flowStep !== "pay" && booking.partnerConfirmed ? (
+              <AssignedAgent
+                record={{
+                  ...booking,
+                  agentName: booking.agentName || booking.partnerName,
+                  agentMobile: booking.agentMobile || booking.partnerMobile,
+                  agentRole: "Psychologist",
                 }}
-              >
-                Track live
-              </button>
-              <button type="button" className="service-submit" onClick={startNew}>
-                Book another session
-              </button>
-            </div>
+              />
+            ) : null}
+            {flowStep === "pay" && showCustomerPayNow(booking) ? (
+              <form className="service-pay-form" onSubmit={handlePayment}>
+                <PaymentBlock
+                  kind="psychologist"
+                  amount={Number(booking.total) || 0}
+                  pin={booking.pinCode}
+                  method={payMethod}
+                  onMethodChange={setPayMethod}
+                  onQuoteChange={setPayQuote}
+                  onReadyChange={setPayReady}
+                  guestDetails={booking}
+                  cashLabel="Pay at session"
+                />
+                <div className="confirm-actions">
+                  <button type="submit" className="service-submit" disabled={paying || !payReady}>
+                    {paying ? "Processing…" : "Pay now"}
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => setFlowStep("placed")}
+                  >
+                    Back
+                  </button>
+                </div>
+              </form>
+            ) : null}
+            {flowStep === "placed" ? (
+              <div className="confirm-actions">
+                <button
+                  type="button"
+                  className="service-submit"
+                  onClick={() => {
+                    window.location.hash = trackHref(booking.bookingId);
+                  }}
+                >
+                  Track live
+                </button>
+                {showCustomerPayNow(booking) ? (
+                  <button
+                    type="button"
+                    className="service-submit"
+                    onClick={() => setFlowStep("pay")}
+                  >
+                    Pay now
+                  </button>
+                ) : null}
+                <BillButton order={booking} />
+                <button type="button" className="ghost-button" onClick={startNew}>
+                  Book another session
+                </button>
+              </div>
+            ) : null}
+            {flowStep === "paid" ? (
+              <div className="confirm-actions">
+                <button
+                  type="button"
+                  className="service-submit"
+                  onClick={() => {
+                    window.location.hash = trackHref(booking.bookingId);
+                  }}
+                >
+                  Track live
+                </button>
+                <BillButton order={booking} />
+                <button type="button" className="ghost-button" onClick={startNew}>
+                  Book another session
+                </button>
+              </div>
+            ) : null}
           </section>
         </div>
       </>
@@ -356,12 +545,12 @@ function Psychologist() {
               order="ymd"
               onChange={handleChange}
             />
-            <small className="booking-hint">Today or up to 7 days ahead.</small>
+            <small className="booking-hint">Today or up to 6 months ahead.</small>
           </div>
 
           <div className="field">
             <label htmlFor="psy-slot">
-              Time slot <span>*</span>
+              Preferred time slot <span>*</span>
             </label>
             <select
               id="psy-slot"
@@ -380,7 +569,11 @@ function Psychologist() {
               <small>No time slots left today. Choose a later date.</small>
             ) : errors.timeSlot ? (
               <small>{errors.timeSlot}</small>
-            ) : null}
+            ) : (
+              <small className="booking-hint">
+                If this slot is not free, the psychologist will offer another time. The booking is confirmed only after you accept that slot.
+              </small>
+            )}
           </div>
 
           <div className="field full">
@@ -403,6 +596,7 @@ function Psychologist() {
               method={payMethod}
               onMethodChange={setPayMethod}
               onQuoteChange={setPayQuote}
+              onReadyChange={setPayReady}
               guestDetails={form}
             />
           </div>
@@ -410,7 +604,7 @@ function Psychologist() {
           <button type="submit" className="service-submit" disabled={submitting}>
             {submitting
               ? "Holding your place…"
-              : `Confirm session · ${formatRupee(plan.price)}`}
+              : `Send request · ${formatRupee(plan.price)}`}
           </button>
           </BookingFlow>
         </form>
@@ -437,7 +631,10 @@ const styles = `
 .service-form small.pin-gps-hint,.service-form small.booking-hint{color:#5d7180}
 .service-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:40px;cursor:pointer;font-family:inherit}
 .confirm-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
-.confirm-actions .service-submit{grid-column:auto;min-width:180px}
+.confirm-actions .service-submit,.confirm-actions .ghost-button{grid-column:auto;min-width:180px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.ghost-button{border:1px solid #d8e3e9;border-radius:8px;background:#fff;color:#34546b;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;min-height:40px;padding:8px 14px;box-sizing:border-box}
+.ghost-button:hover{background:#f7fbfe}
+.service-pay-form{max-width:640px;margin:0 auto 14px;text-align:left}
 .service-confirm{max-width:640px;margin:12px auto;text-align:center}
 .success-icon{width:52px;height:52px;margin:0 auto 10px;border-radius:50%;background:#e5f8ee;color:#1c9b61;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
 .service-confirm h1{margin:0 0 6px;font-size:22px}

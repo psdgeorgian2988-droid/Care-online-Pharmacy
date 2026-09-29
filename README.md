@@ -62,20 +62,44 @@ Staff create each partner’s first **Login ID** and **password** on the Staff D
 
 ## Phone apps (Customer, Staff, Partner)
 
-The website is the working app. Open **Apps** in the sidebar (or `/#apps`) and pick:
+One React codebase powers the website and the Android / iPhone apps (Capacitor). The app UI is bundled from `dist/`. API calls go to `https://medihome.co.in` (or your laptop during live reload).
 
-- **Customer App** — home, medicines, bookings, account
-- **Staff App** — operations desk
-- **Partner App** — assigned jobs
+On the website, open the separate desks from the footer:
 
-Install from the phone browser with Add To Home Screen, or wrap the same site with Capacitor:
+- **Customer** (`/#customer`) — customer webpage, then home / login / register
+- **Partner** (`/#partner`) — partner jobs desk
+- **Staff** (`/#staff`) — staff webpage, then operations desk (`/#admin`)
+
+Installed apps with no saved role open a chooser linking to those three pages.
+### Build and open Android / iOS
 
 ```bash
-npm run build
-npx cap sync
-# Android emulator talking to this laptop:
-MEDIHOME_APP_SERVER=http://10.0.2.2:3001 npx cap sync
-npx cap open android
+npm ci
+npm run app:sync
+npm run app:android   # Android Studio
+npm run app:ios       # Xcode (Mac only)
 ```
 
-The packaged app loads `https://medihome.co.in` unless you set `MEDIHOME_APP_SERVER`.
+`app:sync` builds the website, writes `capacitor.config.json`, and copies `dist/` into `android/` and `ios/`.
+
+### Live reload from your laptop (optional)
+
+Terminal 1 — website + API:
+
+```bash
+npm run dev
+npm run server
+```
+
+Terminal 2 — point the app shell at your laptop, then sync:
+
+```bash
+# Android emulator → laptop
+MEDIHOME_APP_SERVER=http://10.0.2.2:5173 npm run app:sync:live
+npm run app:android
+
+# Physical phone on the same Wi‑Fi → use your laptop IP, e.g.:
+# MEDIHOME_APP_SERVER=http://192.168.1.7:5173 npm run app:sync:live
+```
+
+Remove `MEDIHOME_APP_SERVER` and run `npm run app:sync` again before a Play Store / App Store build so the app uses the bundled UI.

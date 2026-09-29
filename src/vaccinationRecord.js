@@ -123,6 +123,31 @@ export function dosesForPerson(store, personId) {
   return (store.doses || []).filter((row) => row.personId === personId);
 }
 
+export function personMatchesVaccinationRecord(person, row = {}) {
+  const wantedId = String(person?.id || "").trim();
+  const wantedName = String(person?.name || "").trim().toLowerCase();
+  if (!wantedId && !wantedName) return true;
+  if (wantedId && String(row.personId || row.id || "") === wantedId) return true;
+  const rowName = String(row.personName || row.name || "").trim().toLowerCase();
+  return Boolean(wantedName && rowName === wantedName);
+}
+
+export function givenVaccinationRecords(store = loadVaccinationStore(), person = null) {
+  const people = store.people || [];
+  return (store.doses || [])
+    .filter((row) => row.status === "given")
+    .map((dose) => {
+      const owner = people.find((row) => row.id === dose.personId);
+      return {
+        ...dose,
+        personName: owner?.name || dose.personName || "",
+        givenOnLabel: formatDisplayDate(dose.givenOn),
+      };
+    })
+    .filter((row) => personMatchesVaccinationRecord(person, row))
+    .sort((a, b) => String(b.givenOn || "").localeCompare(String(a.givenOn || "")));
+}
+
 export function lastGivenOn(store, personId, vaccineId) {
   const rows = dosesForPerson(store, personId)
     .filter((row) => row.vaccineId === vaccineId && row.status === "given" && row.givenOn)
@@ -248,6 +273,11 @@ export function recordVaccinationDose({
   status = "given",
   bookingId = "",
   source = "manual",
+  fileName = "",
+  fileType = "",
+  fileData = "",
+  personName = "",
+  mobile = "",
 } = {}) {
   const store = loadVaccinationStore();
   const vaccine = vaccineById(vaccineId);
@@ -255,12 +285,17 @@ export function recordVaccinationDose({
   const dose = {
     id: newId("vacd"),
     personId,
+    personName: String(personName || "").trim(),
+    mobile: String(mobile || "").replace(/\D/g, "").slice(-10),
     vaccineId,
     vaccineName: vaccine.name,
     givenOn: String(givenOn || toIsoDate(new Date())),
     status,
     bookingId: bookingId || "",
     source,
+    fileName: String(fileName || "").trim(),
+    fileType: String(fileType || "").trim(),
+    fileData: String(fileData || ""),
   };
   const existing = store.doses.findIndex(
     (row) =>

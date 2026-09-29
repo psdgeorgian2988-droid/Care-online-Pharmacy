@@ -1,3 +1,5 @@
+import { apiFetch } from "./apiBase.js";
+
 const TOKEN_KEY = "mediHomePartnerToken";
 const PARTNER_KEY = "mediHomePartner";
 
@@ -36,7 +38,7 @@ async function parseResponse(response) {
 
 export async function partnerLogin(loginId, password) {
   const data = await parseResponse(
-    await fetch("/api/partner/login", {
+    await apiFetch("/api/partner/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ loginId, password }),
@@ -50,6 +52,19 @@ export function partnerLogout() {
   setPartnerSession("", null);
 }
 
+export async function fetchPartnerStock() {
+  const { token, partner } = partnerSession();
+  const params = new URLSearchParams({
+    partnerId: partner?.id || "",
+    token,
+  });
+  return parseResponse(
+    await apiFetch(`/api/partner/stock?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  );
+}
+
 export async function fetchPartnerJobs() {
   const { token, partner } = partnerSession();
   const params = new URLSearchParams({
@@ -57,7 +72,7 @@ export async function fetchPartnerJobs() {
     token,
   });
   return parseResponse(
-    await fetch(`/api/partner/jobs?${params}`, {
+    await apiFetch(`/api/partner/jobs?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
   );
@@ -66,7 +81,7 @@ export async function fetchPartnerJobs() {
 export async function patchPartnerJob(id, patch) {
   const { token } = partnerSession();
   return parseResponse(
-    await fetch(`/api/partner/jobs/${encodeURIComponent(id)}`, {
+    await apiFetch(`/api/partner/jobs/${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

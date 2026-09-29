@@ -1,12 +1,148 @@
-import { useEffect, useState } from "react";
-import { kindLabel } from "./orderTracking";
-import { partnerSettlementNote, splitModeLabel } from "./paymentSplit";
-import { shareSettlement } from "./shareSettlement";
-import { isOnlinePayment } from "./paymentMethods";
-import { fetchPartnerJobs, partnerLogin, partnerLogout, partnerSession, patchPartnerJob } from "./partnerApi";
-import { isMedicineRiderPartner, scanHref } from "./orderQr";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import RecordViewer from "./RecordViewer";
+import QRCode from "qrcode";
+import { splitPayment } from "./paymentSplit";
+import { goToHash } from "./hashRoute";
+import { groupOrdersByKind } from "./orderStatus";
+import {
+  jobsForPartnerApp,
+  partnerAppKind,
+  partnerAppTitle,
+  partnerDeskHash,
+} from "./partnerApp";
+import { isDeliveryPartner } from "./partnerRetention";
+import {
+  PHARMACY_DESK_TABS,
+  jobsForPharmacyDeskTab,
+  pharmacyDeskTab,
+  pharmacyReturnCollectedFields,
+  pharmacyReturnReceivedFields,
+} from "./pharmacyTrack";
+import {
+  jobsForPartnerDeskTab,
+  partnerDeskNeedsPaymentCollect,
+  partnerDeskTabsFor,
+  usesPartnerServiceDesk,
+} from "./partnerDeskTabs";
+import ReturnMedicinePanel from "./ReturnMedicine.jsx";
+import {
+  customerPaidAtCheckout,
+  isOnlinePayment,
+  paymentMethodLabel,
+  paymentShareText,
+  paymentUpiUri,
+} from "./paymentMethods";
+import { takeOnlinePayment } from "./paymentApi";
+import {
+  defaultSplitParts,
+  normalizePaymentParts,
+  orderPayableRupees,
+  paidOnCustomerApp,
+  partnerCollectMethodOptions,
+  paymentPartsTotal,
+  sharePartnerCollectionQr,
+  splitCollectionError,
+  usesCodFieldCollect,
+} from "./partnerCollect";
+import { fileToPrescriptionDraft } from "./prescriptionDraft";
+import {
+  fetchPartnerJobs,
+  fetchPartnerStock,
+  partnerLogin,
+  partnerLogout,
+  partnerSession,
+  patchPartnerJob,
+} from "./partnerApi";
+import { stockOnHandForItem } from "./stockReport";
+import OrderQr from "./OrderQr.jsx";
+import {
+  isMedicineOrder,
+  partnerScanAction,
+  scanHref,
+} from "./orderQr";
+import { rxShareCardStyles } from "./RxShareCard";
+import OrderFullView from "./OrderFullView.jsx";
+import { BillButton } from "./OrderBill.jsx";
+import OrderListTable from "./OrderListTable.jsx";
+import PharmacyReport from "./PharmacyReport.jsx";
+import { isPharmacyReportOrder } from "./pharmacyReport";
+import StepDownDesk from "./StepDownDesk.jsx";
+import {
+  isStepdownAdmitted,
+  stepdownAdmitFields,
+  stepdownDischargeFields,
+  stepdownInchargeFields,
+} from "./stepdownDesk";
+import { createStepdownPatientAccount } from "./stepdownBill";
+import {
+  acceptRequestedSlotFields,
+  isAwaitingCustomerSlotConfirm,
+  needsSlotConfirm,
+  partnerAcceptFields,
+  partnerDeclineFields,
+  partnerOfferSlotFields,
+} from "./orderConfirm";
+import {
+  LAB_TIME_SLOTS,
+  PSY_TIME_SLOTS,
+  appointmentSlotError,
+  bookingMaxDate,
+  openAppointmentSlots,
+} from "./appointmentSlot";
+import { isoDateToday } from "./personFields";
+import {
+  assignTechnicianFields,
+  diagnosticCompleteFields,
+  diagnosticKindOf,
+  isDiagnosticKind,
+  isLabReportUploadFile,
+  labJobCanReceiveReport,
+  labReportTargetJob,
+  diagnosticTestName,
+  mergeOrderReportIntoStore,
+  namedReportFileName,
+  nextDiagnosticAction,
+  reportReadyFields,
+  sampleCollectedFields,
+} from "./labPipeline";
+import {
+  medicalRecordFileCard,
+  medicalRecordForViewer,
+  medicalRecordPatientCard,
+} from "./medicalRecord";
+import {
+  completedReportsForPatient,
+  partnerCompletedPatients,
+  partnerPatientKey,
+  partnerPatientRecords,
+  uniquePartnerPatients,
+} from "./reportPeople";
 
-export default function Partner() {
+function formatRupee(amount) {
+  return `₹${Number(amount || 0).toLocaleString("en-IN", {
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function previewPartnerSplit(job, paymentMethod) {
+  const kind = job.kind || job.orderType || "medicine";
+  const pin = job.pinCode || job.pin || "";
+  const payable = orderPayableRupees(job);
+  const sale = Number(
+    job.split?.saleRupees ?? job.saleRupees ?? payable
+  );
+  return splitPayment(kind, payable, pin, {
+    saleRupees: sale,
+    payableRupees: payable,
+    couponCode: job.split?.couponCode || job.couponCode || "",
+    platformPercent: job.split?.platformPercent,
+    paymentMethod,
+    paidOn: "partner",
+  });
+}
+
+export default function Partner({ deskKind = "" }) {
   const session = partnerSession();
   const [token, setToken] = useState(session.token);
   const [partner, setPartner] = useState(session.partner);
@@ -16,13 +152,35 @@ export default function Partner() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [collectingId, setCollectingId] = useState("");
+  const [collectMethodByJob, setCollectMethodByJob] = useState({});
+  const [openJobId, setOpenJobId] = useState("");
+  const [pharmacyTab, setPharmacyTab] = useState("new");
+  const [labTab, setLabTab] = useState("new");
+  const [labPatientFilter, setLabPatientFilter] = useState("");
+  const [inventory, setInventory] = useState(null);
+  const [labReportError, setLabReportError] = useState("");
+  const [recordViewer, setRecordViewer] = useState(null);
+  const labReportFileRef = useRef(null);
+  const labUploadTargetIdRef = useRef("");
+  const openGeneratedReport = useCallback(
+    (item) => setRecordViewer(medicalRecordForViewer(item)),
+    []
+  );
 
-  const loadJobs = async () => {
-    setLoading(true);
+  const loadJobs = async ({ quiet = false } = {}) => {
+    if (!quiet) setLoading(true);
     setError("");
     try {
       const data = await fetchPartnerJobs();
-      setJobs(Array.isArray(data.jobs) ? data.jobs : []);
+      const sessionPartner = partner || partnerSession().partner;
+      setJobs(jobsForPartnerApp(data.jobs, sessionPartner));
+      if (deskKind === "medicine" || partnerAppKind(sessionPartner) === "medicine") {
+        try {
+          setInventory(await fetchPartnerStock());
+        } catch {
+          setInventory(null);
+        }
+      }
     } catch (err) {
       setError(err.message || "Could Not Load Jobs.");
       if (String(err.message || "").toLowerCase().includes("login")) {
@@ -31,23 +189,240 @@ export default function Partner() {
         setPartner(null);
       }
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!partner) return undefined;
+    const ownKind = partnerAppKind(partner);
+    const ownDesk = partnerDeskHash(ownKind, partner);
+    if (deskKind && deskKind !== ownKind) {
+      goToHash(ownDesk);
+      return undefined;
+    }
+    const current = String(window.location.hash || "").split("?")[0];
+    if (ownDesk && current !== ownDesk) goToHash(ownDesk);
+    return undefined;
+  }, [partner, deskKind]);
 
   useEffect(() => {
     if (token) loadJobs();
   }, [token]);
 
-  const collectJob = async (job, paymentMethod) => {
+  useEffect(() => {
+    if (labTab !== "upload") return;
+    const target = labReportTargetJob(jobs, openJobId);
+    const id = target
+      ? String(target.id || target.bookingId || target.requestId || "")
+      : "";
+    labUploadTargetIdRef.current = id;
+    if (id !== String(openJobId || "")) setOpenJobId(id);
+  }, [labTab, jobs, openJobId]);
+
+  useEffect(() => {
+    if (!token) return undefined;
+    const timer = setInterval(() => {
+      loadJobs({ quiet: true });
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [token]);
+
+  const collectJob = async (
+    job,
+    { paymentMethod, splitCollection, paymentParts, receipt } = {}
+  ) => {
     const id = job.id || job.bookingId || job.requestId;
     setCollectingId(id);
     setError("");
     try {
-      await patchPartnerJob(id, { collectPayment: true, paymentMethod });
+      let gateway = {};
+      if (
+        !splitCollection &&
+        isOnlinePayment(paymentMethod) &&
+        !usesCodFieldCollect(job, paymentMethod)
+      ) {
+        const payable = orderPayableRupees(job);
+        const paid = await takeOnlinePayment({
+          amountRupees: payable,
+          saleRupees: job.split?.saleRupees ?? payable,
+          couponCode: job.split?.couponCode || job.couponCode || "",
+          kind: job.kind || job.orderType || "medicine",
+          pin: job.pinCode || job.pin || "",
+          name: job.patientName || job.name || partner?.name || "",
+          mobile: job.mobile || partner?.mobile || "",
+          reference: id,
+          description: `MediHome ${id}`,
+          collector: "medihome",
+          paymentMethod,
+          paidOn: "customer",
+        });
+        gateway = {
+          paymentId: paid.paymentId || "",
+          razorpayPaymentId: paid.razorpayPaymentId || "",
+        };
+      }
+      await patchPartnerJob(id, {
+        collectPayment: true,
+        paymentMethod,
+        splitCollection: Boolean(splitCollection),
+        paymentParts: splitCollection ? paymentParts : [],
+        receipt,
+        ...gateway,
+      });
+      setCollectMethodByJob((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
       await loadJobs();
     } catch (err) {
       setError(err.message || "Could Not Record Collection.");
+    } finally {
+      setCollectingId("");
+    }
+  };
+
+  const decideJob = async (job, decision, extras = {}) => {
+    const id = job.id || job.bookingId || job.requestId;
+    const kind = String(job.kind || job.orderType || job.serviceType || "").toLowerCase();
+    setCollectingId(id);
+    setError("");
+    try {
+      let fields;
+      if (decision === "offer-slot") {
+        fields = partnerOfferSlotFields({
+          date: extras.date,
+          timeSlot: extras.timeSlot,
+          requestedDate: job.requestedDate || job.date,
+          requestedTimeSlot: job.requestedTimeSlot || job.timeSlot,
+        });
+      } else if (decision === "accept" && needsSlotConfirm(kind)) {
+        fields = acceptRequestedSlotFields(kind, job);
+      } else if (decision === "accept") {
+        fields = {
+          ...partnerAcceptFields(Date.now(), kind),
+          ...(kind === "stepdown" ? stepdownInchargeFields(partner, job) : {}),
+        };
+      } else {
+        fields = partnerDeclineFields(Date.now(), kind);
+      }
+      await patchPartnerJob(id, {
+        ...fields,
+        status:
+          decision === "accept" &&
+          (job.paymentMethod === "pending" ||
+            job.paymentStatus === "awaiting_partner")
+            ? "Confirmed — payment pending"
+            : fields.status,
+        ...(decision === "accept" &&
+        (job.paymentMethod === "pending" ||
+          job.paymentStatus === "awaiting_partner")
+          ? { paymentStatus: "awaiting_payment" }
+          : {}),
+      });
+      await loadJobs();
+    } catch (err) {
+      setError(err.message || "Could Not Update Request.");
+    } finally {
+      setCollectingId("");
+    }
+  };
+
+  const advanceDiagnostic = async (job, fields) => {
+    const id = job.id || job.bookingId || job.requestId;
+    setCollectingId(id);
+    setError("");
+    try {
+      await patchPartnerJob(id, fields);
+      if (fields?.reportFileName || fields?.reportFileData) {
+        try {
+          mergeOrderReportIntoStore({ ...job, ...fields, id });
+        } catch {
+          /* local customer copy is best-effort; the job already saved */
+        }
+        setLabTab("done");
+        setLabReportError("");
+        if (labReportFileRef.current) labReportFileRef.current.value = "";
+      } else if (fields?.trackStatus === "sample_collected") {
+        setLabTab("sample");
+        setOpenJobId(id);
+      }
+      await loadJobs();
+    } catch (err) {
+      setError(err.message || "Could Not Update Lab Job.");
+    } finally {
+      setCollectingId("");
+    }
+  };
+
+  const openLabReportPicker = (orders) => {
+    const target = labReportTargetJob(orders, openJobId);
+    const id = target
+      ? String(target.id || target.bookingId || target.requestId || "")
+      : "";
+    labUploadTargetIdRef.current = id;
+    setOpenJobId(id);
+    setLabReportError("");
+    const input = labReportFileRef.current;
+    if (input) {
+      input.value = "";
+      input.click();
+    }
+  };
+
+  const uploadLabReportFile = async (file) => {
+    setLabReportError("");
+    const job = labReportTargetJob(jobs, labUploadTargetIdRef.current || openJobId);
+    if (!job) {
+      setLabReportError("No order to attach this report to yet.");
+      return;
+    }
+    if (!file) return;
+    if (!isLabReportUploadFile(file)) {
+      if (labReportFileRef.current) labReportFileRef.current.value = "";
+      setLabReportError("Choose a PDF or photo.");
+      return;
+    }
+    if (file.size > 1.5 * 1024 * 1024) {
+      setLabReportError("Report must be under 1.5 MB.");
+      return;
+    }
+    try {
+      const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Could not read file."));
+        reader.readAsDataURL(file);
+      });
+      const testName = diagnosticTestName(job);
+      await advanceDiagnostic(
+        job,
+        reportReadyFields({
+          fileName: namedReportFileName(
+            { ...job, testName },
+            { fileName: file.name, fileType: file.type }
+          ),
+          fileType: file.type || "application/octet-stream",
+          fileData: data,
+          testName,
+        })
+      );
+    } catch (err) {
+      setLabReportError(err.message || "Could not upload report.");
+    }
+  };
+
+  const updatePharmacyJob = async (job, fields, nextTab = "") => {
+    const id = job.id || job.bookingId || job.requestId;
+    setCollectingId(id);
+    setError("");
+    try {
+      await patchPartnerJob(id, fields);
+      if (nextTab) setPharmacyTab(nextTab);
+      await loadJobs();
+    } catch (err) {
+      setError(err.message || "Could not update this order.");
     } finally {
       setCollectingId("");
     }
@@ -58,15 +433,84 @@ export default function Partner() {
     setError("");
     try {
       const data = await partnerLogin(loginId, password);
+      const appKind = partnerAppKind(data.partner);
+      if (deskKind && appKind !== deskKind) {
+        partnerLogout();
+        setToken("");
+        setPartner(null);
+        setError(
+          `This login belongs to the ${partnerAppTitle(appKind, data.partner)} app. Open that app to continue.`
+        );
+        return;
+      }
       setToken(data.token);
       setPartner(data.partner);
       setPassword("");
+      const nextDesk = partnerDeskHash(appKind, data.partner);
+      if (nextDesk && window.location.hash.split("?")[0] !== nextDesk) {
+        goToHash(nextDesk);
+      }
     } catch (err) {
       setError(err.message || "Login Failed.");
     }
   };
 
-  const showScanCol = isMedicineRiderPartner(partner);
+  const showScanCol = isDeliveryPartner(partner);
+  const appKind = deskKind || (partner ? partnerAppKind(partner) : "");
+  const deskHash =
+    typeof window !== "undefined"
+      ? String(window.location.hash || "").split("?")[0]
+      : "";
+  const appTitle = partnerAppTitle(appKind, partner, deskHash);
+  const deliveryDesk = isDeliveryPartner(partner) || deskHash === "#delivery-desk";
+  const isStepDownDesk = appKind === "stepdown" || deskHash === "#stepdown-desk";
+  const sharedStayRef = useRef(new Set());
+
+  useEffect(() => {
+    const tabs = partnerDeskTabsFor(appKind);
+    if (tabs.length && !tabs.some((tab) => tab.id === labTab)) {
+      setLabTab("new");
+    }
+  }, [appKind, labTab]);
+
+  useEffect(() => {
+    if (!token || !partner || !isStepDownDesk) return undefined;
+    let cancelled = false;
+    const share = async () => {
+      let patched = false;
+      for (const job of jobs) {
+        const id = job.id || job.bookingId || job.requestId;
+        if (!id || sharedStayRef.current.has(String(id))) continue;
+        const accepted =
+          isStepdownAdmitted(job) ||
+          String(job.partnerConfirmStatus || "").toLowerCase() === "accepted";
+        const fields = {
+          ...(accepted && !job.inchargeMobile ? stepdownInchargeFields(partner, job) : {}),
+          ...(isStepdownAdmitted(job) && !job.patientAccountId
+            ? createStepdownPatientAccount(job)
+            : {}),
+        };
+        if (!fields.inchargeMobile && !fields.patientAccountId) {
+          if (!accepted || (job.inchargeMobile && (!isStepdownAdmitted(job) || job.patientAccountId))) {
+            sharedStayRef.current.add(String(id));
+          }
+          continue;
+        }
+        sharedStayRef.current.add(String(id));
+        try {
+          await patchPartnerJob(id, fields);
+          patched = true;
+        } catch {
+          sharedStayRef.current.delete(String(id));
+        }
+      }
+      if (!cancelled && patched) await loadJobs({ quiet: true });
+    };
+    share();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, partner, isStepDownDesk, jobs]);
 
   if (!token || !partner) {
     return (
@@ -74,9 +518,8 @@ export default function Partner() {
         <style>{styles}</style>
         <div className="service-page partner-page">
           <section className="service-hero">
-            <span className="service-kicker">Partner Operations</span>
-            <h1>Partner Login</h1>
-            <p>Use The Login ID And Password Created For You By MediHome Staff.</p>
+            <span className="service-kicker">{appTitle}</span>
+            <h1>{appTitle} Login</h1>
           </section>
           <form className="service-form admin-login" onSubmit={handleLogin}>
             <div className="field">
@@ -99,9 +542,6 @@ export default function Partner() {
               />
             </div>
             {error ? <p className="admin-error">{error}</p> : null}
-            <p className="admin-hint">
-              First-Time Login ID And Password Are Created On The Staff Desk.
-            </p>
             <button type="submit" className="service-submit">
               Sign In
             </button>
@@ -117,9 +557,8 @@ export default function Partner() {
       <div className="service-page partner-page">
         <section className="service-hero admin-hero">
           <div>
-            <span className="service-kicker">{partner.role}</span>
+            <span className="service-kicker">{appTitle}</span>
             <h1>{partner.name}</h1>
-            <p>Assigned Jobs Only. Settlement Ledger Is Shared On Each Job.</p>
           </div>
           <div className="admin-hero-actions">
             <button type="button" onClick={loadJobs} disabled={loading}>
@@ -139,166 +578,1506 @@ export default function Partner() {
           </div>
         </section>
         {error ? <p className="admin-error">{error}</p> : null}
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Job</th>
-                <th>Type</th>
-                <th>PIN / Outlet</th>
-                <th>Pay</th>
-                <th>Your Share</th>
-                <th>Status</th>
-                {showScanCol ? <th>Scan Delivery</th> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {jobs.length === 0 ? (
-                <tr>
-                  <td colSpan={showScanCol ? 7 : 6}>
-                    {loading
-                      ? "Loading…"
-                      : "No Jobs Yet. Staff Assign Work From #admin."}
-                  </td>
-                </tr>
+        {isStepDownDesk ? (
+          <StepDownDesk
+            orders={jobs}
+            loading={loading}
+            decidingId={collectingId}
+            partner={partner}
+            onDecide={(job, decision) => decideJob(job, decision)}
+            onAdmit={async (job, extras = {}) => {
+              const id = job.id || job.bookingId || job.requestId;
+              setCollectingId(id);
+              setError("");
+              try {
+                await patchPartnerJob(id, stepdownAdmitFields(job, { ...extras, partner }));
+                await loadJobs();
+              } catch (err) {
+                setError(err.message || "Could not shift the patient.");
+              } finally {
+                setCollectingId("");
+              }
+            }}
+            onDischarge={async (job, extras = {}) => {
+              const id = job.id || job.bookingId || job.requestId;
+              setCollectingId(id);
+              setError("");
+              try {
+                await patchPartnerJob(id, stepdownDischargeFields(job, extras));
+                await loadJobs();
+              } catch (err) {
+                setError(err.message || "Could not discharge the patient.");
+              } finally {
+                setCollectingId("");
+              }
+            }}
+            onBillUpdate={async (job, fields) => {
+              const id = job.id || job.bookingId || job.requestId;
+              setCollectingId(id);
+              setError("");
+              try {
+                await patchPartnerJob(id, fields);
+                await loadJobs();
+              } catch (err) {
+                setError(err.message || "Could not update the bill.");
+              } finally {
+                setCollectingId("");
+              }
+            }}
+          />
+        ) : null}
+        {isStepDownDesk
+          ? null
+          : groupOrdersByKind(jobs, [appKind]).map((group) => {
+          const isMedicineDesk = group.kind === "medicine";
+          const isPharmacyStore = isMedicineDesk && !deliveryDesk;
+          const isDiagnosticStore =
+            (group.kind === "lab" || group.kind === "radiology") &&
+            usesPartnerServiceDesk(group.kind, partner);
+          const isLabStore = group.kind === "lab" && isDiagnosticStore;
+          const deskTabs = partnerDeskTabsFor(group.kind);
+          const deliveryReturns = deliveryDesk && pharmacyTab === "returns";
+          const labTabMeta = deskTabs.find((tab) => tab.id === labTab) || deskTabs[0];
+          const tabOrders = deliveryDesk
+            ? deliveryReturns
+              ? jobsForPharmacyDeskTab(group.orders, "returns")
+              : group.orders.filter((row) => pharmacyDeskTab(row) !== "returns")
+            : isPharmacyStore
+              ? jobsForPharmacyDeskTab(group.orders, pharmacyTab)
+              : isDiagnosticStore
+                ? jobsForPartnerDeskTab(group.orders, labTab, group.kind).filter(
+                    (row) =>
+                      !labPatientFilter ||
+                      partnerPatientKey(row) === labPatientFilter
+                  )
+              : group.orders;
+          const tabMeta =
+            PHARMACY_DESK_TABS.find((tab) => tab.id === pharmacyTab) ||
+            PHARMACY_DESK_TABS[0];
+          const returnCount = group.orders.filter((row) => pharmacyDeskTab(row) === "returns").length;
+          const pickupCount = group.orders.filter((row) => pharmacyDeskTab(row) !== "returns").length;
+          const renderDetail = (job) => {
+            const id = job.id || job.bookingId || job.requestId;
+            const paid = customerPaidAtCheckout(job);
+            const paidElsewhere = paidOnCustomerApp(job);
+            const kind = job.kind || job.orderType || "medicine";
+            const needsCollect = partnerDeskNeedsPaymentCollect(job, {
+              tabId: isDiagnosticStore ? labTab : "",
+              kind,
+              paid,
+            });
+            const method = collectMethodByJob[id] || "qr";
+            const preview = needsCollect
+              ? previewPartnerSplit(job, method)
+              : null;
+            return (
+              <JobDetail
+                id={id}
+                job={job}
+                relatedJobs={group.orders}
+                kind={kind}
+                paid={paid}
+                paidElsewhere={paidElsewhere}
+                promptUpload={false}
+                hideDiagPanel={isLabStore && labTab === "upload"}
+                needsCollect={needsCollect}
+                method={method}
+                preview={preview}
+                partner={partner}
+                collecting={collectingId === id}
+                showScanCol={showScanCol}
+                inventoryItems={inventory?.items || []}
+                inventoryOutletId={inventory?.outletId || partner?.outletId || ""}
+                onOpenRecord={openGeneratedReport}
+                onMethodChange={(value) =>
+                  setCollectMethodByJob((prev) => ({
+                    ...prev,
+                    [id]: value,
+                  }))
+                }
+                onCollect={(payload) => collectJob(job, payload)}
+                onCorrectMedicine={async (med, name) => {
+                  setCollectingId(id);
+                  setError("");
+                  try {
+                    await patchPartnerJob(id, {
+                      rxMedicineCorrection: {
+                        id: med.id || med.name,
+                        name,
+                      },
+                    });
+                    await loadJobs();
+                  } catch (err) {
+                    setError(
+                      err.message || "Could not correct the medicine name."
+                    );
+                    throw err;
+                  } finally {
+                    setCollectingId("");
+                  }
+                }}
+                onAcceptRequested={() => decideJob(job, "accept")}
+                onOfferSlot={(slot) => decideJob(job, "offer-slot", slot)}
+                onDecline={() => decideJob(job, "decline")}
+                onAccept={() => decideJob(job, "accept")}
+                onAdvance={(fields) => advanceDiagnostic(job, fields)}
+                onReturnCollect={(current, photo) =>
+                  updatePharmacyJob(
+                    current,
+                    pharmacyReturnCollectedFields(Date.now(), { photo }),
+                    "returns"
+                  )
+                }
+                onReturnReceive={(current) =>
+                  updatePharmacyJob(
+                    current,
+                    pharmacyReturnReceivedFields(Date.now(), {
+                      refundAmount: orderPayableRupees(current),
+                    }),
+                    "returns"
+                  )
+                }
+              />
+            );
+          };
+          return (
+            <section key={group.kind} className="order-category" aria-label={group.title}>
+              <h2>{deliveryDesk ? "Deliveries" : isLabStore ? "Lab tests" : group.title}</h2>
+              {deliveryDesk ? (
+                <div className="lab-tabs partner-order-tabs" role="tablist" aria-label="Delivery jobs">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={!deliveryReturns}
+                    className={!deliveryReturns ? "is-on" : ""}
+                    onClick={() => {
+                      setPharmacyTab("ready");
+                      setOpenJobId("");
+                    }}
+                  >
+                    Pickups
+                    <span>{pickupCount}</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={deliveryReturns}
+                    className={deliveryReturns ? "is-on" : ""}
+                    onClick={() => {
+                      setPharmacyTab("returns");
+                      setOpenJobId("");
+                    }}
+                  >
+                    Return medicine
+                    <span>{returnCount}</span>
+                  </button>
+                </div>
+              ) : isDiagnosticStore ? (
+                <div
+                  className="lab-tabs partner-order-tabs lab-desk-tabs"
+                  role="tablist"
+                  aria-label={
+                    group.kind === "radiology" ? "Radiology order status" : "Lab order status"
+                  }
+                >
+                  {deskTabs.map((tab) => {
+                    const count = jobsForPartnerDeskTab(group.orders, tab.id, group.kind).length;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={labTab === tab.id}
+                        className={labTab === tab.id ? "is-on" : ""}
+                        onClick={() => {
+                          setLabTab(tab.id);
+                          if (group.kind === "lab" && tab.id === "upload") {
+                            openLabReportPicker(group.orders);
+                            return;
+                          }
+                          setOpenJobId("");
+                        }}
+                      >
+                        {tab.label}
+                        <span>{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+              {isDiagnosticStore && uniquePartnerPatients(group.orders).length > 1 ? (
+                <div className="report-filters partner-patient-filter">
+                  <div className="field filter-field">
+                    <label htmlFor="partner-filter-patient">Patient</label>
+                    <select
+                      id="partner-filter-patient"
+                      value={labPatientFilter}
+                      onChange={(event) => {
+                        setLabPatientFilter(event.target.value);
+                        setOpenJobId("");
+                      }}
+                    >
+                      <option value="">All patients</option>
+                      {uniquePartnerPatients(group.orders).map((person) => (
+                        <option key={person.patientId} value={person.patientId}>
+                          {person.patientName || "Patient"}
+                          {person.mobile ? ` · ${person.mobile}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ) : isPharmacyStore ? (
+                <div className="lab-tabs partner-order-tabs" role="tablist" aria-label="Pharmacy order status">
+                  {PHARMACY_DESK_TABS.map((tab) => {
+                    const count = group.orders.filter((row) => pharmacyDeskTab(row) === tab.id).length;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={pharmacyTab === tab.id}
+                        className={pharmacyTab === tab.id ? "is-on" : ""}
+                        onClick={() => {
+                          setPharmacyTab(tab.id);
+                          setOpenJobId("");
+                        }}
+                      >
+                        {tab.label}
+                        <span>{count}</span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={pharmacyTab === "inventory"}
+                    className={pharmacyTab === "inventory" ? "is-on" : ""}
+                    onClick={() => {
+                      setPharmacyTab("inventory");
+                      setOpenJobId("");
+                    }}
+                  >
+                    Inventory
+                    <span>{inventory?.summary?.skus || 0}</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={pharmacyTab === "report"}
+                    className={pharmacyTab === "report" ? "is-on" : ""}
+                    onClick={() => {
+                      setPharmacyTab("report");
+                      setOpenJobId("");
+                    }}
+                  >
+                    Report
+                    <span>{group.orders.filter(isPharmacyReportOrder).length}</span>
+                  </button>
+                </div>
+              ) : null}
+              {isLabStore ? (
+                <>
+                  <input
+                    ref={labReportFileRef}
+                    type="file"
+                    accept="application/pdf,.pdf,image/*"
+                    aria-label="Upload PDF or photo"
+                    data-lab-upload-picker="true"
+                    className="lab-report-file-input"
+                    hidden
+                    disabled={Boolean(collectingId)}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] || null;
+                      event.target.value = "";
+                      if (file) uploadLabReportFile(file);
+                    }}
+                  />
+                  {labReportError ? (
+                    <small className="admin-error">{labReportError}</small>
+                  ) : null}
+                </>
+              ) : null}
+              {isPharmacyStore && pharmacyTab === "inventory" ? (
+                <PharmacyInventory inventory={inventory} loading={loading} />
+              ) : isPharmacyStore && pharmacyTab === "report" ? (
+                <PharmacyReport orders={group.orders} loading={loading} />
               ) : (
-                jobs.map((job) => {
-                  const id = job.id || job.bookingId || job.requestId;
-                  const paid = String(job.paymentStatus || "").toLowerCase() === "paid";
-                  const needsCollect = !paid;
-                  return (
-                    <tr key={id}>
-                      <td>#{id}</td>
-                      <td>{kindLabel(job.kind || job.orderType)}</td>
-                      <td>
-                        {job.pinCode || job.pin || "—"}
-                        {job.outletName ? ` · ${job.outletName}` : ""}
-                      </td>
-                      <td>
-                        {isOnlinePayment(job.paymentMethod) ? "Online" : "COD"}
-                        {job.paymentStatus ? ` · ${job.paymentStatus}` : ""}
-                        {paid && job.collector === "medihome" ? (
-                          <>
-                            <br />
-                            Paid To MediHome
-                          </>
-                        ) : null}
-                        {paid && job.collector === "partner" ? (
-                          <>
-                            <br />
-                            Collected By Partner
-                          </>
-                        ) : null}
-                        {job.split?.splitMode ? (
-                          <>
-                            <br />
-                            {splitModeLabel(job.split)}
-                          </>
-                        ) : null}
-                      </td>
-                      <td>
-                        {job.split?.partnerRupees != null
-                          ? `₹${Number(job.split.partnerRupees).toLocaleString("en-IN")}${
-                              job.split.partnerPercent != null
-                                ? ` (${job.split.partnerPercent}% MRP)`
-                                : ""
-                            }`
-                          : "—"}
-                        {partnerSettlementNote(job.split, {
-                          collector: job.collector,
-                          paymentMethod: job.paymentMethod,
-                          paidOn: job.paidOn,
-                        }) ? (
-                          <>
-                            <br />
-                            {partnerSettlementNote(job.split, {
-                              collector: job.collector,
-                              paymentMethod: job.paymentMethod,
-                              paidOn: job.paidOn,
-                            })}
-                          </>
-                        ) : null}
-                        {needsCollect ? (
-                          <div className="partner-collect">
-                            <button
-                              type="button"
-                              disabled={collectingId === id}
-                              onClick={() => collectJob(job, "cod")}
-                            >
-                              Collect Cash
-                            </button>
-                            <button
-                              type="button"
-                              disabled={collectingId === id}
-                              onClick={() => collectJob(job, "upi")}
-                            >
-                              Collect Online
-                            </button>
-                          </div>
-                        ) : job.split ? (
-                          <ShareLedgerButton split={job.split} />
-                        ) : null}
-                      </td>
-                      <td>{job.status || job.trackStatus || "—"}</td>
-                      {showScanCol ? (
-                        <td>
-                          <a
-                            className="partner-scan-link"
-                            href={scanHref({ id, step: "pickup", order: job })}
-                          >
-                            Scan Delivery
-                          </a>
-                        </td>
-                      ) : null}
-                    </tr>
-                  );
-                })
+                <>
+                  {isDiagnosticStore && labTab === "done" ? (
+                    <PartnerCompletedReportList
+                      jobs={tabOrders}
+                      onOpen={openGeneratedReport}
+                    />
+                  ) : null}
+                  <OrderListTable
+                    orders={tabOrders}
+                    audience="partner"
+                    empty={
+                      loading
+                        ? "Loading…"
+                        : deliveryReturns
+                          ? "No return medicines yet."
+                          : isPharmacyStore
+                          ? `No ${tabMeta.label.toLowerCase()} yet.`
+                          : isDiagnosticStore
+                          ? `No ${String(labTabMeta?.label || "orders").toLowerCase()} yet.`
+                          : `No ${group.title.toLowerCase()} yet.`
+                    }
+                    openId={openJobId}
+                    onOpen={setOpenJobId}
+                    renderDetail={renderDetail}
+                  />
+                </>
               )}
-            </tbody>
-          </table>
-        </div>
+            </section>
+          );
+        })}
       </div>
+      {recordViewer ? (
+        <RecordViewer record={recordViewer} onClose={() => setRecordViewer(null)} />
+      ) : null}
     </>
   );
 }
 
-function ShareLedgerButton({ split }) {
-  const [note, setNote] = useState("");
+function PharmacyInventory({ inventory, loading }) {
+  const rows = Array.isArray(inventory?.items) ? inventory.items : [];
+  const summary = inventory?.summary;
   return (
-    <div>
-      <button
-        type="button"
-        className="partner-share-ledger"
-        onClick={async () => {
-          const result = await shareSettlement(split);
-          setNote(
-            result === "shared" ? "Shared." : result === "copied" ? "Copied." : ""
-          );
-        }}
-      >
-        Share Ledger
-      </button>
-      {note ? <span> {note}</span> : null}
+    <div className="admin-table-wrap pharmacy-inventory">
+      <p className="partner-retention-note">
+        {inventory?.outletName
+          ? `Live stock from ${inventory.outletName}. Sold packs stay on this desk and on-hand qty updates when you approve an order.`
+          : "Stock is loaded from the pharmacy system for this store."}
+      </p>
+      {summary ? (
+        <p className="pharmacy-stock-summary">
+          {summary.skus} SKUs · {summary.onHand} on hand · {summary.outSkus} out of stock
+          {summary.needSkus ? ` · ${summary.needSkus} need restock` : ""}
+        </p>
+      ) : null}
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>Medicine</th>
+            <th>Brand</th>
+            <th>On hand</th>
+            <th>Sold</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={5}>{loading ? "Loading…" : "No inventory recorded for this pharmacy yet."}</td>
+            </tr>
+          ) : (
+            rows.map((row) => (
+              <tr key={`${row.outletId}-${row.skuKey}`}>
+                <td>
+                  <strong>{row.name}</strong>
+                  {row.salt ? <div className="pharmacy-stock-salt">{row.salt}</div> : null}
+                </td>
+                <td>{row.brand}</td>
+                <td>{row.current}</td>
+                <td>{row.sold}</td>
+                <td>
+                  <span className={`pharmacy-stock-status is-${String(row.status || "").toLowerCase().replace(/\s+/g, "-")}`}>
+                    {row.status}
+                  </span>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
 
+function PharmacyJobStock({ job, items, outletId }) {
+  const lines = Array.isArray(job?.items) ? job.items : [];
+  if (!lines.length) return null;
+  return (
+    <div className="pharmacy-job-stock">
+      <h3>Pharmacy stock</h3>
+      <ul>
+        {lines.map((item) => {
+          const onHand = stockOnHandForItem(item, items, outletId);
+          const need = Math.max(1, Number(item.quantity || 1));
+          const label =
+            onHand == null
+              ? "Not in store list yet"
+              : onHand <= 0
+                ? "Out of stock"
+                : onHand < need
+                  ? `${onHand} on hand — short`
+                  : `${onHand} on hand`;
+          return (
+            <li key={item.id || item.name}>
+              <strong>{item.name}</strong>
+              <span>{label}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function JobDetail({
+  id,
+  job,
+  relatedJobs = [],
+  kind,
+  paid,
+  paidElsewhere,
+  promptUpload = false,
+  hideDiagPanel = false,
+  needsCollect,
+  method,
+  preview,
+  partner,
+  collecting,
+  showScanCol,
+  inventoryItems = [],
+  inventoryOutletId = "",
+  onMethodChange,
+  onCollect,
+  onCorrectMedicine,
+  onAcceptRequested,
+  onOfferSlot,
+  onDecline,
+  onAccept,
+  onAdvance,
+  onReturnCollect,
+  onReturnReceive,
+  onOpenRecord,
+}) {
+  const diagPanel =
+    !hideDiagPanel &&
+    isDiagnosticKind(kind) &&
+    String(job.trackStatus || "") !== "done" &&
+    String(job.trackStatus || "") !== "declined" &&
+    (promptUpload || job.partnerConfirmed || labJobCanReceiveReport(job)) ? (
+      <DiagnosticJobPanel
+        job={job}
+        busy={collecting}
+        onAdvance={onAdvance}
+        promptUpload={promptUpload}
+      />
+    ) : null;
+
+  return (
+    <div className="partner-job-detail-inner">
+      {promptUpload ? diagPanel : null}
+      <OrderFullView
+        order={job}
+        audience="partner"
+        rxEditable
+        rxBusy={collecting}
+        onCorrectMedicine={onCorrectMedicine}
+      />
+      {kind === "medicine" ? (
+        <PharmacyJobStock
+          job={job}
+          items={inventoryItems}
+          outletId={inventoryOutletId}
+        />
+      ) : null}
+      {kind !== "medicine" && needsCollect ? (
+        <PartnerCollectPanel
+          jobId={id}
+          job={job}
+          method={method}
+          collecting={collecting}
+          preview={preview}
+          payable={orderPayableRupees(job)}
+          partner={partner}
+          onMethodChange={onMethodChange}
+          onCollect={onCollect}
+        />
+      ) : kind !== "medicine" && paid ? (
+        <PaidOnDesk job={job} paidElsewhere={paidElsewhere} />
+      ) : null}
+      {needsSlotConfirm(kind) &&
+      (String(job.trackStatus || "").toLowerCase() === "requested" ||
+        job.partnerConfirmStatus === "pending" ||
+        job.partnerConfirmStatus === "slot_rejected" ||
+        isAwaitingCustomerSlotConfirm(job)) ? (
+        <PartnerSlotPanel
+          job={job}
+          kind={kind}
+          busy={collecting}
+          onAcceptRequested={onAcceptRequested}
+          onOfferSlot={onOfferSlot}
+          onDecline={onDecline}
+        />
+      ) : String(job.trackStatus || "").toLowerCase() === "requested" ||
+        job.partnerConfirmStatus === "pending" ||
+        (kind === "medicine" &&
+          job.partnerConfirmStatus !== "accepted" &&
+          String(job.trackStatus || "") !== "declined" &&
+          String(job.trackStatus || "") !== "done") ? (
+        <div className="partner-decide">
+          <button
+            type="button"
+            className="partner-accept"
+            disabled={collecting}
+            onClick={onAccept}
+          >
+            {kind === "medicine" ? "Confirm order" : "Accept"}
+          </button>
+          <button
+            type="button"
+            className="partner-decline"
+            disabled={collecting}
+            onClick={onDecline}
+          >
+            Decline
+          </button>
+        </div>
+      ) : null}
+      {!promptUpload ? diagPanel : null}
+      <PartnerPatientRecord job={job} jobs={relatedJobs} onOpenRecord={onOpenRecord} />
+      {isMedicineOrder(job) ? (
+        <>
+          <ReturnMedicinePanel
+            order={job}
+            audience={showScanCol ? "delivery" : "partner"}
+            busy={collecting}
+            onCollect={onReturnCollect}
+            onReceive={showScanCol ? undefined : onReturnReceive}
+          />
+          <OrderQr order={job} compact audience={showScanCol ? "partner" : "pharmacy"} />
+          <BillButton order={job} className="partner-scan-link" />
+        </>
+      ) : null}
+      {showScanCol && partnerScanAction(job, partner) ? (
+        <p>
+          <a
+            className="partner-scan-link"
+            href={scanHref({
+              id,
+              step: partnerScanAction(job, partner).step,
+              order: job,
+            })}
+          >
+            {partnerScanAction(job, partner).label}
+          </a>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function PatientRecordCard({ patient, onOpen }) {
+  const card = medicalRecordPatientCard(patient);
+  return (
+    <button
+      type="button"
+      className="record-card"
+      onClick={() => onOpen?.(patient)}
+    >
+      <strong>{card.primary}</strong>
+      {card.secondary ? <span>{card.secondary}</span> : null}
+    </button>
+  );
+}
+
+function GeneratedReportCard({ record, onOpen }) {
+  const card = medicalRecordFileCard(record);
+  return (
+    <button
+      type="button"
+      className="record-card"
+      onClick={() => onOpen?.(record)}
+    >
+      <strong>{card.primary}</strong>
+      {card.secondary ? <span>{card.secondary}</span> : null}
+    </button>
+  );
+}
+
+function PartnerCompletedReportList({ jobs = [], onOpen }) {
+  const [openPatientId, setOpenPatientId] = useState("");
+  const patients = partnerCompletedPatients(jobs);
+  const openPatient = patients.find((row) => row.patientId === openPatientId) || null;
+  const files = openPatient
+    ? completedReportsForPatient(jobs, openPatient.patientId)
+    : [];
+  if (!patients.length) return null;
+
+  if (openPatient) {
+    return (
+      <div className="partner-completed-reports" aria-label="Completed reports">
+        <button
+          type="button"
+          className="record-back"
+          onClick={() => setOpenPatientId("")}
+        >
+          All patients
+        </button>
+        <p className="partner-collect-title">{openPatient.patientName || "Patient"}</p>
+        <ul className="partner-report-cards">
+          {files.map((row) => (
+            <li key={row.orderId || row.id}>
+              <GeneratedReportCard record={row} onOpen={onOpen} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  return (
+    <div className="partner-completed-reports" aria-label="Completed reports">
+      <p className="partner-collect-title">Completed reports</p>
+      <ul className="partner-report-cards">
+        {patients.map((person) => (
+          <li key={person.patientId}>
+            <PatientRecordCard
+              patient={person}
+              onOpen={() => setOpenPatientId(person.patientId)}
+            />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function PartnerPatientRecord({ job, jobs = [], onOpenRecord }) {
+  const [openFolder, setOpenFolder] = useState(false);
+  const files = partnerPatientRecords(jobs.length ? jobs : [job], job);
+  if (!files.length) return null;
+  const patient = {
+    patientId: files[0].patientId,
+    patientName: files[0].patientName,
+    name: files[0].patientName,
+    mobile: files[0].mobile,
+  };
+
+  if (!openFolder) {
+    return (
+      <div className="partner-patient-record">
+        <p className="partner-collect-title">Patient record</p>
+        <ul className="partner-report-cards">
+          <li>
+            <PatientRecordCard patient={patient} onOpen={() => setOpenFolder(true)} />
+          </li>
+        </ul>
+      </div>
+    );
+  }
+
+  return (
+    <div className="partner-patient-record">
+      <button type="button" className="record-back" onClick={() => setOpenFolder(false)}>
+        Patient record
+      </button>
+      <p className="partner-collect-title">{patient.patientName || "Patient"}</p>
+      <ul className="partner-report-cards">
+        {files.map((row) => (
+          <li key={row.orderId || row.id}>
+            <GeneratedReportCard record={row} onOpen={onOpenRecord} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function PartnerSlotPanel({ job, kind, busy, onAcceptRequested, onOfferSlot, onDecline }) {
+  const requestedDate = job.requestedDate || job.date || "";
+  const requestedSlot = job.requestedTimeSlot || job.timeSlot || "";
+  const [date, setDate] = useState(requestedDate);
+  const [timeSlot, setTimeSlot] = useState("");
+  const [error, setError] = useState("");
+  const waiting = isAwaitingCustomerSlotConfirm(job);
+  const slots = kind === "psychologist" ? PSY_TIME_SLOTS : LAB_TIME_SLOTS;
+  const openSlots = openAppointmentSlots(slots, date);
+  const today = isoDateToday();
+  const maxDate = bookingMaxDate();
+  const title =
+    kind === "psychologist" ? "Psychologist slot" : kind === "lab" ? "Lab slot" : "Imaging slot";
+
+  const offer = () => {
+    const slotError = appointmentSlotError(timeSlot, date, slots);
+    if (slotError) {
+      setError(slotError);
+      return;
+    }
+    if (
+      date === requestedDate &&
+      timeSlot === requestedSlot
+    ) {
+      setError("Pick a different available slot, or accept the customer’s requested slot.");
+      return;
+    }
+    setError("");
+    onOfferSlot({ date, timeSlot });
+  };
+
+  return (
+    <div className="partner-diag-panel">
+      <p className="partner-collect-title">{title}</p>
+      <p className="partner-tech">
+        Customer requested: {requestedDate || "—"} · {requestedSlot || "—"}
+      </p>
+      {job.partnerConfirmStatus === "slot_rejected" ? (
+        <p className="partner-tech">Customer declined the last offered slot. Offer another or decline.</p>
+      ) : null}
+      {waiting ? (
+        <p className="partner-tech">
+          Offered {job.offeredDate} · {job.offeredTimeSlot}. Waiting for customer confirmation.
+        </p>
+      ) : (
+        <>
+          <label className="partner-slot-label">
+            Available date
+            <input
+              type="date"
+              value={date}
+              min={today}
+              max={maxDate}
+              disabled={busy}
+              onChange={(event) => {
+                setDate(event.target.value);
+                setTimeSlot("");
+                setError("");
+              }}
+            />
+          </label>
+          <label className="partner-slot-label">
+            Available slot
+            <select
+              value={timeSlot}
+              disabled={busy}
+              onChange={(event) => {
+                setTimeSlot(event.target.value);
+                setError("");
+              }}
+            >
+              <option value="">Select an open slot</option>
+              {openSlots.map((slot) => (
+                <option key={slot} value={slot}>
+                  {slot}
+                </option>
+              ))}
+            </select>
+          </label>
+          {error ? <p className="admin-error">{error}</p> : null}
+          <div className="partner-decide">
+            <button
+              type="button"
+              className="partner-accept"
+              disabled={busy || !requestedSlot}
+              onClick={onAcceptRequested}
+            >
+              Accept requested slot
+            </button>
+            <button
+              type="button"
+              className="partner-accept"
+              disabled={busy}
+              onClick={offer}
+            >
+              Offer this slot
+            </button>
+            <button
+              type="button"
+              className="partner-decline"
+              disabled={busy}
+              onClick={onDecline}
+            >
+              Decline
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function LabReportUploadPanel({
+  job,
+  busy,
+  fileInputRef,
+  reportFile,
+  onPickFile,
+  reportName,
+  onReportName,
+  reportNotes,
+  onReportNotes,
+  localError,
+  onSubmit,
+  hidden = false,
+}) {
+  const jobId = job ? String(job.id || job.bookingId || job.requestId || "") : "";
+  return (
+    <div
+      className={`partner-diag-panel partner-upload-tab-panel${hidden ? " is-hidden" : ""}`}
+      hidden={hidden}
+      aria-hidden={hidden || undefined}
+    >
+      <p className="partner-collect-title">Upload PDF or photo</p>
+      <p className="partner-report-note">
+        {jobId
+          ? `Choose a PDF or photo for order #${jobId}.`
+          : "Open a lab order first, then choose a PDF or photo."}
+      </p>
+      <label className="partner-report-file is-prompt">
+        <span>{reportFile ? reportFile.name : "Upload PDF or photo"}</span>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf,.pdf,image/*"
+          aria-label="Upload PDF or photo"
+          disabled={busy}
+          onChange={(event) => onPickFile(event.target.files?.[0] || null)}
+        />
+      </label>
+      <button
+        type="button"
+        className="partner-accept"
+        disabled={busy}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        Choose File
+      </button>
+      <input
+        value={reportName}
+        onChange={(event) => onReportName(event.target.value)}
+        placeholder="Test name on report"
+        aria-label="Test name on report"
+        disabled={busy}
+      />
+      <input
+        value={reportNotes}
+        onChange={(event) => onReportNotes(event.target.value)}
+        placeholder="Notes (optional)"
+        aria-label="Report notes"
+        disabled={busy}
+      />
+      {localError ? <small className="admin-error">{localError}</small> : null}
+      <button
+        type="button"
+        className="partner-accept"
+        disabled={busy}
+        onClick={() => onSubmit(job)}
+      >
+        Upload Report
+      </button>
+    </div>
+  );
+}
+
+function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false }) {
+  const action = nextDiagnosticAction(job);
+  const [techName, setTechName] = useState(job.technicianName || job.partnerName || "");
+  const [techMobile, setTechMobile] = useState(job.technicianMobile || job.partnerMobile || "");
+  const [reportName, setReportName] = useState("");
+  const [reportNotes, setReportNotes] = useState("");
+  const [reportFile, setReportFile] = useState(null);
+  const [localError, setLocalError] = useState("");
+  const reportFileRef = useRef(null);
+  const canUpload = labJobCanReceiveReport(job);
+  const showUpload =
+    diagnosticKindOf(job) !== "lab" &&
+    (promptUpload || action === "upload_report" || canUpload);
+
+  const readFile = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Could not read file."));
+      reader.readAsDataURL(file);
+    });
+
+  const pickReportFile = (file) => {
+    setLocalError("");
+    if (!file) {
+      setReportFile(null);
+      return;
+    }
+    if (!isLabReportUploadFile(file)) {
+      setReportFile(null);
+      if (reportFileRef.current) reportFileRef.current.value = "";
+      setLocalError("Choose a PDF or photo.");
+      return;
+    }
+    setReportFile(file);
+  };
+
+  const submitReport = async () => {
+    setLocalError("");
+    if (!reportFile) {
+      setLocalError("Choose a PDF or photo.");
+      return;
+    }
+    if (!isLabReportUploadFile(reportFile)) {
+      setLocalError("Choose a PDF or photo.");
+      return;
+    }
+    if (reportFile.size > 1.5 * 1024 * 1024) {
+      setLocalError("Report must be under 1.5 MB.");
+      return;
+    }
+    try {
+      const data = await readFile(reportFile);
+      const testName = String(reportName || "").trim() || diagnosticTestName(job);
+      onAdvance(
+        reportReadyFields({
+          fileName: namedReportFileName(
+            { ...job, testName },
+            { fileName: reportFile.name, fileType: reportFile.type }
+          ),
+          fileType: reportFile.type || "application/octet-stream",
+          fileData: data,
+          testName,
+          notes: reportNotes,
+        })
+      );
+    } catch (err) {
+      setLocalError(err.message || "Could not upload report.");
+    }
+  };
+
+  const uploadPanel =
+    showUpload && canUpload ? (
+      <LabReportUploadPanel
+        job={job}
+        busy={busy}
+        fileInputRef={reportFileRef}
+        reportFile={reportFile}
+        onPickFile={pickReportFile}
+        reportName={reportName}
+        onReportName={setReportName}
+        reportNotes={reportNotes}
+        onReportNotes={setReportNotes}
+        localError={localError}
+        onSubmit={() => submitReport()}
+      />
+    ) : null;
+
+  if (promptUpload || action === "upload_report") {
+    return uploadPanel;
+  }
+
+  if (action === "await_customer_slot") {
+    return (
+      <>
+        <p className="partner-tech">
+          Waiting for the customer to accept the offered slot
+          {job.offeredDate || job.offeredTimeSlot
+            ? ` (${[job.offeredDate, job.offeredTimeSlot].filter(Boolean).join(" · ")})`
+            : ""}
+          .
+        </p>
+        {uploadPanel}
+      </>
+    );
+  }
+
+  if (!action || action === "confirm") return uploadPanel;
+
+  return (
+    <div className="partner-diag-panel">
+      {action === "assign_technician" ? (
+        <>
+          <p className="partner-collect-title">Assign partner</p>
+          <input
+            value={techName}
+            onChange={(event) => setTechName(event.target.value)}
+            placeholder="Partner name"
+            aria-label="Partner name"
+            disabled={busy}
+          />
+          <input
+            value={techMobile}
+            onChange={(event) => setTechMobile(event.target.value.replace(/\D/g, "").slice(0, 10))}
+            placeholder="Mobile"
+            aria-label="Partner mobile"
+            inputMode="numeric"
+            disabled={busy}
+          />
+          <button
+            type="button"
+            className="partner-accept"
+            disabled={busy || techName.trim().length < 2}
+            onClick={() =>
+              onAdvance(assignTechnicianFields({ name: techName, mobile: techMobile }))
+            }
+          >
+            Assign Partner
+          </button>
+        </>
+      ) : null}
+
+      {action === "sample_collect" ? (
+        <button
+          type="button"
+          className="partner-accept"
+          disabled={busy}
+          onClick={() => onAdvance(sampleCollectedFields())}
+        >
+          Mark Sample Collected
+        </button>
+      ) : null}
+
+      {action === "complete" ? (
+        <button
+          type="button"
+          className="partner-accept"
+          disabled={busy}
+          onClick={() => onAdvance(diagnosticCompleteFields())}
+        >
+          Mark Completed
+        </button>
+      ) : null}
+      {uploadPanel}
+    </div>
+  );
+}
+
+function PaidOnDesk({ job, paidElsewhere }) {
+  const method = paymentMethodLabel(job.paymentMethod, "Cash / COD");
+  return (
+    <div className="partner-paid-box">
+      <p className="partner-collect-title">
+        {job.trackCompleted ? "Collected · order completed" : "Payment received"}
+      </p>
+      <p className="partner-report-note">
+        {paidElsewhere
+          ? `Paid on MediHome (${method}).`
+          : `Collected by partner (${method}).`}
+      </p>
+      {job.receiptFileData ? (
+        <img
+          className="partner-receipt-preview"
+          src={job.receiptFileData}
+          alt="Payment receipt"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function PartnerCollectPanel({
+  jobId,
+  job,
+  method,
+  collecting,
+  preview,
+  payable,
+  partner,
+  onMethodChange,
+  onCollect,
+}) {
+  const options = useMemo(() => partnerCollectMethodOptions(job), [job]);
+  const fieldCollect = usesCodFieldCollect(job, method);
+  const [splitOn, setSplitOn] = useState(false);
+  const [parts, setParts] = useState(() => defaultSplitParts(payable));
+  const [qrSrc, setQrSrc] = useState("");
+  const [qrOpen, setQrOpen] = useState(false);
+  const [receipt, setReceipt] = useState(null);
+  const [receiptErrorText, setReceiptErrorText] = useState("");
+  const [shareNote, setShareNote] = useState("");
+
+  useEffect(() => {
+    setSplitOn(false);
+    setParts(defaultSplitParts(payable));
+    setReceipt(null);
+    setReceiptErrorText("");
+    setShareNote("");
+    setQrOpen(false);
+  }, [jobId, payable]);
+
+  useEffect(() => {
+    if (options.some((option) => option.value === method) || !options[0]) return;
+    onMethodChange(options[0].value);
+  }, [options, method, onMethodChange]);
+
+  const payUri = paymentUpiUri({
+    amount: payable,
+    kind: job?.kind || job?.orderType || "order",
+    orderId: jobId,
+    pa: partner?.upiId,
+    pn: partner?.name || "MediHome",
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    QRCode.toDataURL(payUri, {
+      margin: 1,
+      width: 160,
+      color: { dark: "#143246", light: "#ffffff" },
+    })
+      .then((url) => {
+        if (!cancelled) setQrSrc(url);
+      })
+      .catch(() => {
+        if (!cancelled) setQrSrc("");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [payUri]);
+
+  useEffect(() => {
+    if (!qrOpen) return undefined;
+    const onKey = (event) => {
+      if (event.key === "Escape") setQrOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [qrOpen]);
+
+  const attachReceipt = async (file) => {
+    setReceiptErrorText("");
+    if (!file) {
+      setReceipt(null);
+      return;
+    }
+    try {
+      const draft = await fileToPrescriptionDraft(file);
+      if (!String(draft.fileType || "").startsWith("image/")) {
+        setReceipt(null);
+        setReceiptErrorText("Take a photo of the receipt.");
+        return;
+      }
+      setReceipt({
+        fileName: draft.fileName,
+        fileType: draft.fileType,
+        fileData: draft.fileData,
+        capturedAt: Date.now(),
+      });
+    } catch (err) {
+      setReceipt(null);
+      setReceiptErrorText(err.message || "Could not read that photo.");
+    }
+  };
+
+  const shareQr = async () => {
+    setQrOpen(true);
+    const text = paymentShareText({ amount: payable, kind: job?.kind || "order" });
+    const result = await sharePartnerCollectionQr({
+      qrSrc,
+      text,
+      uri: payUri,
+    });
+    if (result.note) setShareNote(result.note);
+  };
+
+  const remaining = roundRemaining(payable, parts);
+  const splitError = splitOn ? splitCollectionError(parts, payable) : "";
+
+  const patchPart = (index, next) => {
+    setParts((prev) => {
+      const list = prev.map((row, i) => (i === index ? { ...row, ...next } : row));
+      if (next.amountRupees !== undefined) {
+        const other = index === 0 ? 1 : 0;
+        const typed = Number(next.amountRupees);
+        if (
+          Number.isFinite(typed) &&
+          typed >= 0 &&
+          (list[other].amountRupees === "" || list[other].amountRupees == null)
+        ) {
+          const leftover = Math.max(0, Math.round((Number(payable) - typed) * 100) / 100);
+          list[other] = { ...list[other], amountRupees: leftover };
+        }
+      }
+      return list;
+    });
+  };
+
+  return (
+    <div className="partner-collect-panel">
+      <p className="partner-collect-title">Collect payment</p>
+      <div className="partner-qr-actions">
+        <button type="button" onClick={() => setQrOpen(true)}>
+          Show QR code
+        </button>
+        <button type="button" onClick={shareQr}>
+          Share QR code
+        </button>
+        {shareNote ? <small>{shareNote}</small> : null}
+      </div>
+      {qrOpen
+        ? createPortal(
+            <div
+              className="partner-qr-overlay"
+              role="presentation"
+              onClick={() => setQrOpen(false)}
+            >
+              <div
+                className="partner-qr-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={`partner-qr-title-${jobId}`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <p id={`partner-qr-title-${jobId}`} className="partner-collect-title">
+                  Payment QR
+                </p>
+                {qrSrc ? (
+                  <img src={qrSrc} alt={`Payment QR for ${jobId}`} />
+                ) : (
+                  <p className="partner-split-left">Preparing QR…</p>
+                )}
+                <p>
+                  Customer scans this QR for {formatRupee(payable)}.
+                </p>
+                <div className="partner-qr-dialog-actions">
+                  <button type="button" onClick={shareQr}>
+                    Share QR code
+                  </button>
+                  <button type="button" onClick={() => setQrOpen(false)}>
+                    Close
+                  </button>
+                </div>
+                {shareNote ? <small>{shareNote}</small> : null}
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+      <label className={`partner-split-toggle${splitOn ? " is-on" : ""}`}>
+        <input
+          type="checkbox"
+          checked={splitOn}
+          onChange={(event) => setSplitOn(event.target.checked)}
+        />
+        <span>Split payment</span>
+      </label>
+      {splitOn ? (
+        <div className="partner-split-rows">
+          {parts.map((part, index) => (
+            <div key={`${jobId}-split-${index}`} className="partner-split-row">
+              <label>
+                Method {index + 1}
+                <select
+                  value={part.method}
+                  aria-label={`Split method ${index + 1}`}
+                  onChange={(event) => patchPart(index, { method: event.target.value })}
+                >
+                  {options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Amount
+                <input
+                  inputMode="decimal"
+                  aria-label={`Split amount ${index + 1}`}
+                  value={part.amountRupees}
+                  placeholder="0"
+                  onChange={(event) =>
+                    patchPart(index, {
+                      amountRupees: event.target.value.replace(/[^\d.]/g, ""),
+                    })
+                  }
+                />
+              </label>
+            </div>
+          ))}
+          <p className={remaining === 0 && !splitError ? "partner-split-ok" : "partner-split-left"}>
+            {splitError ||
+              (remaining === 0
+                ? `Split totals ${formatRupee(paymentPartsTotal(parts))}`
+                : `Remaining ${formatRupee(remaining)}`)}
+          </p>
+        </div>
+      ) : (
+        <div className="partner-pay-methods" role="radiogroup" aria-label="Collection method">
+          {options.map((option) => (
+            <label
+              key={`${jobId}-${option.value}`}
+              className={method === option.value ? "is-on" : ""}
+            >
+              <input
+                type="radio"
+                name={`partner-pay-${jobId}`}
+                checked={method === option.value}
+                onChange={() => onMethodChange(option.value)}
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
+      )}
+      {preview ? (
+        <ul className="partner-split-preview">
+          <li>
+            <span>Collect from customer</span>
+            <strong>{formatRupee(preview.payableRupees)}</strong>
+          </li>
+        </ul>
+      ) : null}
+      <label className="partner-receipt-field">
+        Receipt photo
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          disabled={collecting}
+          onChange={(event) => attachReceipt(event.target.files?.[0] || null)}
+        />
+      </label>
+      {receipt?.fileData ? (
+        <img className="partner-receipt-preview" src={receipt.fileData} alt="Receipt preview" />
+      ) : (
+        <p className="partner-receipt-hint">
+          {fieldCollect && isOnlinePayment(method)
+            ? "Confirm after the customer pays by QR or UPI. A receipt photo is optional."
+            : isOnlinePayment(method)
+              ? "Digital payment opens the secure gateway. A receipt photo is optional."
+              : "Take a photo of the cash receipt to confirm collection."}
+        </p>
+      )}
+      {receiptErrorText ? <p className="partner-split-left">{receiptErrorText}</p> : null}
+      <button
+        type="button"
+        className="partner-collect-submit"
+        disabled={
+          collecting ||
+          (splitOn && Boolean(splitError)) ||
+          ((method === "cod" || method === "cash" || !isOnlinePayment(method)) &&
+            !splitOn &&
+            !receipt)
+        }
+        onClick={() =>
+          onCollect(
+            splitOn
+              ? {
+                  paymentMethod: "split",
+                  splitCollection: true,
+                  paymentParts: normalizePaymentParts(parts),
+                  receipt,
+                }
+              : { paymentMethod: method, receipt }
+          )
+        }
+      >
+        {collecting
+          ? "Recording…"
+          : splitOn
+            ? "Confirm split collection"
+            : fieldCollect || !isOnlinePayment(method)
+              ? `Confirm ${
+                  method === "cod" || method === "cash" ? "cash" : paymentMethodLabel(method)
+                } collection`
+              : `Pay ${paymentMethodLabel(method)} via gateway`}
+      </button>
+    </div>
+  );
+}
+
+function roundRemaining(payable, parts) {
+  return Math.round((Number(payable || 0) - paymentPartsTotal(parts)) * 100) / 100;
+}
+
 const styles = `
-.partner-page{max-width:1100px}
+${rxShareCardStyles}
+.partner-page{max-width:1240px}
+.partner-job-detail td{background:#f7fbfd;border-bottom:8px solid #eef3f6}
 .admin-hero{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
 .admin-hero-actions{display:flex;flex-wrap:wrap;gap:6px}
 .admin-hero-actions button{border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer}
-.partner-share-ledger{margin-top:6px;border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:700;padding:4px 8px;cursor:pointer}
-.partner-collect{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.partner-collect button{border:1px solid #1a6b7a;border-radius:6px;background:#1a6b7a;color:#fff;font:inherit;font-size:12px;font-weight:700;padding:4px 8px;cursor:pointer}
-.partner-collect button:disabled{opacity:.6;cursor:wait}
+.partner-split-box{margin:0 0 8px;font-size:12px;line-height:1.4;color:#34546b}
+.partner-split-box p{margin:0 0 4px}
+.partner-collect-panel{margin-top:8px;padding:10px;border:1px solid #d2e8ef;border-radius:10px;background:#f7fbfd}
+.partner-qr-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px}
+.partner-page .partner-qr-actions button,.partner-qr-dialog-actions button{border:1px solid #1a6b7a;border-radius:999px;background:#fff;color:#1a6b7a;font:inherit;font-size:11px;font-weight:800;min-height:28px;padding:4px 10px;cursor:pointer;width:auto}
+.partner-qr-actions small,.partner-qr-dialog small{font-size:11px;font-weight:700;color:#0f7a4a}
+.partner-qr-overlay{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(20,50,70,.46)}
+.partner-qr-dialog{width:min(260px,100%);padding:14px 14px 12px;border-radius:12px;background:#fff;border:1px solid #e4ecef;box-shadow:0 18px 48px rgba(20,50,70,.22);text-align:center}
+.partner-qr-dialog img{width:140px;height:140px;background:#fff}
+.partner-qr-dialog p{margin:0 0 8px;font-size:12px;line-height:1.4;color:#34546b}
+.partner-qr-dialog-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:4px}
+.partner-receipt-field{display:flex;flex-direction:column;gap:4px;margin:8px 0 4px;font-size:11px;font-weight:700;color:#34546b}
+.partner-receipt-field input{font:inherit}
+.partner-receipt-preview{width:100%;max-height:180px;object-fit:contain;border:1px solid #d7e2e9;border-radius:8px;background:#fff;margin:4px 0}
+.partner-receipt-hint,.partner-paid-box p{margin:0 0 6px;font-size:12px;line-height:1.4;color:#34546b}
+.partner-paid-box{margin-top:8px;padding:10px;border:1px solid #d2e8ef;border-radius:10px;background:#f7fbfd}
+.partner-collect-title{margin:0 0 8px;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#1a6b7a}
+.partner-split-toggle{display:flex;align-items:center;gap:8px;margin:0 0 8px;padding:8px 10px;border:1px dashed #c5d6e0;border-radius:8px;background:#fff;font-size:12px;font-weight:800;color:#143246;cursor:pointer}
+.partner-split-toggle.is-on{border-color:#1a6b7a;background:#e8f4f6;color:#1a6b7a}
+.partner-page .partner-split-toggle input{width:16px;height:16px;margin:0;padding:0;border:0;accent-color:#1a6b7a}
+.partner-split-rows{display:grid;gap:8px}
+.partner-split-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.partner-split-row label{display:flex;flex-direction:column;gap:4px;margin:0;font-size:11px;font-weight:700;color:#34546b}
+.partner-split-row select,.partner-split-row input{width:100%;box-sizing:border-box;min-height:36px;padding:6px 8px;border:1px solid #d7e2e9;border-radius:6px;font:inherit;font-size:13px;background:#fff}
+.partner-split-left,.partner-split-ok{margin:0;font-size:12px;font-weight:700}
+.partner-split-left{color:#b64b4b}
+.partner-split-ok{color:#0f7a4a}
+.partner-pay-methods{display:flex;flex-wrap:wrap;gap:6px}
+.partner-page .partner-pay-methods label{display:inline-flex;align-items:center;gap:5px;margin:0;padding:4px 8px;min-height:28px;width:auto;border:1px solid #e4ecef;border-radius:999px;background:#fff;cursor:pointer;font-size:11px;font-weight:700;color:#143246}
+.partner-page .partner-pay-methods label.is-on{border-color:#1a6b7a;background:#e8f4f6;color:#1a6b7a}
+.partner-page .partner-pay-methods input{width:12px;height:12px;margin:0;padding:0;border:0;accent-color:#1a6b7a;flex:0 0 12px}
+.partner-split-preview{list-style:none;margin:8px 0;padding:8px 0 0;border-top:1px solid #e4ecef}
+.partner-split-preview li{display:flex;justify-content:space-between;gap:10px;margin:0;padding:3px 0;font-size:12px;color:#34546b}
+.partner-split-preview strong{color:#143246;text-align:right}
+.partner-collect-submit{width:100%;margin-top:4px;border:0;border-radius:8px;background:#1a6b7a;color:#fff;font:inherit;font-size:12px;font-weight:800;min-height:36px;padding:8px 10px;cursor:pointer}
+.partner-collect-submit:disabled{opacity:.65;cursor:wait}
+.partner-decide{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.partner-accept,.partner-decline{border:0;border-radius:6px;font:inherit;font-size:12px;font-weight:800;min-height:32px;padding:6px 10px;cursor:pointer}
+.partner-accept{background:#1a6b7a;color:#fff}
+.partner-decline{background:#fff;color:#b64b4b;border:1px solid #e2bcbc}
+.partner-accept:disabled,.partner-decline:disabled{opacity:.65;cursor:wait}
+.partner-diag-panel{margin-top:8px;padding:10px;border:1px solid #d2e8ef;border-radius:10px;background:#f7fbfd;display:grid;gap:6px}
+.partner-diag-panel input,.partner-diag-panel select{width:100%;box-sizing:border-box;min-height:34px;padding:6px 8px;border:1px solid #d7e2e9;border-radius:6px;font:inherit;font-size:12px}
+.partner-slot-label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;color:#34546b}
+.partner-tech,.partner-report-note{margin:4px 0 0;font-size:12px;color:#34546b;font-weight:700}
 .partner-scan-link{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:4px 8px;border-radius:6px;background:#1a6b7a;color:#fff;font-size:12px;font-weight:700;text-decoration:none}
 .admin-login{max-width:420px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}
+.order-category{margin:0 0 16px}
+.order-category h2{margin:0 0 8px;font-size:15px;color:#143246}
+.partner-order-tabs{display:flex;flex-wrap:wrap;margin:0 0 12px;padding:4px;border-radius:10px;background:#e8f1f6;gap:4px}
+.partner-order-tabs button{border:0;background:transparent;color:#3d5a6c;font:inherit;font-size:13px;font-weight:700;padding:8px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.partner-order-tabs button.is-on{background:#fff;color:#1a6b7a;box-shadow:0 1px 3px rgba(20,50,70,.08)}
+.partner-order-tabs span{min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#1a6b7a;color:#fff;font-size:11px;line-height:18px;text-align:center}
+.partner-order-tabs.lab-desk-tabs{display:flex;flex-wrap:nowrap;width:100%;box-sizing:border-box;overflow-x:auto;gap:2px;padding:3px}
+.partner-order-tabs.lab-desk-tabs button{flex:1 1 0;justify-content:center;white-space:nowrap;font-size:12px;padding:6px 8px;gap:5px}
+.partner-order-tabs.lab-desk-tabs span{min-width:16px;height:16px;font-size:10px;line-height:16px}
+.partner-report-file{display:flex;flex-direction:column;gap:6px;padding:10px;border:1px dashed #1a6b7a;border-radius:10px;background:#fff;font-size:12px;font-weight:800;color:#1a6b7a;cursor:pointer}
+.partner-report-file.is-prompt{border-width:2px;background:#eef8fb}
+.partner-report-file input{display:block;width:100%;box-sizing:border-box;font:inherit;font-weight:600;color:#34546b}
+.partner-upload-tab-panel{margin:0 0 12px}
+.partner-upload-tab-panel.is-hidden{display:none}
+.lab-report-file-input{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.partner-patient-filter{margin:0 0 10px;display:flex;align-items:flex-end}
+.partner-patient-filter .filter-field{min-width:220px;max-width:320px;flex:1;display:flex;flex-direction:column}
+.partner-patient-filter label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
+.partner-patient-filter select{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;height:38px;background:#fff}
+.partner-patient-record,.partner-completed-reports{margin-top:8px;padding:10px;border:1px solid #d2e8ef;border-radius:10px;background:#f7fbfd;display:grid;gap:6px}
+.partner-patient-record .record-back,.partner-completed-reports .record-back{justify-self:start;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#34546b;font:inherit;font-size:13px;font-weight:700;padding:8px 12px;cursor:pointer}
+.partner-report-cards{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.partner-report-cards .record-card{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:12px;background:#fff;border:1px solid #e4ecef;border-radius:10px;text-align:left;cursor:pointer;font:inherit;color:#143246}
+.partner-report-cards .record-card strong{font-size:14px}
+.partner-report-cards .record-card span{color:#5d7180;font-size:12px}
+.pharmacy-inventory{margin-top:4px}
+.pharmacy-stock-summary,.pharmacy-stock-salt{margin:0 0 8px;font-size:12px;color:#34546b}
+.pharmacy-stock-status{font-weight:800}
+.pharmacy-stock-status.is-ok{color:#0f7a4a}
+.pharmacy-stock-status.is-need-stock{color:#b36b00}
+.pharmacy-stock-status.is-out-of-stock{color:#b64b4b}
+.pharmacy-stock-status.is-surplus{color:#1a6b7a}
+.pharmacy-job-stock{margin:8px 0;padding:10px;border:1px solid #d2e8ef;border-radius:10px;background:#f7fbfd}
+.pharmacy-job-stock h3{margin:0 0 6px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#1a6b7a}
+.pharmacy-job-stock ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.pharmacy-job-stock li{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#34546b}
+.pharmacy-job-stock strong{color:#143246}
 .admin-table-wrap{overflow:auto;background:#fff;border:1px solid #e4ecef;border-radius:12px}
 .admin-table{width:100%;border-collapse:collapse;font-size:13px}
-.admin-table th,.admin-table td{padding:8px 10px;border-bottom:1px solid #edf1f3;text-align:left}
+.admin-table th,.admin-table td{padding:8px 10px;border-bottom:1px solid #edf1f3;text-align:left;vertical-align:top}
 .admin-table th{background:#f7fafc;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
 .partner-page .service-hero h1{margin:0 0 4px;font-size:22px}
 .partner-page .service-kicker{display:block;margin-bottom:4px;font-size:11px;font-weight:800;letter-spacing:.6px;color:#1a6b7a}
@@ -308,5 +2087,5 @@ const styles = `
 .partner-page label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .partner-page input,.partner-page .service-submit{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit}
 .partner-page .service-submit{border:none;background:#1a6b7a;color:#fff;font-weight:700;min-height:40px;cursor:pointer}
-@media (max-width:800px){.admin-hero{flex-direction:column}}
+@media (max-width:800px){.admin-hero{flex-direction:column}.partner-split-row{grid-template-columns:1fr}}
 `;

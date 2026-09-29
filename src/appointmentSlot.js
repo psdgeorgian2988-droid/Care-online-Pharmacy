@@ -1,4 +1,4 @@
-import { isoDateDaysAhead, isoDateToday, parseIsoDate } from "./personFields.js";
+import { isoDateMonthsAhead, isoDateToday, parseIsoDate } from "./personFields.js";
 
 export const LAB_TIME_SLOTS = [
   "7:00 AM - 9:00 AM",
@@ -8,11 +8,24 @@ export const LAB_TIME_SLOTS = [
   "4:00 PM - 6:00 PM",
 ];
 
-export const LAB_BOOKING_DAYS_AHEAD = 7;
-export const BOOKING_DAYS_AHEAD = 7;
+export const PSY_TIME_SLOTS = [
+  "08:00 AM – 10:00 AM",
+  "10:00 AM – 12:00 PM",
+  "12:00 PM – 02:00 PM",
+  "02:00 PM – 04:00 PM",
+  "04:00 PM – 06:00 PM",
+  "06:00 PM – 08:00 PM",
+];
+
+/** How far ahead customers may book appointments (lab, home care, etc.). */
+export const BOOKING_MONTHS_AHEAD = 6;
+export const LAB_BOOKING_MONTHS_AHEAD = BOOKING_MONTHS_AHEAD;
+/** @deprecated Use BOOKING_MONTHS_AHEAD — kept for older imports. */
+export const LAB_BOOKING_DAYS_AHEAD = BOOKING_MONTHS_AHEAD * 30;
+export const BOOKING_DAYS_AHEAD = LAB_BOOKING_DAYS_AHEAD;
 
 export function bookingMaxDate(now = new Date()) {
-  return isoDateDaysAhead(BOOKING_DAYS_AHEAD, now);
+  return isoDateMonthsAhead(BOOKING_MONTHS_AHEAD, now);
 }
 
 export function labBookingMaxDate(now = new Date()) {
@@ -43,12 +56,25 @@ export function isAppointmentDateAllowed(iso, now = new Date()) {
   return value >= isoDateToday(now) && value <= labBookingMaxDate(now);
 }
 
-export function isOpenAppointmentSlot(label, dateIso, now = new Date()) {
-  if (!isAppointmentDateAllowed(dateIso, now)) return false;
+export const LAB_LEAD_MINUTES = 4 * 60;
+
+export function appointmentSlotStartMs(dateIso, label) {
   const start = parseSlotStartMinutes(label);
-  if (start == null) return false;
-  if (String(dateIso) > isoDateToday(now)) return true;
-  return start > minutesFromDate(now);
+  if (start == null || !parseIsoDate(dateIso)) return null;
+  const [year, month, day] = String(dateIso).split("-").map(Number);
+  return new Date(year, month - 1, day, Math.floor(start / 60), start % 60, 0, 0).getTime();
+}
+
+export function isOpenAppointmentSlot(
+  label,
+  dateIso,
+  now = new Date(),
+  leadMinutes = LAB_LEAD_MINUTES
+) {
+  if (!isAppointmentDateAllowed(dateIso, now)) return false;
+  const startMs = appointmentSlotStartMs(dateIso, label);
+  if (startMs == null) return false;
+  return startMs >= now.getTime() + Number(leadMinutes || 0) * 60 * 1000;
 }
 
 export function openAppointmentSlots(slots, dateIso, now = new Date()) {
@@ -63,7 +89,7 @@ export function appointmentDateError(iso, now = new Date()) {
     return "Choose today or a later date.";
   }
   if (String(iso) > labBookingMaxDate(now)) {
-    return "Book within the next 7 days.";
+    return "Book within the next 6 months.";
   }
   return "";
 }
@@ -76,11 +102,11 @@ export function appointmentSlotError(slot, dateIso, slots = LAB_TIME_SLOTS, now 
   if (dateError) return dateError;
   const open = openAppointmentSlots(slots, dateIso, now);
   if (!open.length) {
-    return "No time slots left today. Choose a later date.";
+    return "No open slots at least 4 hours from now. Choose a later date or time.";
   }
   if (!slot) return "Please select a time slot.";
   if (!open.includes(slot)) {
-    return "That time slot has already passed. Choose a later slot.";
+    return "Choose a slot at least 4 hours from now.";
   }
   return "";
 }

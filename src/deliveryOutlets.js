@@ -214,6 +214,43 @@ export const DEFAULT_OUTLET = {
   inChargeTitle: "Retailer in-charge",
 };
 
+export function outletById(id) {
+  const wanted = String(id || "").trim();
+  if (!wanted) return null;
+  return DELIVERY_OUTLETS.find((row) => row.id === wanted) || null;
+}
+
+export function normalizeStorePins(raw) {
+  const values = Array.isArray(raw)
+    ? raw
+    : String(raw || "")
+        .split(/[\s,;]+/)
+        .filter(Boolean);
+  const pins = [];
+  for (const value of values) {
+    const pin = digits(value).slice(0, 6);
+    if (pin.length === 6 && !pins.includes(pin)) pins.push(pin);
+  }
+  return pins;
+}
+
+export function pinsForOutlet(outlet) {
+  if (!outlet) return [];
+  return normalizeStorePins(outlet.pins);
+}
+
+export function partnerCoversPin(partner, pinValue) {
+  const pin = digits(pinValue).slice(0, 6);
+  if (pin.length !== 6 || !partner) return false;
+  const tagged = normalizeStorePins(partner.pins);
+  if (tagged.length) return tagged.includes(pin);
+  if (partner.outletId) {
+    const mapped = outletForPin(pin);
+    return Boolean(mapped && mapped.id === partner.outletId);
+  }
+  return false;
+}
+
 export function outletForPin(pinValue) {
   const pin = digits(pinValue).slice(0, 6);
   if (pin.length !== 6) return null;

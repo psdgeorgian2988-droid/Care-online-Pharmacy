@@ -2,14 +2,22 @@ import { useEffect, useMemo, useState } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
-import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import { persistAndSendOrder, persistOrder, trackHref, withTracking } from "./orderTracking";
+import { goHomeAfterPaidCheckout } from "./checkoutComplete";
+import { partnerAcceptFields } from "./orderConfirm";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
-import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
+import BusyWait, { useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
-import { BillButton } from "./OrderBill";
+import { BillButton } from "./OrderBill.jsx";
 import BookingFlow from "./BookingFlow";
-import { paymentMethodSummary } from "./paymentMethods";
+import {
+  checkoutPaymentPersistFields,
+  checkoutUsesPayCta,
+  paymentMethodSummary,
+  persistUnsettledCheckoutFields,
+  showCustomerPayNow,
+} from "./paymentMethods";
 import { maskMobile } from "./personFields";
 import {
   applyResolvedPin,
@@ -143,10 +151,13 @@ function HomeCare() {
   const [vaxBooking, setVaxBooking] = useState(() => loadVaccinationBooking());
   const [errors, setErrors] = useState({});
   const [booking, setBooking] = useState(null);
+  const [flowStep, setFlowStep] = useState("placed");
   const [submitting, setSubmitting] = useState(false);
+  const [paying, setPaying] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
+  const [payReady, setPayReady] = useState(true);
   const [payQuote, setPayQuote] = useState(null);
-  const busyWait = useBusyOverlay(submitting, "homecare");
+  const busyWait = useBusyOverlay(submitting || paying, "homecare");
 
   useEffect(() => {
     const applyHash = () => {
@@ -265,16 +276,7 @@ function HomeCare() {
             ? vaccinationVisitTotal(vaxBooking)
             : plan.price;
       const pay = paymentFromQuote(payQuote, total);
-      const payment = await settleCheckoutPayment({
-        method: payMethod,
-        ...pay,
-        kind: "homecare",
-        pin: gps.pinCode,
-        name: booked.patientName,
-        mobile: booked.mobile,
-        reference: `hc-${Date.now()}`,
-        description: "MediHome Home Care",
-      });
+      const isVax = isVaccinationPlan(plan.value);
 
       const bookingDetails = {
         bookingId: "MH-HC-" + Math.floor(100000 + Math.random() * 900000),
@@ -290,6 +292,7 @@ function HomeCare() {
         serviceLabel,
         carePlan: plan.value,
         carePlanLabel: plan.label,
+        partner: serviceLabel,
         otherNote: form.otherNote.trim(),
         otherRate:
           plan.value === "nurse-other" ? String(Number(form.otherRate) || plan.price) : "",
@@ -301,14 +304,19 @@ function HomeCare() {
         bookedAt: new Date().toLocaleString(),
         bookedAtMs: Date.now(),
         vaccineNames: vaccines.map((row) => row.name),
-        ...payment,
+        ...partnerAcceptFields(),
+        trackStatus: "assigned",
+        status: isVax
+          ? "Partner assigned — vaccination visit"
+          : "Partner assigned — home care visit",
+        ...persistUnsettledCheckoutFields(payMethod),
       };
 
       const trackedBooking = persistOrder(
         withTracking(
           {
             ...bookingDetails,
-            items: isVaccinationPlan(plan.value)
+            items: isVax
               ? vaccinationOrderItems(vaxBooking, plan.label, bookingDetails.total)
               : [
                   {
@@ -327,15 +335,48 @@ function HomeCare() {
       }
 
       setBooking(trackedBooking);
+      setFlowStep("placed");
     } catch (error) {
-      alert(error.message || "Payment or booking could not be completed.");
+      alert(error.message || "Booking could not be submitted.");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handlePayment = async (event) => {
+    event.preventDefault();
+    if (!booking) return;
+    setPaying(true);
+    try {
+      const amount = Number(booking.total) || 0;
+      const pay = paymentFromQuote(payQuote, amount);
+      const payment = await settleCheckoutPayment({
+        method: payMethod,
+        ...pay,
+        kind: "homecare",
+        pin: booking.pinCode || booking.pin,
+        name: booking.patientName,
+        mobile: booking.mobile,
+        reference: booking.bookingId,
+        description: "MediHome Home Care",
+      });
+      await persistAndSendOrder(booking, {
+        ...payment,
+        paymentStatus: "paid",
+        paid: true,
+        status: booking.partnerConfirmed ? "Confirmed" : booking.status,
+      });
+      goHomeAfterPaidCheckout();
+    } catch (error) {
+      alert(error.message || "Payment could not be completed.");
+    } finally {
+      setPaying(false);
+    }
+  };
+
   const startNew = () => {
     setBooking(null);
+    setFlowStep("placed");
     setForm({
       patientName: profile.name,
       mobile: profile.mobile,
@@ -349,22 +390,45 @@ function HomeCare() {
       otherRate: "999",
     });
     setPayMethod("cod");
+    setPayQuote(null);
     setErrors({});
   };
 
-  if (booking) {
+  if (booking && (flowStep === "placed" || flowStep === "pay" || flowStep === "paid")) {
+    const isVax = isVaccinationPlan(booking.carePlan);
+    const partnerName =
+      booking.partner || booking.serviceLabel || booking.carePlanLabel || "Care partner";
     return (
       <>
         <style>{styles}</style>
+        {busyWait ? <BusyWait kind="homecare" traffic={busyWait} /> : null}
         <div className="service-page">
           <section className="service-confirm">
-            <div className="success-icon">✓</div>
-            <h1>Home Care Booked</h1>
-            <PatienceNote kind="homecare" shown={booking.highTrafficWait} />
-            <p>
-              Your {booking.serviceLabel || "Home Care"} request has been saved
-              locally.
-            </p>
+            {flowStep === "placed" ? (
+              <>
+                <div className="success-icon">✓</div>
+                <h1>Booking Confirmed</h1>
+                <p>
+                  {isVax
+                    ? "Your vaccination visit is confirmed. Track the nurse visit below."
+                    : "Your home care visit is confirmed. Track the care partner below."}
+                </p>
+              </>
+            ) : null}
+            {flowStep === "pay" ? (
+              <>
+                <div className="success-icon">₹</div>
+                <h1>Payment</h1>
+                <p>Pay now or continue tracking — you can also pay later from My Orders.</p>
+              </>
+            ) : null}
+            {flowStep === "paid" ? (
+              <>
+                <div className="success-icon">✓</div>
+                <h1>Payment Received</h1>
+                <p>Thank you. Track the visit from My Orders anytime.</p>
+              </>
+            ) : null}
             <div className="confirm-card">
               <div className="confirm-head">
                 <h2>Booking Details</h2>
@@ -372,7 +436,7 @@ function HomeCare() {
               </div>
               <div className="confirm-row">
                 <span>Service</span>
-                <strong>{booking.serviceLabel}</strong>
+                <strong>{partnerName}</strong>
               </div>
               <div className="confirm-row">
                 <span>Plan</span>
@@ -397,7 +461,11 @@ function HomeCare() {
               <div className="confirm-row">
                 <span>Payment</span>
                 <strong>
-                  {paymentMethodSummary(booking.paymentMethod, "Cash on visit")}
+                  {flowStep === "paid" ||
+                  booking.paid ||
+                  !showCustomerPayNow(booking)
+                    ? paymentMethodSummary(booking.paymentMethod, "Cash on visit")
+                    : "Pending — pay anytime from My Orders"}
                 </strong>
               </div>
               <div className="confirm-row">
@@ -430,27 +498,89 @@ function HomeCare() {
                 <strong>{booking.timeSlot || "Not required"}</strong>
               </div>
             </div>
-            <AssignedAgent record={booking} />
-            <div className="confirm-actions">
-              {isVaccinationPlan(booking.carePlan) ? (
-                <a className="service-submit" href="#reports?tab=vaccination">
-                  Save Vaccination Record
-                </a>
-              ) : null}
-              <BillButton order={booking} />
-              <button
-                type="button"
-                className="service-submit"
-                onClick={() => {
-                  window.location.hash = trackHref(booking.bookingId);
+            {flowStep !== "pay" ? (
+              <AssignedAgent
+                record={{
+                  ...booking,
+                  agentRole: isVax ? "Vaccination nurse" : "Care partner",
                 }}
-              >
-                Track live
-              </button>
-              <button type="button" className="service-submit" onClick={startNew}>
-                Book another visit
-              </button>
-            </div>
+              />
+            ) : null}
+            {flowStep === "pay" && showCustomerPayNow(booking) ? (
+              <form className="service-pay-form" onSubmit={handlePayment}>
+                <PaymentBlock
+                  kind="homecare"
+                  amount={Number(booking.total) || 0}
+                  pin={booking.pinCode}
+                  method={payMethod}
+                  onMethodChange={setPayMethod}
+                  onQuoteChange={setPayQuote}
+                  onReadyChange={setPayReady}
+                  guestDetails={booking}
+                  cashLabel="Cash on visit"
+                />
+                <div className="confirm-actions">
+                  <button type="submit" className="service-submit" disabled={paying || !payReady}>
+                    {paying ? "Processing…" : "Pay now"}
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => setFlowStep("placed")}
+                  >
+                    Back
+                  </button>
+                </div>
+              </form>
+            ) : null}
+            {flowStep === "placed" ? (
+              <div className="confirm-actions">
+                <button
+                  type="button"
+                  className="service-submit"
+                  onClick={() => {
+                    window.location.hash = trackHref(booking.bookingId);
+                  }}
+                >
+                  {isVax ? "Track vaccination visit" : "Track visit"}
+                </button>
+                {showCustomerPayNow(booking) ? (
+                  <button
+                    type="button"
+                    className="service-submit"
+                    onClick={() => setFlowStep("pay")}
+                  >
+                    Pay now
+                  </button>
+                ) : null}
+                {isVax ? (
+                  <a className="ghost-button" href="#reports?service=vaccination">
+                    Save Vaccination Record
+                  </a>
+                ) : null}
+                <BillButton order={booking} />
+                <button type="button" className="ghost-button" onClick={startNew}>
+                  Book another visit
+                </button>
+              </div>
+            ) : null}
+            {flowStep === "paid" ? (
+              <div className="confirm-actions">
+                <button
+                  type="button"
+                  className="service-submit"
+                  onClick={() => {
+                    window.location.hash = trackHref(booking.bookingId);
+                  }}
+                >
+                  {isVax ? "Track vaccination visit" : "Track visit"}
+                </button>
+                <BillButton order={booking} />
+                <button type="button" className="ghost-button" onClick={startNew}>
+                  Book another visit
+                </button>
+              </div>
+            ) : null}
           </section>
         </div>
       </>
@@ -529,7 +659,7 @@ function HomeCare() {
                 onToggle={(id) => setVaxBooking(toggleBookingVaccine(id))}
                 idPrefix="hc-vac"
               />
-              <a className="vac-copy" href="#reports?tab=vaccination">
+              <a className="vac-copy" href="#reports?service=vaccination">
                 Vaccination Record
               </a>
             </div>
@@ -585,7 +715,7 @@ function HomeCare() {
               order="ymd"
               onChange={handleChange}
             />
-            <small className="booking-hint">Today or up to 7 days ahead.</small>
+            <small className="booking-hint">Today or up to 6 months ahead.</small>
           </div>
 
           {!isLongDuty(form.carePlan) ? (
@@ -628,6 +758,7 @@ function HomeCare() {
               method={payMethod}
               onMethodChange={setPayMethod}
               onQuoteChange={setPayQuote}
+              onReadyChange={setPayReady}
               guestDetails={form}
             />
           </div>
@@ -674,7 +805,10 @@ const styles = `
 .vac-picked button{border:0;background:none;color:#b64b4b;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
 .service-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:40px;cursor:pointer;font-family:inherit}
 .confirm-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
-.confirm-actions .service-submit{grid-column:auto;min-width:180px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.confirm-actions .service-submit,.confirm-actions .ghost-button{grid-column:auto;min-width:180px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.ghost-button{border:1px solid #d8e3e9;border-radius:8px;background:#fff;color:#34546b;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;min-height:40px;padding:8px 14px;box-sizing:border-box}
+.ghost-button:hover{background:#f7fbfe}
+.service-pay-form{max-width:640px;margin:0 auto 14px;text-align:left}
 .service-confirm{max-width:640px;margin:12px auto;text-align:center}
 .success-icon{width:52px;height:52px;margin:0 auto 10px;border-radius:50%;background:#e5f8ee;color:#1c9b61;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
 .service-confirm h1{margin:0 0 6px;font-size:22px}

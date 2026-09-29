@@ -298,6 +298,13 @@ export async function readCatalog() {
   return readStore();
 }
 
+export async function findBatch(id) {
+  const wanted = String(id || "").trim();
+  if (!wanted) return null;
+  const store = await readStore();
+  return store.batches.find((row) => String(row.id) === wanted) || null;
+}
+
 export function publicCatalog(store) {
   return {
     medicines: store.medicines,

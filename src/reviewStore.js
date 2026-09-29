@@ -6,6 +6,7 @@ export const REVIEW_SERVICES = [
   { value: "radiology", label: "Radiology" },
   { value: "homecare", label: "Home Care" },
   { value: "vaccination", label: "Vaccination" },
+  { value: "doctor", label: "Doctor appointment" },
   { value: "psychologist", label: "Psychologist consultation" },
   { value: "stepdown", label: "Step-down care" },
   { value: "ambulance", label: "Ambulance" },

@@ -1,8 +1,22 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ReferFamily from "./ReferFamily";
 import { awardOnce, POINT_VALUES, useWallet } from "./pointsStore";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import { maskMobile } from "./personFields";
+import { useScheduledWebinars } from "./featureFlags";
+import { educationRouteFromHash, goBackHash, goToHash } from "./hashRoute";
+import WebinarSession from "./WebinarSession";
+import {
+  WEBINAR_SIGNUP_KEY,
+  attendanceOutcome,
+  formatIstClock,
+  formatWebinarDate,
+  isWebinarBookable,
+  joinWindowState,
+  readAttendance,
+  webinarSessionBounds,
+  webinarSessionHref,
+} from "./webinars";
 
 const GUIDES = [
   {
@@ -46,7 +60,7 @@ const GUIDES = [
       "Do not start painkillers, herbal pills, or extra vitamins without asking your doctor.",
       "Keep KFT and related tests on schedule so dose changes are based on labs, not guesswork.",
       "Watch swelling, sudden weight gain, breathlessness, or very little urine — contact care promptly.",
-      "Use MediHome Reports to keep PDFs on this device for clinic visits.",
+      "Use MediHome Medical Record to keep PDFs on this device for clinic visits.",
     ],
   },
   {
@@ -59,39 +73,6 @@ const GUIDES = [
       "If a brand looks different, check the salt and strength on the pack before taking it.",
       "Use Search Medicine to match a web brand with a MediHome alternative of the same combination.",
     ],
-  },
-];
-
-const WEBINARS = [
-  {
-    id: "wb-diabetes",
-    title: "Diabetes At Home: Medicines, Meals, And HbA1c",
-    date: "Saturday, 5 Sep 2026",
-    time: "11:00 AM – 12:00 PM",
-    host: "MediHome clinical educators",
-    format: "Live online (link by WhatsApp)",
-    summary:
-      "How to take diabetes medicines on time, what to eat around doses, and which tests to book.",
-  },
-  {
-    id: "wb-bp",
-    title: "Blood Pressure: Home Readings That Doctors Trust",
-    date: "Wednesday, 16 Sep 2026",
-    time: "6:30 PM – 7:15 PM",
-    host: "MediHome nursing team",
-    format: "Live online (link by WhatsApp)",
-    summary:
-      "Correct cuff use, when a high reading is an emergency, and why BP tablets continue even on good days.",
-  },
-  {
-    id: "wb-meds",
-    title: "Medicine Safety For Caregivers",
-    date: "Sunday, 27 Sep 2026",
-    time: "10:00 AM – 10:45 AM",
-    host: "MediHome pharmacy desk",
-    format: "Live online (link by WhatsApp)",
-    summary:
-      "Storage, missed doses, look-alike packs, and when to call before giving an extra tablet.",
   },
 ];
 
@@ -227,42 +208,12 @@ const QUIZZES = [
   },
 ];
 
-const WEBINAR_KEY = "mediHomeWebinarSignups";
 const TABS = [
-  {
-    id: "guides",
-    label: "Guides",
-    title: "Health Guides",
-    lead: "Short, plain-language notes for patients. This is education, not a personal prescription — follow your clinician.",
-  },
-  {
-    id: "webinars",
-    label: "Webinars",
-    title: "Live Webinars",
-    lead: "Register for live sessions and collect MediHome points after you attend.",
-  },
-  {
-    id: "quiz",
-    label: "Quiz",
-    title: "Health Quiz",
-    lead: "Quick quizzes on diabetes, blood pressure, and medicines. Earn points when you finish.",
-  },
-  {
-    id: "refer",
-    label: "Refer",
-    title: "Refer Family",
-    lead: "Invite family members and earn MediHome points when they join for care.",
-  },
+  { id: "guides", label: "Guides" },
+  { id: "webinars", label: "Webinars" },
+  { id: "quiz", label: "Quiz" },
+  { id: "refer", label: "Refer" },
 ];
-
-function normalizeEduTab(value) {
-  const wanted = String(value || "").toLowerCase();
-  if (wanted === "webinar") return "webinars";
-  if (wanted === "quizzes" || wanted === "health-quiz") return "quiz";
-  if (wanted === "referral" || wanted === "refer-family") return "refer";
-  if (wanted === "guide" || wanted === "health-guides") return "guides";
-  return TABS.some((tab) => tab.id === wanted) ? wanted : "guides";
-}
 
 function readProfile() {
   try {
@@ -281,7 +232,7 @@ function readProfile() {
 
 function loadSignups() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(WEBINAR_KEY) || "[]");
+    const parsed = JSON.parse(localStorage.getItem(WEBINAR_SIGNUP_KEY) || "[]");
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
@@ -290,7 +241,7 @@ function loadSignups() {
 
 function saveSignup(entry) {
   const next = [...loadSignups(), entry];
-  localStorage.setItem(WEBINAR_KEY, JSON.stringify(next));
+  localStorage.setItem(WEBINAR_SIGNUP_KEY, JSON.stringify(next));
   return next;
 }
 
@@ -350,33 +301,48 @@ function GuidesPanel() {
   );
 }
 
-function WebinarsPanel() {
+function webinarBadge(webinar, nowMs, outcome) {
+  if (outcome === "complete") return "Attendance complete";
+  if (outcome === "left_early") return "Left early";
+  const state = joinWindowState(webinar, nowMs);
+  if (state === "upcoming") return "Scheduled";
+  if (state === "join_open") return "Join now";
+  if (state === "too_late") return "In session";
+  return "Session ended";
+}
+
+function WebinarsPanel({ sessionId }) {
   const wallet = useWallet();
+  const scheduled = useScheduledWebinars();
   const profile = useMemo(() => readProfile(), []);
   const [signups, setSignups] = useState(loadSignups);
   const [activeId, setActiveId] = useState("");
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [form, setForm] = useState({
     name: profile.name,
     mobile: profile.mobile,
   });
   const [errors, setErrors] = useState({});
   const [done, setDone] = useState(null);
-  const [attendAward, setAttendAward] = useState(null);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const registeredIds = new Set(signups.map((row) => row.webinarId));
-
-  const claimAttend = (webinar) => {
-    setAttendAward(
-      awardOnce(
-        `webinar:${webinar.id}`,
-        POINT_VALUES.webinar,
-        `Attended webinar: ${webinar.title}`
-      )
-    );
-  };
+  const openSessions = scheduled.filter((row) =>
+    isWebinarBookable(row, undefined, nowMs)
+  );
+  const mySessions = scheduled.filter(
+    (row) => registeredIds.has(row.id) && !openSessions.some((item) => item.id === row.id)
+  );
+  const visible = [...openSessions, ...mySessions];
+  const session = scheduled.find((row) => row.id === sessionId) || null;
 
   const handleRegister = (event, webinar) => {
     event.preventDefault();
+    if (!isWebinarBookable(webinar, undefined, Date.now())) return;
     const nextErrors = {};
     if (!form.name.trim()) nextErrors.name = "Name is required.";
     if (!/^[6-9]\d{9}$/.test(form.mobile)) {
@@ -393,49 +359,82 @@ function WebinarsPanel() {
       mobile: form.mobile,
       createdAt: new Date().toLocaleString(),
     };
-    const award = awardOnce(
-      `webinar:${webinar.id}`,
-      POINT_VALUES.webinar,
-      `Attended webinar: ${webinar.title}`
-    );
     setSignups(saveSignup(entry));
     setActiveId("");
-    setDone({ ...entry, award });
+    setDone(entry);
   };
 
+  if (session) {
+    return (
+      <WebinarSession
+        webinar={session}
+        registered={registeredIds.has(session.id)}
+        onBack={() => goBackHash()}
+      />
+    );
+  }
+
   if (done) {
+    const booked = scheduled.find((row) => row.id === done.webinarId);
+    const bounds = booked ? webinarSessionBounds(booked) : null;
     return (
       <article className="edu-panel-card">
         <p className="edu-badge">Seat reserved</p>
         <h2>{done.title}</h2>
-        <PointsEarnedBanner result={done.award} label="webinar" />
         <p>
-          Thank you, {done.name}. We will send the live link to WhatsApp on{" "}
-          <strong>{maskMobile(done.mobile)}</strong> before the session. Reference{" "}
+          Thank you, {done.name}. Join from this app at the session start. You
+          may join up to 5 minutes late. Stay on the session screen until the end
+          to earn {POINT_VALUES.webinar} MediHome points. Registration alone does
+          not add points. We have {maskMobile(done.mobile)} on file. Reference{" "}
           <strong>{done.id}</strong>.
         </p>
-        <button type="button" className="edu-btn edu-btn-primary" onClick={() => setDone(null)}>
-          Browse more webinars
-        </button>
+        <div className="edu-form-actions">
+          {booked ? (
+            <a className="edu-btn edu-btn-primary" href={webinarSessionHref(booked.id)}>
+              {bounds && Date.now() >= bounds.startMs ? "Open session" : "Session checkpoints"}
+            </a>
+          ) : null}
+          <button type="button" className="edu-btn edu-btn-ghost" onClick={() => setDone(null)}>
+            Browse more webinars
+          </button>
+        </div>
+      </article>
+    );
+  }
+
+  if (!visible.length) {
+    return (
+      <article className="edu-panel-card">
+        <p className="edu-badge">Not scheduled</p>
+        <h2>No live webinar is scheduled yet</h2>
+        <p>
+          Booking opens only after MediHome sets a date and time. You will see a
+          notification in this app as soon as a session is scheduled. MediHome
+          points are credited only after you join on time and stay until the end.
+        </p>
       </article>
     );
   }
 
   return (
     <div className="edu-grid">
-      {attendAward ? <PointsEarnedBanner result={attendAward} label="webinar" /> : null}
-      {WEBINARS.map((webinar) => {
+      {visible.map((webinar) => {
         const registered = registeredIds.has(webinar.id);
+        const bookable = isWebinarBookable(webinar, undefined, nowMs);
         const open = activeId === webinar.id;
+        const record = readAttendance(webinar.id);
+        const outcome = attendanceOutcome(webinar, record, nowMs);
         const attended = Boolean(wallet.earned[`webinar:${webinar.id}`]);
+        const bounds = webinarSessionBounds(webinar);
+        const state = joinWindowState(webinar, nowMs);
         return (
           <article key={webinar.id} className="edu-panel-card">
-            <p className="edu-badge">Live webinar</p>
+            <p className="edu-badge">{webinarBadge(webinar, nowMs, outcome)}</p>
             <h2>{webinar.title}</h2>
             <p>{webinar.summary}</p>
             <ul className="edu-meta">
               <li>
-                <strong>Date</strong> {webinar.date}
+                <strong>Date</strong> {formatWebinarDate(webinar.date)}
               </li>
               <li>
                 <strong>Time</strong> {webinar.time}
@@ -446,26 +445,41 @@ function WebinarsPanel() {
               <li>
                 <strong>Format</strong> {webinar.format}
               </li>
+              <li>
+                <strong>Points</strong> +{POINT_VALUES.webinar} after full attendance
+              </li>
             </ul>
             {registered ? (
               <>
-                <p className="edu-note">You are registered. The link will arrive on WhatsApp.</p>
-                {attended ? (
+                {attended || outcome === "complete" ? (
                   <p className="edu-points-earned">
                     +{POINT_VALUES.webinar} webinar points collected. Total{" "}
                     {wallet.balance} points.
                   </p>
+                ) : outcome === "left_early" ? (
+                  <p className="edu-note">
+                    You left before the end checkpoint. MediHome points were not credited.
+                  </p>
+                ) : outcome === "missed_join" ? (
+                  <p className="edu-note">
+                    Join closed 5 minutes after start. MediHome points were not credited.
+                  </p>
                 ) : (
-                  <button
-                    type="button"
-                    className="edu-btn edu-btn-primary"
-                    onClick={() => claimAttend(webinar)}
-                  >
-                    I attended — collect {POINT_VALUES.webinar} points
-                  </button>
+                  <p className="edu-note">
+                    You are registered. Join in this app at start (up to 5 minutes late)
+                    and stay until {bounds ? formatIstClock(bounds.endMs) : "the end"} to
+                    earn {POINT_VALUES.webinar} MediHome points.
+                  </p>
                 )}
+                {outcome !== "missed_join" && outcome !== "left_early" && !attended ? (
+                  <a className="edu-btn edu-btn-primary" href={webinarSessionHref(webinar.id)}>
+                    {state === "join_open" || record?.joinedAt
+                      ? "Open session"
+                      : "Session checkpoints"}
+                  </a>
+                ) : null}
               </>
-            ) : open ? (
+            ) : bookable && open ? (
               <form
                 className="edu-form"
                 onSubmit={(event) => handleRegister(event, webinar)}
@@ -484,7 +498,7 @@ function WebinarsPanel() {
                   {errors.name ? <span>{errors.name}</span> : null}
                 </label>
                 <label>
-                  Mobile (WhatsApp)
+                  Mobile
                   <input
                     name="mobile"
                     maxLength={10}
@@ -513,7 +527,7 @@ function WebinarsPanel() {
                   </button>
                 </div>
               </form>
-            ) : (
+            ) : bookable ? (
               <button
                 type="button"
                 className="edu-btn edu-btn-primary"
@@ -521,6 +535,12 @@ function WebinarsPanel() {
               >
                 Register free
               </button>
+            ) : (
+              <p className="edu-note">
+                {state === "too_late"
+                  ? "This session has started. New joins closed after 5 minutes, and booking is closed."
+                  : "Booking is closed. This webinar is no longer scheduled."}
+              </p>
             )}
           </article>
         );
@@ -665,12 +685,11 @@ function QuizRunner({ quiz, onExit }) {
   );
 }
 
-function QuizPanel() {
-  const [quizId, setQuizId] = useState("");
+function QuizPanel({ quizId = "" } = {}) {
   const quiz = QUIZZES.find((item) => item.id === quizId);
 
   if (quiz) {
-    return <QuizRunner quiz={quiz} onExit={() => setQuizId("")} />;
+    return <QuizRunner quiz={quiz} onExit={() => goToHash("#education?service=quiz")} />;
   }
 
   return (
@@ -686,7 +705,7 @@ function QuizPanel() {
           <button
             type="button"
             className="edu-btn edu-btn-primary"
-            onClick={() => setQuizId(item.id)}
+            onClick={() => goToHash(`#education?service=quiz&id=${item.id}`)}
           >
             Start quiz · +{POINT_VALUES.quiz} pts
           </button>
@@ -696,50 +715,16 @@ function QuizPanel() {
   );
 }
 
-function HealthEducation({ initialTab = "" }) {
-  // Hash is the only source of truth — no local tab state that can desync
-  // and accidentally leave more than one section mounted.
-  const tab = String(initialTab || "").trim()
-    ? normalizeEduTab(initialTab)
-    : "";
-  const active = TABS.find((item) => item.id === tab) || null;
+function HealthEducation() {
+  const [{ tab, sessionId, quizId }, setRoute] = useState(() =>
+    educationRouteFromHash(window.location.hash)
+  );
 
-  let panel = null;
-  if (tab === "guides") panel = <GuidesPanel />;
-  else if (tab === "webinars") panel = <WebinarsPanel />;
-  else if (tab === "quiz") panel = <QuizPanel />;
-  else if (tab === "refer") panel = <ReferFamily />;
-
-  if (!active) {
-    return (
-      <div className="service-page info-page edu-page">
-        <style>{styles}</style>
-        <section className="service-hero">
-          <div>
-            <span className="service-kicker">MediHome Health Education</span>
-            <h1>Health Education</h1>
-            <p>
-              Choose one section. Only that page opens — guides, webinars, quiz,
-              or refer family.
-            </p>
-          </div>
-        </section>
-        <div className="edu-menu" aria-label="Health education sections">
-          {TABS.map((item) => (
-            <a
-              key={item.id}
-              className="edu-menu-card"
-              href={`#education?tab=${item.id}`}
-            >
-              <strong>{item.title}</strong>
-              <span>{item.lead}</span>
-              <em>Open {item.label}</em>
-            </a>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const syncTab = () => setRoute(educationRouteFromHash(window.location.hash));
+    window.addEventListener("hashchange", syncTab);
+    return () => window.removeEventListener("hashchange", syncTab);
+  }, []);
 
   return (
     <div className="service-page info-page edu-page">
@@ -747,15 +732,33 @@ function HealthEducation({ initialTab = "" }) {
       <section className="service-hero">
         <div>
           <span className="service-kicker">MediHome Health Education</span>
-          <h1>{active.title}</h1>
-          <p>{active.lead}</p>
+          <h1>Guides, Live Webinars, And Quick Quizzes</h1>
+          <p>
+            Short, Plain-Language notes for Patients. This is
+            education, not a personal prescription — Follow your Clinician.
+          </p>
         </div>
-        <a className="edu-back-btn" href="#education">
-          All sections
-        </a>
       </section>
 
-      {panel}
+      <div className="edu-tabs" role="tablist" aria-label="Health education sections">
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === item.id}
+            className={tab === item.id ? "edu-tab is-active" : "edu-tab"}
+            onClick={() => goToHash(`#education?service=${item.id}`)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "guides" ? <GuidesPanel /> : null}
+      {tab === "webinars" ? <WebinarsPanel sessionId={sessionId} /> : null}
+      {tab === "quiz" ? <QuizPanel quizId={quizId} /> : null}
+      {tab === "refer" ? <ReferFamily /> : null}
 
       <p className="info-footnote">
         Need a test or refill?{" "}
@@ -768,18 +771,14 @@ function HealthEducation({ initialTab = "" }) {
 
 const styles = `
 .service-page{padding:16px 20px 24px 14px;box-sizing:border-box;color:#143246}
-.service-hero{max-width:760px;margin:0 auto 12px;padding:14px 16px;border-radius:12px;background:linear-gradient(135deg,#eaf7ff,#f4fbf8);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.service-hero{max-width:760px;margin:0 auto 12px;padding:14px 16px;border-radius:12px;background:linear-gradient(135deg,#eaf7ff,#f4fbf8)}
 .service-kicker{display:block;margin-bottom:4px;font-size:11px;font-weight:800;letter-spacing:.6px;color:#1a6b7a}
 .service-hero h1{margin:0 0 4px;font-size:22px}
 .service-hero p{margin:0;color:#5d7180;font-size:13px;line-height:1.4}
-.edu-back-btn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;border:1px solid #1a6b7a;border-radius:8px;background:#fff;color:#1a6b7a;font:inherit;font-size:13px;font-weight:800;min-height:38px;padding:8px 12px;cursor:pointer;text-decoration:none;box-sizing:border-box}
-.edu-menu{max-width:760px;margin:0 auto;display:grid;gap:10px}
-.edu-menu-card{display:grid;gap:6px;width:100%;margin:0;padding:14px 16px;border:1px solid #e4ecef;border-radius:12px;background:#fff;text-align:left;cursor:pointer;font:inherit;color:#143246;box-shadow:0 2px 8px rgba(20,50,70,.05);text-decoration:none;box-sizing:border-box}
-.edu-menu-card strong{font-size:16px}
-.edu-menu-card span{color:#5d7180;font-size:13px;line-height:1.4}
-.edu-menu-card em{font-style:normal;color:#1a6b7a;font-size:13px;font-weight:800}
-.info-stack,.edu-grid,.info-footnote,.points-refer-card{max-width:760px;margin-left:auto;margin-right:auto}
+.info-stack,.edu-grid,.edu-tabs,.info-footnote,.points-refer-card{max-width:760px;margin-left:auto;margin-right:auto}
 .edu-page{display:flex;flex-direction:column;min-height:0;width:100%;box-sizing:border-box}
+.edu-tabs{display:flex;flex-wrap:wrap;gap:8px;width:100%;margin:0 auto 14px;padding:4px;border-radius:12px;background:#e8f0f4;box-sizing:border-box}
+.edu-tab{flex:1 1 120px;min-height:42px;border:0;border-radius:9px;background:transparent;color:#34546b;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
 .info-card{background:#fff;border:1px solid #e4ecef;border-radius:12px;margin-bottom:10px;overflow:hidden}
 .info-card-toggle{width:100%;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px;border:0;background:#fff;text-align:left;cursor:pointer;font-family:inherit;color:#143246}
 .info-card-toggle strong{display:block;font-size:15px}
@@ -790,6 +789,7 @@ const styles = `
 .info-card li:last-child{margin-bottom:0}
 .info-footnote{margin:16px 2px 0;color:#5d7180;font-size:13px}
 .info-footnote a{color:#1a6b7a;font-weight:700;text-decoration:none}
+.edu-tab.is-active{background:#0639b8;color:#fff;box-shadow:0 3px 8px rgba(6,57,184,.22)}
 .edu-grid{display:grid;gap:12px}
 .edu-panel-card{padding:16px;border:1px solid #e4ecef;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(20,50,70,.06)}
 .edu-panel-card h2{margin:0 0 8px;font-size:18px;line-height:1.3}
@@ -798,7 +798,8 @@ const styles = `
 .edu-meta{margin:0 0 14px;padding:0;list-style:none;color:#34546b;font-size:13px;line-height:1.5}
 .edu-meta li{margin-bottom:4px}
 .edu-meta strong{display:inline-block;min-width:64px;color:#1a6b7a}
-.edu-note{margin:0;padding:10px 12px;border-radius:8px;background:#eaf7ff;color:#143246;font-weight:700}
+.edu-note{margin:0 0 12px;padding:10px 12px;border-radius:8px;background:#eaf7ff;color:#143246;font-weight:700}
+.edu-panel-card > .edu-btn{margin-top:2px}
 .edu-points-earned{margin:0 0 12px;padding:12px 14px;border-radius:10px;background:#0639b8;color:#fff;font-size:15px;font-weight:800;line-height:1.35}
 .edu-form{display:grid;gap:10px}
 .edu-form label{display:grid;gap:4px;font-size:12px;font-weight:700;color:#1a6b7a}
@@ -807,8 +808,20 @@ const styles = `
 .edu-form-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 .edu-btn{appearance:none;min-height:40px;padding:8px 16px;border-radius:10px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
 .edu-btn:disabled{opacity:.45;cursor:not-allowed}
-.edu-btn-primary{border:2px solid #0639b8;background:#0639b8;color:#fff}
+.edu-btn-primary{border:2px solid #0639b8;background:#0639b8;color:#fff;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box}
 .edu-btn-ghost{border:2px solid #1a6b7a;background:#fff;color:#1a6b7a}
+.edu-checks{display:grid;gap:8px;margin:0 0 14px}
+.edu-check{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:10px;background:#e8f4f6}
+.edu-check strong{font-size:12px;letter-spacing:.3px;text-transform:uppercase;color:#1a6b7a}
+.edu-check span{font-size:13px;color:#143246;font-weight:600;line-height:1.4}
+.edu-check.is-done{background:#e8f8ee}
+.edu-check.is-done strong{color:#0f6b3c}
+.edu-check.is-miss{background:#fdecea}
+.edu-check.is-miss strong{color:#b42318}
+.edu-session-room{margin:0 0 14px;padding:16px;border-radius:12px;background:#0b1f3a;color:#fff}
+.edu-session-live{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#9ad7ff}
+.edu-session-room p{color:#d7e8f4}
+.edu-session-clock{margin:10px 0 0;font-size:22px;font-weight:800;color:#fff}
 .edu-prompt{font-size:16px;font-weight:700;color:#143246}
 .edu-options{display:grid;gap:8px;margin-bottom:14px}
 .edu-option{width:100%;padding:12px 14px;border:2px solid #d7e2e9;border-radius:10px;background:#f7fbfc;color:#143246;font:inherit;font-size:14px;font-weight:600;text-align:left;cursor:pointer}

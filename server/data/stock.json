@@ -1,3 +1,37 @@
 {
-  "items": []
+  "items": [
+    {
+      "outletId": "MH-OUT-CD",
+      "skuKey": "id:101",
+      "qty": 13,
+      "name": "MediHome Pantoprazole 20 mg",
+      "brand": "MediHome",
+      "salt": "Pantoprazole",
+      "packSize": "10 tablets",
+      "outletName": "Central Delhi Outlet",
+      "updatedAt": 1790148161075
+    },
+    {
+      "outletId": "MH-OUT-CD",
+      "skuKey": "id:1377",
+      "qty": 23,
+      "name": "MediHome Vitamin D3 60,000 IU",
+      "brand": "MediHome",
+      "salt": "Vitamin D3",
+      "packSize": "4 capsules",
+      "outletName": "Central Delhi Outlet",
+      "updatedAt": 1790148161077
+    },
+    {
+      "outletId": "MH-OUT-CD",
+      "skuKey": "id:1365",
+      "qty": 22,
+      "name": "MediHome Ambroxol 30 mg/5 ml",
+      "brand": "MediHome",
+      "salt": "Ambroxol",
+      "packSize": "100 ml syrup",
+      "outletName": "Central Delhi Outlet",
+      "updatedAt": 1790177268352
+    }
+  ]
 }

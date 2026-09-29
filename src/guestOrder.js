@@ -39,7 +39,7 @@ export const GUEST_REGISTER_HEADLINE =
 export const GUEST_REGISTER_BENEFITS = [
   "Year-round discounts on medicines and home services",
   "Member offers on your orders",
-  "MediHome points for family members, referrals, webinars and quizzes",
+  "MediHome points for family members, referrals, webinar attendance and quizzes",
   "Saved name, mobile and address for faster checkout",
   "Book for family members from your account",
 ];

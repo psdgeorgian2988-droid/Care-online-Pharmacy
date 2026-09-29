@@ -2,6 +2,9 @@ import { normalizeMobile } from "./personFields.js";
 import {
   cardBrand,
   cardDigits,
+  cardFundingLabel,
+  detectCardFunding,
+  isCardPayment,
   isValidIfsc,
   isValidUpi,
   last4,
@@ -27,7 +30,11 @@ export function loadSavedPayments(mobile, type = "") {
   if (!key) return [];
   const list = Array.isArray(readStore()[key]) ? readStore()[key] : [];
   const wanted = String(type || "").toLowerCase();
-  return wanted ? list.filter((row) => row.type === wanted) : list;
+  if (!wanted) return list;
+  if (isCardPayment(wanted)) {
+    return list.filter((row) => isCardPayment(row.type));
+  }
+  return list.filter((row) => row.type === wanted);
 }
 
 export function toStoredInstrument(method, details = {}) {
@@ -44,19 +51,23 @@ export function toStoredInstrument(method, details = {}) {
       label: upiId,
     };
   }
-  if (kind === "credit" || kind === "debit") {
+  if (isCardPayment(kind)) {
     const digits = cardDigits(details.cardNumber);
     const cardLast4 = details.cardLast4 || last4(digits);
     if (!cardLast4) return null;
+    const brand = details.cardBrand || cardBrand(digits);
+    const funding = details.cardFunding || detectCardFunding(digits);
+    const fundingText = cardFundingLabel(funding);
     return {
       id: details.savedId || `pay-${Date.now()}`,
-      type: kind,
+      type: "card",
       cardLast4,
-      cardBrand: details.cardBrand || cardBrand(digits),
+      cardBrand: brand,
+      cardFunding: funding,
       nameOnCard: String(details.nameOnCard || "").trim(),
       expiryMonth: String(details.expiryMonth || ""),
       expiryYear: String(details.expiryYear || ""),
-      label: `${details.cardBrand || cardBrand(digits)} •••• ${cardLast4}`,
+      label: `${brand}${fundingText ? ` ${fundingText}` : ""} •••• ${cardLast4}`,
     };
   }
   if (kind === "bank") {
@@ -66,13 +77,15 @@ export function toStoredInstrument(method, details = {}) {
       .trim()
       .toUpperCase();
     if (!accountLast4 || !isValidIfsc(ifsc)) return null;
+    const bankName = String(details.bankName || "").trim();
     return {
       id: details.savedId || `pay-${Date.now()}`,
       type: "bank",
       accountLast4,
       ifsc,
+      bankName,
       accountName: String(details.accountName || "").trim(),
-      label: `${ifsc} •••• ${accountLast4}`,
+      label: `${bankName || ifsc} •••• ${accountLast4}`,
     };
   }
   return null;

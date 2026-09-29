@@ -10,9 +10,11 @@
     "build": "vite build",
     "start": "node server/index.mjs",
     "lint": "oxlint",
-    "test": "node --test src/*.test.mjs",
+    "test": "node --test src/*.test.mjs server/*.test.mjs",
     "preview": "vite preview",
-    "app:sync": "npm run build && npx cap sync",
+    "app:configure": "node scripts/capacitor-config.mjs",
+    "app:sync": "VITE_API_BASE_URL=https://medihome.co.in npm run build && npm run app:configure && npx cap sync",
+    "app:sync:live": "npm run app:configure && npx cap sync",
     "app:android": "npx cap open android",
     "app:ios": "npx cap open ios"
   },
@@ -22,12 +24,15 @@
   "dependencies": {
     "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.5.0",
+    "@capacitor/geolocation": "^8.2.2",
     "@capacitor/splash-screen": "^8.0.2",
     "@capacitor/status-bar": "^8.0.3",
+    "@cursor/sdk": "^1.0.31",
     "@vitejs/plugin-react": "^6.0.4",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "tesseract.js": "^7.0.0",
     "vite": "^8.2.0"
   },
   "devDependencies": {

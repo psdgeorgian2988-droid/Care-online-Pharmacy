@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import PersonFields from "./PersonFields";
+import { useState } from "react";
+import PersonFields from "./PersonFields.jsx";
 import {
   RELATION_OPTIONS,
   emptyFamilyMember,
@@ -8,6 +8,121 @@ import {
 } from "./personFields";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import AutofillTrap from "./AutofillTrap";
+
+function memberHasInput(member) {
+  return Boolean(
+    String(member?.name || "").trim() ||
+      member?.relation ||
+      member?.gender ||
+      member?.dob ||
+      (!member?.useAccountMobile && String(member?.mobile || "").trim())
+  );
+}
+
+function MemberForm({
+  idPrefix,
+  member,
+  index,
+  errors,
+  account,
+  enforceRequired = true,
+  onPatch,
+}) {
+  const usesAccount = Boolean(member.useAccountMobile);
+  return (
+    <>
+      <label htmlFor={`${idPrefix}-${index}-name`}>
+        Name <span>*</span>
+      </label>
+      <input
+        id={`${idPrefix}-${index}-name`}
+        value={member.name || ""}
+        placeholder="Family member name"
+        required={enforceRequired}
+        onChange={(event) => onPatch({ name: event.target.value })}
+        {...noContactNameProps}
+      />
+      {errors[`familyMembers.${index}.name`] ? (
+        <small className="family-error">
+          {errors[`familyMembers.${index}.name`]}
+        </small>
+      ) : null}
+      <label htmlFor={`${idPrefix}-${index}-relation`}>
+        Relation <span>*</span>
+      </label>
+      <select
+        id={`${idPrefix}-${index}-relation`}
+        value={member.relation || ""}
+        required={enforceRequired}
+        onChange={(event) => onPatch({ relation: event.target.value })}
+      >
+        <option value="">Select</option>
+        {RELATION_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {errors[`familyMembers.${index}.relation`] ? (
+        <small className="family-error">
+          {errors[`familyMembers.${index}.relation`]}
+        </small>
+      ) : null}
+      <label htmlFor={`${idPrefix}-${index}-mobile`}>
+        Mobile <span>*</span>
+      </label>
+      <input
+        id={`${idPrefix}-${index}-mobile`}
+        maxLength="10"
+        placeholder="10-digit mobile"
+        value={usesAccount ? account : member.mobile || ""}
+        disabled={usesAccount}
+        required={enforceRequired && !usesAccount}
+        onChange={(event) =>
+          onPatch({
+            mobile: normalizeMobile(event.target.value),
+            useAccountMobile: false,
+          })
+        }
+        {...noContactMobileProps}
+      />
+      <label className="family-use-account">
+        <input
+          type="checkbox"
+          checked={usesAccount}
+          disabled={!account}
+          onChange={(event) => {
+            const on = event.target.checked;
+            onPatch({
+              useAccountMobile: on,
+              mobile: on ? account : "",
+            });
+          }}
+        />
+        Use Account Creator&apos;s Mobile
+        {account ? ` (${account})` : " — enter the account mobile first"}
+      </label>
+      {errors[`familyMembers.${index}.mobile`] ? (
+        <small className="family-error">
+          {errors[`familyMembers.${index}.mobile`]}
+        </small>
+      ) : null}
+      <PersonFields
+        idPrefix={`${idPrefix}-${index}`}
+        values={member}
+        required={enforceRequired}
+        errors={{
+          gender: errors[`familyMembers.${index}.gender`],
+          dob: errors[`familyMembers.${index}.dob`],
+        }}
+        onChange={(event) => {
+          const { name, value } = event.target;
+          onPatch({ [name]: value });
+        }}
+      />
+    </>
+  );
+}
 
 export default function FamilyMembersFields({
   idPrefix = "family",
@@ -20,20 +135,44 @@ export default function FamilyMembersFields({
 }) {
   const list = Array.isArray(members) ? members : [];
   const [openIds, setOpenIds] = useState(() => new Set());
+  const [draft, setDraft] = useState(emptyFamilyMember);
+  const [showDraft, setShowDraft] = useState(false);
+  const [seenTick, setSeenTick] = useState(collapseTick);
   const account = normalizeMobile(accountMobile);
 
-  useEffect(() => {
+  if (seenTick !== collapseTick) {
+    setSeenTick(collapseTick);
     setOpenIds(new Set());
-  }, [collapseTick]);
+    setDraft(emptyFamilyMember());
+  }
 
   const emit = (next) => {
     onChange?.({ target: { name: "familyMembers", value: next } });
   };
 
+  const savedList = list.filter((member) => member.id !== draft.id);
+
+  const emitDraft = (nextDraft) => {
+    emit(memberHasInput(nextDraft) ? [...savedList, nextDraft] : savedList);
+  };
+
   const addMember = () => {
+    if (showDraft) return;
     const next = emptyFamilyMember();
-    setOpenIds(new Set([next.id]));
-    emit([...list, next]);
+    setDraft(next);
+    setShowDraft(true);
+  };
+
+  const updateDraft = (patch) => {
+    const next = { ...draft, ...patch };
+    setDraft(next);
+    emitDraft(next);
+  };
+
+  const cancelDraft = () => {
+    setShowDraft(false);
+    setDraft(emptyFamilyMember());
+    emit(savedList);
   };
 
   const updateMember = (index, patch) => {
@@ -73,6 +212,9 @@ export default function FamilyMembersFields({
     );
   };
 
+  const draftIndex = list.findIndex((member) => member.id === draft.id);
+  const draftErrorIndex = draftIndex >= 0 ? draftIndex : savedList.length;
+
   return (
     <>
       <style>{styles}</style>
@@ -85,10 +227,10 @@ export default function FamilyMembersFields({
           </button>
         </div>
 
-        {list.map((member, index) => {
+        {savedList.map((member) => {
+          const index = list.findIndex((row) => row.id === member.id);
           const id = member.id || String(index);
           const editing = isOpen(member, index);
-          const usesAccount = Boolean(member.useAccountMobile);
           if (!editing && savedAs === "hidden") return null;
           return (
             <article key={id} className="family-card">
@@ -136,104 +278,41 @@ export default function FamilyMembersFields({
                 </div>
               </div>
               {editing ? (
-                <>
-                  <label htmlFor={`${idPrefix}-${index}-name`}>
-                    Name <span>*</span>
-                  </label>
-                  <input
-                    id={`${idPrefix}-${index}-name`}
-                    value={member.name || ""}
-                    placeholder="Family member name"
-                    required
-                    onChange={(event) =>
-                      updateMember(index, { name: event.target.value })
-                    }
-                    {...noContactNameProps}
-                  />
-                  {errors[`familyMembers.${index}.name`] ? (
-                    <small className="family-error">
-                      {errors[`familyMembers.${index}.name`]}
-                    </small>
-                  ) : null}
-                  <label htmlFor={`${idPrefix}-${index}-relation`}>
-                    Relation <span>*</span>
-                  </label>
-                  <select
-                    id={`${idPrefix}-${index}-relation`}
-                    value={member.relation || ""}
-                    required
-                    onChange={(event) =>
-                      updateMember(index, { relation: event.target.value })
-                    }
-                  >
-                    <option value="">Select</option>
-                    {RELATION_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  {errors[`familyMembers.${index}.relation`] ? (
-                    <small className="family-error">
-                      {errors[`familyMembers.${index}.relation`]}
-                    </small>
-                  ) : null}
-                  <label htmlFor={`${idPrefix}-${index}-mobile`}>
-                    Mobile <span>*</span>
-                  </label>
-                  <input
-                    id={`${idPrefix}-${index}-mobile`}
-                    maxLength="10"
-                    placeholder="10-digit mobile"
-                    value={usesAccount ? account : member.mobile || ""}
-                    disabled={usesAccount}
-                    required={!usesAccount}
-                    onChange={(event) =>
-                      updateMember(index, {
-                        mobile: normalizeMobile(event.target.value),
-                        useAccountMobile: false,
-                      })
-                    }
-                    {...noContactMobileProps}
-                  />
-                  <label className="family-use-account">
-                    <input
-                      type="checkbox"
-                      checked={usesAccount}
-                      disabled={!account}
-                      onChange={(event) => {
-                        const on = event.target.checked;
-                        updateMember(index, {
-                          useAccountMobile: on,
-                          mobile: on ? account : "",
-                        });
-                      }}
-                    />
-                    Use Account Creator&apos;s Mobile
-                    {account ? ` (${account})` : " — enter the account mobile first"}
-                  </label>
-                  {errors[`familyMembers.${index}.mobile`] ? (
-                    <small className="family-error">
-                      {errors[`familyMembers.${index}.mobile`]}
-                    </small>
-                  ) : null}
-                  <PersonFields
-                    idPrefix={`${idPrefix}-${index}`}
-                    values={member}
-                    errors={{
-                      gender: errors[`familyMembers.${index}.gender`],
-                      dob: errors[`familyMembers.${index}.dob`],
-                    }}
-                    onChange={(event) => {
-                      const { name, value } = event.target;
-                      updateMember(index, { [name]: value });
-                    }}
-                  />
-                </>
+                <MemberForm
+                  idPrefix={idPrefix}
+                  member={member}
+                  index={index}
+                  errors={errors}
+                  account={account}
+                  onPatch={(patch) => updateMember(index, patch)}
+                />
               ) : null}
             </article>
           );
         })}
+
+        {showDraft ? (
+          <article className="family-card">
+            <div className="family-card-top">
+              <strong>New family member</strong>
+              <div className="family-card-actions">
+                <button type="button" className="family-edit" onClick={cancelDraft}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+            <MemberForm
+              key={draft.id}
+              idPrefix={`${idPrefix}-draft`}
+              member={draft}
+              index={draftErrorIndex}
+              errors={errors}
+              account={account}
+              enforceRequired={false}
+              onPatch={updateDraft}
+            />
+          </article>
+        ) : null}
       </div>
     </>
   );

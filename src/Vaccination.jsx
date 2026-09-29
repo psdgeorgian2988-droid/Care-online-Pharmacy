@@ -5,11 +5,9 @@ import {
 } from "./vaccinationSchedule";
 import {
   RECORD_EVENT,
-  dueSoonReminders,
+  givenVaccinationRecords,
   loadVaccinationStore,
   recordVaccinationDose,
-  removeVaccinationPerson,
-  savedReminders,
   upsertVaccinationPerson,
 } from "./vaccinationRecord";
 import {
@@ -22,12 +20,10 @@ import {
   toggleBookingVaccine,
 } from "./vaccinationBooking";
 import SelectedVaccinesFields from "./SelectedVaccinesFields";
-import BookingForFields from "./BookingForFields";
 import {
   OTHER_BOOKING_ID,
-  findBookingFor,
+  bookingForOptions,
   hasHouseholdProfile,
-  isHouseholdBooking,
 } from "./bookingFor";
 import { useLoginSession } from "./authSession";
 import { readUserProfile } from "./addressFields";
@@ -44,7 +40,7 @@ function personFromOption(option = {}) {
   };
 }
 
-function Vaccination({ embedded = false } = {}) {
+function Vaccination({ embedded = false, person = null } = {}) {
   const today = isoDateToday();
   const session = useLoginSession();
   const stored = readUserProfile();
@@ -72,10 +68,7 @@ function Vaccination({ embedded = false } = {}) {
     vaccineId: "",
     givenOn: today,
   });
-  const [recordErrors, setRecordErrors] = useState({});
   const [showSchedule, setShowSchedule] = useState(false);
-  const reminders = savedReminders(store);
-  const soon = dueSoonReminders(store, 21);
   const scheduleGuide = useMemo(() => fullVaccinationSchedule(), []);
   const bookHref = nurseBookingHref(carePlanForGroup(booking.group));
 
@@ -96,6 +89,17 @@ function Vaccination({ embedded = false } = {}) {
   }, []);
 
   useEffect(() => {
+    if (!person?.name) return;
+    choosePerson({
+      id: person.id,
+      name: person.name,
+      gender: person.gender || "",
+      dob: person.dob || "",
+      age: person.age || person.ageYears || "",
+    });
+  }, [person?.id, person?.name, person?.dob]);
+
+  useEffect(() => {
     if (!showSchedule) return undefined;
     const onKey = (event) => {
       if (event.key === "Escape") setShowSchedule(false);
@@ -103,45 +107,6 @@ function Vaccination({ embedded = false } = {}) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [showSchedule]);
-
-  const saveRecordPerson = (event) => {
-    event.preventDefault();
-    if (!isRegistered) return;
-    const option = findBookingFor(profile, recordForm.bookedFor, {
-      includeOther: false,
-    });
-    const dob = String(recordForm.dob || option?.dob || booking.dob || "").trim();
-    const next = {};
-    if (!option?.name || !isHouseholdBooking({ bookedFor: option.id }, profile)) {
-      next.bookedFor = "Select a registered name.";
-    }
-    if (!dob) next.dob = "Select date, month and year of birth.";
-    setRecordErrors(next);
-    if (Object.keys(next).length) return;
-    upsertVaccinationPerson({
-      name: option.name.trim(),
-      gender: option.gender || recordForm.gender,
-      dob,
-      ageYears: option.age,
-      keepRecord: true,
-      remindersOn: true,
-      requiredIds: booking.vaccineIds,
-    });
-    setRecordForm((prev) => ({ ...prev, dob }));
-    setStore(loadVaccinationStore());
-  };
-
-  const saveGivenDose = (event) => {
-    event.preventDefault();
-    if (!markGiven.personId || !markGiven.vaccineId || !markGiven.givenOn) return;
-    recordVaccinationDose({
-      personId: markGiven.personId,
-      vaccineId: markGiven.vaccineId,
-      givenOn: markGiven.givenOn,
-      status: "given",
-    });
-    setStore(loadVaccinationStore());
-  };
 
   const choosePerson = (option) => {
     if (!option || option.id === OTHER_BOOKING_ID || !option.name) {
@@ -152,7 +117,6 @@ function Vaccination({ embedded = false } = {}) {
         gender: "",
         dob: "",
       });
-      setRecordErrors({});
       return;
     }
     const person = personFromOption(option);
@@ -165,7 +129,6 @@ function Vaccination({ embedded = false } = {}) {
       gender: person.gender || "",
       dob: applied.dob,
     });
-    setRecordErrors({});
   };
 
   const chooseGroup = (group) => {
@@ -177,12 +140,131 @@ function Vaccination({ embedded = false } = {}) {
     setBooking(toggleBookingVaccine(id));
   };
 
+  const givenRows = givenVaccinationRecords(store, person);
+  const embedPeople = person?.name
+    ? [{ id: person.id || recordForm.bookedFor || "self", name: person.name }]
+    : bookingForOptions(profile, { includeOther: false }).map((row) => ({
+        id: row.id,
+        name: row.name,
+      }));
+
+  if (embedded) {
+    return (
+      <>
+        <style>{styles}</style>
+        <section className="vac-record-embed" aria-label="Vaccination Record">
+          <p className="vac-section-title">Vaccination Record</p>
+          {givenRows.length === 0 ? (
+            <p className="vac-copy">
+              {person?.name
+                ? `No vaccines recorded yet for ${person.name}.`
+                : "No vaccines recorded yet. Save a given dose below."}
+            </p>
+          ) : (
+            <ul className="vac-reminder-list">
+              {givenRows.map((row) => (
+                <li key={row.id}>
+                  <strong>{row.personName || person?.name || "Patient"}</strong>
+                  <span>{row.vaccineName}</span>
+                  <em>Given {row.givenOnLabel || row.givenOn}</em>
+                </li>
+              ))}
+            </ul>
+          )}
+          {isRegistered ? (
+            <form
+              className="vac-given"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const chosenId = markGiven.personId || embedPeople[0]?.id || "";
+                const chosen =
+                  embedPeople.find((row) => row.id === chosenId) || embedPeople[0];
+                if (!chosen?.name || !markGiven.vaccineId || !markGiven.givenOn) return;
+                const saved = upsertVaccinationPerson({
+                  id: chosen.id,
+                  name: chosen.name,
+                  gender: person?.gender || "",
+                  dob: person?.dob || recordForm.dob || "",
+                  keepRecord: true,
+                });
+                if (!saved.ok) return;
+                recordVaccinationDose({
+                  personId: saved.person.id,
+                  vaccineId: markGiven.vaccineId,
+                  givenOn: markGiven.givenOn,
+                  status: "given",
+                });
+                setStore(loadVaccinationStore());
+              }}
+            >
+              <p className="vac-section-title">Record a given vaccine</p>
+              {embedPeople.length > 1 ? (
+                <select
+                  value={markGiven.personId}
+                  aria-label="Patient name"
+                  onChange={(event) =>
+                    setMarkGiven((prev) => ({ ...prev, personId: event.target.value }))
+                  }
+                >
+                  <option value="">Name</option>
+                  {embedPeople.map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.name}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+              <select
+                value={markGiven.vaccineId}
+                aria-label="Vaccine"
+                onChange={(event) =>
+                  setMarkGiven((prev) => ({ ...prev, vaccineId: event.target.value }))
+                }
+              >
+                <option value="">Vaccine</option>
+                {ALL_VACCINES.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.name}
+                  </option>
+                ))}
+              </select>
+              <div className="field full">
+                <DateMonthYearFields
+                  idPrefix="vac-given-embed"
+                  name="givenOn"
+                  value={markGiven.givenOn}
+                  max={today}
+                  required
+                  label="Date given"
+                  onChange={(event) =>
+                    setMarkGiven((prev) => ({ ...prev, givenOn: event.target.value }))
+                  }
+                />
+              </div>
+              <button type="submit" className="service-submit">
+                Save given vaccine
+              </button>
+            </form>
+          ) : (
+            <p className="vac-copy vac-register-hint">
+              Login to save vaccination records. <a href="#login">Login</a>
+            </p>
+          )}
+        </section>
+      </>
+    );
+  }
+
   return (
     <>
       <style>{styles}</style>
-      <div className={embedded ? "vac-page is-embedded" : "service-page vac-page"}>
-        {embedded ? (
-          <div className="vac-hero-actions vac-embedded-actions">
+      <div className="service-page">
+        <section className="service-hero">
+          <div>
+            <span className="service-kicker">MediHome Vaccination</span>
+            <h1>Vaccination</h1>
+          </div>
+          <div className="vac-hero-actions">
             <button
               type="button"
               className="vac-schedule-btn"
@@ -194,96 +276,9 @@ function Vaccination({ embedded = false } = {}) {
               Book Nurse Visit
             </a>
           </div>
-        ) : (
-          <section className="service-hero">
-            <div>
-              <span className="service-kicker">MediHome Vaccination</span>
-              <h1>Vaccination Record</h1>
-            </div>
-            <div className="vac-hero-actions">
-              <button
-                type="button"
-                className="vac-schedule-btn"
-                onClick={() => setShowSchedule(true)}
-              >
-                View Schedule
-              </button>
-              <a className="vac-schedule-btn is-fill" href={bookHref}>
-                Book Nurse Visit
-              </a>
-            </div>
-          </section>
-        )}
-
-        {soon.length ? (
-          <aside className="vac-banner" aria-live="polite">
-            <strong>Due Vaccination Reminders</strong>
-            <ul>
-              {soon.slice(0, 4).map((row) => (
-                <li key={row.id}>
-                  {row.personName}: {row.vaccineName} — {row.dueOnLabel} ({row.status})
-                </li>
-              ))}
-            </ul>
-          </aside>
-        ) : null}
+        </section>
 
         <section className="service-form vac-record">
-          <form className="vac-record-form" onSubmit={saveRecordPerson}>
-            <p className="vac-section-title">Save Record And Due Dates</p>
-            {isRegistered ? (
-              <>
-                <div className="field full">
-                  <BookingForFields
-                    idPrefix="vac"
-                    profile={profile}
-                    selectedId={recordForm.bookedFor}
-                    error={recordErrors.bookedFor}
-                    onSelect={choosePerson}
-                    label="Select Name"
-                    includeOther={false}
-                  />
-                </div>
-                <div className="field full">
-                  <DateMonthYearFields
-                    idPrefix="vac-rec-dob"
-                    name="dob"
-                    value={recordForm.dob}
-                    max={today}
-                    required
-                    error={recordErrors.dob || ""}
-                    label="Date Of Birth"
-                    onChange={(event) => {
-                      setRecordForm((prev) => ({ ...prev, dob: event.target.value }));
-                      setRecordErrors((prev) => ({ ...prev, dob: "" }));
-                      if (recordForm.bookedFor) {
-                        setBooking(
-                          applyPersonToBooking({
-                            bookedFor: recordForm.bookedFor,
-                            name: recordForm.name,
-                            gender: recordForm.gender,
-                            dob: event.target.value,
-                          })
-                        );
-                      }
-                    }}
-                  />
-                </div>
-                <button type="submit" className="service-submit">
-                  Save Record And Due Dates
-                </button>
-              </>
-            ) : (
-              <p className="vac-copy vac-register-hint">
-                Login or create an account to save vaccination records for
-                registered family members.{" "}
-                <a href="#login">Login</a>
-                {" · "}
-                <a href="#register">Create Account</a>
-              </p>
-            )}
-          </form>
-
           <div className="vac-book-card">
             <p className="vac-section-title">Select Vaccines</p>
             <div className="vac-group" role="group" aria-label="Vaccination group">
@@ -307,88 +302,6 @@ function Vaccination({ embedded = false } = {}) {
               Continue To Nurse Booking
             </a>
           </div>
-
-          <div className="vac-saved">
-            <p className="vac-section-title">Due Dates</p>
-            {reminders.length === 0 ? (
-              <p className="vac-copy">No saved due dates yet.</p>
-            ) : (
-              <ul className="vac-reminder-list">
-                {reminders.map((row) => (
-                  <li key={row.id}>
-                    <strong>{row.personName}</strong>
-                    <span>{row.vaccineName}</span>
-                    <em>
-                      Due {row.dueOnLabel}
-                      {row.dobEstimated ? " (estimated from age)" : ""} · {row.dueLabel}{" "}
-                      · {row.status}
-                    </em>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {store.people.length ? (
-            <form className="vac-given" onSubmit={saveGivenDose}>
-              <p className="vac-section-title">Mark A Dose As Given</p>
-              <select
-                value={markGiven.personId}
-                onChange={(event) =>
-                  setMarkGiven((prev) => ({ ...prev, personId: event.target.value }))
-                }
-              >
-                <option value="">Person</option>
-                {store.people.map((person) => (
-                  <option key={person.id} value={person.id}>
-                    {person.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={markGiven.vaccineId}
-                onChange={(event) =>
-                  setMarkGiven((prev) => ({ ...prev, vaccineId: event.target.value }))
-                }
-              >
-                <option value="">Vaccine</option>
-                {ALL_VACCINES.map((row) => (
-                  <option key={row.id} value={row.id}>
-                    {row.name}
-                  </option>
-                ))}
-              </select>
-              <div className="field full">
-                <DateMonthYearFields
-                  idPrefix="vac-given"
-                  name="givenOn"
-                  value={markGiven.givenOn}
-                  max={today}
-                  required
-                  label="Date Given"
-                  onChange={(event) =>
-                    setMarkGiven((prev) => ({ ...prev, givenOn: event.target.value }))
-                  }
-                />
-              </div>
-              <button type="submit" className="service-submit">
-                Save Given Dose
-              </button>
-              {store.people.map((person) => (
-                <button
-                  key={person.id}
-                  type="button"
-                  className="vac-remove"
-                  onClick={() => {
-                    removeVaccinationPerson(person.id);
-                    setStore(loadVaccinationStore());
-                  }}
-                >
-                  Remove {person.name}
-                </button>
-              ))}
-            </form>
-          ) : null}
         </section>
 
         {showSchedule ? (
@@ -498,7 +411,9 @@ const styles = `
 .service-kicker{display:block;margin-bottom:4px;font-size:11px;font-weight:800;letter-spacing:.6px;color:#1a6b7a}
 .service-hero h1{margin:0;font-size:22px}
 .vac-hero-actions{display:flex;flex-wrap:wrap;gap:8px}
-.vac-embedded-actions{max-width:760px;margin:0 auto 12px;justify-content:flex-end}
+.vac-record-embed{max-width:760px;margin:0 auto;padding:4px 0 8px;display:grid;gap:14px}
+.vac-record-embed .vac-copy{padding:0 2px}
+.vac-record-embed .vac-given{margin-top:4px}
 .vac-banner{max-width:760px;margin:0 auto 12px;padding:12px 14px;border-radius:12px;background:#fff6e8;border:1px solid #f0d3a0;color:#7a4b12}
 .vac-banner strong{display:block;margin-bottom:6px}
 .vac-banner ul{margin:0;padding-left:18px;font-size:13px;line-height:1.45}

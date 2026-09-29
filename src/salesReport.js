@@ -7,11 +7,12 @@ export const FEATURE_CATALOG = [
   { key: "lab", label: "Lab Tests", href: "#labs" },
   { key: "radiology", label: "Radiology", href: "#labs" },
   { key: "homecare", label: "Home Care", href: "#homecare" },
-  { key: "vaccination", label: "Vaccination", href: "#reports?tab=vaccination" },
+  { key: "vaccination", label: "Vaccination", href: "#vaccination" },
+  { key: "doctor", label: "Doctor Appointment", href: "#doctor" },
   { key: "psychologist", label: "Psychologist Consultation", href: "#psychologist" },
   { key: "stepdown", label: "Step-Down Care", href: "#stepdown" },
   { key: "ambulance", label: "Ambulance", href: "#ambulance" },
-  { key: "reports", label: "Medical Records", href: "#reports" },
+  { key: "reports", label: "Medical Record", href: "#reports" },
   { key: "education", label: "Health Education", href: "#education" },
   { key: "scanDelivery", label: "Scan Delivery", href: "#scan?step=deliver" },
 ];
@@ -22,23 +23,32 @@ export const DEFAULT_FEATURES = Object.fromEntries(
 
 export const ROUTE_FEATURES = {
   "#medicine-search": ["medicine"],
+  "#checkout": ["medicine", "lab", "radiology"],
   "#labs": ["lab", "radiology"],
   "#homecare": ["homecare"],
-  "#vaccination": ["vaccination", "reports"],
+  "#vaccination": ["vaccination"],
+  "#doctor": ["doctor"],
   "#psychologist": ["psychologist"],
   "#stepdown": ["stepdown"],
   "#ambulance": ["ambulance"],
-  "#reports": ["reports", "vaccination"],
+  "#reports": ["reports"],
   "#education": ["education"],
 };
 
 export function mergeFeatures(raw) {
-  return { ...DEFAULT_FEATURES, ...(raw && typeof raw === "object" ? raw : {}) };
+  const next = { ...DEFAULT_FEATURES };
+  if (!raw || typeof raw !== "object") return next;
+  for (const key of Object.keys(DEFAULT_FEATURES)) {
+    if (Object.prototype.hasOwnProperty.call(raw, key)) {
+      next[key] = Boolean(raw[key]);
+    }
+  }
+  return next;
 }
 
 export function featureEnabled(features, key) {
   if (!key) return true;
-  return features?.[key] !== false;
+  return features?.[key] === true;
 }
 
 export function routeEnabled(route, features) {

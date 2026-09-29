@@ -1,15 +1,19 @@
-import { useRef, useState } from "react";
-import {
-  cleanOcrQuery,
-  startVoiceSearch,
-  textFromStripPhoto,
-  voiceSearchSupported,
-} from "./medicineStripSearch";
+import { useEffect, useRef, useState } from "react";
+import { cleanOcrQuery, startVoiceSearch, textFromStripPhoto } from "./medicineStripSearch";
 
-export default function MedicineSearchTools({ onQuery }) {
+export default function MedicineSearchTools({ onQuery, onPhoto }) {
   const fileRef = useRef(null);
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [fileName, setFileName] = useState("");
+
+  useEffect(
+    () => () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    },
+    [previewUrl]
+  );
 
   const handleVoice = () => {
     setStatus("Listening… say the brand or salt name.");
@@ -17,6 +21,7 @@ export default function MedicineSearchTools({ onQuery }) {
     startVoiceSearch({
       onResult: (text) => {
         setStatus("");
+        onPhoto?.(null);
         onQuery(text);
       },
       onError: (message) => setStatus(message),
@@ -28,18 +33,22 @@ export default function MedicineSearchTools({ onQuery }) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    const nextPreview = URL.createObjectURL(file);
+    setPreviewUrl(nextPreview);
+    setFileName(file.name || "Medicine photo");
     setBusy(true);
-    setStatus("Reading the strip photo…");
+    setStatus("Uploading photo…");
     try {
       const raw = await textFromStripPhoto(file);
       const query = cleanOcrQuery(raw);
       if (query.length < 2) {
-        setStatus(
-          "Could not read brand or composition. Photograph the name side of the strip, in good light."
-        );
+        setStatus("Photo uploaded. Could not read the medicine name. Try a closer, brighter photo.");
+        onPhoto?.({ query: "", previewUrl: nextPreview, fileName: file.name });
         return;
       }
-      setStatus(`Found: ${query}`);
+      setStatus("");
+      onPhoto?.({ query, previewUrl: nextPreview, fileName: file.name });
       onQuery(query);
     } catch (error) {
       setStatus(error.message || "Could not read this photo.");
@@ -65,24 +74,24 @@ export default function MedicineSearchTools({ onQuery }) {
           onClick={() => fileRef.current?.click()}
           disabled={busy}
         >
-          {busy && status.startsWith("Reading") ? "Reading photo…" : "Photo of strip"}
+          {busy && /upload|reading|photo/i.test(status)
+            ? "Reading photo…"
+            : "Upload medicine photo"}
         </button>
         <input
           ref={fileRef}
           type="file"
           accept="image/*"
-          capture="environment"
           hidden
           onChange={handlePhoto}
         />
       </div>
-      <p className="med-search-tools-hint">
-        Photograph the brand name or composition printed on the strip you take
-        now. We search the same combination in MediHome.
-        {!voiceSearchSupported()
-          ? " Voice needs Chrome, Edge, or Safari."
-          : ""}
-      </p>
+      {previewUrl ? (
+        <div className="med-search-photo-uploaded">
+          <img src={previewUrl} alt={fileName || "Uploaded medicine photo"} />
+          <span>{fileName || "Photo uploaded"}</span>
+        </div>
+      ) : null}
       {status ? <p className="med-search-tools-status">{status}</p> : null}
     </div>
   );

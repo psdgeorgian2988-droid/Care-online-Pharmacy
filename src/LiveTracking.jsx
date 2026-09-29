@@ -4,20 +4,30 @@ import {
   ensureTracking,
   etaLabel,
   haversineKm,
+  isOngoingTrackOrder,
+  isPartnerEnRoute,
   kindLabel,
-  loadActiveOrders,
+  loadAllOrders,
+  ongoingTrackOrders,
   partnerCopy,
   persistOrder,
+  refreshOrderFromServer,
   resolveOrderById,
   stepLabel,
   tickTracking,
   TRACK_STEPS,
   trackHref,
 } from "./orderTracking";
+import { DIAGNOSTIC_TRACK_STEPS, isDiagnosticKind } from "./labPipeline";
+import { orderCurrentStatus, trackKey } from "./orderStatus";
 import { mapsUrlForPin, normalizePin, osmEmbedUrl } from "./pinLocation";
 import AssignedAgent from "./AssignedAgent";
 import ScanActions from "./ScanActions";
 import OrderFeedbackCta from "./OrderFeedbackCta";
+import OrderFullView from "./OrderFullView.jsx";
+import ReturnMedicinePanel from "./ReturnMedicine.jsx";
+import { pharmacyReturnRequestedFields } from "./pharmacyTrack";
+import RefundStatusPanel from "./RefundStatus.jsx";
 
 function mercatorY(lat) {
   const rad = (lat * Math.PI) / 180;
@@ -118,7 +128,9 @@ function LiveMap({ order }) {
           <small>PIN {order.pinCode}</small>
         </div>
         <div
-          className={`live-marker partner${order.trackCompleted ? " is-done" : ""}`}
+          className={`live-marker partner${
+            order.trackCompleted || !isOngoingTrackOrder(order) ? " is-done" : ""
+          }`}
           style={{ left: partnerPos.left, top: partnerPos.top }}
         >
           <span>{copy.emoji}</span>
@@ -182,18 +194,42 @@ export function LiveTrackingPanel({ order, onOrderChange, compact = false, showS
   useEffect(() => {
     liveRef.current = order;
     setLive(order);
-  }, [order?.id, order?.pinCode, order?.trackStartedAt, order?.trackCompleted]);
+  }, [order?.id, order?.pinCode, order?.trackStartedAt, order?.trackCompleted, order?.trackStatus]);
+
+  useEffect(() => {
+    const id = order?.bookingId || order?.id || order?.requestId;
+    if (!id) return undefined;
+    let cancelled = false;
+    const tick = async () => {
+      const latest = await refreshOrderFromServer(id);
+      if (cancelled || !latest) return;
+      liveRef.current = { ...liveRef.current, ...latest };
+      setLive((current) => ({ ...(current || {}), ...latest }));
+      onOrderChange?.(latest);
+    };
+    tick();
+    const timer = setInterval(tick, 6000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [order?.id, order?.bookingId, order?.requestId]);
 
   useEffect(() => {
     const pin = normalizePin(order?.pinCode || order?.pin);
     if (!order || !/^\d{6}$/.test(pin)) return undefined;
+    if (!isPartnerEnRoute(order)) {
+      liveRef.current = order;
+      setLive(order);
+      return undefined;
+    }
 
     let current = order.trackStartedAt ? order : ensureTracking(order);
     liveRef.current = current;
     setLive(current);
     onOrderChange?.(current);
 
-    if (current.trackCompleted) return undefined;
+    if (!isOngoingTrackOrder(current)) return undefined;
 
     let frame = 0;
     let lastPaint = 0;
@@ -205,27 +241,36 @@ export function LiveTrackingPanel({ order, onOrderChange, compact = false, showS
         const next = tickTracking(liveRef.current, Date.now());
         liveRef.current = next;
         setLive(next);
-        if (stamp - lastPersist >= 1000 || next.trackCompleted) {
+        if (stamp - lastPersist >= 1000 || !isOngoingTrackOrder(next)) {
           lastPersist = stamp;
           const saved = persistOrder(next);
           liveRef.current = saved;
           onOrderChange?.(saved);
         }
       }
-      if (!liveRef.current.trackCompleted) {
+      if (isOngoingTrackOrder(liveRef.current)) {
         frame = window.requestAnimationFrame(loop);
       }
     };
 
     frame = window.requestAnimationFrame(loop);
     return () => window.cancelAnimationFrame(frame);
-  }, [order?.id, order?.pinCode, order?.trackStartedAt]);
+  }, [order?.id, order?.pinCode, order?.trackStartedAt, order?.trackCompleted, order?.trackStatus]);
 
   if (!live) return null;
 
   const pin = normalizePin(live.pinCode || live.pin);
-  const copy = partnerCopy(live.kind);
-  const steps = TRACK_STEPS.map((step) => ({
+  const currentStatus = orderCurrentStatus(live);
+  const liveTrack = isOngoingTrackOrder(live);
+  const showMap = isPartnerEnRoute(live);
+  const closedKey = liveTrack ? "" : trackKey(live);
+  const steps = (
+    isDiagnosticKind(live.kind)
+      ? DIAGNOSTIC_TRACK_STEPS.filter(
+          (step) => step.key !== "declined" || live.trackStatus === "declined"
+        )
+      : TRACK_STEPS
+  ).map((step) => ({
     ...step,
     label: step.key === "done" ? stepLabel(live.kind, "done") : step.label,
   }));
@@ -240,67 +285,49 @@ export function LiveTrackingPanel({ order, onOrderChange, compact = false, showS
 
   return (
     <section className={`live-track${compact ? " is-compact" : ""}`}>
-      <AssignedAgent record={live} compact={compact} />
-      {showScan !== false ? <ScanActions order={live} app="customer" /> : null}
       <div className="live-track-head">
         <div>
-          <span className="live-kicker">Live tracking</span>
-          <h3>
-            {copy.title} {copy.toward}
-          </h3>
-          <p>
-            Following the assigned partner to PIN {pin || "—"}
-            {live.locality ? ` · ${live.locality}` : ""}. Position is updated on this
-            device toward your PIN coordinates.
-          </p>
+          <span className="live-kicker">Current Status</span>
+          <h3>{currentStatus}</h3>
         </div>
-        <div className={`live-eta${live.trackCompleted ? " is-done" : ""}`}>
-          <strong>{live.trackCompleted ? stepLabel(live.kind, "done") : etaLabel(live)}</strong>
-          <span>
-            {live.trackCompleted
-              ? "Partner reached your PIN"
-              : `${remainingKm < 0.1 ? "<0.1" : remainingKm.toFixed(1)} km remaining`}
-          </span>
-        </div>
+        {showMap ? (
+          <div className={`live-eta${liveTrack ? "" : " is-done"}`}>
+            <strong>
+              {liveTrack
+                ? etaLabel(live)
+                : stepLabel(live.kind, closedKey === "declined" ? "declined" : "done")}
+            </strong>
+            <span>
+              {liveTrack
+                ? `${remainingKm < 0.1 ? "<0.1" : remainingKm.toFixed(1)} km remaining`
+                : closedKey === "declined"
+                  ? "This request is no longer active"
+                  : "Partner reached your PIN"}
+            </span>
+          </div>
+        ) : null}
       </div>
 
-      {!/^\d{6}$/.test(pin) ? (
+      <div className="live-timeline">
+        {steps.map((step, index) => (
+          <div
+            key={step.key}
+            className={`live-step${index <= currentIndex ? " is-active" : ""}${
+              index === currentIndex ? " is-current" : ""
+            }`}
+          >
+            <span>{index < currentIndex || !liveTrack ? "✓" : index + 1}</span>
+            <p>{step.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {showMap ? <AssignedAgent record={live} compact={compact} /> : null}
+      {showMap && showScan !== false ? <ScanActions order={live} app="customer" /> : null}
+      {showMap && !/^\d{6}$/.test(pin) ? (
         <PinCapture order={live} onSaved={(next) => onOrderChange?.(next)} />
-      ) : (
-        <>
-          <div className="live-timeline">
-            {steps.map((step, index) => (
-              <div
-                key={step.key}
-                className={`live-step${index <= currentIndex ? " is-active" : ""}${
-                  index === currentIndex ? " is-current" : ""
-                }`}
-              >
-                <span>{index < currentIndex || live.trackCompleted ? "✓" : index + 1}</span>
-                <p>{step.label}</p>
-              </div>
-            ))}
-          </div>
-          <LiveMap order={live} />
-          <div className="live-meta">
-            <p>
-              <strong>Status:</strong> {live.status}
-            </p>
-            <p>
-              <strong>Destination:</strong>{" "}
-              {Number.isFinite(Number(live.destLat))
-                ? `${Number(live.destLat).toFixed(4)}, ${Number(live.destLng).toFixed(4)}`
-                : "PIN lookup pending"}
-            </p>
-            <p>
-              <strong>Partner:</strong>{" "}
-              {Number.isFinite(Number(live.partnerLat))
-                ? `${Number(live.partnerLat).toFixed(4)}, ${Number(live.partnerLng).toFixed(4)}`
-                : "Assigning"}
-            </p>
-          </div>
-        </>
-      )}
+      ) : null}
+      {showMap && /^\d{6}$/.test(pin) ? <LiveMap order={live} /> : null}
       <OrderFeedbackCta order={live} />
     </section>
   );
@@ -317,15 +344,17 @@ export default function TrackPage({ trackId }) {
       const found = await resolveOrderById(trackId);
       if (cancelled) return;
       if (found) {
-        const ready = /^\d{6}$/.test(normalizePin(found.pinCode || found.pin))
-          ? ensureTracking(found)
-          : found;
+        const ready =
+          isPartnerEnRoute(found) &&
+          /^\d{6}$/.test(normalizePin(found.pinCode || found.pin))
+            ? ensureTracking(found)
+            : found;
         setOrder(ready);
         setMissing(false);
       } else {
         setOrder(null);
         setMissing(Boolean(trackId));
-        setOthers(loadActiveOrders());
+        setOthers(ongoingTrackOrders(loadAllOrders()));
       }
     })();
     return () => {
@@ -338,25 +367,15 @@ export default function TrackPage({ trackId }) {
       <div className="orders-page-header">
         <div>
           <span className="orders-eyebrow">TRACKING</span>
-          <h1>Track Order</h1>
-          <p className="orders-subtitle">
-            Active bookings only. Completed orders move to My Orders.
-          </p>
+          <h1>Current Status</h1>
         </div>
         <a className="orders-home-link" href="#myorders">
-          Completed orders
+          Back to My Orders
         </a>
       </div>
 
       {order ? (
         <div className="order-details-page live-track-wrap">
-          <p>
-            <strong>{kindLabel(order.kind)}</strong> · #{order.id}
-          </p>
-          <p>
-            <strong>{order.kind === "ambulance" ? "Pickup" : "Address"}:</strong>{" "}
-            {order.address || order.deliveryAddress || "Not provided"}
-          </p>
           <LiveTrackingPanel order={order} onOrderChange={setOrder} />
         </div>
       ) : (
@@ -364,15 +383,15 @@ export default function TrackPage({ trackId }) {
           {missing ? (
             <p>No order found for this tracking link.</p>
           ) : (
-            <p>Choose an active order to track.</p>
+            <p>Choose an order to track.</p>
           )}
           <div className="orders-empty-actions">
-            {others.slice(0, 8).map((item) => (
+            {others.slice(0, 6).map((item) => (
               <a key={item.id} href={trackHref(item.id)}>
                 Track {kindLabel(item.kind)} #{item.id}
               </a>
             ))}
-            <a href="#myorders">Open completed orders</a>
+            <a href="#myorders">Open My Orders</a>
           </div>
         </div>
       )}

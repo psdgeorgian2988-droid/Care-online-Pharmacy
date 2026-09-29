@@ -1,292 +1,216 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { goBackHash, goToHash, parseAppHash } from "./hashRoute";
 import {
-  isOrderCompleted,
-  kindLabel,
-  loadCompletedOrders,
+  loadAllOrders,
+  refreshOrderFromServer,
+  syncMyOrdersFromServer,
+  trackHref,
 } from "./orderTracking";
-import { BillButton } from "./OrderBill";
-import OrderFeedbackCta from "./OrderFeedbackCta";
-import { paymentMethodSummary } from "./paymentMethods";
-import { maskMobile } from "./personFields";
+import {
+  CUSTOMER_SERVICE_TABS,
+  countOrdersForCustomerTab,
+  isCustomerServiceTab,
+  isOngoingTrackOrder,
+  ordersForCustomerTab,
+  serviceKind,
+} from "./orderStatus";
+import OrderListTable from "./OrderListTable.jsx";
+import OrderFullView from "./OrderFullView.jsx";
+import ServiceIcon from "./serviceIcons";
+import {
+  isDiagnosticKind,
+  mergeOrderReportIntoStore,
+} from "./labPipeline";
 
-function typeLabel(order) {
-  return kindLabel(order?.kind || order?.orderType);
+function tabFromHash(hash) {
+  const { service } = parseAppHash(hash);
+  return isCustomerServiceTab(service) ? service : "";
 }
 
-function itemsHeading(kind) {
-  switch (kind) {
-    case "lab":
-      return "Laboratory Tests";
-    case "radiology":
-      return "Imaging Studies";
-    case "homecare":
-      return "Home Care";
-    case "vaccination":
-      return "Vaccination";
-    case "psychologist":
-      return "Psychologist Consultation";
-    case "stepdown":
-      return "Step-Down Care";
-    case "ambulance":
-      return "Request";
-    default:
-      return "Medicines";
+function findListedOrder(orders, id) {
+  const wanted = String(id || "").trim();
+  if (!wanted) return null;
+  return (
+    orders.find(
+      (order) =>
+        String(order.id) === wanted ||
+        String(order.bookingId) === wanted ||
+        String(order.requestId) === wanted
+    ) || null
+  );
+}
+
+function myOrdersHash({ service = "", id = "" } = {}) {
+  const params = new URLSearchParams();
+  if (isCustomerServiceTab(service)) params.set("service", service);
+  if (id) params.set("id", String(id));
+  const query = params.toString();
+  return query ? `#myorders?${query}` : "#myorders";
+}
+
+function emptyForTab(tab) {
+  if (!tab) return "Choose a service to see your orders.";
+  if (tab.label.toLowerCase().endsWith("order")) {
+    return `No ${tab.label.toLowerCase()}s yet.`;
   }
-}
-
-function DetailRow({ label, value }) {
-  if (value == null || value === "") return null;
-  return (
-    <p>
-      <strong>{label}:</strong> {value}
-    </p>
-  );
-}
-
-function OrderDetails({ order, onBack }) {
-  const total =
-    order.total != null && order.total !== ""
-      ? `₹${Number(order.total).toLocaleString("en-IN")}`
-      : "";
-
-  return (
-    <div className="order-details-page">
-      <h2>Order Details</h2>
-      <DetailRow label="Order ID" value={`#${order.id}`} />
-      <DetailRow label="Date" value={order.date || "Not provided"} />
-      <DetailRow label="Status" value={order.status || "Completed"} />
-      <DetailRow label="Type" value={typeLabel(order)} />
-
-      <h3>{itemsHeading(order.kind)}</h3>
-      <ul>
-        {(order.items || []).map((item, index) => (
-          <li key={`${item.name || "item"}-${index}`}>
-            {item.name}
-            {item.quantity ? ` × ${item.quantity}` : ""}
-            {item.price ? ` — ₹${item.price}` : ""}
-          </li>
-        ))}
-      </ul>
-
-      <div className="order-details-address">
-        {(order.kind === "lab" || order.kind === "radiology") && (
-          <>
-            <DetailRow
-              label={order.kind === "lab" ? "Lab Partner" : "Imaging Partner"}
-              value={order.partner || "Not provided"}
-            />
-            <DetailRow label="Patient" value={order.patientName || "Not provided"} />
-            <DetailRow label="Mobile" value={maskMobile(order.mobile) || "Not provided"} />
-            <DetailRow
-              label={order.kind === "lab" ? "Collection Type" : "Appointment Type"}
-              value={order.visitType === "home" ? "Home Collection" : "Centre Visit"}
-            />
-            <DetailRow
-              label="Appointment Date"
-              value={order.appointmentDate || order.date || "Not provided"}
-            />
-            <DetailRow label="Time Slot" value={order.timeSlot || "Not provided"} />
-            <DetailRow label="Partner GSTIN" value={order.partnerGstin || ""} />
-            <DetailRow
-              label={order.kind === "lab" ? "Lab licence" : "Centre licence"}
-              value={order.partnerDlNo || ""}
-            />
-          </>
-        )}
-
-        {order.kind === "homecare" && (
-          <>
-            <DetailRow label="Patient" value={order.patientName || "Not provided"} />
-            <DetailRow label="Visit date" value={order.date || "Not provided"} />
-            <DetailRow label="Time slot" value={order.timeSlot || "Not provided"} />
-            <DetailRow label="Plan" value={order.carePlanLabel || "Not provided"} />
-          </>
-        )}
-
-        {order.kind === "psychologist" && (
-          <>
-            <DetailRow label="Patient" value={order.patientName || "Not provided"} />
-            <DetailRow label="Session" value={order.carePlanLabel || "Not provided"} />
-            <DetailRow
-              label="Mode"
-              value={order.sessionMode === "home" ? "Home visit" : "Video"}
-            />
-            <DetailRow label="Session date" value={order.date || "Not provided"} />
-            <DetailRow label="Time slot" value={order.timeSlot || "Not provided"} />
-            <DetailRow label="Note" value={order.concern || ""} />
-          </>
-        )}
-
-        {order.kind === "stepdown" && (
-          <>
-            <DetailRow label="Centre" value={order.centreName || "Not provided"} />
-            <DetailRow label="Patient" value={order.patientName || "Not provided"} />
-            <DetailRow label="Start date" value={order.date || "Not provided"} />
-            <DetailRow label="Time slot" value={order.timeSlot || "Not provided"} />
-            <DetailRow label="Days" value={order.durationDays || "Not provided"} />
-            <DetailRow
-              label="Ambulance to centre"
-              value={order.needAmbulance ? "Yes (booked automatically)" : "No"}
-            />
-            <DetailRow label="Ambulance ID" value={order.ambulanceRequestId || ""} />
-          </>
-        )}
-
-        {order.kind === "ambulance" && (
-          <>
-            <DetailRow label="Patient" value={order.patientName || "Not provided"} />
-            <DetailRow
-              label="Type"
-              value={
-                order.emergencyType === "emergency" ? "Emergency" : "Non-emergency"
-              }
-            />
-            <DetailRow
-              label="Drop at"
-              value={
-                order.destinationName
-                  ? [
-                      order.destinationName,
-                      order.destinationAddress,
-                      order.destinationFacilities,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")
-                  : ""
-              }
-            />
-          </>
-        )}
-
-        <DetailRow
-          label={order.kind === "ambulance" ? "Pickup Address" : "Address"}
-          value={order.deliveryAddress || "Not provided"}
-        />
-        <DetailRow label="PIN Code" value={order.pinCode || "Not provided"} />
-        <DetailRow
-          label="Delivery outlet"
-          value={
-            order.outletName
-              ? `${order.outletName}${order.outletArea ? ` · ${order.outletArea}` : ""}`
-              : ""
-          }
-        />
-        {order.kind === "medicine" ? (
-          <>
-            <DetailRow label="Outlet GSTIN" value={order.outletGstin || ""} />
-            <DetailRow label="Outlet DL No." value={order.outletDlNo || ""} />
-            <DetailRow
-              label="Prescription"
-              value={order.prescription || "Not provided"}
-            />
-          </>
-        ) : null}
-        {order.paymentMethod ? (
-          <DetailRow
-            label="Payment"
-            value={paymentMethodSummary(
-              order.paymentMethod,
-              "Cash on delivery / visit"
-            )}
-          />
-        ) : null}
-      </div>
-
-      {total ? (
-        <p className="order-details-total">
-          <strong>Total:</strong> {total}
-        </p>
-      ) : null}
-
-      <div className="order-action-buttons">
-        <BillButton order={order} className="order-details-btn" />
-        <OrderFeedbackCta order={order} completed />
-        <button className="order-back-btn" type="button" onClick={onBack}>
-          Back to My Orders
-        </button>
-      </div>
-    </div>
-  );
+  return `No ${tab.label} orders yet.`;
 }
 
 function MyOrders() {
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState(() => loadAllOrders());
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [serviceTab, setServiceTab] = useState(() =>
+    typeof window === "undefined" ? "" : tabFromHash(window.location.hash)
+  );
 
   useEffect(() => {
-    setOrders(loadCompletedOrders());
+    const syncSelected = () => {
+      const { id, service } = parseAppHash(window.location.hash);
+      setServiceTab(isCustomerServiceTab(service) ? service : "");
+      if (!id) {
+        setSelectedOrder(null);
+        return;
+      }
+      setSelectedOrder((current) => {
+        if (
+          current &&
+          (String(current.id) === id ||
+            String(current.bookingId) === id ||
+            String(current.requestId) === id)
+        ) {
+          return current;
+        }
+        return findListedOrder(orders, id) || current;
+      });
+    };
+    syncSelected();
+    window.addEventListener("hashchange", syncSelected);
+    return () => window.removeEventListener("hashchange", syncSelected);
+  }, [orders]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      const next = await syncMyOrdersFromServer(loadAllOrders());
+      if (cancelled) return;
+      setOrders(next);
+      setSelectedOrder((current) => {
+        if (!current) return current;
+        return (
+          findListedOrder(next, current.id) ||
+          findListedOrder(next, current.bookingId) ||
+          findListedOrder(next, current.requestId) ||
+          null
+        );
+      });
+    };
+    tick();
+    const timer = setInterval(tick, 6000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, []);
 
-  useEffect(() => {
-    if (selectedOrder && !isOrderCompleted(selectedOrder)) {
-      setSelectedOrder(null);
-    }
-  }, [selectedOrder]);
+  const handleSelectedChange = (next) => {
+    setSelectedOrder(next);
+    setOrders((current) =>
+      current.map((order) => (String(order.id) === String(next.id) ? next : order))
+    );
+  };
+
+  const activeTab = CUSTOMER_SERVICE_TABS.find((tab) => tab.value === serviceTab) || null;
+  const tabOrders = useMemo(
+    () => (serviceTab ? ordersForCustomerTab(orders, serviceTab) : []),
+    [orders, serviceTab]
+  );
 
   return (
-    <div className="my-orders-pag my-orders-page">
+    <div className="my-orders-page">
       <div className="orders-page-header">
         <div>
           <span className="orders-eyebrow">ACCOUNT</span>
           <h1>My Orders</h1>
-          <p className="orders-subtitle">
-            Completed orders only. Open an order number for full details. Active
-            bookings stay under Track Order.
-          </p>
         </div>
-        <div className="orders-header-actions">
-          <a className="orders-nav-btn" href="#track">
-            Track Order
-          </a>
-          <a className="orders-nav-btn" href="#reports">
-            Medical Records
-          </a>
-          <a className="orders-nav-btn orders-nav-home" href="#home">
-            Back to Home
-          </a>
-          {selectedOrder ? (
+        {selectedOrder ? (
+          <div className="orders-header-actions">
             <button
               type="button"
               className="orders-nav-btn orders-nav-orders"
-              onClick={() => setSelectedOrder(null)}
+              onClick={() => goBackHash()}
             >
               Back to Orders
             </button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
 
       {selectedOrder ? (
-        <OrderDetails order={selectedOrder} onBack={() => setSelectedOrder(null)} />
-      ) : orders.length === 0 ? (
-        <div className="orders-empty">
-          <p>No completed orders yet.</p>
-          <p>
-            Active bookings appear under Track Order. After delivery or service
-            completion, they move here.
-          </p>
-          <div className="orders-empty-actions">
-            <a href="#track">Track Order</a>
-            <a href="#medicine-search">Order medicines</a>
-            <a href="#labs">Book diagnostics</a>
-            <a href="#homecare">Book home care</a>
-          </div>
+        <div className="order-details-page">
+          <OrderFullView order={selectedOrder} audience="customer" />
+          {isOngoingTrackOrder(selectedOrder) ? (
+            <div className="order-action-buttons">
+              <a className="order-details-btn" href={trackHref(selectedOrder.id)}>
+                Track order
+              </a>
+            </div>
+          ) : null}
         </div>
       ) : (
-        <ol className="orders-number-list" aria-label="Completed orders">
-          {orders.map((order, index) => (
-            <li key={`${order.kind}-${order.id}`}>
-              <button
-                type="button"
-                className="order-number-btn"
-                onClick={() => setSelectedOrder(order)}
-              >
-                <span className="order-serial">{index + 1}.</span>
-                <span className="order-number-id">#{order.id}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
+        <>
+          <div
+            className="my-orders-service-tiles"
+            role="tablist"
+            aria-label="Service"
+          >
+            {CUSTOMER_SERVICE_TABS.map((tab) => {
+              const count = countOrdersForCustomerTab(orders, tab.value);
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={serviceTab === tab.value}
+                  className={serviceTab === tab.value ? "is-on" : ""}
+                  onClick={() => {
+                    goToHash(myOrdersHash({ service: tab.value }));
+                    setServiceTab(tab.value);
+                    setSelectedOrder(null);
+                  }}
+                >
+                  <ServiceIcon type={tab.value} title={tab.label} />
+                  <span>{tab.label}</span>
+                  <strong>{count}</strong>
+                </button>
+              );
+            })}
+          </div>
+
+          {!serviceTab ? (
+            <div className="orders-empty">
+              <p>Choose a service to see your orders.</p>
+            </div>
+          ) : (
+            <OrderListTable
+              orders={tabOrders}
+              audience="customer"
+              empty={emptyForTab(activeTab)}
+              onOpen={async (_id, order) => {
+                const kind = serviceKind(order);
+                goToHash(myOrdersHash({ service: kind, id: order.id }));
+                setServiceTab(kind);
+                setSelectedOrder(order);
+                if (!isDiagnosticKind(order?.kind || order?.orderType)) return;
+                const latest = await refreshOrderFromServer(order.bookingId || order.id);
+                if (!latest) return;
+                if (latest.reportFileData || latest.reportFileName) {
+                  mergeOrderReportIntoStore(latest);
+                }
+                handleSelectedChange(latest);
+              }}
+            />
+          )}
+        </>
       )}
     </div>
   );

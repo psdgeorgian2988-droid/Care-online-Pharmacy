@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  DOB_MIN_ISO,
+  DOB_MIN_YEAR,
   isoDateToday,
-  isoDateYearsAgo,
   splitIsoDate,
 } from "./personFields";
 import {
@@ -12,7 +13,7 @@ import {
 
 function yearRange(minIso, maxIso) {
   const maxYear = Number(splitIsoDate(maxIso).year || new Date().getFullYear());
-  const minYear = Number(splitIsoDate(minIso).year || maxYear - 120);
+  const minYear = Number(splitIsoDate(minIso).year || DOB_MIN_YEAR);
   const years = [];
   for (let year = maxYear; year >= minYear; year -= 1) years.push(year);
   return years;
@@ -24,7 +25,7 @@ export default function DateMonthYearFields({
   value = "",
   onChange,
   max = isoDateToday(),
-  min = isoDateYearsAgo(120),
+  min = DOB_MIN_ISO,
   error = "",
   label = "Date Of Birth",
   required = false,

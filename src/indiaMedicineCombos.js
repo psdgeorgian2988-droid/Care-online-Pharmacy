@@ -328,7 +328,9 @@ export function buildIndiaCombos(withHouseBrand, startId = 1000) {
     brands: [
       { brand: "Forxiga", name: "Forxiga 10", mrp: 620, price: 570 },
       { brand: "Oxra", name: "Oxra 10", mrp: 248, price: 228 },
+      { brand: "Dapanox", name: "Dapanox 10", mrp: 168, price: 154 },
     ],
+    aliases: ["Dapanex"],
   });
   add({
     salt: "Dapagliflozin + Metformin",
@@ -473,6 +475,14 @@ export function buildIndiaCombos(withHouseBrand, startId = 1000) {
       { brand: "Amlong", name: "Amlong 10", mrp: 72, price: 66 },
       { brand: "Stamlo", name: "Stamlo 10", mrp: 82, price: 74 },
     ],
+  });
+  add({
+    salt: "Clonidine",
+    strength: "0.1 mg",
+    category: "Hypertension",
+    mhMrp: 48,
+    mhPrice: 36,
+    brands: [{ brand: "Arkamin", name: "Arkamin 0.1", mrp: 68, price: 62 }],
   });
   add({
     salt: "Telmisartan + Amlodipine",
@@ -1255,7 +1265,9 @@ export function buildIndiaCombos(withHouseBrand, startId = 1000) {
     brands: [
       { brand: "Taxim-O", name: "Taxim-O 200", mrp: 128, price: 116 },
       { brand: "Mahacef", name: "Mahacef 200", mrp: 108, price: 98 },
+      { brand: "Cefumax", name: "Cefumax 200", mrp: 118, price: 108 },
     ],
+    aliases: ["Cefumax", "Cefixime"],
   });
   add({
     salt: "Cefixime + Ofloxacin",
@@ -1446,6 +1458,17 @@ export function buildIndiaCombos(withHouseBrand, startId = 1000) {
     brands: [{ brand: "AB Phylline M", name: "AB Phylline-M", mrp: 178, price: 162 }],
   });
   add({
+    salt: "Ambroxol",
+    strength: "30 mg/5 ml",
+    category: "Respiratory",
+    pack: "100 ml syrup",
+    mhMrp: 68,
+    mhPrice: 48,
+    rx: false,
+    brands: [{ brand: "Ambrol", name: "Ambrol Syrup", mrp: 88, price: 80 }],
+    aliases: ["Ambrolite", "Ambrodil", "Mucolite"],
+  });
+  add({
     salt: "Ambroxol + Guaifenesin + Levosalbutamol",
     strength: "30 mg + 50 mg + 1 mg",
     category: "Respiratory",
@@ -1457,6 +1480,17 @@ export function buildIndiaCombos(withHouseBrand, startId = 1000) {
   });
 
   add({
+    salt: "Lactulose",
+    strength: "10 g/15 ml",
+    category: "Gastric",
+    pack: "200 ml syrup",
+    mhMrp: 148,
+    mhPrice: 118,
+    rx: false,
+    brands: [{ brand: "Laretol", name: "Laretol Syrup", mrp: 188, price: 172 }],
+    aliases: ["Lasetol", "Lasitol", "Lactihep", "Duphalac"],
+  });
+  add({
     salt: "Calcium + Vitamin D3",
     strength: "500 mg + 250 IU",
     category: "Bone & Joint",
@@ -1466,7 +1500,9 @@ export function buildIndiaCombos(withHouseBrand, startId = 1000) {
     brands: [
       { brand: "Shelcal", name: "Shelcal 500", mrp: 108, price: 98 },
       { brand: "Calcimax", name: "Calcimax 500", mrp: 88, price: 80 },
+      { brand: "Mednovit CD3", name: "Mednovit CD3", mrp: 168, price: 154 },
     ],
+    aliases: ["Mednovit D3", "Mednovit"],
   });
   add({
     salt: "Calcium + Vitamin D3 + Vitamin K2-7 + Magnesium",

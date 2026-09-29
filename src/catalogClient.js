@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiFetch } from "./apiBase.js";
 
 const EVENT = "medihome-catalog";
 
@@ -115,7 +116,7 @@ export function readCachedCatalog() {
 }
 
 export async function fetchPublicCatalog() {
-  const res = await fetch("/api/catalog");
+  const res = await apiFetch("/api/catalog");
   const data = await res.json().catch(() => ({}));
   const next = { ...EMPTY_CATALOG, ...data };
   cacheCatalog(next);

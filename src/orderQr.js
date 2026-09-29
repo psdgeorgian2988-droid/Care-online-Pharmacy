@@ -1,4 +1,6 @@
 import { SITE } from "./siteMeta.js";
+import { isAwaitingPartnerConfirm } from "./orderConfirm.js";
+import { isDiagnosticKind } from "./labPipeline.js";
 
 export const CHECKPOINT_STEPS = [
   {
@@ -8,8 +10,8 @@ export const CHECKPOINT_STEPS = [
   },
   {
     key: "pickup",
-    label: "Pickup",
-    hint: "Pickup partner scans the retailer or service-provider QR to take the goods.",
+    label: "Order pick up",
+    hint: "The delivery partner scans the same order QR at the pharmacy.",
   },
   {
     key: "deliver",
@@ -173,10 +175,12 @@ export function scanStepTitle(kind, step, serviceType) {
     if (service === "homecare") return "Scan Care Visit Start";
     if (service === "vaccination") return "Scan Vaccination Visit Start";
     if (service === "psychologist") return "Scan Session Start";
+    if (service === "doctor") return "Scan Appointment Start";
     if (service === "lab") return "Scan Collection Start";
     if (service === "radiology") return "Scan Centre Check-In";
     if (service === "ambulance") return "Scan Ambulance Pickup";
     if (service === "stepdown") return "Scan Centre Pickup";
+    if (service === "medicine") return "Scan order pick up";
     return "Scan Pickup";
   }
   if (service === "homecare" && home === "nurse") return "Scan Nursing Complete";
@@ -184,6 +188,7 @@ export function scanStepTitle(kind, step, serviceType) {
   if (service === "homecare") return "Scan Care Visit Complete";
   if (service === "vaccination") return "Scan Vaccination Visit Complete";
   if (service === "psychologist") return "Scan Consultation Complete";
+  if (service === "doctor") return "Scan Appointment Complete";
   if (service === "lab") return "Scan Sample Received";
   if (service === "radiology") return "Scan Imaging Complete";
   if (service === "ambulance") return "Scan Handover";
@@ -198,9 +203,9 @@ export function scanStepHint(kind, step, serviceType) {
     return `${title}: the same QR is created when the order is placed and shown to the retailer or service provider.`;
   }
   if (checkpoint === "pickup") {
-    return `${title}: the pickup partner scans the retailer or service-provider QR to take the goods. If that QR cannot be scanned, enter the pickup OTP.`;
+    return `${title}: scan this QR to pick up this order.`;
   }
-  return `${title}: the delivery partner scans the customer's QR to complete handover. If that QR cannot be scanned, enter the delivery OTP.`;
+  return `${title}: the customer scans this QR on delivery. If the QR cannot be scanned, enter the delivery OTP.`;
 }
 
 export function scanPageHeading(step, kind, serviceType) {
@@ -239,15 +244,35 @@ export function canShowRiderRetailerScan(order, partner) {
   return Boolean(orderIdOf(order)) && isMedicineOrder(order) && nextQrScanAction(order) === "pickup";
 }
 
+export function canShowPartnerDeliveryScan(order, partner) {
+  if (partner && !isMedicineRiderPartner(partner)) return false;
+  return Boolean(orderIdOf(order)) && isMedicineOrder(order) && nextQrScanAction(order) === "deliver";
+}
+
 export function canUseScanDelivery({ app = "customer", order, step, partner } = {}) {
   const checkpoint = normalizeScanStep(step);
   if (app === "admin") return true;
   if (app === "partner") {
-    if (!canShowRiderRetailerScan(order, partner)) return false;
-    return !checkpoint || checkpoint === "pickup";
+    if (canShowRiderRetailerScan(order, partner)) {
+      return !checkpoint || checkpoint === "pickup";
+    }
+    if (canShowPartnerDeliveryScan(order, partner)) {
+      return !checkpoint || checkpoint === "deliver";
+    }
+    return false;
   }
   if (!canShowCustomerScanDelivery(order)) return false;
   return !checkpoint || checkpoint === "deliver";
+}
+
+export function partnerScanAction(order, partner) {
+  if (canShowRiderRetailerScan(order, partner)) {
+    return { step: "pickup", label: "Scan order pick up" };
+  }
+  if (canShowPartnerDeliveryScan(order, partner)) {
+    return { step: "deliver", label: "Scan delivery" };
+  }
+  return null;
 }
 
 export function scanLinksForApp(app, order, partner) {
@@ -255,14 +280,13 @@ export function scanLinksForApp(app, order, partner) {
     if (order && orderIdOf(order) && !isMedicineOrder(order)) return [];
     return [
       { step: "pack", label: "Scan Packing" },
-      { step: "pickup", label: "Scan Pickup" },
+      { step: "pickup", label: "Scan order pick up" },
       { step: "deliver", label: "Scan Delivery" },
     ];
   }
   if (app === "partner") {
-    if (partner && !isMedicineRiderPartner(partner)) return [];
-    if (order && orderIdOf(order) && !isMedicineOrder(order)) return [];
-    return [{ step: "pickup", label: "Scan Delivery" }];
+    const action = partnerScanAction(order, partner);
+    return action ? [action] : [];
   }
   return [{ step: "deliver", label: "Scan Delivery" }];
 }
@@ -502,12 +526,55 @@ export function checkpointLabel(key) {
 
 export function gatedTrackStatus(order, progressKey = "") {
   const checks = checkpointState(order);
+  const current = String(order?.trackStatus || "").toLowerCase();
+  if (
+    current === "declined" ||
+    String(order?.partnerConfirmStatus || "").toLowerCase() === "declined"
+  ) {
+    return "declined";
+  }
   if (checks.deliver || order?.trackCompleted) return "done";
+  if (
+    current === "slot_offered" ||
+    String(order?.slotConfirmStatus || "").toLowerCase() === "offered" ||
+    String(order?.partnerConfirmStatus || "").toLowerCase() === "slot_offered"
+  ) {
+    return "slot_offered";
+  }
+  // Partner-confirmed services stay requested until Accept (fail closed).
+  if (isAwaitingPartnerConfirm(order) && !checks.pack && !checks.pickup) {
+    return "requested";
+  }
+  if (
+    (current === "requested" || order?.partnerConfirmStatus === "pending") &&
+    !order?.partnerConfirmed &&
+    !checks.pack &&
+    !checks.pickup
+  ) {
+    return "requested";
+  }
+  // Lab / radiology: partner drives technician → sample → report statuses.
+  if (isDiagnosticKind(order?.kind || order?.orderType || order?.serviceType)) {
+    if (
+      current === "requested" ||
+      current === "slot_offered" ||
+      current === "sample_collected" ||
+      current === "report_ready" ||
+      current === "assigned" ||
+      current === "confirmed" ||
+      current === "declined" ||
+      current === "done"
+    ) {
+      return current;
+    }
+    if (order?.partnerConfirmed) return current || "confirmed";
+  }
   if (checks.pickup) {
     if (progressKey === "done") return "arriving";
     if (
       !progressKey ||
       progressKey === "confirmed" ||
+      progressKey === "requested" ||
       progressKey === "assigned" ||
       progressKey === "packed"
     ) {
@@ -516,10 +583,15 @@ export function gatedTrackStatus(order, progressKey = "") {
     return progressKey;
   }
   if (
-    order?.partnerId ||
     order?.trackStatus === "assigned" ||
     progressKey === "assigned"
   ) {
+    return "assigned";
+  }
+  if (order?.partnerId && order?.partnerConfirmed) {
+    return "confirmed";
+  }
+  if (order?.partnerId) {
     return "assigned";
   }
   return "confirmed";

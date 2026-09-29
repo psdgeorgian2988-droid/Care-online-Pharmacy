@@ -4,71 +4,113 @@
       "id": "P-MED-01",
       "name": "Ravi Kumar",
       "role": "Medicine rider",
-      "kinds": ["medicine"],
+      "kinds": [
+        "medicine"
+      ],
       "mobile": "9654222901",
       "outletId": "MH-OUT-CD",
-      "loginId": "",
-      "passwordHash": ""
+      "loginId": "rider",
+      "passwordHash": "370d86cf9c998bb7a90add66dc0344ac:1ec04fc0bf1421398508fa8f7567032aa919957e48de9c0992edf3a03b5f5da0",
+      "pins": [],
+      "partnerPercent": 60
     },
     {
       "id": "P-LAB-01",
       "name": "Neha Sharma",
       "role": "Phlebotomist",
-      "kinds": ["lab"],
+      "kinds": [
+        "lab"
+      ],
       "mobile": "9654222902",
       "outletId": "MH-OUT-CD",
-      "loginId": "",
-      "passwordHash": ""
+      "loginId": "lab1",
+      "passwordHash": "b2598af879893b8dc9fff7b21d0f45ed:66bac901907393acfe8d8e3cc9865b08c8940ce6cf8bf7a2bbc3d42f694113c1",
+      "pins": [],
+      "partnerPercent": 85
     },
     {
       "id": "P-RAD-01",
       "name": "Imaging Desk — Green Park",
       "role": "Radiology centre",
-      "kinds": ["radiology"],
+      "kinds": [
+        "radiology"
+      ],
       "mobile": "9654222903",
       "outletId": "MH-OUT-SD",
-      "loginId": "",
-      "passwordHash": ""
+      "loginId": "rad1",
+      "passwordHash": "c7a2db957f0f4134474cd0b7dc491e2a:0f184f90d90dad120ed4e0ea6c4d8e174796a8752ea00757e714a784cf2e65a5",
+      "pins": [],
+      "partnerPercent": 85
     },
     {
       "id": "P-HC-01",
       "name": "Priya Singh",
       "role": "Home Care nurse",
-      "kinds": ["homecare"],
+      "kinds": [
+        "homecare"
+      ],
       "mobile": "9654222904",
       "outletId": "MH-OUT-SD",
-      "loginId": "",
-      "passwordHash": ""
+      "loginId": "home1",
+      "passwordHash": "5067ffa62ef199996960ff5b43d4ecb9:4caff67ab159b940c349676421cc39cf872129e824b93c7bc8347e3ecc4c5e0b",
+      "pins": [],
+      "partnerPercent": 80
     },
     {
       "id": "P-PSY-01",
       "name": "Dr. Ananya Mehra",
       "role": "Psychologist",
-      "kinds": ["psychologist"],
+      "kinds": [
+        "psychologist"
+      ],
       "mobile": "9654222907",
       "outletId": "MH-OUT-SD",
-      "loginId": "",
-      "passwordHash": ""
+      "loginId": "psy1",
+      "passwordHash": "cafc79fdcd4536966d2faf5d2410b72a:ccf32ccd0eb6eec1d552b2153fddeb951121259eb9d388cb6eb1d43f6c4b7be6",
+      "pins": [],
+      "partnerPercent": 80
     },
     {
       "id": "P-AMB-01",
       "name": "Sanjay Ambulance",
       "role": "Ambulance operator",
-      "kinds": ["ambulance"],
+      "kinds": [
+        "ambulance"
+      ],
       "mobile": "9654222905",
       "outletId": "MH-OUT-HQ",
-      "loginId": "",
-      "passwordHash": ""
+      "loginId": "amb1",
+      "passwordHash": "06f2adc04815ad643811e0c00e494616:b3c0dd31761f0d99fc76429981b02a25652f16df9c555240dd882ea5daebaa6e",
+      "pins": [],
+      "partnerPercent": 85
     },
     {
       "id": "P-SD-01",
       "name": "Dwarka Step-Down desk",
       "role": "Step-down centre",
-      "kinds": ["stepdown"],
+      "kinds": [
+        "stepdown"
+      ],
       "mobile": "9654222906",
       "outletId": "MH-OUT-DWK",
-      "loginId": "",
-      "passwordHash": ""
+      "loginId": "step1",
+      "passwordHash": "0f1f63e5bc2fed3489b505ad6e6a54c0:5859e6adbd0dc257546ab71d4751b7dc9534e99bd615bed73ddfc9fd5b3f101c",
+      "pins": [],
+      "partnerPercent": 90
+    },
+    {
+      "id": "P-TEST-01",
+      "name": "Test Pharmacy Desk",
+      "role": "Pharmacy partner",
+      "kinds": [
+        "medicine"
+      ],
+      "mobile": "9654222999",
+      "outletId": "MH-OUT-CD",
+      "loginId": "tester",
+      "passwordHash": "afe84a1f9bf51c56519de2fcad913ee7:45ca0d1b2aed57128a84a1ae6288788dfebfd407d2e2b85c60167de878a11d7e",
+      "pins": [],
+      "partnerPercent": 60
     }
   ]
 }

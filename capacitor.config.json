@@ -2,18 +2,22 @@
   "appId": "in.medihome.app",
   "appName": "MediHome",
   "webDir": "dist",
-  "server": {
-    "url": "https://medihome.co.in",
-    "cleartext": false
-  },
   "android": {
     "allowMixedContent": true
   },
   "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
     "SplashScreen": {
       "launchShowDuration": 400,
       "backgroundColor": "#eaf4fb",
-      "launchAutoHide": true
+      "launchAutoHide": false
+    },
+    "StatusBar": {
+      "overlaysWebView": false,
+      "style": "DARK",
+      "backgroundColor": "#eaf6f3"
     }
   }
 }

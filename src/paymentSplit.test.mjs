@@ -5,9 +5,24 @@ import {
   ledgerShareText,
   partnerSettlementNote,
   quoteCheckout,
+  resplitOrder,
   splitPayment,
 } from "./paymentSplit.js";
 import { buildOrderBill } from "./orderBill.js";
+
+test("staff can resplit an order by partner percent", () => {
+  const order = {
+    kind: "lab",
+    total: 1000,
+    split: splitPayment("lab", 1000, "122017"),
+  };
+  assert.equal(order.split.partnerPercent, 85);
+  const next = resplitOrder(order, { partnerPercent: 70 });
+  assert.equal(next.partnerPercent, 70);
+  assert.equal(next.platformPercent, 30);
+  assert.equal(next.partnerRupees, 700);
+  assert.equal(next.platformRupees, 300);
+});
 
 test("without discount the partner still gets the remainder of sale", () => {
   const split = splitPayment("medicine", 100, "110001");
@@ -73,9 +88,47 @@ test("if discount is larger than MediHome share, partner transfer is capped at t
   });
   assert.equal(quote.payableRupees, 0);
   assert.equal(quote.split.partnerRupees, 60);
-  assert.equal(quote.split.platformRupees, -60);
   assert.equal(quote.split.partnerTransferRupees, 0);
   assert.equal(quote.split.platformSettledRupees, 0);
+  assert.equal(quote.split.platformRupees, 0);
+  assert.equal(quote.split.discountFrom, "medihome");
+});
+
+test("MediHome points reduce only the MediHome portion", () => {
+  const split = splitPayment("medicine", 90, "110001", {
+    saleRupees: 100,
+    payableRupees: 90,
+    pointsDiscountRupees: 10,
+    platformPercent: 40,
+  });
+  assert.equal(split.partnerRupees, 60);
+  assert.equal(split.partnerTransferRupees, 60);
+  assert.equal(split.platformSettledRupees, 30);
+  assert.equal(split.pointsDiscountRupees, 10);
+  assert.equal(split.discountFrom, "medihome");
+});
+
+test("service charge / platform fee is credited only to MediHome", () => {
+  const split = splitPayment("lab", 1000, "110001", {
+    saleRupees: 1000,
+    payableRupees: 1050,
+    serviceChargeRupees: 50,
+    platformPercent: 15,
+    paymentMethod: "upi",
+    paidOn: "customer",
+  });
+  assert.equal(split.partnerRupees, 850);
+  assert.equal(split.partnerTransferRupees, 850);
+  assert.equal(split.serviceChargeRupees, 50);
+  assert.equal(split.serviceChargeTo, "medihome");
+  assert.equal(split.platformSettledRupees, 200);
+  assert.equal(split.medihomeAccountRupees, 200);
+  assert.equal(split.medihomeCreditDest, "settlement_bank");
+  assert.equal(split.medihomeCreditRupees, 200);
+  assert.match(
+    split.ledger.at(-1).note,
+    /service charge|platform fee/i
+  );
 });
 
 test("unknown coupon is rejected", () => {
@@ -171,6 +224,76 @@ test("shared ledger text names both parties and the amount due", () => {
   assert.match(text, /Reverse Split/);
   assert.match(text, /Due From Service Provider/);
   assert.match(text, /MediHome/);
+});
+
+test("medicine checkout ignores wallet points even when requested", () => {
+  const quote = quoteCheckout({
+    kind: "medicine",
+    saleRupees: 200,
+    listRupees: 200,
+    pin: "110001",
+    useWallet: true,
+    walletCoins: 510,
+  });
+  assert.equal(quote.pointsDiscountRupees, 0);
+  assert.equal(quote.pointsUsed, 0);
+  assert.equal(quote.payableRupees, 200);
+});
+
+test("lab checkout applies 10 points per rupee only above 500 points", () => {
+  const tooLow = quoteCheckout({
+    kind: "lab",
+    saleRupees: 800,
+    listRupees: 800,
+    pin: "110001",
+    useWallet: true,
+    walletCoins: 500,
+  });
+  assert.equal(tooLow.pointsDiscountRupees, 0);
+  assert.equal(tooLow.payableRupees, 800);
+
+  const quote = quoteCheckout({
+    kind: "lab",
+    saleRupees: 800,
+    listRupees: 800,
+    pin: "110001",
+    useWallet: true,
+    walletCoins: 510,
+    paymentMethod: "upi",
+  });
+  assert.equal(quote.pointsDiscountRupees, 51);
+  assert.equal(quote.pointsUsed, 510);
+  assert.equal(quote.payableRupees, 749);
+});
+
+test("COD service checkout does not apply MediHome points", () => {
+  const quote = quoteCheckout({
+    kind: "lab",
+    saleRupees: 800,
+    listRupees: 800,
+    pin: "110001",
+    useWallet: true,
+    walletCoins: 510,
+    paymentMethod: "cod",
+  });
+  assert.equal(quote.pointsDiscountRupees, 0);
+  assert.equal(quote.pointsUsed, 0);
+  assert.equal(quote.payableRupees, 800);
+});
+
+test("mixed cart applies points only to the non-medicine portion", () => {
+  const quote = quoteCheckout({
+    kind: "cart",
+    saleRupees: 300,
+    listRupees: 300,
+    pin: "110001",
+    useWallet: true,
+    walletCoins: 510,
+    walletEligibleRupees: 200,
+    paymentMethod: "upi",
+  });
+  assert.equal(quote.pointsDiscountRupees, 51);
+  assert.equal(quote.payableRupees, 249);
 });
 
 test("order bill includes a shareable settlement ledger", () => {

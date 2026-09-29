@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import AddressFields from "./AddressFields";
-import PersonFields from "./PersonFields";
+import AddressFields from "./AddressFields.jsx";
+import PersonFields from "./PersonFields.jsx";
 import {
   emptyAddress,
   pickAddress,
@@ -190,7 +190,7 @@ function LoginRegisterPage({ mode }) {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     writeLoginSession(profile, holderActor(profile));
     const next = editingAccount ? "#profile" : consumeReturnHash();
-    goToHash(next === "#home" ? "#profile" : next);
+    goToHash(next);
   };
 
   return (
@@ -277,7 +277,7 @@ function LoginRegisterPage({ mode }) {
               <AutofillTrap />
               <div className="auth-field">
                 <label htmlFor="auth-login-mobile">
-                  Mobile number <span>*</span>
+                  Login ID <span>*</span>
                 </label>
                 <input
                   id="auth-login-mobile"
@@ -291,7 +291,7 @@ function LoginRegisterPage({ mode }) {
               </div>
               <div className="auth-field">
                 <label htmlFor="auth-login-pin">
-                  PIN <span>*</span>
+                  Password <span>*</span>
                 </label>
                 <input
                   id="auth-login-pin"
@@ -299,7 +299,7 @@ function LoginRegisterPage({ mode }) {
                   type="password"
                   inputMode="numeric"
                   maxLength="6"
-                  placeholder="6-digit PIN"
+                  placeholder="6-digit password"
                   value={login.pinCode}
                   onChange={handleLoginChange}
                 />

@@ -1,4 +1,5 @@
 import { DEFAULT_OUTLET, outletForPin } from "./deliveryOutlets.js";
+import { orderIdOf, orderQrPath } from "./orderQr.js";
 import { MEDIHOME_BILLING, findDiagnosticParty } from "./diagnosticPartners.js";
 import { paymentMethodSummary } from "./paymentMethods.js";
 import {
@@ -6,6 +7,7 @@ import {
   ledgerShareText,
   settlementSummary,
 } from "./paymentSplit.js";
+import { stepdownBillLines, stepdownBillTotal } from "./stepdownBill.js";
 
 function money(value) {
   const n = Number(value || 0);
@@ -40,6 +42,8 @@ function kindLabel(kind) {
       return "Vaccination";
     case "psychologist":
       return "Psychologist Consultation";
+    case "doctor":
+      return "Doctor Appointment";
     case "stepdown":
       return "Step-Down Care";
     case "ambulance":
@@ -122,6 +126,9 @@ export function billingPartyFor(order) {
 }
 
 function billLines(order) {
+  if (recordKind(order) === "stepdown") {
+    return stepdownBillLines(order);
+  }
   const items = Array.isArray(order?.items) && order.items.length
     ? order.items
     : Array.isArray(order?.tests)
@@ -173,6 +180,33 @@ function settlementFrom(order) {
   });
 }
 
+export function orderShowsDeliverySlip(order) {
+  return recordKind(order) !== "stepdown";
+}
+
+export function orderShowsBillQty(order) {
+  return recordKind(order) !== "stepdown";
+}
+
+export function buildAddressSlip(order) {
+  const buyer = buyerFrom(order);
+  const kind = recordKind(order);
+  const id = orderIdOf(order) || recordId(order, kind) || "DRAFT";
+  return {
+    id,
+    kind,
+    kindLabel: kindLabel(kind),
+    name: buyer.name,
+    mobile: buyer.mobile,
+    address: buyer.address,
+    pin: buyer.pin,
+    items: billLines(order)
+      .map((line) => `${line.name}${line.qty > 1 ? ` × ${line.qty}` : ""}`)
+      .slice(0, 6),
+    qrPath: orderQrPath(id, order),
+  };
+}
+
 export function buildOrderBill(order) {
   const kind = recordKind(order);
   const seller = billingPartyFor(order);
@@ -181,8 +215,14 @@ export function buildOrderBill(order) {
     amount: money(line.amount || line.rate * line.qty),
   }));
   const lineTotal = money(lines.reduce((sum, line) => sum + line.amount, 0));
-  const payable = money(order?.total ?? order?.charges ?? lineTotal);
-  const sale = money(order?.saleRupees ?? lineTotal);
+  const payable = money(
+    recordKind(order) === "stepdown"
+      ? stepdownBillTotal(order)
+      : order?.total ?? order?.charges ?? lineTotal
+  );
+  const sale = money(
+    recordKind(order) === "stepdown" ? payable : order?.saleRupees ?? lineTotal
+  );
   const discount = money(order?.discountRupees ?? Math.max(0, sale - payable));
   const id = recordId(order, kind) || "DRAFT";
   const settlement = settlementFrom(order);
@@ -196,7 +236,7 @@ export function buildOrderBill(order) {
     date: order?.date || order?.bookedAt || order?.requestedAt || "",
     payment: paymentMethodSummary(
       order?.paymentMethod,
-      "Cash on delivery / visit"
+      recordKind(order) === "stepdown" ? "Cash / QR / UPI" : "Cash on delivery / visit"
     ),
     couponCode: order?.couponCode || "",
     lines,

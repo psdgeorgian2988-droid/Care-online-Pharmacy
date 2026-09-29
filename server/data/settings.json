@@ -4,9 +4,14 @@
     "lab": true,
     "radiology": true,
     "homecare": true,
+    "vaccination": true,
+    "psychologist": true,
+    "doctor": true,
     "stepdown": true,
     "ambulance": true,
     "reports": true,
-    "education": true
-  }
+    "education": true,
+    "scanDelivery": true
+  },
+  "webinars": []
 }

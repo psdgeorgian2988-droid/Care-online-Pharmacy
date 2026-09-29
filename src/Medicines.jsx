@@ -1,16 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
-import { BillButton } from "./OrderBill";
+import { BillButton } from "./OrderBill.jsx";
 import { resolvePinLocation } from "./pinLocation";
-import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import { persistAndSendOrder, trackHref, withTracking } from "./orderTracking";
+import { goHomeAfterPaidCheckout } from "./checkoutComplete";
+import { buildPartnerRxShare } from "./rxPartnerShare";
+import {
+  checkMedicineAvailability,
+  medicineAwaitingPharmacyFields,
+} from "./orderConfirm";
 import { buildIndiaCombos } from "./indiaMedicineCombos";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
-import { paymentMethodSummary } from "./paymentMethods";
+import {
+  checkoutPaymentPersistFields,
+  checkoutUsesPayCta,
+  paymentMethodSummary,
+} from "./paymentMethods";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
-import MedicineSearchTools from "./MedicineSearchTools";
 import BookingFlow from "./BookingFlow";
 import {
   addressFromUnknown,
@@ -25,6 +34,26 @@ import {
   withBookingIdentity,
 } from "./bookingFor";
 import { monthlySavingForCart, monthlySavingForItem, resolveCartAdd } from "./medicineCartCompare";
+import {
+  MEDICINE_CART_EVENT,
+  MEDICINE_CHECKOUT_OPEN_EVENT,
+  openShopCart,
+  peekRxLabCheckout,
+  readMedicineCart,
+  takeRxMedicineCheckout,
+  writeMedicineCart,
+} from "./medicineCartStore";
+import { withPickedBatch } from "./batchStore";
+import {
+  fileFromPrescriptionDraft,
+  hasPrescriptionDraft,
+  prescriptionDraftName,
+  readPrescriptionDraft,
+} from "./prescriptionDraft";
+import { goToHash, parseAppHash } from "./hashRoute";
+import MedicineSearchTools from "./MedicineSearchTools";
+import { matchExactMediHomeFromPhoto } from "./medicineStripSearch";
+import { groupMedicineFamilies, medicineInCategory } from "./medicineSaltGroups";
 
 function readHomeMedicineSearch() {
   const hash = window.location.hash || "";
@@ -2564,16 +2593,6 @@ const FLAGSHIP_BRANDS = new Set([
 
 const catalogue = medicines.map(withHouseBrand);
 const houseCatalogue = catalogue.filter((medicine) => medicine.isMediHome);
-const houseCountByCategory = houseCatalogue.reduce((counts, medicine) => {
-  const key = medicine.category || "Other";
-  counts[key] = (counts[key] || 0) + 1;
-  return counts;
-}, {});
-
-function catalogueCountForTab(tab) {
-  if (tab === "All") return houseCatalogue.length;
-  return houseCountByCategory[tab] || 0;
-}
 
 function sortMedicineRows(list) {
   return [...list].sort((a, b) => {
@@ -2708,6 +2727,17 @@ function saltKey(medicine) {
   return normalizeSearchText(medicine.salt || "");
 }
 
+function familyKeyFromName(name) {
+  return normalizeSearchText(name);
+}
+
+function familyMatchesQuery(family, query) {
+  const compact = normalizeSearchText(query);
+  if (!compact) return true;
+  if (normalizeSearchText(family.name).includes(compact)) return true;
+  return family.items.some((medicine) => medicineSearchBlob(medicine).includes(compact));
+}
+
 function findMediHomeMatch(list, brandMedicine) {
   if (!brandMedicine) return null;
   return (
@@ -2810,6 +2840,50 @@ function searchMedicines(list, query) {
   };
 }
 
+function rxMedicineRelated(rxName, medicine) {
+  if (!medicine) return false;
+  const ignore = new Set([
+    "syp",
+    "syrup",
+    "tab",
+    "tabs",
+    "tablet",
+    "tablets",
+    "cap",
+    "caps",
+    "capsule",
+    "capsules",
+    "mg",
+    "ml",
+    "iu",
+  ]);
+  const qTokens = queryTokens(
+    String(rxName || "").replace(/^(syp|syrup|tab|tablet|cap|capsule)\s+/i, "")
+  )
+    .map((token) => normalizeSearchText(token))
+    .filter((token) => token.length > 2 && !ignore.has(token) && !/^\d+$/.test(token));
+  if (!qTokens.length) return false;
+  const blob = medicineSearchBlob(medicine);
+  return qTokens.some((token) => blob.includes(token));
+}
+
+export function lookupPrescriptionMedicine(rxMed) {
+  const query = String(rxMed?.name || "")
+    .replace(/^(syp|syrup|tab|tablet|cap|capsule)\s+/i, "")
+    .trim();
+  const result = searchMedicines(catalogue, query || String(rxMed?.name || ""));
+  const candidates = [result.brandMatch, result.mediHomeMatch, ...(result.items || [])];
+  const offer =
+    candidates.find((medicine) => rxMedicineRelated(query || rxMed?.name, medicine)) || null;
+  const prescribed =
+    result.brandMatch &&
+    !result.brandMatch.isMediHome &&
+    rxMedicineRelated(query || rxMed?.name, result.brandMatch)
+      ? result.brandMatch
+      : null;
+  return { rx: rxMed, offer, prescribed, hint: result.emptyHint || "" };
+}
+
 const requiresPrescription = (medicine) =>
   Boolean(medicine.prescription || medicine.prescriptionRequired);
 
@@ -2825,13 +2899,21 @@ function MedicinePhoto({ medicine, className = "medicine-photo" }) {
   );
 }
 
-function MedicineCard({ medicine, onAdd }) {
+function MedicineCard({ medicine, onAdd, selected = false, onSelect }) {
   return (
-    <div className="medicine-row">
+    <div
+      className={`medicine-row${selected ? " is-selected" : ""}`}
+      role={onSelect ? "button" : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      onClick={onSelect ? () => onSelect(medicine) : undefined}
+    >
       <button
         type="button"
         className="medicine-row-add"
-        onClick={() => onAdd(medicine)}
+        onClick={(event) => {
+          event.stopPropagation();
+          onAdd(medicine);
+        }}
       >
         Add to cart
       </button>
@@ -2841,6 +2923,25 @@ function MedicineCard({ medicine, onAdd }) {
       <span className="medicine-row-mrp">₹{medicine.mrp}</span>
       <span className="medicine-row-price">₹{medicine.price}</span>
     </div>
+  );
+}
+
+function MedicineFamilyCard({ family, onOpen }) {
+  const count = family.items.length;
+  return (
+    <button
+      type="button"
+      className="medicine-family-card"
+      onClick={() => onOpen(family.key)}
+    >
+      <span className="medicine-family-name">{family.name}</span>
+      <span className="medicine-family-meta">
+        {count} {count === 1 ? "strength" : "strengths & combinations"}
+      </span>
+      {family.brands.length ? (
+        <span className="medicine-family-brands">{family.brands.join(" · ")}</span>
+      ) : null}
+    </button>
   );
 }
 
@@ -2941,16 +3042,49 @@ function BrandSearchStrip({
   );
 }
 
+function categoryFromHash() {
+  const { service } = parseAppHash(
+    typeof window !== "undefined" ? window.location.hash : ""
+  );
+  if (!service || service === "Search") return "";
+  return service;
+}
+
+function readHomeMedicineCategory() {
+  const fromHash = categoryFromHash();
+  if (fromHash) return fromHash;
+  try {
+    return (sessionStorage.getItem("mediHomeMedicineCategory") || "").trim();
+  } catch {
+    return "";
+  }
+}
+
 function Medicines({ initialSearch = "" }) {
+  const rxMedBoot = useMemo(() => takeRxMedicineCheckout(), []);
   const [search, setSearch] = useState(
     () => (initialSearch || "").trim() || readHomeMedicineSearch()
   );
-  const [category, setCategory] = useState("All");
-  const [recentSearches, setRecentSearches] = useState([]);
-  const [cart, setCart] = useState([]);
-  const [showCart, setShowCart] = useState(false);
+  const [category, setCategory] = useState(() => {
+    const fromHome = readHomeMedicineCategory();
+    if (fromHome === "Search") return "All";
+    return fromHome || "All";
+  });
+  const searchInputRef = useRef(null);
+  const [cart, setCartState] = useState(() => readMedicineCart());
+  const setCart = (updater) => {
+    setCartState((current) => {
+      const next = typeof updater === "function" ? updater(current) : updater;
+      writeMedicineCart(next);
+      return next;
+    });
+  };
   const [showCheckout, setShowCheckout] = useState(false);
-  const [prescriptionFile, setPrescriptionFile] = useState(null);
+  const [prescriptionFile, setPrescriptionFile] = useState(() =>
+    hasPrescriptionDraft() || rxMedBoot?.attachRx
+      ? fileFromPrescriptionDraft(readPrescriptionDraft())
+      : null
+  );
   const savedProfile = readSavedProfile();
   const [whoFor, setWhoFor] = useState(() => initialBookingFor(savedProfile || {}));
   const [fullName, setFullName] = useState(savedProfile?.name || "");
@@ -2964,34 +3098,68 @@ function Medicines({ initialSearch = "" }) {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
+  const [payReady, setPayReady] = useState(true);
   const busyWait = useBusyOverlay(placingOrder, "medicine");
   const [pickedBrandId, setPickedBrandId] = useState(null);
+  const [photoSearch, setPhotoSearch] = useState(null);
+  const [openSaltKey, setOpenSaltKey] = useState("");
 
   useEffect(() => {
-    const next = (initialSearch || "").trim();
-    if (next) {
-      setSearch(next);
-      setCategory("All");
-    }
+    const sync = () => setCartState(readMedicineCart());
+    const openCheckout = () => {
+      goToHash("#checkout");
+    };
+    window.addEventListener(MEDICINE_CART_EVENT, sync);
+    window.addEventListener(MEDICINE_CHECKOUT_OPEN_EVENT, openCheckout);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(MEDICINE_CART_EVENT, sync);
+      window.removeEventListener(MEDICINE_CHECKOUT_OPEN_EVENT, openCheckout);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!rxMedBoot) return;
+    if (readMedicineCart().length) goToHash("#checkout");
+  }, [rxMedBoot]);
+
+  useEffect(() => {
+    const applyCategory = () => {
+      const next = (initialSearch || "").trim();
+      if (next) {
+        setSearch(next);
+        setCategory("All");
+        try {
+          sessionStorage.removeItem("mediHomeMedicineCategory");
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
+      const fromHome = readHomeMedicineCategory();
+      if (fromHome) {
+        setCategory(fromHome === "Search" ? "All" : fromHome);
+        if (fromHome === "Search") {
+          /* keep typed search */
+        } else {
+          setSearch("");
+        }
+        try {
+          sessionStorage.removeItem("mediHomeMedicineCategory");
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+    applyCategory();
+    window.addEventListener("hashchange", applyCategory);
+    return () => window.removeEventListener("hashchange", applyCategory);
   }, [initialSearch]);
 
-  const handleMedicineSearch = () => {
-    const value = search.trim();
-    setCategory("All");
-
-    if (value !== "") {
-      setRecentSearches((previous) => {
-        const updated = [
-          value,
-          ...previous.filter(
-            (item) => item.toLowerCase() !== value.toLowerCase()
-          ),
-        ];
-
-        return updated.slice(0, 5);
-      });
-    }
-  };
+  useEffect(() => {
+    searchInputRef.current?.focus();
+  }, [category]);
 
   const categories = [
     "All",
@@ -3014,34 +3182,72 @@ function Medicines({ initialSearch = "" }) {
     "Dermatology",
   ];
 
-  const searchResult = searchMedicines(catalogue, search);
+  const categoryCatalogue = useMemo(
+    () => catalogue.filter((medicine) => medicineInCategory(medicine, category)),
+    [category]
+  );
+  const saltFamilies = useMemo(
+    () =>
+      groupMedicineFamilies(
+        houseCatalogue.filter((medicine) => medicineInCategory(medicine, category))
+      ),
+    [category]
+  );
+  const showSaltTabs = category !== "All" && category !== "Search";
+  const visibleSaltFamilies = showSaltTabs ? saltFamilies : [];
+  const searchResult = searchMedicines(categoryCatalogue, search);
+  const photoMatch = useMemo(
+    () =>
+      photoSearch
+        ? matchExactMediHomeFromPhoto(categoryCatalogue, photoSearch.query || search)
+        : null,
+    [photoSearch, photoSearch?.query, search, categoryCatalogue]
+  );
   const selectedBrand =
+    photoMatch?.brandMatch ||
     searchResult.brandMatches.find((medicine) => medicine.id === pickedBrandId) ||
     searchResult.brandMatch;
-  const selectedMediHome = findMediHomeMatch(catalogue, selectedBrand);
+  const selectedMediHome =
+    photoMatch?.items?.[0] || findMediHomeMatch(categoryCatalogue, selectedBrand);
 
   useEffect(() => {
     if (searchResult.brandMatch) {
       setPickedBrandId(searchResult.brandMatch.id);
     }
   }, [search, searchResult.brandMatch?.id]);
+
+  useEffect(() => {
+    if (photoSearch) return;
+    const compact = normalizeSearchText(search);
+    if (compact.length < 3) return;
+    const exact = saltFamilies.find(
+      (family) => familyKeyFromName(family.name) === compact
+    );
+    if (exact) setOpenSaltKey(exact.key);
+  }, [search, photoSearch, saltFamilies]);
+
+  const openSaltFamily =
+    saltFamilies.find((family) => family.key === openSaltKey) || null;
   const hasSearch = search.trim().length >= 2;
-  const searchingBrand = Boolean(hasSearch && searchResult.prescribedSearch && selectedBrand);
-  const listed = hasSearch ? searchResult.items : houseCatalogue;
+  const searchingBrand = Boolean(
+    !photoMatch && hasSearch && searchResult.prescribedSearch && selectedBrand
+  );
+  const listed = photoMatch
+    ? photoMatch.items
+    : openSaltFamily
+      ? hasSearch
+        ? openSaltFamily.items.filter((medicine) =>
+            familyMatchesQuery({ name: openSaltFamily.name, items: [medicine] }, search)
+          )
+        : openSaltFamily.items
+      : hasSearch
+        ? searchResult.items
+        : [];
   const filteredMedicines = sortMedicineRows(
-    listed.filter((medicine) => {
-      if (!medicine.isMediHome) return false;
-      if (hasSearch) return true;
-      return category === "All" || medicine.category === category;
-    })
+    listed.filter((medicine) => medicine.isMediHome)
   );
   const showBrandStrip = searchingBrand;
   const monthlySave = monthlySavingForCart(cart);
-
-  const cartCount = cart.reduce(
-    (total, item) => total + (item.quantity || 1),
-    0
-  );
 
   const cartTotal = cart.reduce(
     (total, item) => total + item.price * (item.quantity || 1),
@@ -3055,6 +3261,8 @@ function Medicines({ initialSearch = "" }) {
   );
 
   const cartNeedsPrescription = cart.some(requiresPrescription);
+  const savedRxName = prescriptionFile?.name || prescriptionDraftName();
+  const hasSavedRx = Boolean(prescriptionFile) || hasPrescriptionDraft();
 
   const addToCart = (medicine) => {
     const added = resolveCartAdd(medicine, catalogue, selectedBrand, {
@@ -3080,39 +3288,11 @@ function Medicines({ initialSearch = "" }) {
         );
       }
 
-      return [...currentCart, { ...selling, quantity: 1 }];
+      return [...currentCart, withPickedBatch({ ...selling, quantity: 1 })];
     });
-    setShowCart(true);
+    openShopCart();
     setShowCheckout(false);
     setConfirmedOrder(null);
-  };
-
-  const increaseQuantity = (medicineId) => {
-    setCart((currentCart) =>
-      currentCart.map((item) =>
-        item.id === medicineId
-          ? { ...item, quantity: (item.quantity || 1) + 1 }
-          : item
-      )
-    );
-  };
-
-  const decreaseQuantity = (medicineId) => {
-    setCart((currentCart) =>
-      currentCart
-        .map((item) =>
-          item.id === medicineId
-            ? { ...item, quantity: (item.quantity || 1) - 1 }
-            : item
-        )
-        .filter((item) => (item.quantity || 1) > 0)
-    );
-  };
-
-  const removeFromCart = (medicineId) => {
-    setCart((currentCart) =>
-      currentCart.filter((item) => item.id !== medicineId)
-    );
   };
 
   const resetCheckoutForm = () => {
@@ -3171,13 +3351,18 @@ function Medicines({ initialSearch = "" }) {
     setDeliveryErrors({});
     const booked = withBookingIdentity(source, profile);
 
-    if (cartNeedsPrescription && !prescriptionFile) {
+    if (cartNeedsPrescription && !hasSavedRx) {
       alert("Please upload your prescription.");
       return;
     }
 
     setPlacingOrder(true);
     try {
+      const availability = checkMedicineAvailability(cart, catalogue);
+      if (!availability.ok) {
+        alert(availability.message);
+        return;
+      }
       const queue = await holdForPartnerQueue("medicine");
       const gps = await resolvePinLocation(booked.pinCode);
       const addr = applyResolvedPin(booked, gps);
@@ -3192,6 +3377,7 @@ function Medicines({ initialSearch = "" }) {
         reference: `med-${Date.now()}`,
         description: "MediHome medicines",
       });
+      const persistPay = checkoutPaymentPersistFields(payMethod, payment);
 
       const newOrder = {
         id: Date.now(),
@@ -3206,27 +3392,35 @@ function Medicines({ initialSearch = "" }) {
           mrp: item.mrp,
           prescription: requiresPrescription(item),
           quantity: item.quantity || 1,
+          batchId: item.batchId || "",
+          batchNo: item.batchNo || "",
+          batchMfgDate: item.batchMfgDate || "",
+          batchExpiryDate: item.batchExpiryDate || "",
         })),
         total: pay.amountRupees,
         saleRupees: pay.saleRupees,
         couponCode: pay.couponCode,
         discountRupees: pay.discountRupees,
         highTrafficWait: queue.busy || queue.waited,
-        status: "Order Placed",
         date: new Date().toLocaleString(),
         fullName: booked.patientName,
         ...whoFor,
         ...booked,
         mobileNumber: booked.mobile,
-        prescription: prescriptionFile ? prescriptionFile.name : "",
+        prescription: savedRxName,
+        ...buildPartnerRxShare("medicine"),
         ...addr,
-        ...payment,
+        ...medicineAwaitingPharmacyFields(availability),
+        ...persistPay,
       };
 
-      const trackedOrder = persistOrder(withTracking(newOrder, "medicine"));
+      const trackedOrder = await persistAndSendOrder(withTracking(newOrder, "medicine"));
 
+      if (persistPay.paid) {
+        goHomeAfterPaidCheckout();
+        return;
+      }
       setCart([]);
-      setShowCart(false);
       setShowCheckout(false);
       resetCheckoutForm();
       setConfirmedOrder(trackedOrder);
@@ -3249,16 +3443,6 @@ function Medicines({ initialSearch = "" }) {
               at affordable price.
             </p>
           </div>
-          <div
-            className="cart-box"
-            onClick={() => {
-              setShowCart(true);
-              setShowCheckout(false);
-              setConfirmedOrder(null);
-            }}
-          >
-            🛒 Cart: {cartCount}
-          </div>
         </div>
         <div className="medicine-category-boxes">
           {categories.map((item) => (
@@ -3268,157 +3452,95 @@ function Medicines({ initialSearch = "" }) {
               className={`medicine-category-box ${
                 category === item ? "active" : ""
               }`}
-              aria-label={
-                item === "All"
-                  ? `All, ${catalogueCountForTab(item)} medicines`
-                  : `${item}, ${catalogueCountForTab(item)} medicines`
-              }
+              aria-label={item}
               onClick={() => {
                 setCategory(item);
                 setSearch("");
-                setShowCart(false);
+                setPhotoSearch(null);
+                setOpenSaltKey("");
                 setShowCheckout(false);
                 setConfirmedOrder(null);
+                window.requestAnimationFrame(() => searchInputRef.current?.focus());
               }}
             >
               <span className="medicine-category-name">
                 {item === "All" ? "All" : item}
               </span>
-              <span className="medicine-category-count">
-                {catalogueCountForTab(item)}
-              </span>
             </button>
           ))}
         </div>
-        <p className="medicines-combo-hint">
-          Other brands stay hidden until you search a prescribed brand. Then we
-          compare that pack rate with MediHome. Monthly saving is calculated at
-          checkout.
-        </p>
-        <div className="medicine-search-box">
+        {showSaltTabs ? (
+          <div className="medicine-salt-row">
+            <p className="medicine-salt-kicker">{category} medicines</p>
+            {visibleSaltFamilies.length ? (
+              <div
+                className="medicine-category-boxes medicine-salt-boxes"
+                role="tablist"
+                aria-label={`${category} medicines`}
+              >
+                {visibleSaltFamilies.map((family) => (
+                  <button
+                    key={family.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={openSaltKey === family.key}
+                    className={`medicine-category-box ${
+                      openSaltKey === family.key ? "active" : ""
+                    }`}
+                    onClick={() => {
+                      setOpenSaltKey(family.key);
+                      setPhotoSearch(null);
+                      setShowCheckout(false);
+                      setConfirmedOrder(null);
+                    }}
+                  >
+                    <span className="medicine-category-name">{family.name}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="medicines-empty-hint">No medicines in {category}.</p>
+            )}
+          </div>
+        ) : null}
+        <div className="medicine-search-box is-large">
           <input
-            type="text"
-            placeholder="Search by brand, name or salt (e.g. Dolo, Crocin, Metformin)"
+            ref={searchInputRef}
+            type="search"
+            placeholder={
+              category === "All" || category === "Search"
+                ? "Search by brand name or salt name"
+                : `Search ${category} by brand name or salt name`
+            }
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleMedicineSearch();
-              }
+            onChange={(e) => {
+              setPhotoSearch(null);
+              setSearch(e.target.value);
             }}
+            aria-label="Search medicines by brand or salt"
+            autoFocus
           />
-
-          <button
-            type="button"
-            className="medicine-search-button"
-            onClick={handleMedicineSearch}
-          >
-            Search Medicine
-          </button>
-
-          {search.trim() !== "" && (
+          {search.trim() !== "" ? (
             <button
               type="button"
               className="medicine-clear-button"
               onClick={() => {
                 setSearch("");
-                setCategory("All");
+                setPhotoSearch(null);
               }}
             >
               Clear
             </button>
-          )}
+          ) : null}
         </div>
         <MedicineSearchTools
           onQuery={(value) => {
-            setSearch(value);
-            setCategory("All");
+            setSearch(String(value || "").trim());
+            searchInputRef.current?.focus();
           }}
+          onPhoto={(payload) => setPhotoSearch(payload)}
         />
       </div>
-
-      {showCart && (
-        <div className="cart-panel">
-          <h2>🛒 Your Cart</h2>
-
-          {cart.length === 0 ? (
-            <p>Your cart is empty.</p>
-          ) : (
-            cart.map((item) => (
-              <div className="cart-item" key={item.id}>
-                <div className="cart-item-info">
-                  <span>{item.name}</span>
-                  <span>
-                    ₹{item.price} × {item.quantity || 1} = ₹
-                    {item.price * (item.quantity || 1)}
-                  </span>
-                </div>
-                <div className="cart-item-actions">
-                  <button
-                    type="button"
-                    onClick={() => decreaseQuantity(item.id)}
-                  >
-                    −
-                  </button>
-                  <span>{item.quantity || 1}</span>
-                  <button
-                    type="button"
-                    onClick={() => increaseQuantity(item.id)}
-                  >
-                    +
-                  </button>
-                  <button
-                    type="button"
-                    className="cart-remove-button"
-                    onClick={() => removeFromCart(item.id)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-
-          <h3>Total: ₹{cartTotal}</h3>
-
-          <div className="cart-actions">
-            <button
-              type="button"
-              className="cart-btn cart-btn-secondary"
-              onClick={() => setShowCart(false)}
-            >
-              Continue shopping
-            </button>
-            <button
-              type="button"
-              className="cart-btn cart-btn-primary"
-              onClick={() => {
-                if (cart.length === 0) {
-                  alert("Your cart is empty. Please add a medicine before checkout.");
-                  return;
-                }
-                setShowCart(false);
-                setShowCheckout(true);
-                setConfirmedOrder(null);
-                const profile = readSavedProfile();
-                if (profile) {
-                  setFullName((current) => current || profile.name);
-                  setMobileNumber((current) => current || profile.mobile);
-                  setDelivery((current) => {
-                    const filled =
-                      current.houseNo || current.society || current.pinCode;
-                    return filled
-                      ? current
-                      : { ...emptyAddress(), ...pickAddress(profile) };
-                  });
-                }
-              }}
-            >
-              Proceed to checkout
-            </button>
-          </div>
-        </div>
-      )}
 
       {showCheckout && (
         <div className="checkout-panel">
@@ -3493,20 +3615,21 @@ function Medicines({ initialSearch = "" }) {
               </ul>
             </section>
           ) : null}
-          {cartNeedsPrescription && (
+          {cartNeedsPrescription && !hasSavedRx ? (
             <div className="checkout-rx">
               <label>Prescription</label>
-
               <input
                 type="file"
                 accept="image/*"
                 capture="environment"
                 onChange={(e) => setPrescriptionFile(e.target.files[0])}
               />
-
-              {prescriptionFile && <p>Selected: {prescriptionFile.name}</p>}
             </div>
-          )}
+          ) : cartNeedsPrescription ? (
+            <div className="checkout-rx is-ready">
+              <p>Using uploaded prescription: {savedRxName}</p>
+            </div>
+          ) : null}
 
           <PaymentBlock
             kind="medicine"
@@ -3516,6 +3639,7 @@ function Medicines({ initialSearch = "" }) {
             method={payMethod}
             onMethodChange={setPayMethod}
             onQuoteChange={setPayQuote}
+            onReadyChange={setPayReady}
             cashLabel="Cash On Delivery"
             guestDetails={{
               name: fullName,
@@ -3531,7 +3655,7 @@ function Medicines({ initialSearch = "" }) {
               type="button"
               className="cart-btn cart-btn-primary"
               onClick={placeOrder}
-              disabled={placingOrder}
+              disabled={placingOrder || (checkoutUsesPayCta(payMethod) && !payReady)}
             >
               {placingOrder ? "Connecting PIN to map…" : "Place order"}
             </button>
@@ -3543,7 +3667,6 @@ function Medicines({ initialSearch = "" }) {
               className="cart-btn cart-btn-secondary"
               onClick={() => {
                 setShowCheckout(false);
-                setShowCart(true);
               }}
             >
               Continue shopping
@@ -3554,11 +3677,17 @@ function Medicines({ initialSearch = "" }) {
 
       {confirmedOrder && (
         <div className="checkout-panel">
-          <h2>Order Confirmed</h2>
+          <h2>
+            {confirmedOrder.partnerConfirmed
+              ? "Order Confirmed"
+              : "Request sent to pharmacy"}
+          </h2>
           <PatienceNote kind="medicine" shown={confirmedOrder.highTrafficWait} />
           <p>
-            Thank you, {confirmedOrder.fullName}. Your order has been placed
-            successfully.
+            Thank you, {confirmedOrder.fullName}.{" "}
+            {confirmedOrder.partnerConfirmed
+              ? "Your medicine order is confirmed."
+              : "Your prescription was sent to the pharmacy for this PIN. The order is confirmed after they review the handwritten and digital Rx."}
           </p>
           <p>
             <strong>Order ID:</strong> #{confirmedOrder.id}
@@ -3596,6 +3725,22 @@ function Medicines({ initialSearch = "" }) {
           <AssignedAgent record={confirmedOrder} />
           <div className="cart-actions">
             <BillButton order={confirmedOrder} className="cart-btn cart-btn-primary" />
+            {peekRxLabCheckout()?.tests?.length ? (
+              <button
+                type="button"
+                className="cart-btn cart-btn-primary"
+                onClick={() => {
+                  const pending = peekRxLabCheckout();
+                  const kind = pending?.serviceType || "lab";
+                  const lab = pending?.partnerId || "";
+                  window.location.hash = lab
+                    ? `#labs?service=${encodeURIComponent(kind)}&lab=${encodeURIComponent(lab)}`
+                    : "#labs";
+                }}
+              >
+                Continue to book tests
+              </button>
+            ) : null}
             <button
               type="button"
               className="cart-btn cart-btn-secondary"
@@ -3626,8 +3771,32 @@ function Medicines({ initialSearch = "" }) {
         </div>
       )}
 
-      {!showCart && !showCheckout && !confirmedOrder && (
+      {!showCheckout && !confirmedOrder && (
         <>
+          {photoSearch ? (
+            <aside className="photo-match-panel">
+              {photoSearch.previewUrl ? (
+                <img
+                  className="photo-match-preview"
+                  src={photoSearch.previewUrl}
+                  alt={photoSearch.fileName || "Uploaded medicine photo"}
+                />
+              ) : null}
+              <div>
+                <p className="brand-search-kicker">Suggested MediHome medicine</p>
+                {selectedMediHome ? (
+                  <p>
+                    Exact match: {selectedMediHome.name} · {selectedMediHome.strength}
+                  </p>
+                ) : (
+                  <p>
+                    {photoMatch?.emptyHint ||
+                      "No exact MediHome medicine matches this photo."}
+                  </p>
+                )}
+              </div>
+            </aside>
+          ) : null}
           {showBrandStrip && (
             <BrandSearchStrip
               brandMatch={selectedBrand}
@@ -3644,9 +3813,12 @@ function Medicines({ initialSearch = "" }) {
             {filteredMedicines.length === 0 ? (
               showBrandStrip && searchResult.brandMatch ? null : (
                 <p className="medicines-empty-hint">
-                  {hasSearch
-                    ? searchResult.emptyHint || "No medicines match your search."
-                    : "No medicines in this category."}
+                  {photoMatch?.emptyHint ||
+                    (hasSearch
+                      ? searchResult.emptyHint || "No medicines match your search in this category."
+                      : category === "All"
+                        ? "Choose a category to see its medicine tabs."
+                        : `Choose a ${category} salt tab to see all strengths and combinations.`)}
                 </p>
               )
             ) : (

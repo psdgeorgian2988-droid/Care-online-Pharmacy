@@ -107,6 +107,13 @@ export function isoDateToday(today = new Date()) {
   return toIsoDate(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
 }
 
+export const DOB_MIN_YEAR = 1901;
+export const DOB_MIN_ISO = `${DOB_MIN_YEAR}-01-01`;
+
+export function maxDobAgeYears(today = new Date()) {
+  return Math.max(0, today.getFullYear() - DOB_MIN_YEAR);
+}
+
 export function isoDateYearsAgo(years, today = new Date()) {
   return toIsoDate(
     new Date(today.getFullYear() - Number(years || 0), today.getMonth(), today.getDate())
@@ -123,6 +130,15 @@ export function isoDateDaysAhead(days, today = new Date()) {
   return toIsoDate(date);
 }
 
+export function isoDateMonthsAhead(months, today = new Date()) {
+  const date = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const day = date.getDate();
+  date.setMonth(date.getMonth() + Number(months || 0));
+  // Keep the same calendar day when the target month is shorter (e.g. Jan 31 → Feb 28).
+  if (date.getDate() < day) date.setDate(0);
+  return toIsoDate(date);
+}
+
 export function normalizeDob(value) {
   return parseIsoDate(value) ? String(value).trim() : "";
 }
@@ -136,7 +152,7 @@ export function ageFromDob(dob, today = new Date()) {
   if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
     years -= 1;
   }
-  if (years < 0 || years > 120) return "";
+  if (years < 0 || years > maxDobAgeYears(today)) return "";
   return String(years);
 }
 
@@ -180,6 +196,14 @@ export function maskMobile(value) {
   if (!digits) return "";
   if (digits.length <= 5) return digits;
   return `${digits.slice(0, 2)}${"*".repeat(digits.length - 5)}${digits.slice(-3)}`;
+}
+
+/** Partner desk: first three and last three digits, e.g. 9876543210 → 987****210 */
+export function maskPartnerMobile(value) {
+  const digits = normalizeMobile(value);
+  if (!digits) return "";
+  if (digits.length <= 6) return digits;
+  return `${digits.slice(0, 3)}${"*".repeat(digits.length - 6)}${digits.slice(-3)}`;
 }
 
 /** Show the first two letters of the mailbox only, e.g. asha@medihome.in → as**@medihome.in */
@@ -256,8 +280,12 @@ export function validatePerson(source = {}) {
     errors.dob = "Select date of birth.";
     return errors;
   }
+  if (person.dob < DOB_MIN_ISO) {
+    errors.dob = "Select a valid date of birth.";
+    return errors;
+  }
   const age = Number(person.age);
-  if (person.age === "" || !Number.isInteger(age) || age < 0 || age > 120) {
+  if (person.age === "" || !Number.isInteger(age) || age < 0 || age > maxDobAgeYears()) {
     errors.dob = "Select a valid date of birth.";
   }
   return errors;
