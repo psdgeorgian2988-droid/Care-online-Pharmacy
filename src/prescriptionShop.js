@@ -159,7 +159,7 @@ export function checkoutPayloadForTests({ kind = "lab", partnerId, tests = [] } 
     preferredPartner: partner.name,
     preferredPartnerId: partner.id,
     partner: partner.name,
-    partnerId: partner.id,
+    partnerId: "",
     partnerGstin: partner.gstin,
     partnerDlNo: partner.dlNo,
     partnerArea: partner.area,

@@ -1,3 +1,5 @@
+import { labJobCanReceiveReport } from "./labPipeline.js";
+import { customerPaidAtCheckout } from "./paymentMethods.js";
 import { isDeliveryPartner } from "./partnerRetention.js";
 import { PHARMACY_DESK_TABS, pharmacyDeskTab, pharmacyTrackKey } from "./pharmacyTrack.js";
 
@@ -16,8 +18,8 @@ export const PARTNER_DESK_TABS = {
     { id: "approved", label: "Approved", keys: ["confirmed"] },
     { id: "assigned", label: "Assigned", keys: ["assigned"] },
     { id: "sample", label: "Sample collected", keys: ["sample_collected"] },
-    { id: "reports", label: "Report ready", keys: ["report_ready"] },
-    { id: "done", label: "Completed", keys: ["done"] },
+    { id: "upload", label: "Upload report", keys: ["sample_collected", "report_ready"] },
+    { id: "done", label: "Order complete", keys: ["done"] },
   ],
   radiology: [
     { id: "new", label: "New orders", keys: ["requested", "slot_offered", "declined"] },
@@ -81,10 +83,48 @@ export function partnerDeskTab(order, kind = "") {
   const appKind = String(kind || order?.kind || order?.orderType || "").toLowerCase();
   if (appKind === "medicine" || appKind === "cart") return pharmacyDeskTab(order);
   const key = partnerJobTrackKey(order, appKind);
-  return partnerDeskTabsFor(appKind).find((tab) => tab.keys.includes(key))?.id || "new";
+  const tabs = partnerDeskTabsFor(appKind);
+  // Prefer Upload report when several lab tabs share sample_collected / report_ready
+  // so leftover report-ready jobs stay reachable after that tab was removed.
+  if (appKind === "lab" && (key === "sample_collected" || key === "report_ready")) {
+    if (
+      key === "report_ready" &&
+      !labJobCanReceiveReport({ ...order, kind: order?.kind || order?.orderType || appKind })
+    ) {
+      return "done";
+    }
+    const upload = tabs.find((tab) => tab.id === "upload" && tab.keys.includes(key));
+    if (upload) return upload.id;
+  }
+  return tabs.find((tab) => tab.keys.includes(key))?.id || "new";
+}
+
+export function labDeskAllowsPaymentCollect(tabId) {
+  const id = String(tabId || "")
+    .toLowerCase()
+    .replace(/-/g, "_");
+  return id === "sample" || id === "sample_collected" || id === "collected";
+}
+
+export function partnerDeskNeedsPaymentCollect(job, { tabId, kind, paid } = {}) {
+  const appKind = String(kind || job?.kind || job?.orderType || "").toLowerCase();
+  if (appKind === "medicine" || appKind === "cart") return false;
+  if (customerPaidAtCheckout(job, paid)) return false;
+  if (appKind === "lab") return labDeskAllowsPaymentCollect(tabId);
+  return true;
 }
 
 export function jobsForPartnerDeskTab(jobs, tabId, kind) {
   const wanted = String(tabId || "new");
-  return (Array.isArray(jobs) ? jobs : []).filter((row) => partnerDeskTab(row, kind) === wanted);
+  const list = Array.isArray(jobs) ? jobs : [];
+  const appKind = String(kind || "").toLowerCase();
+  if (appKind === "lab" && wanted === "upload") {
+    return list.filter((row) =>
+      labJobCanReceiveReport({ ...row, kind: row?.kind || row?.orderType || "lab" })
+    );
+  }
+  if (appKind === "lab" && wanted === "sample") {
+    return list.filter((row) => partnerJobTrackKey(row, "lab") === "sample_collected");
+  }
+  return list.filter((row) => partnerDeskTab(row, kind) === wanted);
 }

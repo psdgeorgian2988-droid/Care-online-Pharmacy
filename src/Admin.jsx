@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  fetchStaffChats,
   fetchStaffOrders,
   fetchStaffPartners,
   fetchStaffSettings,
   patchStaffOrder,
   patchStaffSettings,
   publishOrder,
-  replyStaffChat,
   staffLogin,
   staffLogout,
   staffToken,
@@ -64,10 +62,13 @@ import {
   MonthStackChart,
 } from "./adminCharts";
 import {
+  ADMIN_SERVICE_TABS,
   SERVICE_ORDER_KINDS,
+  countOrdersForAdminTab,
   groupOrdersByKind,
   matchesStatusFilter,
   serviceKind,
+  statusMatrix,
   trackKey,
 } from "./orderStatus";
 import DateMonthYearFields from "./DateMonthYearFields";
@@ -93,9 +94,6 @@ function Admin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [orders, setOrders] = useState([]);
-  const [chats, setChats] = useState([]);
-  const [chatId, setChatId] = useState("");
-  const [chatDraft, setChatDraft] = useState("");
   const [partners, setPartners] = useState([]);
   const [features, setFeatures] = useState(DEFAULT_FEATURES);
   const [featureDraft, setFeatureDraft] = useState(DEFAULT_FEATURES);
@@ -104,8 +102,8 @@ function Admin() {
   const featuresDirtyRef = useRef(false);
   const [webinars, setWebinars] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [filter, setFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [reportPeriod, setReportPeriod] = useState("mtd");
   const [reportKind, setReportKind] = useState("all");
   const [reportFrom, setReportFrom] = useState("");
@@ -113,21 +111,19 @@ function Admin() {
   const [reportRows, setReportRows] = useState(null);
   const [chartPeriod, setChartPeriod] = useState("mtd");
   const [openOrderId, setOpenOrderId] = useState("");
-  const [refundFilter, setRefundFilter] = useState("all");
+  const [refundFilter, setRefundFilter] = useState("");
 
-  const loadDesk = async () => {
-    setLoading(true);
-    setError("");
+  const loadDesk = async ({ quiet = false } = {}) => {
+    if (!quiet) setLoading(true);
+    if (!quiet) setError("");
     try {
-      const [data, partnerData, settings, chatData] = await Promise.all([
+      const [data, partnerData, settings] = await Promise.all([
         fetchStaffOrders(),
         fetchStaffPartners().catch(() => ({ partners: [] })),
         fetchStaffSettings().catch(() => ({ features: DEFAULT_FEATURES })),
-        fetchStaffChats().catch(() => ({ threads: [] })),
       ]);
       setOrders(Array.isArray(data.orders) ? data.orders : []);
       setPartners(Array.isArray(partnerData.partners) ? partnerData.partners : []);
-      setChats(Array.isArray(chatData.threads) ? chatData.threads : []);
       const nextFeatures = mergeFeatures(settings.features);
       setFeatures(nextFeatures);
       if (!featuresDirtyRef.current) {
@@ -144,7 +140,7 @@ function Admin() {
         setToken("");
       }
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   };
 
@@ -152,11 +148,20 @@ function Admin() {
     if (token) loadDesk();
   }, [token]);
 
+  useEffect(() => {
+    if (!token) return undefined;
+    const timer = setInterval(() => {
+      loadDesk({ quiet: true });
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [token]);
+
   const filtered = useMemo(() => {
+    if (!filter) return [];
     if (filter === "refund") {
       return orders.filter((order) => {
         if (!isRefundOrder(order)) return false;
-        if (refundFilter === "all") return true;
+        if (!refundFilter || refundFilter === "all") return true;
         return refundTrackKey(order) === refundFilter;
       });
     }
@@ -165,6 +170,22 @@ function Admin() {
       return matchesStatusFilter(order, statusFilter);
     });
   }, [orders, filter, statusFilter, refundFilter]);
+
+  const serviceStatus = useMemo(() => {
+    if (!filter || filter === "refund") {
+      return { open: 0, inProgress: 0, done: 0, unassigned: 0, total: filtered.length };
+    }
+    const scope =
+      filter === "all" ? orders : orders.filter((order) => serviceKind(order) === filter);
+    const matrix = statusMatrix(scope);
+    return {
+      open: matrix.open,
+      inProgress: matrix.inProgress,
+      done: matrix.done,
+      unassigned: matrix.unassigned,
+      total: scope.length,
+    };
+  }, [orders, filter, filtered.length]);
 
   const sales = useMemo(() => summarizeSales(orders), [orders]);
   const growth = useMemo(() => growthSnapshot(orders), [orders]);
@@ -297,22 +318,6 @@ function Admin() {
     await loadDesk();
   };
 
-  const handleChatReply = async (event) => {
-    event.preventDefault();
-    const id = chatId || chats[0]?.sessionId;
-    if (!id || !chatDraft.trim()) return;
-    setError("");
-    try {
-      const data = await replyStaffChat(id, chatDraft.trim());
-      setChatDraft("");
-      setChats((rows) =>
-        rows.map((row) => (row.sessionId === id ? data.thread : row))
-      );
-    } catch (err) {
-      setError(err.message || "Could Not Send Care Reply.");
-    }
-  };
-
   const saveWebinars = async (next) => {
     const saved = await patchStaffSettings({ webinars: next });
     const rows = Array.isArray(saved.webinars) ? saved.webinars : next;
@@ -432,7 +437,7 @@ function Admin() {
         <div className="service-page admin-page">
           <section className="service-hero">
             <span className="service-kicker">Operations</span>
-            <h1>Staff Login</h1>
+            <h1>Admin Panel</h1>
           </section>
           <form className="service-form admin-login" onSubmit={handleLogin}>
             <div className="field">
@@ -471,18 +476,8 @@ function Admin() {
         <section className="service-hero admin-hero">
           <div>
             <span className="service-kicker">Operations</span>
-            <h1>Staff Desk</h1>
           </div>
           <div className="admin-hero-actions">
-            <a className="admin-scan-link" href="#scan?step=pack">
-              Scan Packing
-            </a>
-            <a className="admin-scan-link" href="#scan?step=pickup">
-              Scan Pickup
-            </a>
-            <a className="admin-scan-link" href="#scan?step=deliver">
-              Scan Delivery
-            </a>
             <button type="button" onClick={loadDesk} disabled={loading}>
               {loading ? "Refreshing…" : "Refresh"}
             </button>
@@ -508,12 +503,7 @@ function Admin() {
           <div className="admin-feature-head">
             <div>
               <h2>Turn Services On Or Off</h2>
-              <p>
-                Flip a switch to draft a change. Customers only see the new
-                setting after you press Save. Only staff can save.
-              </p>
             </div>
-            {renderFeatureActions()}
           </div>
           {featuresDirty ? (
             <p className="admin-feature-note" role="status">
@@ -558,52 +548,228 @@ function Admin() {
           {renderFeatureActions()}
         </section>
 
-        <section className="admin-panel" aria-label="Customer Care Inbox">
-          <h2>Customer Care Inbox</h2>
-          <p>Replies From This Desk Show In The Public Chatbox.</p>
-          {chats.length === 0 ? (
-            <p className="admin-muted">No Website Chats Yet.</p>
-          ) : (
-            <div className="admin-chat-layout">
-              <ul className="admin-chat-list">
-                {chats.map((row) => (
-                  <li key={row.sessionId}>
-                    <button
-                      type="button"
-                      className={
-                        (chatId || chats[0]?.sessionId) === row.sessionId ? "is-on" : ""
-                      }
-                      onClick={() => setChatId(row.sessionId)}
-                    >
-                      <strong>{row.name || "Guest"}</strong>
-                      <span>
-                        {row.needsStaff ? "Needs Staff · " : ""}
-                        {row.messages?.at(-1)?.text?.slice(0, 48) || "Empty"}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <div className="admin-chat-thread">
-                {(chats.find((row) => row.sessionId === (chatId || chats[0]?.sessionId))
-                  ?.messages || []
-                ).map((row) => (
-                  <p key={row.id} className={`admin-chat-line is-${row.from}`}>
-                    <strong>{row.from === "user" ? "Customer" : row.from === "staff" ? "You" : "Bot"}:</strong>{" "}
-                    {row.text}
-                  </p>
-                ))}
-                <form onSubmit={handleChatReply} className="admin-chat-compose">
-                  <input
-                    value={chatDraft}
-                    onChange={(event) => setChatDraft(event.target.value)}
-                    placeholder="Reply To This Chat"
-                  />
-                  <button type="submit">Send</button>
-                </form>
-              </div>
+        <section
+          className="admin-panel admin-feature-panel admin-orders-box"
+          id="staff-orders"
+          aria-label="Order status"
+        >
+          <div className="admin-feature-head">
+            <div>
+              <h2>Order status</h2>
             </div>
-          )}
+          </div>
+          <div
+            className="admin-switches admin-order-service-tiles"
+            role="tablist"
+            aria-label="Service"
+          >
+            {ADMIN_SERVICE_TABS.map((tab) => {
+              const count = countOrdersForAdminTab(orders, tab.value);
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === tab.value}
+                  className={filter === tab.value ? "is-on" : ""}
+                  onClick={() => {
+                    setFilter(tab.value);
+                    setStatusFilter("");
+                    setRefundFilter("");
+                  }}
+                >
+                  <span>{tab.label}</span>
+                  <strong>{count}</strong>
+                </button>
+              );
+            })}
+          </div>
+          {filter && filter !== "refund" ? (
+          <div className="admin-order-status-row" aria-label="Order status">
+            {[
+              ["all", "All", serviceStatus.total],
+              ["open", "Open", serviceStatus.open],
+              ["progress", "In progress", serviceStatus.inProgress],
+              ["done", "Done", serviceStatus.done],
+              ["unassigned", "Unassigned", serviceStatus.unassigned],
+            ].map(([value, label, count]) => (
+              <button
+                key={value}
+                type="button"
+                className={statusFilter === value ? "is-on" : ""}
+                onClick={() => setStatusFilter(value)}
+              >
+                <span>{label}</span>
+                <strong>{count}</strong>
+              </button>
+            ))}
+          </div>
+          ) : null}
+          {filter === "refund" ? (
+            <div className="lab-tabs admin-tabs" role="tablist" aria-label="Refund status">
+              {[
+                ["all", "All refunds"],
+                ["pending", "Pending"],
+                ["processing", "Processing"],
+                ["refunded", "Refunded"],
+                ["rejected", "Declined"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={refundFilter === value ? "is-on" : ""}
+                  onClick={() => setRefundFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <div className="admin-orders-box-body">
+        {!filter ? null : filter === "refund" ? (
+          <section className="order-category" aria-label="Refunds">
+            <h2>Refunds</h2>
+            <OrderListTable
+              orders={filtered}
+              audience="staff"
+              empty={loading ? "Loading…" : "No refund or return orders yet."}
+              openId={openOrderId}
+              onOpen={setOpenOrderId}
+              renderDetail={(order) => {
+                const id = order.id || order.bookingId || order.requestId;
+                const kind = serviceKind(order);
+                const step = trackKey(order);
+                return (
+                  <div className="admin-order-detail-inner">
+                    <OrderFullView order={order} audience="staff" />
+                    <RefundStatusPanel
+                      order={order}
+                      audience="staff"
+                      onUpdate={handleRefund}
+                    />
+                    <div className="admin-order-tools">
+                      <label>
+                        Status
+                        <select
+                          value={step}
+                          onChange={(event) => handleStatus(order, event.target.value)}
+                        >
+                          {TRACK_STEPS.map((row) => (
+                            <option key={row.key} value={row.key}>
+                              {row.key === "done" ? doneLabel(kind) : row.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <p>
+                      <a href={trackHref(id)}>Live Track</a>
+                    </p>
+                  </div>
+                );
+              }}
+            />
+          </section>
+        ) : groupOrdersByKind(
+          filtered,
+          filter === "all" ? SERVICE_ORDER_KINDS : [filter]
+        ).map((group) => (
+          <section key={group.kind} className="order-category" aria-label={group.title}>
+            <h2>{group.title}</h2>
+            <OrderListTable
+              orders={group.orders}
+              audience="staff"
+              empty={loading ? "Loading…" : `No ${group.title.toLowerCase()}.`}
+              openId={openOrderId}
+              onOpen={setOpenOrderId}
+              renderDetail={(order) => {
+                const id = order.id || order.bookingId || order.requestId;
+                const kind = serviceKind(order);
+                const step = trackKey(order);
+                return (
+                  <div className="admin-order-detail-inner">
+                    <OrderFullView order={order} audience="staff" />
+                    {isRefundOrder(order) || String(kind) === "medicine" ? (
+                      <RefundStatusPanel
+                        order={order}
+                        audience="staff"
+                        onUpdate={handleRefund}
+                      />
+                    ) : null}
+                    <div className="admin-order-tools">
+                      <label>
+                        Assigned to
+                        <select
+                          value={order.partnerId || ""}
+                          onChange={(event) => handleAssign(order, event.target.value)}
+                        >
+                          <option value="">Unassigned</option>
+                          {partners
+                            .filter(
+                              (row) =>
+                                !row.kinds?.length ||
+                                row.kinds.includes(kind) ||
+                                row.id === order.partnerId
+                            )
+                            .map((row) => (
+                              <option key={row.id} value={row.id}>
+                                {row.name}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                      <label>
+                        Status
+                        <select
+                          value={step}
+                          onChange={(event) => handleStatus(order, event.target.value)}
+                        >
+                          {TRACK_STEPS.map((row) => (
+                            <option key={row.key} value={row.key}>
+                              {row.key === "done" ? doneLabel(kind) : row.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Partner %
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          defaultValue={
+                            order.split?.partnerPercent ??
+                            partners.find((row) => row.id === order.partnerId)
+                              ?.partnerPercent ??
+                            ""
+                          }
+                          key={`${id}-${order.split?.partnerPercent ?? ""}-${order.updatedAt || ""}`}
+                          aria-label={`Partner split percent for order ${id}`}
+                          onBlur={(event) => {
+                            const next = Number(event.target.value);
+                            const current = Number(order.split?.partnerPercent);
+                            if (Number.isFinite(next) && next !== current) {
+                              handleSplit(order, next);
+                            }
+                          }}
+                        />
+                      </label>
+                      {order.split?.partnerPercent != null ? (
+                        <span className="admin-outlet-area">
+                          MediHome {100 - Number(order.split.partnerPercent)}%
+                        </span>
+                      ) : null}
+                    </div>
+                    <p>
+                      <a href={trackHref(id)}>Live Track</a>
+                    </p>
+                  </div>
+                );
+              }}
+            />
+          </section>
+        ))}
+          </div>
         </section>
 
         <section className="admin-kpis" aria-label="Sales Figures">
@@ -919,233 +1085,6 @@ function Admin() {
           }}
           onStatus={handleStatus}
         />
-
-        <p className="admin-retention-note">
-          Staff and admin keep every order permanently. Pharmacy desks keep their PIN orders. Delivery partners keep completed drops for 30 days.
-        </p>
-        <div id="staff-orders" className="lab-tabs admin-tabs" role="tablist">
-          {[
-            ["all", "All"],
-            ["medicine", "Medicines"],
-            ["lab", "Lab"],
-            ["radiology", "Radiology"],
-            ["homecare", "Home Care"],
-            ["vaccination", "Vaccination"],
-            ["doctor", "Doctor Appointment"],
-            ["psychologist", "Psychologist"],
-            ["stepdown", "Step-Down"],
-            ["ambulance", "Ambulance"],
-            ["refund", "Refund"],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              className={filter === value ? "is-on" : ""}
-              onClick={() => setFilter(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {filter === "refund" ? (
-          <div className="lab-tabs admin-tabs" role="tablist" aria-label="Refund status">
-            {[
-              ["all", "All refunds"],
-              ["pending", "Pending"],
-              ["processing", "Processing"],
-              ["refunded", "Refunded"],
-              ["rejected", "Declined"],
-            ].map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                className={refundFilter === value ? "is-on" : ""}
-                onClick={() => setRefundFilter(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="lab-tabs admin-tabs" role="tablist" aria-label="Status Filter">
-            {[
-              ["all", "All Statuses"],
-              ["open", "Open"],
-              ["progress", "In Progress"],
-              ["unassigned", "Unassigned"],
-              ["requested", "Awaiting Partner"],
-              ["confirmed", "Confirmed"],
-              ["assigned", "Assigned"],
-              ["on_the_way", "On The Way"],
-              ["arriving", "Arriving"],
-              ["done", "Done"],
-            ].map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                className={statusFilter === value ? "is-on" : ""}
-                onClick={() => setStatusFilter(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {filter === "refund" ? (
-          <section className="order-category" aria-label="Refunds">
-            <h2>Refunds</h2>
-            <OrderListTable
-              orders={filtered}
-              audience="staff"
-              empty={loading ? "Loading…" : "No refund or return orders yet."}
-              openId={openOrderId}
-              onOpen={setOpenOrderId}
-              renderDetail={(order) => {
-                const id = order.id || order.bookingId || order.requestId;
-                const kind = serviceKind(order);
-                const step = trackKey(order);
-                return (
-                  <div className="admin-order-detail-inner">
-                    <OrderFullView order={order} audience="staff" />
-                    <RefundStatusPanel
-                      order={order}
-                      audience="staff"
-                      onUpdate={handleRefund}
-                    />
-                    <div className="admin-order-tools">
-                      <label>
-                        Status
-                        <select
-                          value={step}
-                          onChange={(event) => handleStatus(order, event.target.value)}
-                        >
-                          {TRACK_STEPS.map((row) => (
-                            <option key={row.key} value={row.key}>
-                              {row.key === "done" ? doneLabel(kind) : row.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                    <p>
-                      <a href={trackHref(id)}>Live Track</a>
-                    </p>
-                  </div>
-                );
-              }}
-            />
-          </section>
-        ) : groupOrdersByKind(
-          filtered,
-          filter === "all" ? SERVICE_ORDER_KINDS : [filter]
-        ).map((group) => (
-          <section key={group.kind} className="order-category" aria-label={group.title}>
-            <h2>{group.title}</h2>
-            <OrderListTable
-              orders={group.orders}
-              audience="staff"
-              empty={loading ? "Loading…" : `No ${group.title.toLowerCase()}.`}
-              openId={openOrderId}
-              onOpen={setOpenOrderId}
-              renderDetail={(order) => {
-                const id = order.id || order.bookingId || order.requestId;
-                const kind = serviceKind(order);
-                const step = trackKey(order);
-                return (
-                  <div className="admin-order-detail-inner">
-                    <OrderFullView order={order} audience="staff" />
-                    {isRefundOrder(order) || String(kind) === "medicine" ? (
-                      <RefundStatusPanel
-                        order={order}
-                        audience="staff"
-                        onUpdate={handleRefund}
-                      />
-                    ) : null}
-                    <div className="admin-order-tools">
-                      <label>
-                        Assigned to
-                        <select
-                          value={order.partnerId || ""}
-                          onChange={(event) => handleAssign(order, event.target.value)}
-                        >
-                          <option value="">Unassigned</option>
-                          {partners
-                            .filter(
-                              (row) =>
-                                !row.kinds?.length ||
-                                row.kinds.includes(kind) ||
-                                row.id === order.partnerId
-                            )
-                            .map((row) => (
-                              <option key={row.id} value={row.id}>
-                                {row.name}
-                              </option>
-                            ))}
-                        </select>
-                      </label>
-                      <label>
-                        Status
-                        <select
-                          value={step}
-                          onChange={(event) => handleStatus(order, event.target.value)}
-                        >
-                          {TRACK_STEPS.map((row) => (
-                            <option key={row.key} value={row.key}>
-                              {row.key === "done" ? doneLabel(kind) : row.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        Partner %
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          defaultValue={
-                            order.split?.partnerPercent ??
-                            partners.find((row) => row.id === order.partnerId)
-                              ?.partnerPercent ??
-                            ""
-                          }
-                          key={`${id}-${order.split?.partnerPercent ?? ""}-${order.updatedAt || ""}`}
-                          aria-label={`Partner split percent for order ${id}`}
-                          onBlur={(event) => {
-                            const next = Number(event.target.value);
-                            const current = Number(order.split?.partnerPercent);
-                            if (Number.isFinite(next) && next !== current) {
-                              handleSplit(order, next);
-                            }
-                          }}
-                        />
-                      </label>
-                      {order.split?.partnerPercent != null ? (
-                        <span className="admin-outlet-area">
-                          MediHome {100 - Number(order.split.partnerPercent)}%
-                        </span>
-                      ) : null}
-                    </div>
-                    <p>
-                      <a href={trackHref(id)}>Live Track</a>
-                      {String(kind) === "medicine" ? (
-                        <>
-                          {" · "}
-                          <a href={`#scan?id=${encodeURIComponent(id)}&step=pack`}>Scan Packing</a>
-                          {" · "}
-                          <a href={`#scan?id=${encodeURIComponent(id)}&step=pickup`}>Scan Pickup</a>
-                          {" · "}
-                          <a href={`#scan?id=${encodeURIComponent(id)}&step=deliver`}>Scan Delivery</a>
-                        </>
-                      ) : null}
-                    </p>
-                  </div>
-                );
-              }}
-            />
-          </section>
-        ))}
       </div>
     </>
   );
@@ -1192,6 +1131,15 @@ const styles = `
 .admin-panel h2{margin:0 0 6px;font-size:16px}
 .admin-panel p{margin:0 0 10px;color:#5d7180;font-size:13px}
 .admin-feature-panel{border-color:#b7d0dc;box-shadow:0 1px 0 rgba(26,107,122,.06)}
+.admin-orders-box .admin-order-service-tiles{margin-bottom:12px}
+.admin-order-status-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 12px}
+.admin-order-status-row button{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid #d7e2e9;border-radius:10px;background:#f7fafc;padding:10px 12px;font:inherit;cursor:pointer}
+.admin-order-status-row button.is-on{background:#e7f1f6;border-color:#b7d0dc}
+.admin-order-status-row span{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
+.admin-order-status-row strong{font-size:16px;color:#123b5d}
+.admin-orders-box-body .order-category{margin:0 0 12px}
+.admin-orders-box-body .order-category:last-child{margin-bottom:0}
+.admin-orders-box-body .admin-table-wrap{margin-bottom:0}
 .admin-feature-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
 .admin-feature-head h2{margin:0 0 6px}
 .admin-feature-head p{margin:0;max-width:42rem}
@@ -1279,6 +1227,7 @@ const styles = `
 .admin-partner-create{margin-top:14px;padding:12px;border:1px solid #e4ecef;border-radius:12px;background:#fff}
 .admin-partner-create h3{margin:0 0 10px;font-size:14px}
 .admin-partner-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.admin-partner-grid select{min-height:36px;border:1px solid #d7e2e9;border-radius:8px;padding:6px 8px;font:inherit}
 .admin-partner-grid label,.admin-partner-grid fieldset{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;color:#34546b;border:0;margin:0;padding:0}
 .admin-partner-grid legend{font-size:12px;font-weight:700;color:#34546b}
 .admin-partner-kinds{display:flex;flex-wrap:wrap;gap:8px;font-weight:600}
@@ -1295,31 +1244,17 @@ const styles = `
 .admin-order-tools label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;color:#5d7180}
 .admin-order-tools input[type=number]{width:72px}
 @media (max-width:800px){.admin-partner-grid{grid-template-columns:1fr}}
-.admin-chat-layout{display:grid;grid-template-columns:220px 1fr;gap:10px}
-.admin-chat-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:240px;overflow:auto}
-.admin-chat-list button{width:100%;border:1px solid #e4ecef;border-radius:8px;background:#f7fafc;padding:8px;text-align:left;font:inherit;cursor:pointer}
-.admin-chat-list button.is-on{background:#e7f1f6;border-color:#b7d0dc}
-.admin-chat-list strong{display:block;font-size:13px}
-.admin-chat-list span{display:block;color:#5d7180;font-size:11px}
-.admin-chat-thread{border:1px solid #e4ecef;border-radius:8px;padding:8px;max-height:240px;overflow:auto;background:#f7fafc}
-.admin-chat-line{margin:0 0 6px;font-size:12px}
-.admin-chat-line.is-user{color:#123b5d}
-.admin-chat-line.is-staff{color:#1a7a45}
-.admin-chat-compose{display:flex;gap:6px;margin-top:8px}
-.admin-chat-compose input{flex:1;min-height:34px;border:1px solid #d7e2e9;border-radius:8px;padding:0 8px;font:inherit}
-.admin-chat-compose button{border:0;border-radius:8px;background:#1a6b7a;color:#fff;font:inherit;font-weight:700;padding:0 10px;cursor:pointer}
-@media (max-width:800px){
-  .admin-chat-layout{grid-template-columns:1fr}
-}
+.admin-care-tag{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#e8f1f6;color:#1a6b7a;font-size:13px;font-weight:700;letter-spacing:.01em;flex:none}
+.admin-care-tag em{font-style:normal;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:#1a6b7a;color:#fff;font-size:11px;line-height:18px;text-align:center}
 @media (max-width:1100px){
   .admin-pipe{grid-template-columns:repeat(5,minmax(180px,1fr))}
 }
 @media (max-width:900px){
-  .admin-kpis,.admin-chart-grid,.admin-switches,.admin-status-kpis{grid-template-columns:1fr 1fr}
+  .admin-kpis,.admin-chart-grid,.admin-switches,.admin-status-kpis,.admin-order-status-row{grid-template-columns:1fr 1fr}
 }
 @media (max-width:800px){.admin-hero{flex-direction:column}}
 @media (max-width:640px){
-  .admin-kpis,.admin-chart-grid,.admin-switches,.admin-status-kpis{grid-template-columns:1fr}
+  .admin-kpis,.admin-chart-grid,.admin-switches,.admin-status-kpis,.admin-order-status-row{grid-template-columns:1fr}
 }
 `;
 

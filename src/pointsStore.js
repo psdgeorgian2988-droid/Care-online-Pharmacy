@@ -79,6 +79,32 @@ export function hasEarned(key) {
   return Boolean(loadWallet().earned[key]);
 }
 
+export function spendPoints(amount, label, key = "") {
+  const wallet = loadWallet();
+  const n = Math.max(0, Math.floor(Number(amount) || 0));
+  if (!n) return { ok: false, reason: "amount", spent: 0, wallet };
+  if (key && wallet.earned[key]) {
+    return { ok: true, already: true, spent: 0, wallet };
+  }
+  if (wallet.balance < n) {
+    return { ok: false, reason: "balance", spent: 0, wallet };
+  }
+  const now = new Date();
+  if (key) wallet.earned[key] = true;
+  wallet.balance -= n;
+  wallet.ledger.unshift({
+    id: "MH-PT-" + now.getTime(),
+    type: "redeem",
+    amount: -n,
+    label: label || "Redeemed at checkout",
+    key: key || undefined,
+    at: now.toLocaleString(),
+    atMs: now.getTime(),
+  });
+  persist(wallet);
+  return { ok: true, already: false, spent: n, wallet };
+}
+
 export function awardOnce(key, amount, label) {
   const wallet = loadWallet();
   if (wallet.earned[key]) {

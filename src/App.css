@@ -406,11 +406,21 @@ footer p {
 }
 
 .checkout-panel h2,
+.checkout-panel .cart-bill,
 .checkout-panel .cart-actions,
 .checkout-panel .pay-block,
 .checkout-panel .checkout-rx,
-.checkout-panel .booking-contact-address {
+.checkout-panel .booking-contact-address,
+.checkout-panel .booking-flow-who,
+.checkout-panel .booking-flow-details,
+.checkout-panel .booking-flow-service {
   grid-column: 1 / -1;
+}
+
+.checkout-panel .cart-actions {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 .checkout-rx label {
@@ -1236,7 +1246,7 @@ max-width: none;
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 16px 20px 24px 14px;
+  padding: 4px 16px 24px;
   color: #143246;
   box-sizing: border-box;
 }
@@ -1245,11 +1255,17 @@ max-width: none;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin: 0 auto 12px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #eaf7ff, #f4fbf8);
+  gap: 16px;
+  margin: 0 0 8px;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.my-orders-page .orders-page-header {
+  margin: 0 0 8px;
+  padding: 0;
+  min-height: 0;
 }
 
 .orders-eyebrow {
@@ -1476,12 +1492,12 @@ max-width: none;
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
+  gap: 16px;
   margin: 0;
-  padding: 4px 0;
+  padding: 10px 0;
   border-bottom: 1px solid #edf1f3;
-  font-size: 12px;
-  line-height: 1.25;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 .my-orders-page .order-card p strong,
@@ -1557,12 +1573,147 @@ max-width: none;
 }
 
 .orders-empty {
-  padding: 14px;
+  padding: 10px 12px;
   border: 1px solid #e4ecef;
   border-radius: 12px;
   background: #ffffff;
   color: #5d7180;
   font-size: 13px;
+}
+
+.my-orders-page .orders-empty {
+  margin-top: 2px;
+}
+
+.my-orders-page .orders-empty p {
+  margin: 0;
+}
+
+.my-orders-page .order-list-cards {
+  margin-top: 4px;
+}
+
+.my-orders-service-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  margin: 0 0 10px;
+}
+
+.my-orders-service-tiles button {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 0;
+  padding: 10px 6px 8px;
+  border: 1px solid #d7e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(20, 88, 100, 0.06);
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.my-orders-service-tiles button:hover,
+.my-orders-service-tiles button:focus-visible {
+  border-color: #8ebcc8;
+  box-shadow: 0 8px 18px rgba(20, 88, 100, 0.12);
+}
+
+.my-orders-service-tiles button.is-on {
+  background: #e8f4f8;
+  border-color: #1a6b7a;
+  box-shadow: 0 0 0 1px #1a6b7a;
+}
+
+.my-orders-service-tiles .service-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.my-orders-service-tiles .service-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.my-orders-service-tiles span {
+  font-size: 11px;
+  font-weight: 800;
+  color: #1a6b7a;
+  line-height: 1.25;
+}
+
+.my-orders-service-tiles strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #e8f4f8;
+  font-size: 12px;
+  font-weight: 800;
+  color: #145864;
+}
+
+.my-orders-service-tiles button.is-on strong {
+  background: #1a6b7a;
+  color: #ffffff;
+}
+
+@media (max-width: 360px) {
+  .my-orders-service-tiles {
+    gap: 6px;
+  }
+
+  .my-orders-service-tiles .service-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+
+  .my-orders-service-tiles .service-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+@media (min-width: 700px) {
+  .my-orders-service-tiles {
+    gap: 10px;
+  }
+
+  .my-orders-service-tiles button {
+    padding: 12px 8px 10px;
+  }
+
+  .my-orders-service-tiles .service-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .my-orders-service-tiles .service-icon svg {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+.my-orders-page .order-details-page {
+  margin-top: 4px;
+  padding: 20px 18px 24px;
 }
 
 .orders-empty-actions a {
@@ -3631,12 +3782,12 @@ body,
   max-height: 100vh !important;
   min-height: 100vh !important;
   display: grid !important;
-  grid-template-columns: 210px minmax(0, 1fr) !important;
+  grid-template-columns: minmax(0, 1fr) !important;
   grid-template-rows: 40px minmax(0, 1fr) 40px !important;
   grid-template-areas:
-    "ticker ticker"
-    "sidebar main"
-    "footer footer" !important;
+    "ticker"
+    "main"
+    "footer" !important;
   column-gap: 0 !important;
   row-gap: 0 !important;
   gap: 0 !important;
@@ -6231,7 +6382,8 @@ body,
   background: #e8f4f8 !important;
 }
 
-.app:not(.app-ops) .profile-points-chip {
+.app:not(.app-ops) .profile-points-chip,
+.app:not(.app-ops) .profile-points-tab-label {
   background: #1a6b7a !important;
   box-shadow: none !important;
 }
@@ -6348,6 +6500,11 @@ html:not(.is-native-app):not(.is-customer-app):not(.is-installed-app) #root {
   text-align: left !important;
 }
 
+.app:not(.app-ops) .profile-hero {
+  align-items: flex-start !important;
+  flex-wrap: nowrap !important;
+}
+
 .app:not(.app-ops) .lab-head > div,
 .app:not(.app-ops) .service-hero > div,
 .app:not(.app-ops) .profile-hero > div,
@@ -6356,6 +6513,24 @@ html:not(.is-native-app):not(.is-customer-app):not(.is-installed-app) #root {
   flex: 1 1 280px;
   min-width: 0;
   text-align: left !important;
+}
+
+.app:not(.app-ops) .profile-hero > .profile-points-wrap {
+  flex: 0 0 auto !important;
+  align-self: flex-start !important;
+  text-align: right !important;
+}
+
+.app:not(.app-ops) .profile-points-tab {
+  align-items: flex-end !important;
+  text-align: right !important;
+}
+
+.app:not(.app-ops) .profile-points-tab-value {
+  color: #143246 !important;
+  font-size: clamp(22px, 3vw, 30px) !important;
+  font-weight: 700 !important;
+  line-height: 1.1 !important;
 }
 
 .app:not(.app-ops) .service-form,
@@ -6953,8 +7128,8 @@ html:not(.is-native-app):not(.is-customer-app):not(.is-installed-app) #root {
   gap: 8px;
   width: 100%;
   margin: 0;
-  padding: 8px 10px;
-  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  padding: 6px 10px;
+  padding-top: max(6px, env(safe-area-inset-top, 0px));
   box-sizing: border-box;
   background: #eaf6f3;
   border-bottom: 0;
@@ -7046,7 +7221,7 @@ html.is-customer-app .app-chrome-header,
   opacity: 1 !important;
   position: relative !important;
   height: auto !important;
-  min-height: 64px !important;
+  min-height: 60px !important;
 }
 
 .app-chrome-brand-block {
@@ -7094,7 +7269,7 @@ html.is-customer-app .app-chrome-header,
 }
 
 .app-home-hello {
-  margin: 2px 2px 0;
+  margin: 0;
   font-size: 20px;
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -7290,7 +7465,7 @@ html.is-customer-app .app-chrome-header,
 
 .app-home.is-account {
   gap: 14px;
-  padding: 10px 14px 24px;
+  padding: 4px 14px 24px;
   overflow: auto;
 }
 
@@ -7399,6 +7574,11 @@ html.is-customer-app .app-chrome-header,
   text-transform: uppercase;
 }
 
+.app-home-heading a {
+  color: inherit;
+  text-decoration: none;
+}
+
 .app-home-subgrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -7459,12 +7639,26 @@ html.is-customer-app .app-chrome-header,
   letter-spacing: 0.01em;
 }
 
-.service-cartoon {
+.service-cartoon,
+.service-icon {
   display: block;
   width: 72px;
   height: 72px;
   flex: 0 0 auto;
   line-height: 0;
+}
+
+.service-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+}
+
+.service-icon svg {
+  display: block;
+  width: 36px;
+  height: 36px;
 }
 
 .service-cartoon svg {
@@ -7537,8 +7731,11 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
 }
 
 html[data-layout="phone"] .home-landing .app-home-catalog.is-mobile-web .app-home-subitem .service-cartoon,
+html[data-layout="phone"] .home-landing .app-home-catalog.is-mobile-web .app-home-subitem .service-icon,
 html[data-layout="tablet"] .home-landing .app-home-catalog.is-desktop-web .app-home-subitem .service-cartoon,
-html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-home-subitem .service-cartoon {
+html[data-layout="tablet"] .home-landing .app-home-catalog.is-desktop-web .app-home-subitem .service-icon,
+html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-home-subitem .service-cartoon,
+html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-home-subitem .service-icon {
   animation: home-catalog-bob 2.8s ease-in-out infinite;
   animation-delay: calc(var(--item-index, 0) * 180ms);
 }
@@ -7590,12 +7787,15 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
   html[data-layout="phone"] .home-landing .app-home-catalog.is-mobile-web .app-home-section,
   html[data-layout="phone"] .home-landing .app-home-catalog.is-mobile-web .app-home-subitem,
   html[data-layout="phone"] .home-landing .app-home-catalog.is-mobile-web .app-home-subitem .service-cartoon,
+  html[data-layout="phone"] .home-landing .app-home-catalog.is-mobile-web .app-home-subitem .service-icon,
   html[data-layout="tablet"] .home-landing .app-home-catalog.is-desktop-web .app-home-section,
   html[data-layout="tablet"] .home-landing .app-home-catalog.is-desktop-web .app-home-subitem,
   html[data-layout="tablet"] .home-landing .app-home-catalog.is-desktop-web .app-home-subitem .service-cartoon,
+  html[data-layout="tablet"] .home-landing .app-home-catalog.is-desktop-web .app-home-subitem .service-icon,
   html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-home-section,
   html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-home-subitem,
-  html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-home-subitem .service-cartoon {
+  html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-home-subitem .service-cartoon,
+  html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-home-subitem .service-icon {
     animation: none !important;
   }
 }
@@ -8884,10 +9084,6 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
   box-shadow: none !important;
 }
 
-.app-customer.is-welcome-gate .app-chrome-header {
-  display: none !important;
-}
-
 .app.app-customer.is-welcome-gate .app-frame > main#app-scroll > .app-first.is-home.is-login-screen,
 .app.app-customer.is-welcome-gate .app-frame > main#app-scroll > .app-first.is-flash,
 .app.app-customer.is-welcome-gate .app-frame > main#app-scroll > .app-first.is-guest,
@@ -8911,6 +9107,17 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
   min-height: 0 !important;
   height: auto !important;
   position: relative !important;
+}
+
+/* Flash stays in main so ticker + footer stay visible on welcome */
+.app.is-welcome-gate .app-first.is-flash,
+.app-customer.is-welcome-gate .app-first.is-flash {
+  position: relative !important;
+  inset: auto !important;
+  z-index: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
 }
 
 
@@ -9282,7 +9489,7 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
   padding: 0;
   border-radius: 9px;
   background: transparent;
-  color: var(--app-muted);
+  color: var(--icon-color, var(--app-muted));
 }
 
 .app-bottom-nav a span svg {
@@ -9292,8 +9499,11 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
 
 .app-bottom-nav a em {
   font-style: normal;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
+  text-align: center;
+  line-height: 1.15;
+  max-width: 100%;
 }
 
 .app-bottom-nav a.active {
@@ -9302,8 +9512,8 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
 }
 
 .app-bottom-nav a.active span {
-  background: var(--app-blue-soft);
-  color: var(--app-blue);
+  background: var(--icon-bg, var(--app-blue-soft));
+  color: var(--icon-color, var(--app-blue));
 }
 
 /* Floating help stack: MediBot icon above Need Help */
@@ -9449,31 +9659,20 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
   color: var(--app-blue-deep);
 }
 
-/* —— Desktop website: top bar + left nav column —— */
+/* —— Desktop website: top bar + full-width main (no leftover login rail) —— */
 .app:not(.app-ops):not(.app-customer) {
-  grid-template-columns: 210px minmax(0, 1fr) !important;
+  grid-template-columns: minmax(0, 1fr) !important;
   grid-template-rows: 40px 72px minmax(0, 1fr) 40px !important;
   grid-template-areas:
-    "ticker ticker"
-    "sidebar topbar"
-    "sidebar main"
-    "footer footer" !important;
+    "ticker"
+    "topbar"
+    "main"
+    "footer" !important;
 }
 
-.app:not(.app-ops):not(.app-customer) .sidebar {
-  display: flex !important;
-  flex-direction: column !important;
-  grid-area: sidebar !important;
-  position: relative !important;
-  top: auto !important;
-  left: auto !important;
-  width: 100% !important;
-  max-width: none !important;
-  height: auto !important;
-  min-height: 0 !important;
-  padding-top: 12px !important;
-  z-index: 10 !important;
-  align-self: stretch !important;
+.app:not(.app-ops):not(.app-customer) .sidebar,
+.app:not(.app-ops):not(.app-customer).is-wide-main .sidebar {
+  display: none !important;
 }
 
 /* Mobile / tablet: full-width chrome + Menu dropdown (no left sidebar) */
@@ -9740,6 +9939,62 @@ html[data-layout="tablet"] .site-topbar-header-cart {
   padding-right: 16px !important;
 }
 
+/* Beat website .app:not(.app-ops) page padding (12px) and leftover header offset.
+   main lives inside .app-frame, so `.app-customer > main > *` never matches. */
+.app.app-customer .app-frame .app-home,
+.app.app-customer .app-frame .medicines-page,
+.app.app-customer .app-frame .service-page,
+.app.app-customer .app-frame .lab-page,
+.app.app-customer .app-frame .profile-page,
+.app.app-customer .app-frame .reports-page,
+.app.app-customer .app-frame .info-page,
+.app.app-customer .app-frame .my-orders-page,
+.app.app-customer .app-frame .auth-page,
+.app.app-customer .app-frame .placeholder-page {
+  padding-top: 4px !important;
+}
+
+.app.app-customer .orders-page-header {
+  margin-bottom: 12px;
+  padding: 4px 0 8px;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+}
+
+.app.app-customer .my-orders-page,
+.app.app-customer .app-frame .my-orders-page {
+  padding-top: 0 !important;
+}
+
+.app.app-customer .my-orders-page .orders-page-header {
+  margin: 0 0 8px !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  align-items: flex-start !important;
+}
+
+.app.app-customer .my-orders-page .orders-page-header > div:first-child,
+.app:not(.app-ops) .my-orders-page .orders-page-header > div:first-child {
+  flex: 0 0 auto !important;
+  flex-basis: auto !important;
+  min-height: 0 !important;
+  width: auto !important;
+}
+
+.app.app-customer .my-orders-page .orders-eyebrow {
+  margin-bottom: 2px !important;
+}
+
+/* Website heroes use flex-basis 280px as a wrap width. In a column (My Orders
+   below 800px) that basis becomes height and leaves a tall empty band. */
+.app.app-customer .orders-page-header > div:first-child,
+.app.app-customer .service-hero > div,
+.app.app-customer .lab-head > div,
+.app.app-customer .profile-hero > div,
+.app.app-customer .medicines-title-row > div:first-child {
+  flex: 0 1 auto !important;
+}
+
 /* Nested page roots (Suspense/ErrorBoundary wrappers are not DOM nodes) */
 .app-customer .app-home,
 .app-customer .medicines-page,
@@ -9949,13 +10204,53 @@ html:has(.app:not(.app-customer):not(.app-ops)) {
     var(--shell-footer-h) !important;
 }
 
+/* Website welcome: fill the main grid cell so the absolute slideshow has height.
+   Later "main > *" rules force height:auto / flex:none and collapse .app-first-stage. */
+.app:not(.app-ops):not(.app-customer).is-welcome-gate > main {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.app:not(.app-ops):not(.app-customer).is-welcome-gate > main > .app-first.is-home.is-login-screen,
+.app:not(.app-ops):not(.app-customer).is-welcome-gate > main > .app-first.is-flash,
+.app:not(.app-ops):not(.app-customer).is-welcome-gate > main > .app-first.is-guest {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.app:not(.app-ops):not(.app-customer).is-welcome-gate .app-first.is-home.is-login-screen .app-first-stage {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+  position: relative !important;
+}
+
 .app:not(.app-ops):not(.app-customer) .top-ticker,
 .app:not(.app-ops):not(.app-customer) > footer.app-footer {
+  padding-left: var(--shell-pad-x) !important;
+  padding-right: var(--shell-pad-x) !important;
+}
+
+.app:not(.app-ops):not(.app-customer) .top-ticker {
   height: var(--shell-ticker-h) !important;
   min-height: var(--shell-ticker-h) !important;
   max-height: var(--shell-ticker-h) !important;
-  padding-left: var(--shell-pad-x) !important;
-  padding-right: var(--shell-pad-x) !important;
+}
+
+.app:not(.app-ops):not(.app-customer) > footer.app-footer {
+  height: var(--shell-footer-h) !important;
+  min-height: var(--shell-footer-h) !important;
+  max-height: var(--shell-footer-h) !important;
 }
 
 .app:not(.app-ops):not(.app-customer) .site-topbar-inner {
@@ -10367,6 +10662,19 @@ html[data-layout="phone"] .slideshow-review-text {
   place-items: center;
   padding: 16px;
   box-sizing: border-box;
+}
+
+/* Medical Record viewer: cover header, ticker, and bottom nav */
+html.has-record-viewer,
+html.has-record-viewer body {
+  overflow: hidden !important;
+}
+
+body > .record-viewer,
+.record-viewer {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 200 !important;
 }
 
 .shop-cart-backdrop {

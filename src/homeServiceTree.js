@@ -1,4 +1,5 @@
-import { DIAGNOSTIC_LABS, IMAGING_CENTRES } from "./diagnosticPartners";
+import { DIAGNOSTIC_LABS, IMAGING_CENTRES } from "./diagnosticPartners.js";
+import { labBookingHash } from "./hashRoute.js";
 
 const LAB_LOGOS = {
   metropolis: "/logos/labs/metropolis.png",
@@ -20,49 +21,49 @@ export const HOME_SERVICE_TREE = [
       {
         id: "med-search",
         label: "Search",
-        href: "#medicine-search",
+        href: "#medicine-search?service=Search",
         cartoon: "search",
         category: "Search",
       },
       {
         id: "med-diabetes",
         label: "Diabetes Care",
-        href: "#medicine-search",
+        href: "#medicine-search?service=Diabetes",
         cartoon: "diabetes",
         category: "Diabetes",
       },
       {
         id: "med-heart",
         label: "Heart Care",
-        href: "#medicine-search",
+        href: "#medicine-search?service=Cardiology",
         cartoon: "heart",
         category: "Cardiology",
       },
       {
         id: "med-pain",
         label: "Pain Relief",
-        href: "#medicine-search",
+        href: "#medicine-search?service=Pain%20Relief",
         cartoon: "pain",
         category: "Pain Relief",
       },
       {
         id: "med-supplements",
         label: "Supplements",
-        href: "#medicine-search",
+        href: "#medicine-search?service=Supplements",
         cartoon: "vitamins",
         category: "Supplements",
       },
       {
         id: "med-infection",
         label: "Infection Care",
-        href: "#medicine-search",
+        href: "#medicine-search?service=Infection",
         cartoon: "infection",
         category: "Infection",
       },
       {
         id: "med-women",
         label: "Women's Health",
-        href: "#medicine-search",
+        href: "#medicine-search?service=Women%27s%20Health",
         cartoon: "women",
         category: "Women's Health",
       },
@@ -74,7 +75,7 @@ export const HOME_SERVICE_TREE = [
     items: DIAGNOSTIC_LABS.map((lab, index) => ({
       id: `lab-${lab.id}`,
       label: lab.name,
-      href: `#labs?service=lab&lab=${encodeURIComponent(lab.id)}`,
+      href: labBookingHash(lab.id, "lab"),
       cartoon: LAB_CARTOONS[index % LAB_CARTOONS.length],
       logo: LAB_LOGOS[lab.id] || "",
     })),
@@ -85,7 +86,7 @@ export const HOME_SERVICE_TREE = [
     items: IMAGING_CENTRES.map((centre, index) => ({
       id: `rad-${centre.id}`,
       label: centre.name,
-      href: `#labs?service=radiology&lab=${encodeURIComponent(centre.id)}`,
+      href: labBookingHash(centre.id, "radiology"),
       cartoon: RAD_CARTOONS[index % RAD_CARTOONS.length],
     })),
   },
@@ -124,7 +125,6 @@ export const HOME_SERVICE_TREE = [
         href: "#homecare?service=nurse&plan=vaccination-child",
         cartoon: "vax-child",
       },
-      { id: "vax-record", label: "Vaccination Record", href: "#vaccination", cartoon: "record" },
     ],
   },
   {
@@ -146,53 +146,55 @@ export const HOME_SERVICE_TREE = [
     key: "psychologist",
     label: "Psychologist Consultation",
     items: [
-      { id: "psy-video", label: "Video Consult", href: "#psychologist", cartoon: "video" },
-      { id: "psy-follow", label: "Follow-up Session", href: "#psychologist", cartoon: "followup" },
-      { id: "psy-child", label: "Child / Teen", href: "#psychologist", cartoon: "child" },
-      { id: "psy-couple", label: "Couple / Family", href: "#psychologist", cartoon: "couple" },
-      { id: "psy-home", label: "Home Visit", href: "#psychologist", cartoon: "home-visit" },
+      { id: "psy-video", label: "Video Consult", href: "#psychologist?service=video", cartoon: "video" },
+      { id: "psy-follow", label: "Follow-up Session", href: "#psychologist?service=followup", cartoon: "followup" },
+      { id: "psy-child", label: "Child / Teen", href: "#psychologist?service=child", cartoon: "child" },
+      { id: "psy-couple", label: "Couple / Family", href: "#psychologist?service=couple", cartoon: "couple" },
+      { id: "psy-home", label: "Home Visit", href: "#psychologist?service=home-visit", cartoon: "home-visit" },
     ],
   },
   {
     key: "stepdown",
     label: "Step-Down Care",
     items: [
-      { id: "sd-icu", label: "Post-ICU Recovery", href: "#stepdown", cartoon: "icu" },
-      { id: "sd-surgery", label: "Post-Surgery Care", href: "#stepdown", cartoon: "surgery" },
-      { id: "sd-rehab", label: "Rehab & Physio", href: "#stepdown", cartoon: "physio" },
-      { id: "sd-wound", label: "Wound / Drain Care", href: "#stepdown", cartoon: "wound" },
-      { id: "sd-assisted", label: "Assisted Recovery", href: "#stepdown", cartoon: "caregiver" },
+      { id: "sd-icu", label: "Post-ICU Recovery", href: "#stepdown?service=post-icu", cartoon: "icu" },
+      { id: "sd-surgery", label: "Post-Surgery Care", href: "#stepdown?service=post-surgery", cartoon: "surgery" },
+      { id: "sd-rehab", label: "Rehab & Physio", href: "#stepdown?service=rehab", cartoon: "physio" },
+      { id: "sd-wound", label: "Wound / Drain Care", href: "#stepdown?service=wound", cartoon: "wound" },
+      { id: "sd-assisted", label: "Assisted Recovery", href: "#stepdown?service=assisted", cartoon: "caregiver" },
     ],
   },
   {
     key: "ambulance",
     label: "Ambulance",
     items: [
-      { id: "amb-em", label: "Emergency Ambulance", href: "#ambulance", cartoon: "ambulance" },
+      { id: "amb-em", label: "Emergency Ambulance", href: "#ambulance?service=emergency", cartoon: "ambulance" },
       {
         id: "amb-non",
         label: "Non-Emergency Transfer",
-        href: "#ambulance",
+        href: "#ambulance?service=non-emergency",
         cartoon: "transfer",
       },
     ],
   },
   {
     key: "reports",
-    label: "Reports",
+    label: "Medical Record",
     items: [
-      { id: "rep-lab", label: "Lab Reports", href: "#reports", cartoon: "report" },
-      { id: "rep-img", label: "Imaging Reports", href: "#reports", cartoon: "xray" },
+      { id: "rep-lab", label: "Lab reports", href: "#reports?service=lab", cartoon: "report", icon: "lab" },
+      { id: "rep-img", label: "Imaging reports", href: "#reports?service=radiology", cartoon: "xray", icon: "radiology" },
+      { id: "rep-rx", label: "Prescription", href: "#reports?service=prescription", cartoon: "record", icon: "record" },
+      { id: "rep-vax", label: "Vaccination", href: "#reports?service=vaccination", cartoon: "record", icon: "vaccination" },
     ],
   },
   {
     key: "education",
     label: "Health Education",
     items: [
-      { id: "edu-guides", label: "Guides", href: "#education", cartoon: "guide" },
+      { id: "edu-guides", label: "Guides", href: "#education?service=guides", cartoon: "guide" },
       { id: "edu-webinars", label: "Webinars", href: "#education?service=webinars", cartoon: "webinar" },
-      { id: "edu-quiz", label: "Health Quiz", href: "#education", cartoon: "quiz" },
-      { id: "edu-refer", label: "Refer & Earn", href: "#education", cartoon: "refer" },
+      { id: "edu-quiz", label: "Health Quiz", href: "#education?service=quiz", cartoon: "quiz" },
+      { id: "edu-refer", label: "Refer & Earn", href: "#education?service=refer", cartoon: "refer" },
     ],
   },
 ];

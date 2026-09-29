@@ -24,11 +24,13 @@ import {
   listCustomerNotifications,
   markCustomerNotificationsRead,
   notifyCustomerRefund,
+  notifyCustomerReportReady,
   notifyCustomerSlotOffer,
   notifyCustomerStepdownAccount,
   notifyCustomerStepdownCharge,
   notifyCustomerStepdownDecision,
   notifyCustomerStepdownDischarge,
+  shouldNotifyCustomerReportReady,
 } from "./customerNotify.mjs";
 import { openTrafficFromOrders } from "../src/partnerQueue.js";
 import {
@@ -667,7 +669,20 @@ export async function handleApi(req, res) {
       }
       if (body.reportFileData != null) {
         const data = String(body.reportFileData || "");
-        patch.reportFileData = data.slice(0, 2_000_000);
+        patch.reportFileData = data.slice(0, 2_800_000);
+      }
+      if (body.reportFileName || body.reportFileData) {
+        patch.trackStatus = String(body.trackStatus || patch.trackStatus || "done");
+        patch.trackCompleted = true;
+        patch.status = String(body.status || patch.status || "Completed");
+        if (!existing.partnerId) {
+          patch.partnerId = partner.id;
+          patch.partnerName = partner.name;
+          patch.partnerMobile = partner.mobile;
+          patch.partnerRole = partner.role;
+          patch.partner = partner.name;
+          patch.partnerAssignedAt = existing.partnerAssignedAt || Date.now();
+        }
       }
       if (body.reportTestName != null) {
         patch.reportTestName = String(body.reportTestName || "").trim().slice(0, 120);
@@ -968,6 +983,13 @@ export async function handleApi(req, res) {
           /* keep the discharge even if the notice store fails */
         }
       }
+      if (updated && shouldNotifyCustomerReportReady(existing, updated)) {
+        try {
+          await notifyCustomerReportReady(updated);
+        } catch {
+          /* keep the report even if the notice store fails */
+        }
+      }
       send(res, 200, { order: updated });
       return true;
     }
@@ -1022,9 +1044,33 @@ export async function handleApi(req, res) {
       return true;
     }
 
+    const customerPatch = pathname.match(/^\/api\/orders\/([^/]+)$/);
+    if (customerPatch && req.method === "PATCH") {
+      const wanted = decodeURIComponent(customerPatch[1]);
+      if (wanted === "lookup" || wanted === "mine") {
+        send(res, 404, { error: "Order not found." });
+        return true;
+      }
+      const body = await readJson(req);
+      const updated = await patchOrder(wanted, body);
+      if (!updated) {
+        send(res, 404, { error: "Order not found." });
+        return true;
+      }
+      send(res, 200, { order: updated });
+      return true;
+    }
+
+    if (pathname === "/api/orders" && req.method === "GET") {
+      if (!requireStaff(req, res)) return true;
+      send(res, 200, { orders: await listOrders() });
+      return true;
+    }
+
     if (pathname === "/api/orders" && req.method === "POST") {
       const body = await readJson(req);
       const incoming = enrichOrder(body);
+      incoming.orderType = incoming.orderType || incoming.kind;
       const wanted = orderId(incoming);
       const existing = wanted
         ? (await listOrders()).find((row) => orderId(row) === wanted)

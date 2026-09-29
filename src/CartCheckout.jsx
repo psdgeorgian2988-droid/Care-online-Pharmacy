@@ -3,16 +3,25 @@ import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { BillButton } from "./OrderBill.jsx";
 import { resolvePinLocation } from "./pinLocation";
-import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import { persistAndSendOrder, trackHref, withTracking } from "./orderTracking";
 import { buildPartnerRxShare } from "./rxPartnerShare";
 import {
   checkMedicineAvailability,
   medicineAwaitingPharmacyFields,
+  diagnosticPartnerRouteFields,
   diagnosticRequestFields,
 } from "./orderConfirm";
+import { goHomeAfterPaidCheckout } from "./checkoutComplete";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
-import { paymentMethodSummary } from "./paymentMethods";
+import { allocatePointsAcrossServices } from "./walletQuote";
+import {
+  checkoutPaymentPersistFields,
+  checkoutUsesPayCta,
+  persistUnsettledCheckoutFields,
+  paymentMethodSummary,
+  showCustomerPayNow,
+} from "./paymentMethods";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { findDiagnosticParty } from "./diagnosticPartners";
@@ -114,8 +123,10 @@ export default function CartCheckout() {
   const [errors, setErrors] = useState({});
   const [rxDraft, setRxDraft] = useState(() => readPrescriptionDraft());
   const [prescriptionFile, setPrescriptionFile] = useState(null);
-  const [payMethod, setPayMethod] = useState("cod");
+  const [payMethod, setPayMethod] = useState("");
   const [payQuote, setPayQuote] = useState(null);
+  const [payReady, setPayReady] = useState(false);
+  const [confirmPayOpen, setConfirmPayOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [confirmed, setConfirmed] = useState(null);
   const busyWait = useBusyOverlay(placing, "medicine");
@@ -153,6 +164,7 @@ export default function CartCheckout() {
   );
   const billTotal = testTotal + medicineTotal;
   const billSale = testTotal + medicineMrp;
+  const payableTotal = Number(payQuote?.payableRupees ?? billTotal);
   const needsRx = medicines.some(requiresPrescription);
   const rxName = prescriptionFile?.name || rxDraft?.fileName || prescriptionDraftName();
   const hasRx = Boolean(prescriptionFile) || hasPrescriptionDraft() || Boolean(rxDraft?.fileName);
@@ -228,22 +240,23 @@ export default function CartCheckout() {
       const gps = await resolvePinLocation(booked.pinCode);
       const addr = applyResolvedPin(booked, gps);
       const pay = paymentFromQuote(payQuote, billTotal);
-      const payment = await settleCheckoutPayment({
-        method: payMethod,
-        ...pay,
-        kind,
-        pin: gps.pinCode,
-        name: booked.patientName,
-        mobile: booked.mobile,
-        reference: `cart-${Date.now()}`,
-        description: "MediHome cart checkout",
-      });
-      const paid = isPaidMethod(payMethod, payment);
+      const persistPay = persistUnsettledCheckoutFields("pending");
+      const payment = persistPay;
+      const paid = persistPay.paid;
+      const pointsDiscount = kind === "medicine" ? 0 : Number(pay.pointsDiscountRupees) || 0;
+      const pointsUsed = kind === "medicine" ? 0 : Number(pay.pointsUsed) || 0;
+      const servicePoints = allocatePointsAcrossServices(
+        testGroups.map((group) =>
+          group.items.reduce((sum, item) => sum + Number(item.price || 0), 0)
+        ),
+        pointsDiscount,
+        pointsUsed
+      );
 
       let medicineOrder = null;
       if (medicines.length) {
         const availability = checkMedicineAvailability(medicines, medicines);
-        medicineOrder = persistOrder(
+        medicineOrder = await persistAndSendOrder(
           withTracking(
             {
               id: Date.now(),
@@ -266,7 +279,12 @@ export default function CartCheckout() {
               total: medicineTotal,
               saleRupees: medicineMrp,
               couponCode: pay.couponCode,
-              discountRupees: pay.discountRupees,
+              discountRupees: Math.max(
+                0,
+                (Number(pay.discountRupees) || 0) - pointsDiscount
+              ),
+              pointsDiscountRupees: 0,
+              pointsUsed: 0,
               date: new Date().toLocaleString(),
               fullName: booked.patientName,
               ...whoFor,
@@ -276,9 +294,10 @@ export default function CartCheckout() {
               ...buildPartnerRxShare("medicine"),
               ...addr,
               ...medicineAwaitingPharmacyFields(availability),
-              ...payment,
+              ...persistPay,
+              pointsDiscountRupees: 0,
+              pointsUsed: 0,
               cartCheckout: true,
-              paymentStatus: paid ? payment.paymentStatus || "paid" : payment.paymentStatus,
             },
             "medicine"
           )
@@ -286,7 +305,7 @@ export default function CartCheckout() {
       }
 
       const testOrders = [];
-      for (const group of testGroups) {
+      for (const [index, group] of testGroups.entries()) {
         const partner =
           findDiagnosticParty(group.kind, { id: group.partnerId, name: group.partnerName }) ||
           {};
@@ -294,25 +313,27 @@ export default function CartCheckout() {
           (sum, item) => sum + Number(item.price || 0),
           0
         );
+        const groupPoints = servicePoints[index] || {
+          pointsDiscountRupees: 0,
+          pointsUsed: 0,
+        };
         const bookingDetails = {
           bookingId:
             (group.kind === "lab" ? "MH-LAB-" : "MH-RAD-") +
             Math.floor(100000 + Math.random() * 900000),
           serviceType: group.kind,
           kind: group.kind,
-          preferredPartner: partner.name || group.partnerName,
-          preferredPartnerId: partner.id || group.partnerId,
-          partner: partner.name || group.partnerName,
-          partnerId: partner.id || group.partnerId,
-          partnerGstin: partner.gstin,
-          partnerDlNo: partner.dlNo,
-          partnerArea: partner.area,
-          partnerAddress: partner.address,
+          ...diagnosticPartnerRouteFields(partner, {
+            preferredPartnerId: partner.id || group.partnerId,
+            preferredPartner: partner.name || group.partnerName,
+          }),
           tests: group.items,
-          total: groupTotal,
+          total: Math.max(0, groupTotal - groupPoints.pointsDiscountRupees),
           saleRupees: groupTotal,
           couponCode: pay.couponCode,
-          discountRupees: 0,
+          discountRupees: groupPoints.pointsDiscountRupees,
+          pointsDiscountRupees: groupPoints.pointsDiscountRupees,
+          pointsUsed: groupPoints.pointsUsed,
           ...booked,
           ...addr,
           visitType: group.kind === "radiology" ? "centre" : form.visitType,
@@ -324,12 +345,12 @@ export default function CartCheckout() {
             date: form.date,
             timeSlot: form.timeSlot,
           }),
-          ...payment,
-          paid,
-          paymentStatus: paid ? "paid" : payment.paymentStatus || "cod",
+          ...persistPay,
+          pointsDiscountRupees: groupPoints.pointsDiscountRupees,
+          pointsUsed: groupPoints.pointsUsed,
           cartCheckout: true,
         };
-        const tracked = persistOrder(withTracking(bookingDetails, group.kind));
+        const tracked = await persistAndSendOrder(withTracking(bookingDetails, group.kind));
         testOrders.push(tracked);
         localStorage.setItem("mediHomeLabBooking", JSON.stringify(tracked));
         localStorage.setItem("mediHomeLastBooking", JSON.stringify(tracked));
@@ -337,6 +358,11 @@ export default function CartCheckout() {
 
       writeMedicineCart([]);
       writeTestCart([]);
+      setForm({ visitType: "home", date: "", timeSlot: "" });
+      setWhoFor(initialBookingFor(profile));
+      setErrors({});
+      setPayMethod("");
+      setConfirmPayOpen(false);
       setConfirmed({
         medicineOrder,
         testOrders,
@@ -348,6 +374,59 @@ export default function CartCheckout() {
       });
     } catch (error) {
       alert(error.message || "Payment or order could not be completed.");
+    } finally {
+      setPlacing(false);
+    }
+  };
+
+  const settleConfirmedPayment = async () => {
+    if (!confirmed) return;
+    if (!payMethod) {
+      alert("Choose how you want to pay.");
+      return;
+    }
+    setPlacing(true);
+    try {
+      const pay = paymentFromQuote(payQuote, confirmed.total);
+      const payment = await settleCheckoutPayment({
+        method: payMethod,
+        ...pay,
+        kind: paymentKindFor(
+          confirmed.medicineOrder ? confirmed.medicineOrder.items || [confirmed.medicineOrder] : [],
+          confirmed.testOrders.flatMap((row) => row.tests || [])
+        ),
+        pin: confirmed.addr?.pinCode || confirmed.booked?.pinCode,
+        name: confirmed.booked.patientName,
+        mobile: confirmed.booked.mobile,
+        reference: `cart-${confirmed.medicineOrder?.id || confirmed.testOrders[0]?.bookingId || Date.now()}`,
+        description: "MediHome cart checkout",
+      });
+      const persistPay = checkoutPaymentPersistFields(payMethod, payment);
+      let medicineOrder = confirmed.medicineOrder;
+      if (medicineOrder) {
+        medicineOrder = await persistAndSendOrder(medicineOrder, persistPay);
+      }
+      const testOrders = [];
+      for (const row of confirmed.testOrders) {
+        const tracked = await persistAndSendOrder(row, persistPay);
+        testOrders.push(tracked);
+        localStorage.setItem("mediHomeLabBooking", JSON.stringify(tracked));
+        localStorage.setItem("mediHomeLastBooking", JSON.stringify(tracked));
+      }
+      if (persistPay.paid) {
+        goHomeAfterPaidCheckout();
+        return;
+      }
+      setConfirmed({
+        ...confirmed,
+        medicineOrder,
+        testOrders,
+        payment: persistPay,
+        paid: persistPay.paid,
+      });
+      setConfirmPayOpen(false);
+    } catch (error) {
+      alert(error.message || "Payment could not be completed.");
     } finally {
       setPlacing(false);
     }
@@ -388,7 +467,7 @@ export default function CartCheckout() {
             </p>
           ) : null}
           <p>
-            <strong>Total paid:</strong> {money(confirmed.total)}
+            <strong>{confirmed.paid ? "Total paid:" : "Total:"}</strong> {money(confirmed.total)}
           </p>
           <p>
             <strong>Payment:</strong>{" "}
@@ -414,7 +493,52 @@ export default function CartCheckout() {
           {confirmed.medicineOrder && !awaitingPharmacy ? (
             <AssignedAgent record={confirmed.medicineOrder} />
           ) : null}
+          {confirmPayOpen ? (
+            <PaymentBlock
+              kind={paymentKindFor(
+                confirmed.medicineOrder ? confirmed.medicineOrder.items || [] : [],
+                confirmed.testOrders.flatMap((row) => row.tests || [])
+              )}
+              amount={confirmed.total}
+              pin={confirmed.addr?.pinCode || confirmed.booked?.pinCode}
+              method={payMethod}
+              onMethodChange={setPayMethod}
+              onQuoteChange={setPayQuote}
+              onReadyChange={setPayReady}
+              cashLabel="Cash On Delivery / Visit"
+              guestDetails={confirmed.booked}
+            />
+          ) : null}
+
           <div className="cart-actions">
+            {showCustomerPayNow({ ...confirmed.payment, paid: confirmed.paid }) && !confirmPayOpen ? (
+              <button
+                type="button"
+                className="cart-btn cart-btn-primary"
+                onClick={() => {
+                  setPayMethod("");
+                  setConfirmPayOpen(true);
+                }}
+              >
+                Pay now
+              </button>
+            ) : null}
+            {confirmPayOpen && payMethod ? (
+              <button
+                type="button"
+                className="cart-btn cart-btn-primary"
+                onClick={settleConfirmedPayment}
+                disabled={placing || (checkoutUsesPayCta(payMethod) && !payReady)}
+              >
+                {placing
+                  ? checkoutUsesPayCta(payMethod)
+                    ? "Processing payment…"
+                    : "Saving…"
+                  : checkoutUsesPayCta(payMethod)
+                    ? `Pay ${money(confirmed.total)}`
+                    : "Place order"}
+              </button>
+            ) : null}
             {confirmed.medicineOrder ? (
               <BillButton
                 order={confirmed.medicineOrder}
@@ -424,7 +548,7 @@ export default function CartCheckout() {
             {firstId ? (
               <button
                 type="button"
-                className="cart-btn cart-btn-primary"
+                className="cart-btn cart-btn-secondary"
                 onClick={() => {
                   window.location.hash = trackHref(firstId);
                 }}
@@ -531,7 +655,7 @@ export default function CartCheckout() {
                 </p>
               </div>
             ) : null}
-            <p className="cart-bill-total">Payable {money(billTotal)}</p>
+            <p className="cart-bill-total">Payable {money(payableTotal)}</p>
           </section>
 
           <BookingFlow
@@ -655,25 +779,6 @@ export default function CartCheckout() {
               </div>
             ) : null}
 
-            <PaymentBlock
-              kind={kind}
-              amount={billTotal}
-              saleAmount={billSale}
-              pin={delivery.pinCode}
-              method={payMethod}
-              onMethodChange={setPayMethod}
-              onQuoteChange={setPayQuote}
-              cashLabel="Cash On Delivery / Visit"
-              guestDetails={{
-                name: fullName,
-                mobile: mobileNumber,
-                gender: whoFor.gender,
-                dob: whoFor.dob,
-                age: whoFor.age,
-                ...delivery,
-              }}
-            />
-
             <div className="cart-actions">
               <button
                 type="button"
@@ -681,7 +786,7 @@ export default function CartCheckout() {
                 onClick={placeOrder}
                 disabled={placing}
               >
-                {placing ? "Processing payment…" : `Pay ${money(billTotal)}`}
+                {placing ? "Placing order…" : "Place order"}
               </button>
               <button
                 type="button"
@@ -698,10 +803,3 @@ export default function CartCheckout() {
   );
 }
 
-function isPaidMethod(method, payment) {
-  if (payment?.paid) return true;
-  const status = String(payment?.paymentStatus || "").toLowerCase();
-  if (status === "paid") return true;
-  const key = String(method || payment?.paymentMethod || "").toLowerCase();
-  return key !== "cod" && key !== "pending" && Boolean(key);
-}

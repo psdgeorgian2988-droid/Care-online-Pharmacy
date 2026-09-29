@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
-import { persistOrder, refreshOrderFromServer, trackHref, withTracking } from "./orderTracking";
+import { persistAndSendOrder, persistOrder, refreshOrderFromServer, trackHref, withTracking } from "./orderTracking";
+import { goHomeAfterPaidCheckout } from "./checkoutComplete";
 import {
   appointmentSlotLabel,
   diagnosticRequestFields,
@@ -15,7 +16,13 @@ import BusyWait, { useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill.jsx";
 import BookingFlow from "./BookingFlow";
-import { paymentMethodSummary } from "./paymentMethods";
+import {
+  checkoutPaymentPersistFields,
+  checkoutUsesPayCta,
+  paymentMethodSummary,
+  persistUnsettledCheckoutFields,
+  showCustomerPayNow,
+} from "./paymentMethods";
 import { maskMobile } from "./personFields";
 import { applyResolvedPin, pickAddress, readUserProfile } from "./addressFields";
 import {
@@ -139,6 +146,7 @@ export default function DoctorAppointment() {
   const [paying, setPaying] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
+  const [payReady, setPayReady] = useState(true);
   const busyWait = useBusyOverlay(submitting || paying, "doctor");
   const plan =
     ALL_SPECIALTIES.find((item) => item.value === form.carePlan) || {
@@ -154,13 +162,18 @@ export default function DoctorAppointment() {
   );
 
   useEffect(() => {
-    const nextPlan = specialtyFromHash();
-    const nextMode = modeFromHash();
-    setForm((prev) =>
-      prev.carePlan === nextPlan && prev.sessionMode === nextMode
-        ? prev
-        : { ...prev, carePlan: nextPlan, sessionMode: nextMode }
-    );
+    const applyHash = () => {
+      const nextPlan = specialtyFromHash();
+      const nextMode = modeFromHash();
+      setForm((prev) =>
+        prev.carePlan === nextPlan && prev.sessionMode === nextMode
+          ? prev
+          : { ...prev, carePlan: nextPlan, sessionMode: nextMode }
+      );
+    };
+    applyHash();
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
   }, []);
 
   useEffect(() => {
@@ -251,9 +264,7 @@ export default function DoctorAppointment() {
           date: form.date,
           timeSlot: form.timeSlot,
         }),
-        paymentMethod: "pending",
-        paymentStatus: "awaiting_payment",
-        paid: false,
+        ...persistUnsettledCheckoutFields(payMethod),
       };
       const trackedBooking = persistOrder(
         withTracking(
@@ -295,14 +306,13 @@ export default function DoctorAppointment() {
         reference: booking.bookingId,
         description: "MediHome Doctor Appointment",
       });
-      const next = persistOrder(booking, {
+      await persistAndSendOrder(booking, {
         ...payment,
         paymentStatus: "paid",
         paid: true,
         status: booking.partnerConfirmed ? "Confirmed" : booking.status,
       });
-      setBooking(next);
-      setFlowStep("paid");
+      goHomeAfterPaidCheckout();
     } catch (error) {
       alert(error.message || "Payment could not be completed.");
     } finally {
@@ -373,7 +383,9 @@ export default function DoctorAppointment() {
               <div className="confirm-row">
                 <span>Payment</span>
                 <strong>
-                  {flowStep === "paid" || booking.paid
+                  {flowStep === "paid" ||
+                  booking.paid ||
+                  !showCustomerPayNow(booking)
                     ? paymentMethodSummary(booking.paymentMethod, "Pay at visit")
                     : "Pending — pay anytime from My Orders"}
                 </strong>
@@ -411,7 +423,7 @@ export default function DoctorAppointment() {
                 }}
               />
             ) : null}
-            {flowStep === "pay" ? (
+            {flowStep === "pay" && showCustomerPayNow(booking) ? (
               <form className="service-pay-form" onSubmit={handlePayment}>
                 <PaymentBlock
                   kind="doctor"
@@ -420,11 +432,12 @@ export default function DoctorAppointment() {
                   method={payMethod}
                   onMethodChange={setPayMethod}
                   onQuoteChange={setPayQuote}
+                  onReadyChange={setPayReady}
                   guestDetails={booking}
                   cashLabel={booking.sessionMode === "video" ? "Pay after consult" : "Pay at visit"}
                 />
                 <div className="confirm-actions">
-                  <button type="submit" className="service-submit" disabled={paying}>
+                  <button type="submit" className="service-submit" disabled={paying || !payReady}>
                     {paying ? "Processing…" : "Pay now"}
                   </button>
                   <button type="button" className="ghost-button" onClick={() => setFlowStep("placed")}>
@@ -443,8 +456,8 @@ export default function DoctorAppointment() {
                 >
                   Track live
                 </button>
-                {flowStep === "placed" ? (
-                  <button type="button" className="ghost-button" onClick={() => setFlowStep("pay")}>
+                {flowStep === "placed" && showCustomerPayNow(booking) ? (
+                  <button type="button" className="service-submit" onClick={() => setFlowStep("pay")}>
                     Pay now
                   </button>
                 ) : null}
@@ -588,6 +601,7 @@ export default function DoctorAppointment() {
                 method={payMethod}
                 onMethodChange={setPayMethod}
                 onQuoteChange={setPayQuote}
+                onReadyChange={setPayReady}
                 guestDetails={form}
                 cashLabel={form.sessionMode === "video" ? "Pay after consult" : "Pay at visit"}
               />

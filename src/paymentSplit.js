@@ -4,8 +4,13 @@ import {
   couponDiscountOnSale,
   findCoupon,
 } from "./offers.js";
-import { isOnlinePayment } from "./paymentMethods.js";
-import { coinsToRupees, quoteWalletSpend } from "./walletQuote.js";
+import { isOnlinePayment, isPaidCheckoutMethod } from "./paymentMethods.js";
+import {
+  canRedeemPoints,
+  coinsToRupees,
+  pointsRedeemAllowedForKind,
+  quoteWalletSpend,
+} from "./walletQuote.js";
 
 /** Platform share of each rupee of MRP / sale. Remainder is for the working partner. */
 export const SPLIT_PLATFORM_PERCENT = {
@@ -432,6 +437,7 @@ export function quoteCheckout({
   useWallet,
   walletCoins,
   walletMoneyRupees,
+  walletEligibleRupees,
   serviceChargeRupees,
   platformFeeRupees,
 } = {}) {
@@ -450,11 +456,21 @@ export function quoteCheckout({
     ? 0
     : Math.max(0, roundRupees(sale - list));
   const afterOffers = Math.max(0, roundRupees(sale - offerDiscount - couponDiscount));
-  const wallet = useWallet
+  const pointsAllowed = pointsRedeemAllowedForKind(kind);
+  const eligibleCap = pointsAllowed
+    ? Math.max(0, Number(walletEligibleRupees ?? afterOffers) || 0)
+    : 0;
+  const remainingForPoints = Math.min(afterOffers, eligibleCap);
+  const applyWallet =
+    Boolean(useWallet) &&
+    canRedeemPoints(walletCoins) &&
+    remainingForPoints > 0 &&
+    isPaidCheckoutMethod(paymentMethod);
+  const wallet = applyWallet
     ? quoteWalletSpend({
         moneyRupees: walletMoneyRupees,
         coins: walletCoins,
-        remainingRupees: afterOffers,
+        remainingRupees: remainingForPoints,
       })
     : { moneyRupees: 0, coins: 0, rupees: 0 };
   const pointsDiscount = coinsToRupees(wallet.coins);

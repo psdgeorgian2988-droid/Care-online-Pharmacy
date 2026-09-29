@@ -1,8 +1,10 @@
 import { kindLabel } from "./orderTracking";
 import RxShareCard, { rxShareCardStyles } from "./RxShareCard";
 import {
+  customerPaymentModeLabel,
   formatOrderMobile,
   formatOrderRupee,
+  isCustomerCompletedDetail,
   itemsHeading,
   orderAddress,
   orderKind,
@@ -16,15 +18,24 @@ import {
   orderSlotLines,
   orderTotal,
   orderTrackLabel,
+  showOrderPartnerBlock,
 } from "./orderFullFields";
 import { openBatchReport } from "./batchStore";
+import { openReportFile, reportFileForOrder } from "./labPipeline";
 
-function MetaRow({ label, value, href }) {
-  if (!value) return null;
+function MetaRow({ label, value, href, onOpen }) {
+  if (!value && !onOpen) return null;
   return (
     <p>
       <strong>{label}:</strong>{" "}
-      {href ? (
+      {onOpen ? (
+        <>
+          <button type="button" className="order-open-report" onClick={onOpen}>
+            Open report
+          </button>
+          {value && value !== "Report attached" ? ` · ${value}` : ""}
+        </>
+      ) : href ? (
         <a href={href} download={value}>
           {value}
         </a>
@@ -61,20 +72,38 @@ export default function OrderFullView({
     kind
   );
   const total = formatOrderRupee(orderTotal(order));
-  const showPartner = audience !== "customer" || partner.assigned;
+  const completedCustomer = isCustomerCompletedDetail(order, audience);
+  const showPartner = showOrderPartnerBlock(order, audience);
   const partnerMobile = formatOrderMobile(partner.mobile, audience, kind);
+  const paymentMode = completedCustomer
+    ? customerPaymentModeLabel(order)
+    : pay.methodText;
 
   return (
-    <section className={`order-full is-${audience}`} aria-label="Full order">
+    <section
+      className={`order-full is-${audience}${completedCustomer ? " is-completed" : ""}`}
+      aria-label={completedCustomer ? "Completed order" : "Full order"}
+    >
       <style>{`${rxShareCardStyles}${styles}`}</style>
       <div className="order-full-grid">
         <div>
           <p className="order-full-kicker">{kindLabel(kind)}</p>
           <h3>Order #{id || "—"}</h3>
           <MetaRow label="Date" value={order.date || order.bookedAt || order.requestedAt} />
-          <MetaRow label="Status" value={order.status || orderTrackLabel(order)} />
-          <MetaRow label="Tracking" value={orderTrackLabel(order)} />
+          <MetaRow
+            label="Status"
+            value={completedCustomer ? "Completed" : order.status || orderTrackLabel(order)}
+          />
+          {audience === "customer" ? null : (
+            <MetaRow label="Tracking" value={orderTrackLabel(order)} />
+          )}
         </div>
+        {completedCustomer ? (
+          <div>
+            <p className="order-full-kicker">Payment</p>
+            <MetaRow label="Paid by" value={paymentMode || "Not provided"} />
+          </div>
+        ) : (
         <div>
           <p className="order-full-kicker">Customer</p>
           <MetaRow label="Name" value={name || "Not provided"} />
@@ -91,6 +120,8 @@ export default function OrderFullView({
             />
           ) : null}
         </div>
+        )}
+        {completedCustomer ? null : (
         <div>
           <p className="order-full-kicker">Slot</p>
           <MetaRow label="Requested" value={slots.requested || "—"} />
@@ -100,12 +131,14 @@ export default function OrderFullView({
             value={slots.label}
           />
         </div>
+        )}
+        {audience === "customer" ? null : (
         <div>
           <p className="order-full-kicker">Payment</p>
           <MetaRow label="Method" value={pay.methodText || "Not provided"} />
           <MetaRow label="Pay status" value={pay.statusText} />
           <MetaRow label="Amount" value={total} />
-          {order.receiptFileData && audience !== "customer" ? (
+          {order.receiptFileData ? (
             <div className="order-full-receipt">
               <p className="order-full-kicker">Receipt</p>
               <img src={order.receiptFileData} alt="Payment receipt" />
@@ -134,6 +167,7 @@ export default function OrderFullView({
             </>
           ) : null}
         </div>
+        )}
       </div>
 
       <h4>{itemsHeading(kind)}</h4>
@@ -145,7 +179,7 @@ export default function OrderFullView({
                 {item.name}
                 {item.quantity ? ` × ${item.quantity}` : ""}
                 {item.batchNo ? ` · Batch ${item.batchNo}` : ""}
-                {item.partnerCorrected ? " · partner corrected" : ""}
+                {item.partnerCorrected && !completedCustomer ? " · partner corrected" : ""}
                 {item.batchNo ? (
                   <button
                     type="button"
@@ -173,7 +207,17 @@ export default function OrderFullView({
       {extras.length ? (
         <div className="order-full-extras">
           {extras.map((row) => (
-            <MetaRow key={row.label} label={row.label} value={row.value} href={row.href} />
+            <MetaRow
+              key={row.label}
+              label={row.label}
+              value={row.value}
+              href={row.href}
+              onOpen={
+                row.openFile
+                  ? () => openReportFile(reportFileForOrder(order) || order)
+                  : undefined
+              }
+            />
           ))}
         </div>
       ) : null}
@@ -202,7 +246,7 @@ export default function OrderFullView({
         </p>
       ) : null}
 
-      {showRx ? (
+      {showRx && !completedCustomer ? (
         <RxShareCard
           record={order}
           title={
@@ -231,16 +275,23 @@ const styles = `
 .order-full-items{list-style:none;margin:0;padding:0}
 .order-full-items li{display:flex;justify-content:space-between;gap:10px;margin:0;padding:5px 0;border-bottom:1px solid #edf1f3;font-size:13px;color:#34546b}
 .order-full-items strong{color:#143246;white-space:nowrap}
-.order-batch-report{display:block;margin-top:4px;border:0;background:none;padding:0;color:#1a6b7a;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.order-batch-report,.order-open-report{display:inline;margin:0;border:0;background:none;padding:0;color:#1a6b7a;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.order-batch-report{display:block;margin-top:4px}
 .order-full-empty{margin:0;font-size:12px;color:#5d7180}
 .order-full-extras{margin-top:8px}
 .order-full-partner{margin-top:10px;padding:10px;border:1px solid #d2e8ef;border-radius:10px;background:#f7fbfd}
 .order-full-total{margin:10px 0 0;font-size:14px}
 .order-full-receipt{margin-top:8px}
 .order-full-receipt img{display:block;width:100%;max-height:160px;object-fit:contain;border:1px solid #d7e2e9;border-radius:8px;background:#fff}
+.order-full.is-customer .order-full-grid{grid-template-columns:1fr;gap:18px}
+.order-full.is-customer{padding:8px 0 16px}
+.order-full.is-customer h4{margin:20px 0 10px}
+.order-full.is-customer .order-full-extras{margin-top:16px}
+.order-full.is-customer .order-full-partner{margin-top:18px;padding:14px}
 .order-full.is-partner .order-full-grid,.order-full.is-staff .order-full-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media (max-width:900px){
   .order-full-grid,.order-full.is-partner .order-full-grid,.order-full.is-staff .order-full-grid{grid-template-columns:1fr 1fr}
+  .order-full.is-customer .order-full-grid{grid-template-columns:1fr}
 }
 @media (max-width:640px){
   .order-full-grid,.order-full.is-partner .order-full-grid,.order-full.is-staff .order-full-grid{grid-template-columns:1fr}

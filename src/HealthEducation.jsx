@@ -4,7 +4,7 @@ import { awardOnce, POINT_VALUES, useWallet } from "./pointsStore";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import { maskMobile } from "./personFields";
 import { useScheduledWebinars } from "./featureFlags";
-import { goToHash, parseAppHash } from "./hashRoute";
+import { educationRouteFromHash, goBackHash, goToHash } from "./hashRoute";
 import WebinarSession from "./WebinarSession";
 import {
   WEBINAR_SIGNUP_KEY,
@@ -60,7 +60,7 @@ const GUIDES = [
       "Do not start painkillers, herbal pills, or extra vitamins without asking your doctor.",
       "Keep KFT and related tests on schedule so dose changes are based on labs, not guesswork.",
       "Watch swelling, sudden weight gain, breathlessness, or very little urine — contact care promptly.",
-      "Use MediHome Reports to keep PDFs on this device for clinic visits.",
+      "Use MediHome Medical Record to keep PDFs on this device for clinic visits.",
     ],
   },
   {
@@ -369,7 +369,7 @@ function WebinarsPanel({ sessionId }) {
       <WebinarSession
         webinar={session}
         registered={registeredIds.has(session.id)}
-        onBack={() => goToHash("education?service=webinars")}
+        onBack={() => goBackHash()}
       />
     );
   }
@@ -685,12 +685,11 @@ function QuizRunner({ quiz, onExit }) {
   );
 }
 
-function QuizPanel() {
-  const [quizId, setQuizId] = useState("");
+function QuizPanel({ quizId = "" } = {}) {
   const quiz = QUIZZES.find((item) => item.id === quizId);
 
   if (quiz) {
-    return <QuizRunner quiz={quiz} onExit={() => setQuizId("")} />;
+    return <QuizRunner quiz={quiz} onExit={() => goToHash("#education?service=quiz")} />;
   }
 
   return (
@@ -706,7 +705,7 @@ function QuizPanel() {
           <button
             type="button"
             className="edu-btn edu-btn-primary"
-            onClick={() => setQuizId(item.id)}
+            onClick={() => goToHash(`#education?service=quiz&id=${item.id}`)}
           >
             Start quiz · +{POINT_VALUES.quiz} pts
           </button>
@@ -717,18 +716,12 @@ function QuizPanel() {
 }
 
 function HealthEducation() {
-  const [tab, setTab] = useState(() => {
-    const { service } = parseAppHash(window.location.hash);
-    return service === "webinars" ? "webinars" : "guides";
-  });
-  const [sessionId, setSessionId] = useState(() => parseAppHash(window.location.hash).id);
+  const [{ tab, sessionId, quizId }, setRoute] = useState(() =>
+    educationRouteFromHash(window.location.hash)
+  );
 
   useEffect(() => {
-    const syncTab = () => {
-      const { service, id } = parseAppHash(window.location.hash);
-      if (service === "webinars") setTab("webinars");
-      setSessionId(service === "webinars" ? id : "");
-    };
+    const syncTab = () => setRoute(educationRouteFromHash(window.location.hash));
     window.addEventListener("hashchange", syncTab);
     return () => window.removeEventListener("hashchange", syncTab);
   }, []);
@@ -755,7 +748,7 @@ function HealthEducation() {
             role="tab"
             aria-selected={tab === item.id}
             className={tab === item.id ? "edu-tab is-active" : "edu-tab"}
-            onClick={() => setTab(item.id)}
+            onClick={() => goToHash(`#education?service=${item.id}`)}
           >
             {item.label}
           </button>
@@ -764,7 +757,7 @@ function HealthEducation() {
 
       {tab === "guides" ? <GuidesPanel /> : null}
       {tab === "webinars" ? <WebinarsPanel sessionId={sessionId} /> : null}
-      {tab === "quiz" ? <QuizPanel /> : null}
+      {tab === "quiz" ? <QuizPanel quizId={quizId} /> : null}
       {tab === "refer" ? <ReferFamily /> : null}
 
       <p className="info-footnote">

@@ -1,125 +1,77 @@
-function HomeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M4.5 11.2 12 5.2l7.5 6V19a1.5 1.5 0 0 1-1.5 1.5h-4.2v-5.2h-3.6v5.2H6A1.5 1.5 0 0 1 4.5 19z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
+import { hasAccountSession, useLoginSession } from "./authSession";
+import {
+  DOCTOR_HOME_HASH,
+  HOMECARE_HOME_HASH,
+  isDoctorNavActive,
+  isHomecareNavActive,
+  isLabsNavActive,
+  isMedicalRecordNavActive,
+  isMedicineNavActive,
+  isVaccinationNavActive,
+  LABS_HOME_HASH,
+  MEDICAL_RECORD_HOME_HASH,
+  MEDICINE_HOME_HASH,
+  VACCINATION_HOME_HASH,
+} from "./hashRoute";
+import { ServiceGlyph, serviceIconTone } from "./serviceIcons";
 
-function MedicinesIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect
-        x="7"
-        y="3.5"
-        width="10"
-        height="17"
-        rx="5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path d="M12 8v8M8.5 12h7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function LabsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M9 3.5h6M10 3.5v5.2L6.2 16.8A3.2 3.2 0 0 0 9 21.5h6a3.2 3.2 0 0 0 2.8-4.7L14 8.7V3.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function OrdersIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M7 7.5h10l1.4 11H5.6z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9 7.5V6.2A3 3 0 0 1 12 3.2 3 3 0 0 1 15 6.2v1.3"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function AccountIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="8" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M5.5 19.2c1.4-3 3.7-4.5 6.5-4.5s5.1 1.5 6.5 4.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-const AUTH_ROUTES = new Set(["#login", "#register", "#forgot"]);
-const AUTH_HIDDEN_TABS = new Set(["#labs", "#reports"]);
-
-const TABS = [
-  { href: "#home", label: "Home", Icon: HomeIcon },
-  { href: "#medicine-search", label: "Medicines", Icon: MedicinesIcon },
-  { href: "#labs", label: "Labs", Icon: LabsIcon },
-  { href: "#myorders", label: "Orders", Icon: OrdersIcon },
-  { href: "#profile", label: "Account", Icon: AccountIcon },
+export const TABS = [
+  { href: "#profile", label: "Account", icon: "account" },
+  { href: MEDICINE_HOME_HASH, label: "Medicines", icon: "medicine" },
+  { href: LABS_HOME_HASH, label: "Labs", icon: "lab" },
+  { href: "#myorders", label: "Orders", icon: "orders" },
+  { href: DOCTOR_HOME_HASH, label: "Doctor", icon: "doctor" },
+  { href: MEDICAL_RECORD_HOME_HASH, label: "Medical Record", icon: "record" },
+  { href: HOMECARE_HOME_HASH, label: "Home Care", icon: "homecare" },
+  { href: VACCINATION_HOME_HASH, label: "Vaccination", icon: "vaccination" },
 ];
 
-function tabActive(href, route) {
-  if (href === "#home") return route === "#home";
-  if (href === "#medicine-search") return route === "#medicine-search";
-  if (href === "#labs") return route === "#labs";
-  if (href === "#myorders") return route === "#myorders" || route === "#track";
+const AUTH_ROUTES = new Set(["#login", "#register", "#forgot"]);
+const AUTH_HIDDEN_TABS = new Set([LABS_HOME_HASH, MEDICAL_RECORD_HOME_HASH]);
+
+export function footerTabs(route, loggedIn) {
+  return TABS.filter((tab) => {
+    if (AUTH_ROUTES.has(route) && AUTH_HIDDEN_TABS.has(tab.href)) return false;
+    if (tab.href === MEDICAL_RECORD_HOME_HASH && !loggedIn) return false;
+    return true;
+  });
+}
+
+export function tabActive(href, route, service = "") {
   if (href === "#profile") {
     return route === "#profile" || route === "#login" || route === "#register";
   }
+  if (href === MEDICINE_HOME_HASH) return isMedicineNavActive(route, service);
+  if (href === LABS_HOME_HASH) return isLabsNavActive(route, service);
+  if (href === "#myorders") return route === "#myorders" || route === "#track";
+  if (href === DOCTOR_HOME_HASH) return isDoctorNavActive(route, service);
+  if (href === MEDICAL_RECORD_HOME_HASH) return isMedicalRecordNavActive(route, service);
+  if (href === HOMECARE_HOME_HASH) return isHomecareNavActive(route, service);
+  if (href === VACCINATION_HOME_HASH) return isVaccinationNavActive(route, service);
   return route === href;
 }
 
-export default function AppBottomNav({ route }) {
-  const tabs = AUTH_ROUTES.has(route)
-    ? TABS.filter((tab) => !AUTH_HIDDEN_TABS.has(tab.href))
-    : TABS;
+export default function AppBottomNav({ route, service = "" }) {
+  const user = useLoginSession();
+  const loggedIn = hasAccountSession(user);
+  const tabs = footerTabs(route, loggedIn);
 
   return (
-    <nav className="app-bottom-nav" aria-label="App">
+    <nav className="app-bottom-nav" aria-label="App" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
       {tabs.map((tab) => {
-        const active = tabActive(tab.href, route);
+        const active = tabActive(tab.href, route, service);
+        const tone = serviceIconTone(tab.icon);
         return (
           <a
             key={tab.href}
             href={tab.href}
             className={active ? "active" : undefined}
             aria-current={active ? "page" : undefined}
+            data-icon={tab.icon}
+            style={{ "--icon-color": tone.color, "--icon-bg": tone.bg }}
           >
             <span>
-              <tab.Icon />
+              <ServiceGlyph type={tab.icon} color={tone.color} />
             </span>
             <em>{tab.label}</em>
           </a>

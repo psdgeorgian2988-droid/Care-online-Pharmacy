@@ -8,6 +8,7 @@ import {
   pharmacyStatusLabel,
   pharmacyTrackKey,
 } from "./pharmacyTrack.js";
+import { isRefundOrder } from "./refundTrack.js";
 
 export const SERVICE_ORDER_KINDS = [
   "medicine",
@@ -21,8 +22,58 @@ export const SERVICE_ORDER_KINDS = [
   "ambulance",
 ];
 
+export const ADMIN_SERVICE_TABS = [
+  { value: "all", label: "All" },
+  { value: "medicine", label: "Medicines" },
+  { value: "lab", label: "Lab" },
+  { value: "radiology", label: "Radiology" },
+  { value: "homecare", label: "Home Care" },
+  { value: "vaccination", label: "Vaccination" },
+  { value: "doctor", label: "Doctor" },
+  { value: "psychologist", label: "Psychologist" },
+  { value: "stepdown", label: "Step-Down" },
+  { value: "ambulance", label: "Ambulance" },
+  { value: "refund", label: "Refund" },
+];
+
+export const CUSTOMER_SERVICE_TABS = [
+  { value: "medicine", label: "Medicine order" },
+  { value: "lab", label: "Lab order" },
+  { value: "radiology", label: "Imaging centre order" },
+  { value: "homecare", label: "Home Care" },
+  { value: "vaccination", label: "Vaccination" },
+  { value: "doctor", label: "Doctor" },
+  { value: "psychologist", label: "Psychologist" },
+  { value: "stepdown", label: "Step-Down" },
+  { value: "ambulance", label: "Ambulance" },
+];
+
+export function isCustomerServiceTab(value) {
+  return CUSTOMER_SERVICE_TABS.some((tab) => tab.value === String(value || "").toLowerCase());
+}
+
+export function ordersForCustomerTab(orders, value) {
+  const list = Array.isArray(orders) ? orders : [];
+  const key = String(value || "").toLowerCase();
+  if (!isCustomerServiceTab(key)) return [];
+  return list.filter((order) => serviceKind(order) === key);
+}
+
+export function countOrdersForCustomerTab(orders, value) {
+  return ordersForCustomerTab(orders, value).length;
+}
+
+export function countOrdersForAdminTab(orders, value) {
+  const list = Array.isArray(orders) ? orders : [];
+  const key = String(value || "all").toLowerCase();
+  if (key === "all") return list.length;
+  if (key === "refund") return list.filter(isRefundOrder).length;
+  return list.filter((order) => serviceKind(order) === key).length;
+}
+
 export const TRACK_STATUS_STEPS = [
   { key: "requested", label: "Awaiting Partner Confirmation" },
+  { key: "slot_offered", label: "Awaiting Customer Slot Confirmation" },
   { key: "confirmed", label: "Confirmed" },
   { key: "assigned", label: "Partner Assigned" },
   { key: "sample_collected", label: "Sample Collected" },
@@ -97,6 +148,34 @@ export function isOpenOrder(order) {
   if (isStepdownCancelled(order)) return false;
   const key = trackKey(order);
   return key !== "done" && key !== "declined";
+}
+
+/** Live track only while the order is still open — not done, declined, or cancelled. */
+export function isOngoingTrackOrder(order) {
+  return isOpenOrder(order);
+}
+
+export function isCompletedOrder(order) {
+  return trackKey(order) === "done";
+}
+
+const EN_ROUTE_KEYS = new Set(["picked_up", "on_the_way", "arriving"]);
+
+/** Map tracking only after the partner is assigned and heading to the customer. */
+export function isPartnerEnRoute(order) {
+  if (!isOpenOrder(order)) return false;
+  const key = trackKey(order);
+  if (EN_ROUTE_KEYS.has(key)) return true;
+  if (order?.checkPickupAt || order?.qrPickedAt) return true;
+  return key === "assigned" && Number(order?.trackStartedAt) > 0;
+}
+
+export function ongoingTrackOrders(orders) {
+  return (Array.isArray(orders) ? orders : []).filter(isOngoingTrackOrder);
+}
+
+export function completedOrders(orders) {
+  return (Array.isArray(orders) ? orders : []).filter(isCompletedOrder);
 }
 
 export function isUnassigned(order) {

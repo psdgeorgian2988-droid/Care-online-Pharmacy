@@ -22,7 +22,6 @@ import {
   ScanPage,
   StepDownCare,
   TrackPage,
-  Vaccination,
 } from "./routePages";
 import Seo from "./Seo";
 import SocialLinks from "./SocialLinks";
@@ -41,7 +40,13 @@ import {
 } from "./authSession";
 import { useFeatures } from "./featureFlags";
 import { featureEnabled, pausedServiceTitle, routeEnabled } from "./salesReport";
-import { goToHash, parseAppHash } from "./hashRoute";
+import {
+  goToHash,
+  homeCatalogSectionKeys,
+  isHomeSectionKey,
+  MEDICAL_RECORD_HOME_HASH,
+  parseAppHash,
+} from "./hashRoute";
 import { peekRxLabCheckout } from "./medicineCartStore";
 import PortalsChooser, { CustomerPortal, PartnerPortal, StaffPortal } from "./RolePortals";
 import { isPartnerDeskRoute, partnerDeskKindFromRoute } from "./partnerApp";
@@ -56,6 +61,7 @@ import WebinarNotice from "./WebinarNotice";
 import SlotOfferBanner from "./SlotOfferBanner";
 import RefundBanner from "./RefundBanner";
 import StepdownDecisionBanner from "./StepdownDecisionBanner";
+import ReportReadyBanner from "./ReportReadyBanner";
 import CustomerWelcome, { needsCustomerWelcome } from "./CustomerWelcome";
 import {
   isAppShell,
@@ -69,39 +75,9 @@ import MediHomeLogoLink from "./MediHomeLogoLink";
 import AppHeader from "./AppHeader";
 
 const AUTH_ROUTES = new Set(["#login", "#register", "#forgot"]);
-const AUTH_HIDDEN_NAV = new Set(["#labs", "#reports"]);
-
-const NAV_LINKS = [
-  { href: "#home", label: "Home" },
-  { href: "#medicine-search", label: "Medicines" },
-  { href: "#labs", label: "Lab Tests" },
-  { href: "#homecare", label: "Home Care" },
-  { href: "#vaccination", label: "Vaccination Record" },
-  { href: "#doctor", label: "Doctor Appointment" },
-  { href: "#psychologist", label: "Psychologist" },
-  { href: "#stepdown", label: "Step-Down" },
-  { href: "#ambulance", label: "Ambulance" },
-  { href: "#reports", label: "Reports" },
-  { href: "#education", label: "Education" },
-];
-
-const ACCOUNT_LINKS = [
-  { href: "#myorders", label: "My Orders" },
-  { href: "#reports", label: "Reports" },
-  { href: "#scan?step=deliver", label: "Scan Delivery" },
-  { href: "#profile", label: "Profile" },
-];
-
-const BOTTOM_LINKS = [
-  { href: "#about", label: "About" },
-  { href: "#contact", label: "Contact" },
-  { href: "#customer", label: "Customer" },
-  { href: "#partner", label: "Partner" },
-  { href: "#staff", label: "Staff" },
-];
 
 const OPS_LINKS = [
-  { href: "#admin", label: "Staff Orders" },
+  { href: "#admin", label: "Admin Panel" },
   { href: "#partner-desk", label: "Partner Desk" },
 ];
 
@@ -180,7 +156,7 @@ function HomeReviewsTeaser() {
   );
 }
 
-function WebsiteHomePage() {
+function WebsiteHomePage({ sectionKey = "" } = {}) {
   const features = useFeatures();
   const user = useLoginSession();
   const isPhone = useIsPhoneLayout();
@@ -203,6 +179,22 @@ function WebsiteHomePage() {
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  if (sectionKey) {
+    const keys = homeCatalogSectionKeys(sectionKey);
+    return (
+      <div className="home-content home-landing">
+        <div className="home-shell">
+          <div className="home-services-catalog" id="home-services">
+            <HomeServiceCatalog
+              className={isPhone ? "is-mobile-web" : "is-desktop-web"}
+              sectionKeys={keys}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="home-content home-landing">
       <div className="home-shell">
@@ -216,6 +208,16 @@ function WebsiteHomePage() {
                 <a className="home-account-btn" href="#register">
                   Edit Account
                 </a>
+                <button
+                  type="button"
+                  className="home-account-btn"
+                  onClick={() => {
+                    logoutSession();
+                    goToHash("#home");
+                  }}
+                >
+                  Logout
+                </button>
               </>
             ) : (
               <>
@@ -237,7 +239,10 @@ function WebsiteHomePage() {
         <HomePrescriptionUpload />
 
         <div className="home-services-catalog" id="home-services">
-          <HomeServiceCatalog className={isPhone ? "is-mobile-web" : "is-desktop-web"} />
+          <HomeServiceCatalog
+            className={isPhone ? "is-mobile-web" : "is-desktop-web"}
+            sectionKeys={sectionKey ? [sectionKey] : undefined}
+          />
         </div>
 
         <HomeReviewsTeaser />
@@ -246,11 +251,11 @@ function WebsiteHomePage() {
   );
 }
 
-function HomePage() {
+function HomePage({ sectionKey = "" } = {}) {
   if (isAppShell()) {
-    return <CustomerHome />;
+    return <CustomerHome sectionKey={sectionKey} />;
   }
-  return <WebsiteHomePage />;
+  return <WebsiteHomePage sectionKey={sectionKey} />;
 }
 
 function PausedService({ route, features }) {
@@ -298,17 +303,12 @@ function App() {
     id: trackId,
     step: scanStep,
     lab: selectedLab,
+    service: hashService,
   } = parseAppHash(hash);
   const isAuthRoute = AUTH_ROUTES.has(route);
-  const loggedIn = hasAccountSession(user);
-  const menuNavLinks = NAV_LINKS.filter((link) => {
-    if (isAuthRoute && AUTH_HIDDEN_NAV.has(link.href)) return false;
-    if (link.href === "#reports" && !loggedIn) return false;
-    return true;
-  });
   const isOps = route === "#admin" || isPartnerDeskRoute(route);
   const opsDeskKind = partnerDeskKindFromRoute(route);
-  const barePartnerDesk = opsDeskKind === "stepdown";
+  const barePartnerDesk = opsDeskKind === "stepdown" || opsDeskKind === "lab";
   const features = useFeatures();
   const appRole = readAppRole();
   const customerShell =
@@ -346,19 +346,20 @@ function App() {
   useEffect(() => {
     if (isOps || appRole === "staff" || appRole === "partner") return undefined;
     if (AUTH_ROUTES.has(route)) return undefined;
-    if (needsCustomerWelcome(user) && route !== "#home") {
+    if (needsCustomerWelcome(user) && route !== "#home" && route !== "#checkout") {
       goToHash("#home");
     }
     return undefined;
   }, [appRole, isOps, route, sessionTick, user]);
 
   useEffect(() => {
-    if (route !== "#reports") return undefined;
+    const recordsHome = route === "#home" && hashService === "reports";
+    if (route !== "#reports" && !recordsHome) return undefined;
     if (hasAccountSession(user)) return undefined;
-    rememberReturnHash("#reports");
+    rememberReturnHash(MEDICAL_RECORD_HOME_HASH);
     goToHash("#login");
     return undefined;
-  }, [route, user]);
+  }, [hashService, route, user]);
 
   const renderPage = () => {
     if (shouldShowAppPicker(route)) {
@@ -379,7 +380,7 @@ function App() {
       case "#homecare":
         return <HomeCare />;
       case "#vaccination":
-        return <Vaccination />;
+        return <HomePage sectionKey="vaccination" />;
       case "#doctor":
         return <DoctorAppointment />;
       case "#psychologist":
@@ -389,7 +390,7 @@ function App() {
       case "#ambulance":
         return <Ambulance />;
       case "#reports":
-        return <Reports />;
+        return <Reports initialTab={hashService} />;
       case "#prescription":
         return <PrescriptionReview />;
       case "#checkout":
@@ -444,7 +445,13 @@ function App() {
         return <AuthPage mode="forgot" />;
       case "#home":
       default:
-        return <HomePage />;
+        return (
+          <HomePage
+            sectionKey={
+              route === "#home" && isHomeSectionKey(hashService) ? hashService : ""
+            }
+          />
+        );
     }
   };
 
@@ -505,6 +512,7 @@ function App() {
     appRole !== "staff" &&
     appRole !== "partner" &&
     !isAuthRoute &&
+    route !== "#checkout" &&
     needsCustomerWelcome(user) &&
     sessionTick >= 0;
 
@@ -514,12 +522,13 @@ function App() {
         <Seo route={route} />
         <SiteTicker />
         <div className="app-frame">
-          {welcomeGate ? null : <AppHeader route={route} />}
+          <AppHeader />
           <main id="app-scroll">
             {welcomeGate || isAuthRoute ? null : <WebinarNotice />}
             {welcomeGate || isAuthRoute ? null : <SlotOfferBanner />}
             {welcomeGate || isAuthRoute ? null : <RefundBanner />}
             {welcomeGate || isAuthRoute ? null : <StepdownDecisionBanner />}
+            {welcomeGate || isAuthRoute ? null : <ReportReadyBanner />}
             <ErrorBoundary key={welcomeGate ? "welcome" : route}>
               <Suspense fallback={<PageFallback />}>
                 {welcomeGate ? (
@@ -532,7 +541,7 @@ function App() {
               </Suspense>
             </ErrorBoundary>
           </main>
-          {welcomeGate || isAuthRoute ? null : <AppBottomNav route={route} />}
+          {welcomeGate || isAuthRoute ? null : <AppBottomNav route={route} service={hashService} />}
         </div>
         <SiteFooter />
         <SiteFloatingHelp needHelpOpen={needHelpOpen} setNeedHelpOpen={setNeedHelpOpen} />
@@ -541,7 +550,7 @@ function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app is-wide-main${welcomeGate ? " is-welcome-gate" : ""}`}>
       <Seo route={route} />
       <SiteTicker />
 
@@ -557,89 +566,13 @@ function App() {
         </div>
       </header>
 
-      <aside className="sidebar site-topbar-desktop-only" aria-label="Site navigation">
-        <div className="sidebar-links">
-          {welcomeGate || isAuthRoute ? null : (
-            <nav className="sidebar-nav" aria-label="Main">
-              {menuNavLinks.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className={
-                    hashLinkActive(link.href, route, scanStep) ? "active" : undefined
-                  }
-                >
-                  {link.label}
-                </a>
-              ))}
-            </nav>
-          )}
-          <nav className="sidebar-account" aria-label="Account">
-            {user ? (
-              <>
-                {ACCOUNT_LINKS.map((link) => (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    className={
-                      hashLinkActive(link.href, route, scanStep) ? "active" : undefined
-                    }
-                  >
-                    {link.label}
-                  </a>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => {
-                    logoutSession();
-                    goToHash("#home");
-                  }}
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <a
-                href="#login"
-                className={
-                  route === "#login" || route === "#register" || route === "#forgot"
-                    ? "active"
-                    : undefined
-                }
-              >
-                Login / Register
-              </a>
-            )}
-          </nav>
-          {welcomeGate || isAuthRoute ? null : (
-            <nav className="sidebar-bottom" aria-label="More">
-              {BOTTOM_LINKS.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className={route === link.href ? "active" : undefined}
-                >
-                  {link.label}
-                </a>
-              ))}
-              <button
-                type="button"
-                className={needHelpOpen ? "active" : undefined}
-                onClick={() => setNeedHelpOpen(true)}
-              >
-                Need help
-              </button>
-            </nav>
-          )}
-        </div>
-      </aside>
-
       <main>
         {welcomeGate || isAuthRoute ? null : <BackToHome show={showBackHome} />}
         {welcomeGate || isAuthRoute ? null : <WebinarNotice />}
         {welcomeGate || isAuthRoute ? null : <SlotOfferBanner />}
         {welcomeGate || isAuthRoute ? null : <RefundBanner />}
         {welcomeGate || isAuthRoute ? null : <StepdownDecisionBanner />}
+        {welcomeGate || isAuthRoute ? null : <ReportReadyBanner />}
         <ErrorBoundary key={welcomeGate ? "welcome" : route}>
           <Suspense fallback={<PageFallback />}>
             {welcomeGate ? (

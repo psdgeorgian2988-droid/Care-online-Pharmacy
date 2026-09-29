@@ -13,7 +13,7 @@ export default function PharmacyStatusStrip({ order }) {
     <div className="pharmacy-status" aria-label="Pharmacy order status">
       <style>{styles}</style>
       <p className="pharmacy-status-now">
-        Current status: <strong>{pharmacyStatusLabel(current)}</strong>
+        Current Status: <strong>{pharmacyStatusLabel(current)}</strong>
       </p>
       <ol className="pharmacy-status-steps">
         {PHARMACY_TRACK_STEPS.map((step, index) => {

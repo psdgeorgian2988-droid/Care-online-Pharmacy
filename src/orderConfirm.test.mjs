@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   checkMedicineAvailability,
   customerAcceptSlotFields,
+  diagnosticPartnerRouteFields,
   diagnosticRequestFields,
   initialOrderStatus,
   isAwaitingCustomerSlotConfirm,
@@ -87,6 +88,27 @@ test("lab is assigned only after the partner approves", () => {
   assert.equal(approved.partnerConfirmStatus, "accepted");
   assert.equal(initialOrderStatus("lab").trackStatus, "requested");
   assert.equal(initialOrderStatus("lab").partnerConfirmed, false);
+});
+
+test("diagnostic jobs keep catalog brand as preference and leave exclusive partnerId empty", () => {
+  const fields = diagnosticPartnerRouteFields({
+    id: "lal-pathlabs",
+    name: "Dr Lal PathLabs",
+    gstin: "GST1",
+  });
+  assert.equal(fields.partnerId, "");
+  assert.equal(fields.preferredPartnerId, "lal-pathlabs");
+  assert.equal(fields.preferredPartner, "Dr Lal PathLabs");
+  assert.equal(fields.partnerGstin, "GST1");
+  const metro = diagnosticPartnerRouteFields({ id: "metropolis", name: "Metropolis" });
+  assert.equal(metro.partnerId, "");
+  assert.equal(metro.preferredPartnerId, "metropolis");
+  const centre = diagnosticPartnerRouteFields({
+    id: "rad-delhi",
+    name: "MediHome Delhi",
+  });
+  assert.equal(centre.partnerId, "");
+  assert.equal(centre.preferredPartnerId, "rad-delhi");
 });
 
 test("radiology stays unconfirmed until the customer accepts an offered slot", () => {

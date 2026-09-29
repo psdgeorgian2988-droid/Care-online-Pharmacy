@@ -12,7 +12,7 @@ export const FEATURE_CATALOG = [
   { key: "psychologist", label: "Psychologist Consultation", href: "#psychologist" },
   { key: "stepdown", label: "Step-Down Care", href: "#stepdown" },
   { key: "ambulance", label: "Ambulance", href: "#ambulance" },
-  { key: "reports", label: "Reports", href: "#reports" },
+  { key: "reports", label: "Medical Record", href: "#reports" },
   { key: "education", label: "Health Education", href: "#education" },
   { key: "scanDelivery", label: "Scan Delivery", href: "#scan?step=deliver" },
 ];

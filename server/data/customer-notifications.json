@@ -1,3 +1,153 @@
 {
-  "notifications": []
+  "notifications": [
+    {
+      "id": "CN-mujomh1h-2345",
+      "mobile": "9000012345",
+      "orderId": "MH-LAB-COD-COLLECT-1",
+      "kind": "lab",
+      "type": "report_ready",
+      "title": "Report ready",
+      "body": "Complete Blood Count (CBC) · #MH-LAB-COD-COLLECT-1",
+      "href": "#reports",
+      "createdAt": 1790505296837,
+      "readAt": null
+    },
+    {
+      "id": "CN-mujokzbn-3210",
+      "mobile": "9876543210",
+      "orderId": "MH-LAB-VERIFY-1",
+      "kind": "lab",
+      "type": "report_ready",
+      "title": "Report ready",
+      "body": "Complete Blood Count (CBC) · #MH-LAB-VERIFY-1",
+      "href": "#reports",
+      "createdAt": 1790505227219,
+      "readAt": null
+    },
+    {
+      "id": "CN-mujo9da7-3210",
+      "mobile": "9876543210",
+      "orderId": "MH-LAB-586924",
+      "kind": "lab",
+      "type": "report_ready",
+      "title": "Report ready",
+      "body": "Complete Blood Count (CBC) · #MH-LAB-586924",
+      "href": "#reports",
+      "createdAt": 1790504685440,
+      "readAt": null
+    },
+    {
+      "id": "CN-mujdkumx-3210",
+      "mobile": "9876543210",
+      "orderId": "MH-LAB-697673",
+      "kind": "lab",
+      "type": "report_ready",
+      "title": "Report ready",
+      "body": "Complete Blood Count (CBC) · #MH-LAB-697673",
+      "href": "#reports",
+      "createdAt": 1790486745369,
+      "readAt": null
+    },
+    {
+      "id": "CN-muja41uo-9947",
+      "mobile": "8287119947",
+      "orderId": "MH-LAB-536992",
+      "kind": "lab",
+      "type": "report_ready",
+      "title": "Report ready",
+      "body": "Complete Blood Count (CBC) · #MH-LAB-536992",
+      "href": "#reports",
+      "createdAt": 1790480922720,
+      "readAt": null
+    },
+    {
+      "id": "CN-muhwsfz9-2901",
+      "mobile": "9654222901",
+      "orderId": "MH-LAB-678545",
+      "kind": "lab",
+      "type": "report_ready",
+      "title": "Report ready",
+      "body": "CBC · #MH-LAB-678545",
+      "href": "#reports",
+      "createdAt": 1790398079973,
+      "readAt": null
+    },
+    {
+      "id": "CN-muh2n2a5-9999",
+      "mobile": "9999999999",
+      "orderId": "MH-SD-355752",
+      "kind": "stepdown",
+      "type": "stepdown_discharged",
+      "title": "Back home · complete bill",
+      "body": "#MH-SD-355752 · ₹34,993 · Paid by Cash",
+      "createdAt": 1790347440475,
+      "readAt": null
+    },
+    {
+      "id": "CN-muh2g21u-9999",
+      "mobile": "9999999999",
+      "orderId": "MH-SD-355752",
+      "kind": "stepdown",
+      "type": "stepdown_account",
+      "title": "Patient account opened",
+      "body": "#MH-SD-355752 · MH-SD-ACC-355752 · Dwarka Step-Down desk · 9999999999",
+      "createdAt": 1790347113570,
+      "readAt": null
+    },
+    {
+      "id": "CN-muh2fp2r-9999",
+      "mobile": "9999999999",
+      "orderId": "MH-SD-355752",
+      "kind": "stepdown",
+      "type": "stepdown_confirmed",
+      "title": "Step-down booking confirmed",
+      "body": "#MH-SD-355752 · Your recovery stay is confirmed. · Dwarka Step-Down desk · 9999999999",
+      "createdAt": 1790347096755,
+      "readAt": null
+    },
+    {
+      "id": "CN-muh1mcs2-9999",
+      "mobile": "9999999999",
+      "orderId": "MH-SD-982526",
+      "kind": "stepdown",
+      "type": "stepdown_discharged",
+      "title": "Discharged · complete bill",
+      "body": "#MH-SD-982526 · ₹49,990 · Paid by Cash",
+      "createdAt": 1790345727807,
+      "readAt": null
+    },
+    {
+      "id": "CN-mufnya9r-9999",
+      "mobile": "9999999999",
+      "orderId": "MH-SD-982526",
+      "kind": "stepdown",
+      "type": "stepdown_charge_SDC-mufnya5s-3",
+      "title": "New stay charge added",
+      "body": "#MH-SD-982526 · room-rent · ₹14,997",
+      "createdAt": 1790262303743,
+      "readAt": null
+    },
+    {
+      "id": "CN-muf2hbsm-9999",
+      "mobile": "9999999999",
+      "orderId": "MH-SD-982526",
+      "kind": "stepdown",
+      "type": "stepdown_account",
+      "title": "Patient account opened",
+      "body": "#MH-SD-982526 · MH-SD-ACC-982526 · Dwarka Step-Down desk · 9999999999",
+      "createdAt": 1790226240503,
+      "readAt": null
+    },
+    {
+      "id": "CN-muesc8ch-9999",
+      "mobile": "9999999999",
+      "orderId": "MH-SD-982526",
+      "kind": "stepdown",
+      "type": "stepdown_confirmed",
+      "title": "Step-down booking confirmed",
+      "body": "#MH-SD-982526 · Your recovery stay is confirmed.",
+      "createdAt": 1790209206593,
+      "readAt": null
+    }
+  ]
 }

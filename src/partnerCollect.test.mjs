@@ -2,11 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   collectionMethodFromParts,
+  isCodCollectMethod,
+  isCodCollectOrder,
   paidOnCustomerApp,
+  partnerCollectMethodOptions,
   partnerCollectPatch,
   paymentPartsLabel,
   receiptError,
+  sharePartnerCollectionQr,
   splitCollectionError,
+  usesCodFieldCollect,
 } from "./partnerCollect.js";
 import { orderPaymentSummary } from "./orderFullFields.js";
 import { paymentUpiUri } from "./paymentMethods.js";
@@ -135,6 +140,79 @@ test("order payment summary shows split parts without staff percent", () => {
   assert.equal(partner.methodText, "Cash / COD ₹1,000 + UPI ₹840");
 });
 
+test("COD collect offers only Cash, QR, and UPI", () => {
+  const codJob = {
+    ...job,
+    paymentMethod: "cod",
+    paymentStatus: "cod",
+    paidOn: "later",
+    paid: false,
+  };
+  assert.equal(isCodCollectOrder(codJob), true);
+  assert.equal(isCodCollectOrder({ ...codJob, paymentStatus: "paid", paid: true }), false);
+  assert.equal(
+    isCodCollectOrder({
+      paymentMethod: "upi",
+      paymentStatus: "paid",
+      paid: true,
+      paidOn: "customer",
+    }),
+    false
+  );
+  assert.equal(isCodCollectMethod("card"), false);
+  assert.equal(isCodCollectMethod("bank"), false);
+  assert.deepEqual(
+    partnerCollectMethodOptions(codJob).map((row) => row.value),
+    ["cod", "qr", "upi"]
+  );
+  assert.ok(
+    partnerCollectMethodOptions({ paymentMethod: "pending", paymentStatus: "awaiting_payment" })
+      .map((row) => row.value)
+      .includes("card")
+  );
+  assert.equal(usesCodFieldCollect(codJob, "upi"), true);
+  assert.equal(usesCodFieldCollect(codJob, "card"), false);
+});
+
+test("COD collect rejects card and bank and persists paid fields", () => {
+  const codJob = {
+    ...job,
+    paymentMethod: "cod",
+    paymentStatus: "cod",
+    paidOn: "later",
+    paid: false,
+  };
+  const blocked = partnerCollectPatch(codJob, { paymentMethod: "card", receipt });
+  assert.equal(blocked.ok, false);
+  assert.match(blocked.error, /Cash, QR, or UPI/i);
+  const splitBlocked = partnerCollectPatch(codJob, {
+    splitCollection: true,
+    paymentParts: [
+      { method: "card", amountRupees: 1000 },
+      { method: "upi", amountRupees: 840 },
+    ],
+    receipt,
+  });
+  assert.equal(splitBlocked.ok, false);
+  const cash = partnerCollectPatch(codJob, { paymentMethod: "cod", receipt }, 1_800_000_000_000);
+  assert.equal(cash.ok, true);
+  assert.equal(cash.patch.paymentStatus, "paid");
+  assert.equal(cash.patch.paid, true);
+  assert.equal(cash.patch.paymentMethod, "cod");
+  assert.equal(cash.patch.paidOn, "partner");
+  assert.equal(cash.patch.collector, "partner");
+  const qr = partnerCollectPatch(codJob, { paymentMethod: "qr" });
+  assert.equal(qr.ok, true);
+  assert.equal(qr.patch.paymentStatus, "paid");
+  assert.equal(qr.patch.paymentMethod, "qr");
+  assert.equal(qr.patch.paidOn, "partner");
+  const upi = partnerCollectPatch(codJob, { paymentMethod: "upi" });
+  assert.equal(upi.ok, true);
+  assert.equal(upi.patch.paymentStatus, "paid");
+  assert.equal(upi.patch.paymentMethod, "upi");
+  assert.equal(upi.patch.paidOn, "partner");
+});
+
 test("customer-app payments are treated as already paid for the partner desk", () => {
   assert.equal(
     paidOnCustomerApp({
@@ -158,4 +236,65 @@ test("collection QR encodes the payable and order id", () => {
   assert.match(uri, /^upi:\/\/pay\?/);
   assert.match(uri, /am=350.00/);
   assert.match(uri, /TEST-LAB-001/);
+});
+
+test("share QR uses the system share sheet when available", async () => {
+  const shared = [];
+  const result = await sharePartnerCollectionQr({
+    qrSrc: "",
+    text: "Please pay",
+    uri: "upi://pay?am=499.00",
+    share: async (payload) => {
+      shared.push(payload);
+    },
+    writeText: async () => {
+      throw new Error("should not copy");
+    },
+    download: () => {
+      throw new Error("should not download");
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.match(result.note, /shared/i);
+  assert.equal(shared.length, 1);
+  assert.match(shared[0].text, /Please pay/);
+});
+
+test("share QR copies the payment link when share is unavailable", async () => {
+  let copied = "";
+  const result = await sharePartnerCollectionQr({
+    qrSrc: "data:image/png;base64,abc",
+    text: "Please pay",
+    uri: "upi://pay?am=499.00",
+    share: null,
+    canShare: null,
+    writeText: async (value) => {
+      copied = value;
+    },
+    download: () => {
+      throw new Error("should not download");
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.match(result.note, /copied/i);
+  assert.match(copied, /upi:\/\/pay/);
+});
+
+test("share QR downloads the image when share and copy are unavailable", async () => {
+  let downloaded = "";
+  const result = await sharePartnerCollectionQr({
+    qrSrc: "data:image/png;base64,abc",
+    text: "Please pay",
+    uri: "upi://pay?am=499.00",
+    share: null,
+    canShare: null,
+    writeText: null,
+    download: (src) => {
+      downloaded = src;
+      return true;
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.match(result.note, /downloaded/i);
+  assert.equal(downloaded, "data:image/png;base64,abc");
 });

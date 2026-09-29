@@ -29,10 +29,12 @@ if (!globalThis.window) {
 }
 
 const {
+  awardOnce,
   loadWallet,
   referralShareText,
   referralWhatsAppHref,
   saveReferralInvite,
+  spendPoints,
 } = await import("./pointsStore.js");
 
 test("family invite does not spend points and has no relation", () => {
@@ -46,6 +48,19 @@ test("family invite does not spend points and has no relation", () => {
   assert.equal("relation" in result.referral, false);
   assert.equal(result.referral.pointsUsed, 0);
   assert.match(result.referral.id, /^MH-FAM-\d{4}$/);
+});
+
+test("spendPoints deducts a redeem once per key", () => {
+  localStorage.clear();
+  awardOnce("seed", 510, "Seed");
+  const first = spendPoints(510, "Redeemed on lab", "redeem:lab-1");
+  assert.equal(first.ok, true);
+  assert.equal(first.spent, 510);
+  assert.equal(first.wallet.balance, 0);
+  const again = spendPoints(510, "Redeemed on lab", "redeem:lab-1");
+  assert.equal(again.already, true);
+  assert.equal(again.spent, 0);
+  assert.equal(loadWallet().balance, 0);
 });
 
 test("WhatsApp invite includes the app download link", () => {

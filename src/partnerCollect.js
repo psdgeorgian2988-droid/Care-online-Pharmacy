@@ -1,6 +1,45 @@
-import { isOnlinePayment, paymentMethodLabel } from "./paymentMethods.js";
+import {
+  isCashOnDeliveryMethod,
+  isOnlinePayment,
+  paymentMethodLabel,
+  PAYMENT_METHOD_OPTIONS,
+} from "./paymentMethods.js";
 import { resolveCollector, splitPayment } from "./paymentSplit.js";
 import { stepdownBalanceDue, stepdownBillTotal } from "./stepdownBill.js";
+
+export const COD_COLLECT_METHOD_OPTIONS = [
+  { value: "cod", label: "Cash" },
+  { value: "qr", label: "QR Code" },
+  { value: "upi", label: "UPI" },
+];
+
+const COD_COLLECT_METHOD_KEYS = new Set(["cod", "cash", "qr", "upi"]);
+
+export function isCodCollectMethod(method) {
+  return COD_COLLECT_METHOD_KEYS.has(String(method || "").toLowerCase());
+}
+
+export function isCodCollectOrder(order = {}) {
+  if (isPaidOrder(order)) return false;
+  const paidOn = String(order?.paidOn || "").toLowerCase();
+  const status = String(order?.paymentStatus || "").toLowerCase();
+  if (paidOn === "later" || status === "cod") return true;
+  return isCashOnDeliveryMethod(order?.paymentMethod, order);
+}
+
+export function partnerCollectMethodOptions(order = {}) {
+  if (isCodCollectOrder(order)) {
+    return COD_COLLECT_METHOD_OPTIONS.map((row) => ({ ...row }));
+  }
+  return PAYMENT_METHOD_OPTIONS.map((option) => ({
+    ...option,
+    label: option.value === "cod" ? "Cash / COD" : option.label,
+  }));
+}
+
+export function usesCodFieldCollect(order = {}, method = "") {
+  return isCodCollectOrder(order) && isCodCollectMethod(method);
+}
 
 export function lineItemsPayable(order = {}) {
   const rows = [
@@ -125,13 +164,26 @@ export function partnerCollectPatch(existing = {}, body = {}, now = Date.now()) 
   const payable = orderPayableRupees(existing);
   const parts = normalizePaymentParts(body.paymentParts);
   const useSplit = Boolean(body.splitCollection) || parts.length > 1;
+  const requestedMethod = String(body.paymentMethod || "").toLowerCase();
+  const codOrder = isCodCollectOrder(existing);
+  if (codOrder) {
+    const methods = useSplit ? parts.map((row) => row.method) : [requestedMethod];
+    if (methods.some((method) => method && !isCodCollectMethod(method))) {
+      return { ok: false, error: "COD collection accepts Cash, QR, or UPI only." };
+    }
+  }
   if (useSplit) {
     const error = splitCollectionError(parts, payable);
     if (error) return { ok: false, error };
   }
   const gatewayPaid = Boolean(body.paymentId || body.razorpayPaymentId);
   const receipt = normalizeReceipt(body.receipt || body);
-  if (!receipt && !gatewayPaid) return { ok: false, error: receiptError(body.receipt) };
+  const fieldMethod = useSplit ? "" : requestedMethod || "cod";
+  const qrOrUpiField =
+    codOrder && isCodCollectMethod(fieldMethod) && fieldMethod !== "cod" && fieldMethod !== "cash";
+  if (!receipt && !gatewayPaid && !qrOrUpiField) {
+    return { ok: false, error: receiptError(body.receipt) };
+  }
   const paymentMethod = useSplit
     ? "split"
     : isOnlinePayment(body.paymentMethod)
@@ -177,4 +229,63 @@ export function partnerCollectPatch(existing = {}, body = {}, now = Date.now()) 
       },
     },
   };
+}
+
+export function downloadPartnerPayQr(qrSrc, fileName = "medihome-pay-qr.png") {
+  if (!qrSrc || typeof document === "undefined") return false;
+  const link = document.createElement("a");
+  link.href = qrSrc;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  return true;
+}
+
+export async function sharePartnerCollectionQr({
+  qrSrc = "",
+  text = "",
+  uri = "",
+  share,
+  canShare,
+  writeText,
+  download = downloadPartnerPayQr,
+} = {}) {
+  const payloadText = [text, uri].filter(Boolean).join("\n");
+  const nav = typeof navigator !== "undefined" ? navigator : null;
+  const doShare = share || nav?.share?.bind(nav);
+  const doCanShare = canShare || nav?.canShare?.bind(nav);
+  const doWrite = writeText || nav?.clipboard?.writeText?.bind(nav.clipboard);
+
+  try {
+    if (qrSrc && doShare && doCanShare) {
+      const blob = await (await fetch(qrSrc)).blob();
+      const file = new File([blob], "medihome-pay-qr.png", { type: "image/png" });
+      const payload = { title: "MediHome payment QR", text, files: [file] };
+      if (doCanShare(payload)) {
+        await doShare(payload);
+        return { ok: true, note: "QR shared." };
+      }
+    }
+    if (doShare) {
+      await doShare({ title: "MediHome payment QR", text: payloadText });
+      return { ok: true, note: "QR shared." };
+    }
+  } catch (err) {
+    if (err?.name === "AbortError") return { ok: false, aborted: true, note: "" };
+  }
+
+  try {
+    if (doWrite && payloadText) {
+      await doWrite(payloadText);
+      return { ok: true, note: "Payment link copied." };
+    }
+  } catch {
+    /* fall through to download */
+  }
+
+  if (qrSrc && download?.(qrSrc)) {
+    return { ok: true, note: "QR downloaded." };
+  }
+  return { ok: false, note: "Could not share. Show the QR instead." };
 }

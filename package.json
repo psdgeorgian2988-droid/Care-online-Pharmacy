@@ -10,7 +10,7 @@
     "build": "vite build",
     "start": "node server/index.mjs",
     "lint": "oxlint",
-    "test": "node --test src/*.test.mjs",
+    "test": "node --test src/*.test.mjs server/*.test.mjs",
     "preview": "vite preview",
     "app:configure": "node scripts/capacitor-config.mjs",
     "app:sync": "VITE_API_BASE_URL=https://medihome.co.in npm run build && npm run app:configure && npx cap sync",

@@ -4,13 +4,59 @@ import {
   isAwaitingPartnerConfirm,
 } from "./orderConfirm.js";
 import {
+  isCardPayment,
+  isCashOnDeliveryMethod,
   isOnlinePayment,
   paymentMethodLabel,
   paymentMethodSummary,
 } from "./paymentMethods.js";
 import { orderPayableRupees, paymentPartsLabel } from "./partnerCollect.js";
 import { maskMobile, maskPartnerMobile } from "./personFields.js";
-import { orderCurrentStatus } from "./orderStatus.js";
+import { isCompletedOrder, orderCurrentStatus } from "./orderStatus.js";
+import { namedReportFileName } from "./labPipeline.js";
+
+const CUSTOMER_COMPLETED_HIDDEN_EXTRAS = new Set([
+  "Lab Partner",
+  "Imaging Partner",
+  "Partner GSTIN",
+  "Lab licence",
+  "Centre licence",
+  "Centre in-charge",
+  "In-charge Mobile",
+  "Outlet GSTIN",
+  "Outlet DL No.",
+]);
+
+export function isCustomerCompletedDetail(order, audience = "customer") {
+  return audience === "customer" && isCompletedOrder(order);
+}
+
+export function showOrderPartnerBlock(order, audience = "customer") {
+  if (isCustomerCompletedDetail(order, audience)) return false;
+  if (audience !== "customer") return true;
+  return orderPartnerAssignment(order).assigned;
+}
+
+/** Cash / UPI / Card / QR / Bank — no split %. Debit/credit map to Card. */
+export function customerPaymentModeLabel(order) {
+  const method = String(order?.paymentMethod || "").toLowerCase();
+  const funding = String(order?.cardFunding || "").toLowerCase();
+  if (method === "split" || (Array.isArray(order?.paymentParts) && order.paymentParts.length > 1)) {
+    return paymentPartsLabel(order.paymentParts, "Cash");
+  }
+  if (isCardPayment(method) || funding === "credit" || funding === "debit") {
+    if (method === "credit" || funding === "credit") return "Credit Card";
+    return "Card";
+  }
+  if (method === "upi") return "UPI";
+  if (method === "qr" || method === "scan" || method === "share") return "QR";
+  if (method === "bank") return "Bank";
+  if (method === "online") return "Online";
+  if (isCashOnDeliveryMethod(method, order) || method === "cod" || method === "cash") {
+    return "Cash";
+  }
+  return method ? paymentMethodLabel(method, "Cash") : "Cash";
+}
 
 export function orderRecordId(order) {
   return String(order?.id || order?.bookingId || order?.requestId || "");
@@ -259,10 +305,10 @@ export function orderKindExtras(order, audience = "partner") {
         value: order.partner,
       });
     }
-    if (order.partnerGstin) {
+    if (audience !== "customer" && order.partnerGstin) {
       rows.push({ label: "Partner GSTIN", value: order.partnerGstin });
     }
-    if (order.partnerDlNo) {
+    if (audience !== "customer" && order.partnerDlNo) {
       rows.push({
         label: kind === "lab" ? "Lab licence" : "Centre licence",
         value: order.partnerDlNo,
@@ -422,9 +468,13 @@ export function orderKindExtras(order, audience = "partner") {
   if (order.reportFileName || order.reportFileData) {
     rows.push({
       label: "Report",
-      value: order.reportFileName || "Report attached",
-      href: order.reportFileData || "",
+      value: namedReportFileName(order) || order.reportFileName || "Report attached",
+      openFile: true,
     });
   }
-  return rows.filter((row) => row.value);
+  const visible = rows.filter((row) => row.value);
+  if (isCustomerCompletedDetail(order, audience)) {
+    return visible.filter((row) => !CUSTOMER_COMPLETED_HIDDEN_EXTRAS.has(row.label));
+  }
+  return visible;
 }

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
-import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import { persistAndSendOrder, persistOrder, trackHref, withTracking } from "./orderTracking";
+import { goHomeAfterPaidCheckout } from "./checkoutComplete";
 import { partnerAcceptFields } from "./orderConfirm";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
@@ -10,7 +11,13 @@ import BusyWait, { useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill.jsx";
 import BookingFlow from "./BookingFlow";
-import { paymentMethodSummary } from "./paymentMethods";
+import {
+  checkoutPaymentPersistFields,
+  checkoutUsesPayCta,
+  paymentMethodSummary,
+  persistUnsettledCheckoutFields,
+  showCustomerPayNow,
+} from "./paymentMethods";
 import { maskMobile } from "./personFields";
 import {
   applyResolvedPin,
@@ -148,6 +155,7 @@ function HomeCare() {
   const [submitting, setSubmitting] = useState(false);
   const [paying, setPaying] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
+  const [payReady, setPayReady] = useState(true);
   const [payQuote, setPayQuote] = useState(null);
   const busyWait = useBusyOverlay(submitting || paying, "homecare");
 
@@ -301,9 +309,7 @@ function HomeCare() {
         status: isVax
           ? "Partner assigned — vaccination visit"
           : "Partner assigned — home care visit",
-        paymentMethod: "pending",
-        paymentStatus: "awaiting_payment",
-        paid: false,
+        ...persistUnsettledCheckoutFields(payMethod),
       };
 
       const trackedBooking = persistOrder(
@@ -354,14 +360,13 @@ function HomeCare() {
         reference: booking.bookingId,
         description: "MediHome Home Care",
       });
-      const next = persistOrder(booking, {
+      await persistAndSendOrder(booking, {
         ...payment,
         paymentStatus: "paid",
         paid: true,
         status: booking.partnerConfirmed ? "Confirmed" : booking.status,
       });
-      setBooking(next);
-      setFlowStep("paid");
+      goHomeAfterPaidCheckout();
     } catch (error) {
       alert(error.message || "Payment could not be completed.");
     } finally {
@@ -456,7 +461,9 @@ function HomeCare() {
               <div className="confirm-row">
                 <span>Payment</span>
                 <strong>
-                  {flowStep === "paid" || booking.paid
+                  {flowStep === "paid" ||
+                  booking.paid ||
+                  !showCustomerPayNow(booking)
                     ? paymentMethodSummary(booking.paymentMethod, "Cash on visit")
                     : "Pending — pay anytime from My Orders"}
                 </strong>
@@ -499,7 +506,7 @@ function HomeCare() {
                 }}
               />
             ) : null}
-            {flowStep === "pay" ? (
+            {flowStep === "pay" && showCustomerPayNow(booking) ? (
               <form className="service-pay-form" onSubmit={handlePayment}>
                 <PaymentBlock
                   kind="homecare"
@@ -508,11 +515,12 @@ function HomeCare() {
                   method={payMethod}
                   onMethodChange={setPayMethod}
                   onQuoteChange={setPayQuote}
+                  onReadyChange={setPayReady}
                   guestDetails={booking}
                   cashLabel="Cash on visit"
                 />
                 <div className="confirm-actions">
-                  <button type="submit" className="service-submit" disabled={paying}>
+                  <button type="submit" className="service-submit" disabled={paying || !payReady}>
                     {paying ? "Processing…" : "Pay now"}
                   </button>
                   <button
@@ -536,15 +544,17 @@ function HomeCare() {
                 >
                   {isVax ? "Track vaccination visit" : "Track visit"}
                 </button>
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() => setFlowStep("pay")}
-                >
-                  Pay now
-                </button>
+                {showCustomerPayNow(booking) ? (
+                  <button
+                    type="button"
+                    className="service-submit"
+                    onClick={() => setFlowStep("pay")}
+                  >
+                    Pay now
+                  </button>
+                ) : null}
                 {isVax ? (
-                  <a className="ghost-button" href="#vaccination">
+                  <a className="ghost-button" href="#reports?service=vaccination">
                     Save Vaccination Record
                   </a>
                 ) : null}
@@ -649,7 +659,7 @@ function HomeCare() {
                 onToggle={(id) => setVaxBooking(toggleBookingVaccine(id))}
                 idPrefix="hc-vac"
               />
-              <a className="vac-copy" href="#vaccination">
+              <a className="vac-copy" href="#reports?service=vaccination">
                 Vaccination Record
               </a>
             </div>
@@ -748,6 +758,7 @@ function HomeCare() {
               method={payMethod}
               onMethodChange={setPayMethod}
               onQuoteChange={setPayQuote}
+              onReadyChange={setPayReady}
               guestDetails={form}
             />
           </div>

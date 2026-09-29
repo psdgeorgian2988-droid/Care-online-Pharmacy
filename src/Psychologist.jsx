@@ -3,11 +3,14 @@ import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
 import {
+  persistAndSendOrder,
   persistOrder,
   refreshOrderFromServer,
   trackHref,
   withTracking,
 } from "./orderTracking";
+import { goHomeAfterPaidCheckout } from "./checkoutComplete";
+import { parseAppHash } from "./hashRoute";
 import {
   appointmentSlotLabel,
   diagnosticRequestFields,
@@ -20,7 +23,13 @@ import BusyWait, { useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { BillButton } from "./OrderBill.jsx";
 import BookingFlow from "./BookingFlow";
-import { paymentMethodSummary } from "./paymentMethods";
+import {
+  checkoutPaymentPersistFields,
+  checkoutUsesPayCta,
+  paymentMethodSummary,
+  persistUnsettledCheckoutFields,
+  showCustomerPayNow,
+} from "./paymentMethods";
 import { maskMobile } from "./personFields";
 import {
   applyResolvedPin,
@@ -52,6 +61,13 @@ const PLANS = [
   { value: "couple-60", label: "Couple / family 60 min", price: 2499, mode: "video" },
   { value: "home-60", label: "Home visit 60 min", price: 1999, mode: "home" },
 ];
+const PSY_SERVICE_PLAN = {
+  video: "video-45",
+  followup: "followup-30",
+  child: "child-45",
+  couple: "couple-60",
+  "home-visit": "home-60",
+};
 
 const TIME_SLOTS = PSY_TIME_SLOTS;
 
@@ -70,7 +86,10 @@ function Psychologist() {
     mobile: profile.mobile,
     ...pickAddress(profile),
     ...initialBookingFor(profile),
-    carePlan: "video-45",
+    carePlan:
+      PSY_SERVICE_PLAN[
+        parseAppHash(typeof window !== "undefined" ? window.location.hash : "").service
+      ] || "video-45",
     date: "",
     timeSlot: "",
     concern: "",
@@ -81,8 +100,18 @@ function Psychologist() {
   const [submitting, setSubmitting] = useState(false);
   const [paying, setPaying] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
+  const [payReady, setPayReady] = useState(true);
   const [payQuote, setPayQuote] = useState(null);
   const busyWait = useBusyOverlay(submitting || paying, "psychologist");
+
+  useEffect(() => {
+    const applyHash = () => {
+      const plan = PSY_SERVICE_PLAN[parseAppHash(window.location.hash).service];
+      if (plan) setForm((prev) => (prev.carePlan === plan ? prev : { ...prev, carePlan: plan }));
+    };
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
+  }, []);
 
   useEffect(() => {
     const id = booking?.bookingId;
@@ -179,9 +208,7 @@ function Psychologist() {
           date: form.date,
           timeSlot: form.timeSlot,
         }),
-        paymentMethod: "pending",
-        paymentStatus: "awaiting_payment",
-        paid: false,
+        ...persistUnsettledCheckoutFields(payMethod),
       };
 
       const trackedBooking = persistOrder(
@@ -224,14 +251,13 @@ function Psychologist() {
         reference: booking.bookingId,
         description: "MediHome Psychologist Consultation",
       });
-      const next = persistOrder(booking, {
+      await persistAndSendOrder(booking, {
         ...payment,
         paymentStatus: "paid",
         paid: true,
         status: booking.partnerConfirmed ? "Confirmed" : booking.status,
       });
-      setBooking(next);
-      setFlowStep("paid");
+      goHomeAfterPaidCheckout();
     } catch (error) {
       alert(error.message || "Payment could not be completed.");
     } finally {
@@ -325,7 +351,9 @@ function Psychologist() {
               <div className="confirm-row">
                 <span>Payment</span>
                 <strong>
-                  {flowStep === "paid" || booking.paid
+                  {flowStep === "paid" ||
+                  booking.paid ||
+                  !showCustomerPayNow(booking)
                     ? paymentMethodSummary(booking.paymentMethod, "Pay at session")
                     : "Pending — pay anytime from My Orders"}
                 </strong>
@@ -379,7 +407,7 @@ function Psychologist() {
                 }}
               />
             ) : null}
-            {flowStep === "pay" ? (
+            {flowStep === "pay" && showCustomerPayNow(booking) ? (
               <form className="service-pay-form" onSubmit={handlePayment}>
                 <PaymentBlock
                   kind="psychologist"
@@ -388,11 +416,12 @@ function Psychologist() {
                   method={payMethod}
                   onMethodChange={setPayMethod}
                   onQuoteChange={setPayQuote}
+                  onReadyChange={setPayReady}
                   guestDetails={booking}
                   cashLabel="Pay at session"
                 />
                 <div className="confirm-actions">
-                  <button type="submit" className="service-submit" disabled={paying}>
+                  <button type="submit" className="service-submit" disabled={paying || !payReady}>
                     {paying ? "Processing…" : "Pay now"}
                   </button>
                   <button
@@ -416,13 +445,15 @@ function Psychologist() {
                 >
                   Track live
                 </button>
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() => setFlowStep("pay")}
-                >
-                  Pay now
-                </button>
+                {showCustomerPayNow(booking) ? (
+                  <button
+                    type="button"
+                    className="service-submit"
+                    onClick={() => setFlowStep("pay")}
+                  >
+                    Pay now
+                  </button>
+                ) : null}
                 <BillButton order={booking} />
                 <button type="button" className="ghost-button" onClick={startNew}>
                   Book another session
@@ -565,6 +596,7 @@ function Psychologist() {
               method={payMethod}
               onMethodChange={setPayMethod}
               onQuoteChange={setPayQuote}
+              onReadyChange={setPayReady}
               guestDetails={form}
             />
           </div>

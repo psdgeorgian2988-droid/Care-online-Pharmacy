@@ -107,8 +107,8 @@ const PAGE_META = {
       "Emergency or planned ambulance pickup in Delhi NCR, with live PIN tracking.",
   },
   reports: {
-    title: "Save Health Reports | MediHome",
-    description: "Keep lab PDFs on this device for clinic visits with MediHome Reports.",
+    title: "Medical Record | MediHome",
+    description: "Keep lab reports, imaging reports, and prescriptions on this device with MediHome Medical Record.",
   },
   login: {
     title: "Login | MediHome",
@@ -123,7 +123,7 @@ const PAGE_META = {
     description: "Track medicines, diagnostics, Home Care, psychologist, and ambulance bookings.",
   },
   track: {
-    title: "Current status | MediHome",
+    title: "Current Status | MediHome",
     description: "Follow your MediHome order or visit on the live PIN map.",
   },
   scan: {
@@ -177,7 +177,7 @@ const PAGE_META = {
     description: "Read what MediHome customers say about medicines, labs, and home visits.",
   },
   admin: {
-    title: "Staff Login | MediHome",
+    title: "Admin Panel | MediHome",
     description: "MediHome operations desk for incoming orders.",
   },
   partner: {

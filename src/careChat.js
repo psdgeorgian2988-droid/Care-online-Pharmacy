@@ -144,11 +144,11 @@ export function replyTo(rawText) {
 
   if (/\b(lab|blood|sample|test|thyroid|cbc|hba1c|report)\b/.test(q)) {
     return {
-      text: "Book lab tests with home sample collection: choose the test, enter your PIN, pick a slot, and confirm. Reports appear under Reports / My Orders when ready.",
+      text: "Book lab tests with home sample collection: choose the test, enter your PIN, pick a slot, and confirm. Reports appear under Medical Record / My Orders when ready.",
       needsStaff: false,
       links: [
         { href: "#labs", label: "Book a lab test" },
-        { href: "#reports", label: "Reports" },
+        { href: "#reports", label: "Medical Record" },
       ],
     };
   }
@@ -184,7 +184,7 @@ export function replyTo(rawText) {
       text: "Vaccination Record follows the Government of India schedule. Book an adult or children vaccination nurse visit from Home Care.",
       needsStaff: false,
       links: [
-        { href: "#vaccination", label: "Vaccination Record" },
+        { href: "#reports?service=vaccination", label: "Vaccination Record" },
         { href: "#homecare?service=nurse&plan=vaccination", label: "Book Nurse Visit" },
       ],
     };

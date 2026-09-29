@@ -56,11 +56,12 @@ export function staffLogout() {
 }
 
 export async function fetchStaffOrders() {
-  return parseResponse(
-    await apiFetch("/api/admin/orders", {
-      headers: { Authorization: `Bearer ${staffToken()}` },
-    })
-  );
+  const headers = { Authorization: `Bearer ${staffToken()}` };
+  try {
+    return await parseResponse(await apiFetch("/api/admin/orders", { headers }));
+  } catch {
+    return parseResponse(await apiFetch("/api/orders", { headers }));
+  }
 }
 
 export async function fetchStaffPartners() {

@@ -10,6 +10,7 @@ export default function PersonFields({
   idPrefix = "person",
   values = {},
   errors = {},
+  required = true,
   onChange,
 }) {
   const genderId = `${idPrefix}-gender`;
@@ -30,7 +31,7 @@ export default function PersonFields({
             onChange={(event) =>
               onChange?.({ target: { name: "gender", value: event.target.value } })
             }
-            required
+            required={required}
             aria-label="Gender"
           >
             <option value="">Select</option>
@@ -50,7 +51,7 @@ export default function PersonFields({
             value={values.dob || ""}
             max={isoDateToday()}
             min={DOB_MIN_ISO}
-            required
+            required={required}
             error={errors.dob || ""}
             onChange={onChange}
           />

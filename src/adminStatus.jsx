@@ -29,7 +29,7 @@ export function OrderStatusTrack({
   const matrix = statusMatrix(orders);
   const grouped = groupByTrackStatus(
     orders.filter((order) => {
-      if (filter !== "all" && serviceKind(order) !== filter) return false;
+      if (filter && filter !== "all" && serviceKind(order) !== filter) return false;
       return matchesStatusFilter(order, statusFilter);
     })
   );

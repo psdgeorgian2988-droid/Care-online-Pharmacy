@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useFeatures } from "./featureFlags";
 import { featureEnabled } from "./salesReport";
 import { HOME_SERVICE_TREE } from "./homeServiceTree";
 import ServiceCartoon from "./ServiceCartoon";
+import ServiceIcon from "./serviceIcons";
 import { hasAccountSession, useLoginSession } from "./authSession";
-import { goToHash } from "./hashRoute";
+import { catalogParentHash, goToChildHash, goToHash } from "./hashRoute";
 
 export default function HomeServiceCatalog({ className = "", sectionKeys } = {}) {
   const features = useFeatures();
@@ -24,34 +25,80 @@ export default function HomeServiceCatalog({ className = "", sectionKeys } = {})
       on: featureEnabled(features, section.key),
     }));
   }, [features, sectionKeys, showReports]);
+  const sectionPage = sectionKeys?.length === 1;
 
-  const openMedicineSearch = (event) => {
+  useEffect(() => {
+    if (!sectionPage || sectionKeys?.[0] !== "reports") return undefined;
+    const node = document.getElementById("home-records");
+    if (!node) return undefined;
+    node.focus({ preventScroll: true });
+    node.scrollIntoView({ block: "start" });
+    return undefined;
+  }, [sectionPage, sectionKeys]);
+
+  const openSection = (event, section) => {
     event.preventDefault();
-    try {
-      sessionStorage.setItem("mediHomeMedicineCategory", "Search");
-      sessionStorage.removeItem("mediHomeMedicineSearch");
-    } catch {
-      /* ignore */
+    if (!section.on) return;
+    goToHash(`#home?service=${section.key}`);
+  };
+
+  const openChild = (event, section, item) => {
+    event.preventDefault();
+    if (!section.on) return;
+    if (item.id === "med-search") {
+      try {
+        sessionStorage.setItem("mediHomeMedicineCategory", "Search");
+        sessionStorage.removeItem("mediHomeMedicineSearch");
+      } catch {
+        /* ignore */
+      }
+    } else if (item.category) {
+      try {
+        sessionStorage.setItem("mediHomeMedicineCategory", item.category);
+      } catch {
+        /* ignore */
+      }
     }
-    goToHash("#medicine-search");
+    const currentHash =
+      typeof window !== "undefined" ? window.location.hash || "#home" : "#home";
+    goToChildHash(item.href, catalogParentHash(section.key, currentHash));
   };
 
   return (
     <section
       className={`app-home-catalog${className ? ` ${className}` : ""}`}
       aria-label={
-        sectionKeys?.length === 1 && sectionKeys[0] === "lab"
+        sectionKeys?.length === 2 &&
+        sectionKeys.includes("lab") &&
+        sectionKeys.includes("radiology")
+          ? "Labs"
+          : sectionKeys?.length === 1 && sectionKeys[0] === "lab"
           ? "Lab Tests"
-          : "Services"
+          : sectionPage && sectionKeys[0]
+            ? HOME_SERVICE_TREE.find((row) => row.key === sectionKeys[0])?.label || "Services"
+            : "Services"
       }
     >
       {sections.map((section, sectionIndex) => (
         <div
           key={section.key}
+          id={section.key === "reports" ? "home-records" : undefined}
           className={`app-home-section${section.on ? "" : " is-off"}`}
           style={{ "--section-index": sectionIndex }}
+          tabIndex={section.key === "reports" ? -1 : undefined}
         >
-          <h2 className="app-home-heading">{section.label}</h2>
+          <h2 className="app-home-heading">
+            {section.on && !sectionPage ? (
+              <a
+                href={`#home?service=${section.key}`}
+                onClick={(event) => openSection(event, section)}
+              >
+                {section.label}
+              </a>
+            ) : (
+              section.label
+            )}
+          </h2>
           <div className="app-home-subgrid">
             {section.items.map((item, itemIndex) => (
               <a
@@ -60,31 +107,14 @@ export default function HomeServiceCatalog({ className = "", sectionKeys } = {})
                 href={section.on ? item.href : undefined}
                 aria-disabled={section.on ? undefined : "true"}
                 style={{ "--item-index": itemIndex }}
-                onClick={
-                  !section.on
-                    ? (event) => {
-                        event.preventDefault();
-                      }
-                    : item.id === "med-search"
-                      ? openMedicineSearch
-                      : item.category
-                        ? () => {
-                            try {
-                              sessionStorage.setItem(
-                                "mediHomeMedicineCategory",
-                                item.category
-                              );
-                            } catch {
-                              /* ignore */
-                            }
-                          }
-                        : undefined
-                }
+                onClick={(event) => openChild(event, section, item)}
               >
                 {item.logo ? (
                   <span className="service-logo" aria-hidden="true">
                     <img src={item.logo} alt="" loading="lazy" decoding="async" />
                   </span>
+                ) : item.icon ? (
+                  <ServiceIcon type={item.icon} title={item.label} />
                 ) : (
                   <ServiceCartoon type={item.cartoon} title={item.label} />
                 )}

@@ -26,7 +26,7 @@ export default function BookingFlow({
     <>
       <style>{styles}</style>
       {showWho ? (
-        <div className="booking-flow-who">
+        <div className={`booking-flow-who${layout === "checkout" ? " is-stack" : ""}`}>
           <BookingForFields
             idPrefix={idPrefix}
             profile={profile}
@@ -37,7 +37,7 @@ export default function BookingFlow({
         </div>
       ) : null}
       {showDetails ? (
-        <div className="booking-flow-details">
+        <div className={`booking-flow-details${layout === "checkout" ? " is-stack" : ""}`}>
           <BookingContactFields
             idPrefix={idPrefix}
             layout={layout}
@@ -64,13 +64,33 @@ export default function BookingFlow({
           />
         </div>
       ) : null}
-      <div className="booking-flow-service">{children}</div>
+      <div className={`booking-flow-service${layout === "checkout" ? " is-stack" : ""}`}>
+        {children}
+      </div>
     </>
   );
 }
 
 const styles = `
-.booking-flow-who,.booking-flow-details,.booking-flow-service{display:contents}
+.booking-flow-who,.booking-flow-details,.booking-flow-service{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:12px 16px;
+  min-width:0;
+  grid-column:1/-1;
+}
+.booking-flow-who{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.booking-flow-who.is-stack,.booking-flow-details.is-stack,.booking-flow-service.is-stack{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  min-width:0;
+  grid-column:1/-1;
+}
 .booking-flow-address{display:flex;flex-direction:column;min-width:0;grid-column:1/-1}
 .booking-address-title{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.4px;color:#1a6b7a}
 `;

@@ -7,6 +7,7 @@ import {
   resolvePinLocation,
 } from "./pinLocation";
 import { persistOrder, refreshOrderFromServer, trackHref, withTracking } from "./orderTracking";
+import { parseAppHash } from "./hashRoute";
 import { awaitingPartnerMessage, initialOrderStatus } from "./orderConfirm";
 import { orderCurrentStatus } from "./orderStatus";
 import {
@@ -47,7 +48,12 @@ import {
   bookingMaxDate,
   isOpenAppointmentSlot,
 } from "./appointmentSlot";
-import { paymentMethodSummary } from "./paymentMethods";
+import {
+  checkoutPaymentPersistFields,
+  checkoutUsesPayCta,
+  paymentMethodSummary,
+  showCustomerPayNow,
+} from "./paymentMethods";
 import BookingDocumentUpload from "./BookingDocumentUpload.jsx";
 
 const STORAGE_KEY = "mediHomeStepDownBookings";
@@ -208,8 +214,25 @@ function StepDownCare() {
   const maxVisit = bookingMaxDate();
   const [tab, setTab] = useState("find");
   const [query, setQuery] = useState("");
-  const [focus, setFocus] = useState("all");
-  const [form, setForm] = useState(() => emptyStepdownForm());
+  const [focus, setFocus] = useState(() => {
+    const { service } = parseAppHash(
+      typeof window !== "undefined" ? window.location.hash : ""
+    );
+    if (["post-icu", "post-surgery", "rehab", "wound", "assisted"].includes(service)) {
+      return service;
+    }
+    return "all";
+  });
+  const [form, setForm] = useState(() => {
+    const next = emptyStepdownForm();
+    const { service } = parseAppHash(
+      typeof window !== "undefined" ? window.location.hash : ""
+    );
+    if (["post-icu", "post-surgery", "rehab", "wound", "assisted"].includes(service)) {
+      next.serviceType = service;
+    }
+    return next;
+  });
   const [errors, setErrors] = useState({});
   const [booking, setBooking] = useState(null);
   const [flowStep, setFlowStep] = useState("placed");
@@ -218,6 +241,7 @@ function StepDownCare() {
   const [cancelling, setCancelling] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
+  const [payReady, setPayReady] = useState(true);
   const [dischargeDraft, setDischargeDraft] = useState(null);
   const [rxDraft, setRxDraft] = useState(null);
   const [locatingPickup, setLocatingPickup] = useState(false);
@@ -230,6 +254,24 @@ function StepDownCare() {
         : TIME_SLOTS,
     [form.date]
   );
+
+  useEffect(() => {
+    const applyHash = () => {
+      const { service } = parseAppHash(window.location.hash);
+      const next = ["post-icu", "post-surgery", "rehab", "wound", "assisted"].includes(
+        service
+      )
+        ? service
+        : "";
+      if (!next) return;
+      setFocus(next);
+      setForm((prev) =>
+        prev.serviceType === next ? prev : { ...prev, serviceType: next }
+      );
+    };
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
+  }, []);
 
   const selectedCentre = CENTRES.find((item) => item.id === form.centreId) || null;
   const centres = CENTRES.filter((centre) => centreMatches(centre, query, focus));
@@ -796,11 +838,12 @@ function StepDownCare() {
                   method={payMethod}
                   onMethodChange={setPayMethod}
                   onQuoteChange={setPayQuote}
+                  onReadyChange={setPayReady}
                   guestDetails={booking}
                   cashLabel="Pay at centre"
                 />
                 <div className="confirm-actions">
-                  <button type="submit" className="service-submit" disabled={paying}>
+                  <button type="submit" className="service-submit" disabled={paying || !payReady}>
                     {paying ? "Processing…" : "Pay now"}
                   </button>
                   <button
@@ -1287,6 +1330,7 @@ function StepDownCare() {
                   method={payMethod}
                   onMethodChange={setPayMethod}
                   onQuoteChange={setPayQuote}
+                  onReadyChange={setPayReady}
                   guestDetails={form}
                 />
               </div>

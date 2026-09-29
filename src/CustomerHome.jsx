@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLoginSession } from "./authSession";
+import { customerGreeting, needsCustomerWelcome, useLoginSession } from "./authSession";
 import {
   loadAllOrders,
   refreshOrderFromServer,
@@ -7,12 +7,15 @@ import {
 } from "./orderTracking";
 import { orderCurrentStatus } from "./orderStatus";
 import { isAwaitingPartnerConfirm } from "./orderConfirm";
-import CustomerWelcome, { needsCustomerWelcome } from "./CustomerWelcome";
+import CustomerWelcome from "./CustomerWelcome";
 import HomeServiceCatalog from "./HomeServiceCatalog";
 import HomePrescriptionUpload from "./HomePrescriptionUpload";
+import LabsHub from "./LabsHub";
+import { homeCatalogSectionKeys } from "./hashRoute";
 
-export default function CustomerHome() {
+export default function CustomerHome({ sectionKey = "" } = {}) {
   const user = useLoginSession();
+  const hello = customerGreeting(user);
   const [welcomeTick, setWelcomeTick] = useState(0);
   const [ordersTick, setOrdersTick] = useState(0);
   const activeOrder = useMemo(() => activeOrderFromList(loadAllOrders()), [ordersTick]);
@@ -47,17 +50,29 @@ export default function CustomerHome() {
     );
   }
 
+  if (sectionKey === "labs") {
+    return <LabsHub />;
+  }
+
+  if (sectionKey) {
+    return (
+      <div className="app-home is-fill is-account">
+        <section className="account-more" aria-label="Services">
+          <HomeServiceCatalog sectionKeys={homeCatalogSectionKeys(sectionKey)} />
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="app-home is-fill is-account">
-      {user?.name ? (
-        <p className="app-home-hello">Hello, {String(user.name).split(" ")[0]}</p>
-      ) : null}
+      {hello ? <p className="app-home-hello">{hello}</p> : null}
 
       {activeOrder ? (
-        <section className="app-home-panel app-home-order is-live" aria-label="Current status">
+        <section className="app-home-panel app-home-order is-live" aria-label="Current Status">
           <div className="app-home-order-row">
             <div>
-              <p className="app-home-panel-title">Current status</p>
+              <p className="app-home-panel-title">Current Status</p>
               <p className="app-home-order-status">
                 {orderCurrentStatus(activeOrder)}
               </p>

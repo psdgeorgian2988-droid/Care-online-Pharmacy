@@ -190,7 +190,7 @@ function LoginRegisterPage({ mode }) {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     writeLoginSession(profile, holderActor(profile));
     const next = editingAccount ? "#profile" : consumeReturnHash();
-    goToHash(next === "#home" ? "#profile" : next);
+    goToHash(next);
   };
 
   return (

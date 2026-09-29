@@ -64,6 +64,42 @@ test("partner sees claimed jobs and pending requests for their kind", () => {
     }),
     false
   );
+  assert.equal(
+    partnerCanAccessJob(labPartner, {
+      kind: "lab",
+      trackStatus: "requested",
+      partnerConfirmStatus: "pending",
+      partnerConfirmed: false,
+      partnerId: "lal-pathlabs",
+      preferredPartnerId: "lal-pathlabs",
+    }),
+    true
+  );
+  assert.equal(
+    partnerCanAccessJob(labPartner, {
+      kind: "lab",
+      trackStatus: "requested",
+      partnerConfirmStatus: "pending",
+      partnerConfirmed: false,
+      partnerId: "",
+      preferredPartnerId: "metropolis",
+    }),
+    true
+  );
+  assert.equal(
+    partnerCanAccessJob(
+      { id: "P-RAD-01", kinds: ["radiology"] },
+      {
+        kind: "radiology",
+        trackStatus: "requested",
+        partnerConfirmStatus: "pending",
+        partnerConfirmed: false,
+        partnerId: "",
+        preferredPartnerId: "rad-delhi",
+      }
+    ),
+    true
+  );
 });
 
 test("each partner app only sees its own service jobs", () => {

@@ -1,6 +1,12 @@
 import { apiFetch } from "./apiBase.js";
 import { resolveCollector, splitPayment } from "./paymentSplit.js";
-import { isOnlinePayment, validatePaymentDetails } from "./paymentMethods.js";
+import {
+  isOnlinePayment,
+  paymentInstrumentPublicFields,
+  validatePaymentDetails,
+} from "./paymentMethods.js";
+import { spendPoints } from "./pointsStore.js";
+import { pointsRedeemAllowedForKind } from "./walletQuote.js";
 import {
   clearSensitiveInstrument,
   getCheckoutInstrument,
@@ -75,7 +81,21 @@ export function paymentFromQuote(quote, fallbackAmount) {
     saleRupees: sale,
     couponCode: quote?.couponCode || "",
     discountRupees: Math.max(0, sale - payable),
+    pointsDiscountRupees: Number(quote?.pointsDiscountRupees) || 0,
+    pointsUsed: Number(quote?.pointsUsed) || 0,
   };
+}
+
+function applyCheckoutPoints({ kind, pointsUsed, pointsDiscountRupees, reference }) {
+  if (!pointsRedeemAllowedForKind(kind)) {
+    return { pointsUsed: 0, pointsDiscountRupees: 0 };
+  }
+  const used = Math.max(0, Math.floor(Number(pointsUsed) || 0));
+  const rupees = Math.max(0, Number(pointsDiscountRupees) || 0);
+  if (used) {
+    spendPoints(used, `Redeemed on ${kind}`, reference ? `redeem:${reference}` : "");
+  }
+  return { pointsUsed: used, pointsDiscountRupees: rupees };
 }
 
 export async function settleCheckoutPayment({
@@ -89,14 +109,23 @@ export async function settleCheckoutPayment({
   mobile,
   reference,
   description,
+  pointsUsed = 0,
+  pointsDiscountRupees = 0,
 }) {
   const instrument = getCheckoutInstrument();
   const paidOn = instrument.paidOn === "partner" ? "partner" : "customer";
   const collector = resolveCollector({ method, paidOn });
+  const pointsFields = applyCheckoutPoints({
+    kind,
+    pointsUsed,
+    pointsDiscountRupees,
+    reference,
+  });
   const split = splitPayment(kind, amountRupees, pin, {
     saleRupees: saleRupees ?? amountRupees,
     payableRupees: amountRupees,
     couponCode,
+    pointsDiscountRupees: pointsFields.pointsDiscountRupees,
     collector,
     paymentMethod: method,
     paidOn,
@@ -111,6 +140,7 @@ export async function settleCheckoutPayment({
       saleRupees: split.saleRupees,
       couponCode: split.couponCode,
       discountRupees: split.discountRupees,
+      ...pointsFields,
       collector,
       paidOn,
       split,
@@ -120,6 +150,7 @@ export async function settleCheckoutPayment({
   if (detailError) {
     throw new Error(detailError);
   }
+  const publicInstrument = paymentInstrumentPublicFields(method, instrument.details);
   if (!isOnlinePayment(method)) {
     return {
       paymentMethod: method || "cod",
@@ -130,6 +161,7 @@ export async function settleCheckoutPayment({
       saleRupees: split.saleRupees,
       couponCode: split.couponCode,
       discountRupees: split.discountRupees,
+      ...pointsFields,
       collector,
       paidOn,
       split,
@@ -146,9 +178,11 @@ export async function settleCheckoutPayment({
       saleRupees: split.saleRupees,
       couponCode: split.couponCode,
       discountRupees: split.discountRupees,
+      ...pointsFields,
       collector,
       paidOn,
       split,
+      ...publicInstrument,
     };
   }
   const paid = await takeOnlinePayment({
@@ -175,9 +209,11 @@ export async function settleCheckoutPayment({
     saleRupees: (paid.split || split).saleRupees,
     couponCode: (paid.split || split).couponCode,
     discountRupees: (paid.split || split).discountRupees,
+    ...pointsFields,
     collector,
     paidOn,
     split: paid.split || split,
+    ...publicInstrument,
   };
 }
 

@@ -49,6 +49,37 @@ export function alreadyNotifiedCustomer(list, mobile, orderId, type) {
   );
 }
 
+export function alreadyNotifiedCustomerType(list, mobile, orderId, type) {
+  return (list || []).some(
+    (row) =>
+      last10(row.mobile) === last10(mobile) &&
+      String(row.orderId) === String(orderId) &&
+      String(row.type || "") === String(type || "")
+  );
+}
+
+export function diagnosticReportTestName(order) {
+  const named = String(order?.reportTestName || "").trim();
+  if (named) return named;
+  const tests = Array.isArray(order?.tests)
+    ? order.tests.map((row) => row?.name).filter(Boolean).join(", ")
+    : "";
+  return tests || "Diagnostic report";
+}
+
+export function shouldNotifyCustomerReportReady(existing, updated) {
+  if (!updated) return false;
+  const kind = String(
+    updated.kind || updated.orderType || updated.serviceType || ""
+  ).toLowerCase();
+  if (kind !== "lab" && kind !== "radiology") return false;
+  const nowReady = String(updated.trackStatus || "").toLowerCase() === "report_ready";
+  const wasReady = String(existing?.trackStatus || "").toLowerCase() === "report_ready";
+  const nowFile = Boolean(updated.reportFileData);
+  const wasFile = Boolean(existing?.reportFileData);
+  return (nowReady && !wasReady) || (nowFile && !wasFile);
+}
+
 export async function notifyCustomerRefund(order) {
   const mobile = last10(order?.mobile || order?.mobileNumber);
   const orderId = orderIdOf(order);
@@ -236,6 +267,38 @@ export async function notifyCustomerStepdownDischarge(order) {
     ]
       .filter(Boolean)
       .join(" · "),
+    createdAt: Date.now(),
+    readAt: null,
+  };
+  store.notifications.unshift(row);
+  await writeStore(store);
+  return row;
+}
+
+export async function notifyCustomerReportReady(order) {
+  const mobile = last10(order?.mobile || order?.mobileNumber);
+  const orderId = orderIdOf(order);
+  const kind = String(order?.kind || order?.orderType || order?.serviceType || "lab").toLowerCase();
+  const hasReport =
+    String(order?.trackStatus || "").toLowerCase() === "report_ready" ||
+    Boolean(order?.reportFileData);
+  if (!mobile || mobile.length !== 10 || !orderId || !hasReport) return null;
+  if (kind !== "lab" && kind !== "radiology") return null;
+  const type = "report_ready";
+  const store = await readStore();
+  if (alreadyNotifiedCustomerType(store.notifications, mobile, orderId, type)) {
+    return null;
+  }
+  const testName = diagnosticReportTestName(order);
+  const row = {
+    id: `CN-${Date.now().toString(36)}-${mobile.slice(-4)}`,
+    mobile,
+    orderId,
+    kind,
+    type,
+    title: "Report ready",
+    body: [testName, `#${orderId}`].filter(Boolean).join(" · "),
+    href: "#reports",
     createdAt: Date.now(),
     readAt: null,
   };

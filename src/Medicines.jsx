@@ -3,7 +3,8 @@ import PinGpsBlock from "./PinGpsBlock";
 import AssignedAgent from "./AssignedAgent";
 import { BillButton } from "./OrderBill.jsx";
 import { resolvePinLocation } from "./pinLocation";
-import { persistOrder, trackHref, withTracking } from "./orderTracking";
+import { persistAndSendOrder, trackHref, withTracking } from "./orderTracking";
+import { goHomeAfterPaidCheckout } from "./checkoutComplete";
 import { buildPartnerRxShare } from "./rxPartnerShare";
 import {
   checkMedicineAvailability,
@@ -12,7 +13,11 @@ import {
 import { buildIndiaCombos } from "./indiaMedicineCombos";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
-import { paymentMethodSummary } from "./paymentMethods";
+import {
+  checkoutPaymentPersistFields,
+  checkoutUsesPayCta,
+  paymentMethodSummary,
+} from "./paymentMethods";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import BookingFlow from "./BookingFlow";
@@ -45,7 +50,7 @@ import {
   prescriptionDraftName,
   readPrescriptionDraft,
 } from "./prescriptionDraft";
-import { goToHash } from "./hashRoute";
+import { goToHash, parseAppHash } from "./hashRoute";
 import MedicineSearchTools from "./MedicineSearchTools";
 import { matchExactMediHomeFromPhoto } from "./medicineStripSearch";
 import { groupMedicineFamilies, medicineInCategory } from "./medicineSaltGroups";
@@ -3037,7 +3042,17 @@ function BrandSearchStrip({
   );
 }
 
+function categoryFromHash() {
+  const { service } = parseAppHash(
+    typeof window !== "undefined" ? window.location.hash : ""
+  );
+  if (!service || service === "Search") return "";
+  return service;
+}
+
 function readHomeMedicineCategory() {
+  const fromHash = categoryFromHash();
+  if (fromHash) return fromHash;
   try {
     return (sessionStorage.getItem("mediHomeMedicineCategory") || "").trim();
   } catch {
@@ -3083,6 +3098,7 @@ function Medicines({ initialSearch = "" }) {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [payMethod, setPayMethod] = useState("cod");
   const [payQuote, setPayQuote] = useState(null);
+  const [payReady, setPayReady] = useState(true);
   const busyWait = useBusyOverlay(placingOrder, "medicine");
   const [pickedBrandId, setPickedBrandId] = useState(null);
   const [photoSearch, setPhotoSearch] = useState(null);
@@ -3109,31 +3125,36 @@ function Medicines({ initialSearch = "" }) {
   }, [rxMedBoot]);
 
   useEffect(() => {
-    const next = (initialSearch || "").trim();
-    if (next) {
-      setSearch(next);
-      setCategory("All");
-      try {
-        sessionStorage.removeItem("mediHomeMedicineCategory");
-      } catch {
-        /* ignore */
+    const applyCategory = () => {
+      const next = (initialSearch || "").trim();
+      if (next) {
+        setSearch(next);
+        setCategory("All");
+        try {
+          sessionStorage.removeItem("mediHomeMedicineCategory");
+        } catch {
+          /* ignore */
+        }
+        return;
       }
-      return;
-    }
-    const fromHome = readHomeMedicineCategory();
-    if (fromHome) {
-      setCategory(fromHome === "Search" ? "All" : fromHome);
-      if (fromHome === "Search") {
-        /* keep typed search */
-      } else {
-        setSearch("");
+      const fromHome = readHomeMedicineCategory();
+      if (fromHome) {
+        setCategory(fromHome === "Search" ? "All" : fromHome);
+        if (fromHome === "Search") {
+          /* keep typed search */
+        } else {
+          setSearch("");
+        }
+        try {
+          sessionStorage.removeItem("mediHomeMedicineCategory");
+        } catch {
+          /* ignore */
+        }
       }
-      try {
-        sessionStorage.removeItem("mediHomeMedicineCategory");
-      } catch {
-        /* ignore */
-      }
-    }
+    };
+    applyCategory();
+    window.addEventListener("hashchange", applyCategory);
+    return () => window.removeEventListener("hashchange", applyCategory);
   }, [initialSearch]);
 
   useEffect(() => {
@@ -3356,6 +3377,7 @@ function Medicines({ initialSearch = "" }) {
         reference: `med-${Date.now()}`,
         description: "MediHome medicines",
       });
+      const persistPay = checkoutPaymentPersistFields(payMethod, payment);
 
       const newOrder = {
         id: Date.now(),
@@ -3389,11 +3411,15 @@ function Medicines({ initialSearch = "" }) {
         ...buildPartnerRxShare("medicine"),
         ...addr,
         ...medicineAwaitingPharmacyFields(availability),
-        ...payment,
+        ...persistPay,
       };
 
-      const trackedOrder = persistOrder(withTracking(newOrder, "medicine"));
+      const trackedOrder = await persistAndSendOrder(withTracking(newOrder, "medicine"));
 
+      if (persistPay.paid) {
+        goHomeAfterPaidCheckout();
+        return;
+      }
       setCart([]);
       setShowCheckout(false);
       resetCheckoutForm();
@@ -3613,6 +3639,7 @@ function Medicines({ initialSearch = "" }) {
             method={payMethod}
             onMethodChange={setPayMethod}
             onQuoteChange={setPayQuote}
+            onReadyChange={setPayReady}
             cashLabel="Cash On Delivery"
             guestDetails={{
               name: fullName,
@@ -3628,7 +3655,7 @@ function Medicines({ initialSearch = "" }) {
               type="button"
               className="cart-btn cart-btn-primary"
               onClick={placeOrder}
-              disabled={placingOrder}
+              disabled={placingOrder || (checkoutUsesPayCta(payMethod) && !payReady)}
             >
               {placingOrder ? "Connecting PIN to map…" : "Place order"}
             </button>

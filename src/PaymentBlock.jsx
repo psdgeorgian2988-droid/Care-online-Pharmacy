@@ -2,15 +2,28 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { applyCoupon, normalizeCouponCode } from "./offers";
 import { loadWallet } from "./pointsStore";
 import { quoteCheckout, resolveCollector } from "./paymentSplit";
+import {
+  hasRedeemIntent,
+  pointsRedeemAllowedAtCheckout,
+  pointsRedeemAllowedForKind,
+} from "./walletQuote";
 import { useLoginSession } from "./authSession";
 import GuestCheckoutRegister from "./GuestCheckoutRegister";
-import { MONTH_OPTIONS } from "./personFields";
 import { noContactNameProps } from "./noContactAutofill";
 import {
   PAYMENT_METHOD_OPTIONS,
+  bankNameFromIfsc,
+  cardBrand,
+  cardDigits,
+  cardFundingLabel,
+  detectCardFunding,
   emptyPaymentDetails,
+  formatCardExpiry,
   formatCardNumber,
+  isCardPayment,
   isOnlinePayment,
+  parseCardExpiry,
+  paymentDetailsReady,
   paymentShareText,
   paymentUpiUri,
 } from "./paymentMethods";
@@ -24,11 +37,6 @@ function formatRupee(amount) {
   })}`;
 }
 
-function expiryYears() {
-  const start = new Date().getFullYear();
-  return Array.from({ length: 16 }, (_, index) => start + index);
-}
-
 function rbiNote(method) {
   if (method === "qr") {
     return "Scan this QR with any UPI app, or share it with the person who will pay. No card or bank details are collected here.";
@@ -37,7 +45,7 @@ function rbiNote(method) {
     return "Your UPI ID is saved only if you tick this box, as per RBI / NPCI guidelines.";
   }
   if (method === "bank") {
-    return "Bank / netbanking is completed on the secure payment gateway.";
+    return "Account number is used only for this payment. If you save, only the last 4 digits, IFSC and bank name are kept.";
   }
   return "RBI tokenisation rules: only the last 4 digits and card network are kept. CVV is never saved.";
 }
@@ -53,7 +61,13 @@ export default function PaymentBlock({
   guestDetails,
   cashLabel = "Cash On Visit",
   serviceChargeRupees = 0,
+  pointsEligibleRupees,
+  onReadyChange,
+  deferUntilPayNow = false,
+  detailsComplete = true,
+  onOpenChange,
 }) {
+  const [opened, setOpened] = useState(!deferUntilPayNow);
   const user = useLoginSession();
   const [couponDraft, setCouponDraft] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -66,7 +80,7 @@ export default function PaymentBlock({
   const [saveConsent, setSaveConsent] = useState(false);
   const [shareQr, setShareQr] = useState("");
   const [shareNote, setShareNote] = useState("");
-  const [usePoints, setUsePoints] = useState(false);
+  const [usePoints, setUsePoints] = useState(() => hasRedeemIntent());
   const paidOn = "customer";
   const collector = resolveCollector({ method, paidOn });
   const couponInputRef = useRef(null);
@@ -76,6 +90,15 @@ export default function PaymentBlock({
     [accountMobile, method]
   );
   const walletBalance = useMemo(() => Number(loadWallet()?.balance) || 0, [user, promptOpen]);
+  const serviceEligible = pointsRedeemAllowedForKind(kind)
+    ? Math.max(0, Number(pointsEligibleRupees ?? saleAmount ?? amount) || 0)
+    : 0;
+  const canRedeem = pointsRedeemAllowedAtCheckout({
+    kind,
+    points: walletBalance,
+    method,
+    eligibleRupees: serviceEligible,
+  });
 
   const finishGuestPrompt = (nextMethod) => {
     const chosen = nextMethod || pendingMethod;
@@ -111,8 +134,9 @@ export default function PaymentBlock({
         collector,
         paymentMethod: method,
         paidOn,
-        useWallet: usePoints && walletBalance > 0,
-        walletCoins: usePoints ? walletBalance : 0,
+        useWallet: usePoints && canRedeem,
+        walletCoins: usePoints && canRedeem ? walletBalance : 0,
+        walletEligibleRupees: serviceEligible,
         serviceChargeRupees,
       }),
     [
@@ -126,6 +150,8 @@ export default function PaymentBlock({
       paidOn,
       usePoints,
       walletBalance,
+      canRedeem,
+      serviceEligible,
       serviceChargeRupees,
     ]
   );
@@ -133,6 +159,18 @@ export default function PaymentBlock({
   useEffect(() => {
     onQuoteChange?.(quote);
   }, [quote, onQuoteChange]);
+
+  useEffect(() => {
+    if (deferUntilPayNow && !opened) {
+      onReadyChange?.(false);
+      return;
+    }
+    onReadyChange?.(paymentDetailsReady(method, details));
+  }, [method, details, onReadyChange, deferUntilPayNow, opened]);
+
+  useEffect(() => {
+    onOpenChange?.(opened);
+  }, [opened, onOpenChange]);
 
   useEffect(() => {
     setCheckoutInstrument({
@@ -235,15 +273,22 @@ export default function PaymentBlock({
         accountName: row.accountName || "",
         accountLast4: row.accountLast4,
         ifsc: row.ifsc,
+        bankName: row.bankName || bankNameFromIfsc(row.ifsc),
       });
       return;
     }
+    const expiry =
+      row.expiryMonth && row.expiryYear
+        ? `${String(row.expiryMonth).padStart(2, "0")}/${String(row.expiryYear).slice(-2)}`
+        : "";
     setDetails({
       ...emptyPaymentDetails(),
       savedId: row.id,
       cardLast4: row.cardLast4,
       cardBrand: row.cardBrand,
+      cardFunding: row.cardFunding || (row.type === "debit" ? "debit" : row.type === "credit" ? "credit" : ""),
       nameOnCard: row.nameOnCard || "",
+      expiry,
       expiryMonth: row.expiryMonth || "",
       expiryYear: row.expiryYear || "",
     });
@@ -255,36 +300,51 @@ export default function PaymentBlock({
     quote.pointsDiscountRupees > 0 ||
     quote.serviceChargeRupees > 0;
   const showInstrument = isOnlinePayment(method) && method !== "online";
-  const usingSavedCard = Boolean(details.savedId) && (method === "credit" || method === "debit");
+  const usingSavedCard = Boolean(details.savedId) && isCardPayment(method);
+  const fundingText = cardFundingLabel(details.cardFunding);
+  const cardKindLabel = [details.cardBrand || (details.cardNumber ? cardBrand(details.cardNumber) : ""), fundingText]
+    .filter(Boolean)
+    .join(" ");
+  const cvvMax = cardBrand(details.cardNumber) === "Amex" ? 4 : 3;
+
+  if (deferUntilPayNow && !opened) {
+    if (!detailsComplete) return null;
+    return (
+      <>
+        <style>{styles}</style>
+        <div className="pay-block pay-block-defer">
+          <button
+            type="button"
+            className="pay-now-open"
+            onClick={() => setOpened(true)}
+          >
+            Pay now
+          </button>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
       <style>{styles}</style>
       <div className="pay-block">
         <p className="pay-kicker">Payment</p>
-        <div className="pay-methods" role="radiogroup" aria-label="Payment method">
-          {PAYMENT_METHOD_OPTIONS.map((option) => {
-            const value = option.value;
-            const label = value === "cod" ? cashLabel : option.label;
-            return (
-              <label
-                key={value}
-                className={method === value ? "is-on" : ""}
-                onClick={() => {
-                  if (method === value) pickMethod(value);
-                }}
-              >
-                <input
-                  type="radio"
-                  name={`pay-method-${kind}`}
-                  checked={method === value}
-                  onChange={() => pickMethod(value)}
-                />
-                <span>{label}</span>
-              </label>
-            );
-          })}
-        </div>
+        <label className="pay-method-pick">
+          Pay by
+          <select
+            aria-label="Payment method"
+            value={method}
+            onChange={(event) => pickMethod(event.target.value)}
+          >
+            <option value="">Choose how to pay</option>
+            {PAYMENT_METHOD_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.value === "cod" ? cashLabel : option.label}
+              </option>
+            ))}
+          </select>
+        </label>
         {guestNote ? <p className="pay-guest-note">{guestNote}</p> : null}
 
         {showInstrument ? (
@@ -340,27 +400,33 @@ export default function PaymentBlock({
               </label>
             ) : null}
 
-            {method === "credit" || method === "debit" ? (
+            {isCardPayment(method) ? (
               <>
                 {usingSavedCard ? (
                   <p className="pay-saved-cap">
-                    {details.cardBrand} •••• {details.cardLast4}. Enter CVV to pay.
+                    {cardKindLabel || details.cardBrand} •••• {details.cardLast4}. Enter CVV to pay.
                   </p>
                 ) : (
                   <>
                     <label className="pay-field pay-span">
-                      Card Number <em>*</em>
+                      <span className="pay-field-head">
+                        Card Number <em>*</em>
+                        {fundingText ? <span className="pay-card-kind">{cardKindLabel}</span> : null}
+                      </span>
                       <input
                         inputMode="numeric"
                         autoComplete="off"
                         value={formatCardNumber(details.cardNumber)}
                         placeholder="XXXX XXXX XXXX XXXX"
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          const cardNumber = formatCardNumber(event.target.value);
                           patchDetails({
-                            cardNumber: formatCardNumber(event.target.value),
+                            cardNumber,
                             savedId: "",
-                          })
-                        }
+                            cardFunding: detectCardFunding(cardNumber),
+                            cardBrand: cardBrand(cardNumber),
+                          });
+                        }}
                       />
                     </label>
                     <label className="pay-field pay-span">
@@ -375,36 +441,23 @@ export default function PaymentBlock({
                       />
                     </label>
                     <label className="pay-field">
-                      Expiry Month <em>*</em>
-                      <select
-                        value={details.expiryMonth}
-                        onChange={(event) =>
-                          patchDetails({ expiryMonth: event.target.value })
-                        }
-                      >
-                        <option value="">Month</option>
-                        {MONTH_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="pay-field">
-                      Expiry Year <em>*</em>
-                      <select
-                        value={details.expiryYear}
-                        onChange={(event) =>
-                          patchDetails({ expiryYear: event.target.value })
-                        }
-                      >
-                        <option value="">Year</option>
-                        {expiryYears().map((year) => (
-                          <option key={year} value={String(year)}>
-                            {year}
-                          </option>
-                        ))}
-                      </select>
+                      Expiry <em>*</em>
+                      <input
+                        inputMode="numeric"
+                        autoComplete="off"
+                        maxLength="5"
+                        value={details.expiry}
+                        placeholder="MM/YY"
+                        onChange={(event) => {
+                          const expiry = formatCardExpiry(event.target.value);
+                          const parsed = parseCardExpiry(expiry);
+                          patchDetails({
+                            expiry,
+                            expiryMonth: parsed.month ? String(parsed.month) : "",
+                            expiryYear: parsed.year ? String(parsed.year) : "",
+                          });
+                        }}
+                      />
                     </label>
                   </>
                 )}
@@ -414,12 +467,12 @@ export default function PaymentBlock({
                     type="password"
                     inputMode="numeric"
                     autoComplete="off"
-                    maxLength="4"
+                    maxLength={cvvMax}
                     value={details.cvv}
                     placeholder="XXX"
                     onChange={(event) =>
                       patchDetails({
-                        cvv: event.target.value.replace(/\D/g, "").slice(0, 4),
+                        cvv: event.target.value.replace(/\D/g, "").slice(0, cvvMax),
                       })
                     }
                   />
@@ -428,12 +481,72 @@ export default function PaymentBlock({
             ) : null}
 
             {method === "bank" ? (
-              <p className="pay-saved-cap pay-span">
-                Complete bank / netbanking on the secure payment gateway at checkout.
-              </p>
+              <>
+                {details.savedId ? (
+                  <p className="pay-saved-cap pay-span">
+                    {details.bankName || details.ifsc} •••• {details.accountLast4}
+                  </p>
+                ) : (
+                  <>
+                    <label className="pay-field pay-span">
+                      Account Holder Name <em>*</em>
+                      <input
+                        value={details.accountName}
+                        placeholder="Name as on the account"
+                        onChange={(event) =>
+                          patchDetails({ accountName: event.target.value, savedId: "" })
+                        }
+                        {...noContactNameProps}
+                      />
+                    </label>
+                    <label className="pay-field pay-span">
+                      Account Number <em>*</em>
+                      <input
+                        inputMode="numeric"
+                        autoComplete="off"
+                        value={details.accountNumber}
+                        placeholder="9–18 digit account number"
+                        onChange={(event) =>
+                          patchDetails({
+                            accountNumber: cardDigits(event.target.value).slice(0, 18),
+                            savedId: "",
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="pay-field">
+                      IFSC <em>*</em>
+                      <input
+                        autoComplete="off"
+                        value={details.ifsc}
+                        placeholder="HDFC0001234"
+                        maxLength="11"
+                        onChange={(event) => {
+                          const ifsc = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 11);
+                          patchDetails({
+                            ifsc,
+                            bankName: bankNameFromIfsc(ifsc) || details.bankName,
+                            savedId: "",
+                          });
+                        }}
+                      />
+                    </label>
+                    <label className="pay-field">
+                      Bank Name
+                      <input
+                        value={details.bankName}
+                        placeholder="Filled from IFSC when known"
+                        onChange={(event) =>
+                          patchDetails({ bankName: event.target.value })
+                        }
+                      />
+                    </label>
+                  </>
+                )}
+              </>
             ) : null}
 
-            {method !== "qr" && method !== "bank" ? (
+            {method !== "qr" ? (
               <label className="pay-save">
                 <input
                   type="checkbox"
@@ -464,7 +577,7 @@ export default function PaymentBlock({
               <strong>−{formatRupee(quote.couponDiscountRupees)}</strong>
             </li>
           ) : null}
-          {walletBalance > 0 ? (
+          {canRedeem ? (
             <li className="pay-points-row">
               <label>
                 <input
@@ -561,6 +674,10 @@ export default function PaymentBlock({
 const styles = `
 .pay-block{margin:12px 0;padding:12px;border:1px solid #d7e2e9;border-radius:10px;background:#f7fbfd;text-align:left;grid-column:1/-1;width:100%;box-sizing:border-box}
 .pay-kicker{margin:0 0 8px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#1a6b7a}
+.pay-method-pick{display:flex;flex-direction:column;gap:4px;margin:0 0 8px;font-size:12px;font-weight:700;color:#34546b}
+.pay-method-pick select{width:100%;box-sizing:border-box;height:40px;min-height:40px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px;font-weight:700}
+.pay-block-defer{padding:10px;display:flex}
+.pay-now-open{width:100%;border:0;border-radius:8px;background:#1a6b7a;color:#fff;font:inherit;font-size:15px;font-weight:800;padding:12px 16px;cursor:pointer}
 .pay-methods{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0}
 .pay-methods + .pay-methods{margin-top:8px}
 .pay-methods label{display:flex !important;flex-direction:row !important;justify-content:flex-start !important;align-items:center !important;gap:8px !important;margin:0;padding:8px 10px;min-height:40px;border:1px solid #e4ecef;border-radius:8px;background:#fff;cursor:pointer;text-align:left !important;width:auto;box-sizing:border-box}
@@ -569,6 +686,8 @@ const styles = `
 .pay-methods span{flex:1;min-width:0;font-size:13px;font-weight:700;color:#143246;line-height:1.25}
 .pay-instrument{margin:10px 0 0;padding:10px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
 .pay-field{display:flex;flex-direction:column;gap:4px;margin:0;font-size:12px;font-weight:700;color:#34546b}
+.pay-field-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pay-card-kind{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#1a6b7a}
 .pay-field em{color:#d84b4b;font-style:normal}
 .pay-field input,.pay-field select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px;font-weight:500}
 .pay-span,.pay-save,.pay-save-note,.pay-saved,.pay-saved-cap,.pay-share{grid-column:1/-1}

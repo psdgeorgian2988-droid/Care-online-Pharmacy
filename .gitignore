@@ -20,3 +20,4 @@ ios/App/App/public/
 *.aab
 *.ipa
 *.dSYM.zip
+server/data/partner-tokens.json

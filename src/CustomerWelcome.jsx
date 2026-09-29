@@ -10,44 +10,19 @@ import {
 } from "./guestCheckout";
 import LogoMark from "./LogoMark";
 import WelcomeSlideshow from "./WelcomeSlideshow";
-import HeaderCart from "./HeaderCart";
 import { APP_PREVIEW_KEY, writeAppRole } from "./appRuntime";
+import {
+  clearCustomerEntryChosen,
+  markCustomerEntryChosen,
+} from "./authSession";
+
+export {
+  clearCustomerEntryChosen,
+  markCustomerEntryChosen,
+  needsCustomerWelcome,
+} from "./authSession";
 
 const FLASH_MS = 2200;
-const ENTRY_CHOSEN_KEY = "mediHomeEntryChosen";
-
-function entryStore() {
-  try {
-    return globalThis.sessionStorage;
-  } catch {
-    return null;
-  }
-}
-
-export function markCustomerEntryChosen(store = entryStore()) {
-  try {
-    store?.setItem?.(ENTRY_CHOSEN_KEY, "1");
-  } catch {
-    /* ignore quota / private mode */
-  }
-}
-
-export function clearCustomerEntryChosen(store = entryStore()) {
-  try {
-    store?.removeItem?.(ENTRY_CHOSEN_KEY);
-  } catch {
-    /* ignore */
-  }
-}
-
-export function needsCustomerWelcome(user, store = entryStore()) {
-  if (user) return false;
-  try {
-    return store?.getItem?.(ENTRY_CHOSEN_KEY) !== "1";
-  } catch {
-    return true;
-  }
-}
 
 /** Open the customer welcome (Login / Order as Guest) from any logo click. */
 export function openWelcomePage() {
@@ -206,14 +181,6 @@ export default function CustomerWelcome({ onDone } = {}) {
 
   return (
     <div className="app-first is-home is-login-screen">
-      <div className="app-first-brand">
-        <div className="app-first-brand-bar">
-          <div className="app-first-brand-mark" aria-hidden="true">
-            <LogoMark size="hero" className="is-login-logo" />
-          </div>
-          <HeaderCart className="welcome-header-cart" />
-        </div>
-      </div>
       <div className="app-first-stage" aria-hidden="true">
         <WelcomeSlideshow />
       </div>
@@ -221,7 +188,7 @@ export default function CustomerWelcome({ onDone } = {}) {
         <div className="app-first-actions is-entry" aria-label="Get started">
           <div className="app-first-actions-row">
             <a className="app-first-btn" href="#login">
-              Login
+              Login / Register
             </a>
             <button
               type="button"

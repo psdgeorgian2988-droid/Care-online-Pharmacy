@@ -1,6 +1,6 @@
 import MediHomeLogoLink from "./MediHomeLogoLink";
 import HeaderCart from "./HeaderCart";
-import { goToHash } from "./hashRoute";
+import { goBackHash } from "./hashRoute";
 
 function BackIcon() {
   return (
@@ -17,26 +17,14 @@ function BackIcon() {
   );
 }
 
-function goBack(route) {
-  if (route && route !== "#home") {
-    goToHash("#home");
-    return;
-  }
-  if (typeof window !== "undefined" && window.history.length > 1) {
-    window.history.back();
-    return;
-  }
-  goToHash("#home");
-}
-
-export default function AppHeader({ route } = {}) {
+export default function AppHeader() {
   return (
     <header className="app-chrome-header">
       <button
         type="button"
         className="app-chrome-btn"
         aria-label="Back"
-        onClick={() => goBack(route)}
+        onClick={() => goBackHash()}
       >
         <BackIcon />
       </button>

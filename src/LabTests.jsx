@@ -4,35 +4,41 @@ import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
 import {
   loadAllOrders,
-  persistOrder,
+  persistAndSendOrder,
   refreshOrderFromServer,
   trackHref,
   withTracking,
 } from "./orderTracking";
 import {
   appointmentSlotLabel,
+  diagnosticPartnerRouteFields,
   diagnosticRequestFields,
   isAwaitingCustomerSlotConfirm,
 } from "./orderConfirm";
+import { goHomeAfterPaidCheckout } from "./checkoutComplete";
 import SlotOfferCard from "./SlotOfferCard";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { DIAGNOSTIC_LABS, IMAGING_CENTRES } from "./diagnosticPartners";
-import { paymentMethodSummary } from "./paymentMethods";
+import {
+  checkoutPaymentPersistFields,
+  checkoutUsesPayCta,
+  isCashOnDeliveryMethod,
+  paymentMethodSummary,
+  persistUnsettledCheckoutFields,
+  showCustomerPayNow,
+} from "./paymentMethods";
 import { maskMobile } from "./personFields";
 import BookingFlow from "./BookingFlow";
 import {
   addressFromUnknown,
   applyResolvedPin,
-  emptyAddress,
-  pickAddress,
   readUserProfile,
 } from "./addressFields";
 import {
   bookingForPatch,
-  initialBookingFor,
   validateBookingDetails,
   withBookingIdentity,
 } from "./bookingFor";
@@ -46,7 +52,7 @@ import {
   labBookingMaxDate,
   openAppointmentSlots,
 } from "./appointmentSlot";
-import { goToHash, parseAppHash } from "./hashRoute";
+import { goToHash, LABS_HOME_HASH, labBookingHash } from "./hashRoute";
 import {
   addTestToCart,
   LAB_BOOKING_OPEN_EVENT,
@@ -56,6 +62,13 @@ import {
   takeRxLabCheckout,
   TEST_CART_EVENT,
 } from "./medicineCartStore";
+import { isDiagnosticKind } from "./labPipeline";
+import {
+  blankDiagnosticBookingForm,
+  diagnosticBookingFromHash,
+  diagnosticBrandLabel,
+  shouldOpenSavedDiagnosticBooking,
+} from "./labBooking";
 
 const PREP_LABEL = {
   fasting: "Fasting required",
@@ -127,15 +140,6 @@ function withPrep(partners) {
 
 const LABS = withPrep(DIAGNOSTIC_LABS);
 const RADIOLOGY_PARTNERS = withPrep(IMAGING_CENTRES);
-
-const EMPTY_FORM = {
-  patientName: "",
-  mobile: "",
-  ...emptyAddress(),
-  visitType: "home",
-  date: "",
-  timeSlot: "",
-};
 
 const PROFILE_KEYS = [
   "mediHomeUser",
@@ -218,22 +222,9 @@ function getRegisteredProfile() {
 }
 
 function labHashBoot() {
-  try {
-    const { service, lab } = parseAppHash(window.location.hash || "");
-    const serviceType =
-      String(service || "").toLowerCase() === "radiology" ? "radiology" : "lab";
-    const labId = String(lab || "").trim();
-    const known =
-      serviceType === "radiology"
-        ? RADIOLOGY_PARTNERS.some((row) => row.id === labId)
-        : LABS.some((row) => row.id === labId);
-    return {
-      serviceType,
-      labId: known ? labId : "",
-    };
-  } catch {
-    return { serviceType: "lab", labId: "" };
-  }
+  return diagnosticBookingFromHash(
+    typeof window !== "undefined" ? window.location.hash || "" : ""
+  );
 }
 
 function LabTests() {
@@ -270,27 +261,20 @@ function LabTests() {
   );
   const [imagingQuery, setImagingQuery] = useState("");
   const [flowStep, setFlowStep] = useState(() => {
-    if (rxBoot?.booking) return "pay";
+    if (rxBoot?.booking) return "placed";
     if (rxBoot?.tests?.length) return "book";
     return "select";
   });
-  const [form, setForm] = useState(() => ({
-    ...EMPTY_FORM,
-    ...initialBookingFor(profile),
-    ...(registeredProfile
-      ? {
-          patientName: registeredProfile.name,
-          mobile: registeredProfile.mobile,
-          ...pickAddress(registeredProfile),
-        }
-      : {}),
-  }));
+  const [form, setForm] = useState(() =>
+    blankDiagnosticBookingForm(profile, registeredProfile)
+  );
   const [errors, setErrors] = useState({});
   const [booking, setBooking] = useState(() => rxBoot?.booking || null);
   const [submitting, setSubmitting] = useState(false);
   const [paying, setPaying] = useState(false);
-  const [payMethod, setPayMethod] = useState("cod");
+  const [payMethod, setPayMethod] = useState("");
   const [payQuote, setPayQuote] = useState(null);
+  const [payReady, setPayReady] = useState(false);
   const busyKind = serviceType === "radiology" ? "radiology" : "lab";
   const busyWait = useBusyOverlay(submitting || paying, busyKind);
   const [prepPopup, setPrepPopup] = useState(null);
@@ -365,10 +349,30 @@ function LabTests() {
   }, [prepSummaryTests]);
 
   useEffect(() => {
+    const syncHash = () => {
+      const next = diagnosticBookingFromHash(window.location.hash || "");
+      setServiceType(next.serviceType);
+      if (next.serviceType === "radiology") {
+        if (next.labId) setSelectedRadiologyPartnerId(next.labId);
+      } else if (next.labId) {
+        setSelectedLabId(next.labId);
+      }
+    };
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
+  }, []);
+
+  useEffect(() => {
     const id = booking?.bookingId;
     const kind = booking?.serviceType || booking?.kind;
-    if (!id || kind !== "radiology") return undefined;
-    if (booking.partnerConfirmed && booking.slotConfirmed) return undefined;
+    if (!id || !isDiagnosticKind(kind)) return undefined;
+    if (
+      booking.trackCompleted ||
+      String(booking.trackStatus || "").toLowerCase() === "done" ||
+      String(booking.trackStatus || "").toLowerCase() === "declined"
+    ) {
+      return undefined;
+    }
     let cancelled = false;
     const timer = setInterval(async () => {
       const latest = await refreshOrderFromServer(id);
@@ -380,6 +384,8 @@ function LabTests() {
     };
   }, [
     booking?.bookingId,
+    booking?.trackCompleted,
+    booking?.trackStatus,
     booking?.partnerConfirmed,
     booking?.slotConfirmed,
     booking?.serviceType,
@@ -474,7 +480,7 @@ function LabTests() {
       }
       if (payload.booking) {
         setBooking(payload.booking);
-        setFlowStep("pay");
+        setFlowStep("placed");
       } else {
         setFlowStep("book");
       }
@@ -496,8 +502,7 @@ function LabTests() {
           (order) =>
             String(order.bookingId || "") === id || String(order.id || "") === id
         ) || saved;
-      if (found.paid || found.paymentStatus === "paid") return;
-      if (found.partnerConfirmStatus === "declined") return;
+      if (!shouldOpenSavedDiagnosticBooking(found, { labId: boot.labId })) return;
       setBooking(found);
       setFlowStep("placed");
     } catch {
@@ -512,13 +517,15 @@ function LabTests() {
   };
 
   const handleRadiologyPartnerChange = (e) => {
-    setSelectedRadiologyPartnerId(e.target.value);
+    const centreId = e.target.value;
+    setSelectedRadiologyPartnerId(centreId);
     setSelectedImagingId("");
     setImagingQuery("");
     setServiceType("radiology");
     setFlowStep("select");
     setErrors((prev) => ({ ...prev, radiologyPartner: "", imaging: "" }));
     setPrepPopup(null);
+    goToHash(centreId ? labBookingHash(centreId, "radiology") : "#labs");
   };
 
   const toggleImagingTest = (test) => {
@@ -560,6 +567,7 @@ function LabTests() {
     setServiceType("lab");
     setErrors((prev) => ({ ...prev, lab: "", test: "" }));
     setPrepPopup(null);
+    goToHash(labBookingHash(labId, "lab"));
     window.requestAnimationFrame(() => {
       const search = document.getElementById("labTestSearch");
       if (search) search.focus();
@@ -637,7 +645,7 @@ function LabTests() {
     setPrepPopup(null);
   };
 
-  const validate = () => {
+  const collectBookingErrors = () => {
     const newErrors = validateBookingDetails(form, profile);
     if (serviceType === "lab") {
       if (!selectedLabId) newErrors.lab = "Please select a preferred lab.";
@@ -651,7 +659,11 @@ function LabTests() {
     if (dateError) newErrors.date = dateError;
     const slotError = appointmentSlotError(form.timeSlot, form.date);
     if (slotError) newErrors.timeSlot = slotError;
+    return newErrors;
+  };
 
+  const validate = () => {
+    const newErrors = collectBookingErrors();
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -668,21 +680,16 @@ function LabTests() {
       const booked = withBookingIdentity(form, profile);
       const gps = await resolvePinLocation(booked.pinCode);
       const addr = applyResolvedPin(booked, gps);
+      const bookingId =
+        (serviceType === "lab" ? "MH-LAB-" : "MH-RAD-") +
+        Math.floor(100000 + Math.random() * 900000);
       const pay = paymentFromQuote(payQuote, total);
+      const persistPay = persistUnsettledCheckoutFields("pending");
 
       const bookingDetails = {
-        bookingId:
-          (serviceType === "lab" ? "MH-LAB-" : "MH-RAD-") +
-          Math.floor(100000 + Math.random() * 900000),
+        bookingId,
         serviceType,
-        preferredPartner: activePartner.name,
-        preferredPartnerId: activePartner.id,
-        partner: activePartner.name,
-        partnerId: activePartner.id,
-        partnerGstin: activePartner.gstin,
-        partnerDlNo: activePartner.dlNo,
-        partnerArea: activePartner.area,
-        partnerAddress: activePartner.address,
+        ...diagnosticPartnerRouteFields(activePartner),
         tests: activeTests,
         total: pay.amountRupees,
         saleRupees: pay.saleRupees,
@@ -706,24 +713,31 @@ function LabTests() {
           date: booked.date || form.date,
           timeSlot: form.timeSlot,
         }),
-        paymentMethod: "pending",
-        paymentStatus: "awaiting_payment",
-        paid: false,
+        ...persistPay,
       };
 
-      const trackedBooking = persistOrder(withTracking(bookingDetails, kind));
+      const trackedBooking = await persistAndSendOrder(
+        withTracking(bookingDetails, kind)
+      );
 
+      localStorage.setItem("mediHomeLabBooking", JSON.stringify(trackedBooking));
+      localStorage.setItem("mediHomeLastBooking", JSON.stringify(trackedBooking));
+      setPayMethod("");
       setBooking(trackedBooking);
-      setFlowStep(hideCatalog ? "pay" : "placed");
+      setFlowStep("placed");
+      setForm(blankDiagnosticBookingForm(profile, registeredProfile));
+      setErrors({});
+      setLabTestQuery("");
+      setImagingQuery("");
+      setSelectedTestId("");
+      setSelectedImagingId("");
+      setPrepPopup(null);
       if (activePartner?.id) {
         removeTestsForPartner(
           activePartner.id,
           serviceType === "radiology" ? "radiology" : "lab"
         );
       }
-
-      localStorage.setItem("mediHomeLabBooking", JSON.stringify(trackedBooking));
-      localStorage.setItem("mediHomeLastBooking", JSON.stringify(trackedBooking));
     } catch (error) {
       alert(error.message || "Booking could not be submitted.");
     } finally {
@@ -734,6 +748,10 @@ function LabTests() {
   const handlePayment = async (e) => {
     e.preventDefault();
     if (!booking) return;
+    if (!payMethod) {
+      alert("Choose how you want to pay.");
+      return;
+    }
     setPaying(true);
     try {
       const kind = booking.kind || booking.serviceType || "lab";
@@ -752,16 +770,19 @@ function LabTests() {
             ? "MediHome radiology booking"
             : "MediHome lab booking",
       });
-      const next = persistOrder(booking, {
-        ...payment,
-        paymentStatus: "paid",
-        paid: true,
+      const persistPay = checkoutPaymentPersistFields(payMethod, payment);
+      const next = await persistAndSendOrder(booking, {
+        ...persistPay,
         status: booking.partnerConfirmed ? "Confirmed" : booking.status,
       });
-      setBooking(next);
-      setFlowStep("paid");
       localStorage.setItem("mediHomeLabBooking", JSON.stringify(next));
       localStorage.setItem("mediHomeLastBooking", JSON.stringify(next));
+      if (persistPay.paid) {
+        goHomeAfterPaidCheckout();
+        return;
+      }
+      setBooking(next);
+      setFlowStep("placed");
     } catch (error) {
       alert(error.message || "Payment could not be completed.");
     } finally {
@@ -770,41 +791,42 @@ function LabTests() {
   };
 
   const startNewBooking = () => {
+    try {
+      localStorage.removeItem("mediHomeLabBooking");
+    } catch {
+      /* ignore */
+    }
     setBooking(null);
-    setPayMethod("cod");
+    setPayMethod("");
     setPayQuote(null);
     setFlowStep("select");
-    setServiceType("lab");
-    setSelectedLabId("");
+    const next = diagnosticBookingFromHash(window.location.hash || "");
+    setServiceType(next.serviceType);
+    if (next.serviceType === "radiology" && next.labId) {
+      setSelectedRadiologyPartnerId(next.labId);
+      setSelectedLabId("");
+    } else if (next.labId) {
+      setSelectedLabId(next.labId);
+      setSelectedRadiologyPartnerId("");
+    } else {
+      setSelectedLabId("");
+      setSelectedRadiologyPartnerId("");
+      goToHash(LABS_HOME_HASH);
+    }
     setSelectedTestId("");
     setSelectedTests([]);
     setLabTestQuery("");
-    setSelectedRadiologyPartnerId("");
     setSelectedImagingId("");
     setSelectedImagingTests([]);
     setImagingQuery("");
-    setForm({
-      ...EMPTY_FORM,
-      ...initialBookingFor(profile),
-      ...(registeredProfile
-        ? {
-          patientName: registeredProfile.name,
-          mobile: registeredProfile.mobile,
-          ...pickAddress(registeredProfile),
-          }
-        : {}),
-    });
+    setForm(blankDiagnosticBookingForm(profile, registeredProfile));
     setErrors({});
     setPrepPopup(null);
   };
 
   if (booking && (flowStep === "placed" || flowStep === "pay" || flowStep === "paid")) {
     const tests = booking.tests || [];
-    const partnerName =
-      booking.preferredLab ||
-      booking.preferredPartner ||
-      booking.partner ||
-      "Partner";
+    const partnerName = diagnosticBrandLabel(booking);
     const isLabBooking = (booking.serviceType || booking.kind) !== "radiology";
     return (
       <>
@@ -920,7 +942,10 @@ function LabTests() {
               <div className="confirm-row">
                 <span>Payment</span>
                 <strong>
-                  {flowStep === "paid" || booking.paid
+                  {flowStep === "paid" ||
+                  booking.paid ||
+                  isCashOnDeliveryMethod(booking.paymentMethod, booking) ||
+                  (booking.paymentMethod && booking.paymentMethod !== "pending")
                     ? paymentMethodSummary(booking.paymentMethod, "Pay on visit / collection")
                     : "Pending — pay anytime from My Orders"}
                 </strong>
@@ -939,7 +964,7 @@ function LabTests() {
               />
             ) : null}
 
-            {flowStep === "pay" ? (
+            {flowStep === "pay" && showCustomerPayNow(booking) ? (
               <form className="lab-pay-form" onSubmit={handlePayment}>
                 <PaymentBlock
                   kind={isLabBooking ? "lab" : "radiology"}
@@ -948,12 +973,21 @@ function LabTests() {
                   method={payMethod}
                   onMethodChange={setPayMethod}
                   onQuoteChange={setPayQuote}
+                  onReadyChange={setPayReady}
                   guestDetails={booking}
                   cashLabel="Cash On Visit / Collection"
                 />
                 <div className="confirm-actions">
-                  <button type="submit" className="service-submit" disabled={paying}>
-                    {paying ? "Processing…" : "Pay now"}
+                  <button
+                    type="submit"
+                    className="service-submit"
+                    disabled={paying || !payMethod || (checkoutUsesPayCta(payMethod) && !payReady)}
+                  >
+                    {paying
+                      ? "Processing…"
+                      : checkoutUsesPayCta(payMethod)
+                        ? "Pay now"
+                        : "Confirm"}
                   </button>
                   <button
                     type="button"
@@ -968,21 +1002,26 @@ function LabTests() {
 
             {flowStep === "placed" ? (
               <div className="confirm-actions">
+                {showCustomerPayNow(booking) ? (
+                  <button
+                    type="button"
+                    className="service-submit"
+                    onClick={() => {
+                      setPayMethod("");
+                      setFlowStep("pay");
+                    }}
+                  >
+                    Pay now
+                  </button>
+                ) : null}
                 <button
                   type="button"
-                  className="service-submit"
+                  className={showCustomerPayNow(booking) ? "ghost-button" : "service-submit"}
                   onClick={() => {
                     window.location.hash = trackHref(booking.bookingId);
                   }}
                 >
                   {isLabBooking ? "Track sample collection" : "Track appointment"}
-                </button>
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() => setFlowStep("pay")}
-                >
-                  Pay now
                 </button>
                 <button type="button" className="ghost-button" onClick={startNewBooking}>
                   Book another test
@@ -1077,7 +1116,14 @@ function LabTests() {
               </button>
             </div>
           ) : (
-            <a className="lab-change-partner" href="#home">
+            <a
+              className="lab-change-partner"
+              href={LABS_HOME_HASH}
+              onClick={(event) => {
+                event.preventDefault();
+                goToHash(LABS_HOME_HASH);
+              }}
+            >
               Change {isLab ? "lab" : "centre"}
             </a>
           )}
@@ -1467,7 +1513,7 @@ function LabTests() {
                   : `₹${total}`}
               </strong>
               <p className="lab-hint">
-                Confirm to send this booking to the partner. You can track sample collection right away.
+                Confirm the booking first. You can pay on the next screen.
               </p>
               {hideCatalog ? (
                 <button
@@ -1487,7 +1533,7 @@ function LabTests() {
                 </button>
               )}
               <button type="submit" className="lab-submit" disabled={submitting}>
-                {submitting ? "Confirming…" : "Confirm booking"}
+                {submitting ? "Confirming…" : `Confirm booking · ₹${total}`}
               </button>
             </div>
             </BookingFlow>
@@ -1575,6 +1621,7 @@ const styles = `
 .lab-after-pick .ghost-button{flex:1;min-width:140px}
 .lab-pay-form{text-align:left;margin:0 0 14px}
 .lab-pay-form .confirm-actions{margin-top:12px}
+.lab-fields .pay-block{margin:0;grid-column:1/-1}
 .lab-remove{border:0;background:none;padding:0;color:#b64b4b;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0}
 .lab-shell{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:stretch}
 .lab-card{background:#fff;border:1px solid #e4ecef;border-radius:12px;padding:16px 18px;min-width:0;height:100%;box-sizing:border-box}
@@ -1617,7 +1664,7 @@ const styles = `
 .lab-field.lab-span,.lab-field.lab-field-full,.lab-field:has(.book-for),.lab-field:has(.addr-fields),.lab-field:has(.dmy-fields){grid-column:1/-1}
 .lab-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
 .centre-note{margin:0;padding:10px 12px;border-radius:8px;background:#f7fbfe;border:1px solid #e4ecef;font-size:13px;line-height:1.45;color:#5d7180}
-.lab-book-foot{margin-top:14px;padding-top:14px;border-top:1px solid #eef3f6;display:flex;flex-direction:column;gap:10px}
+.lab-book-foot{margin-top:14px;padding-top:14px;border-top:1px solid #eef3f6;display:flex;flex-direction:column;gap:10px;grid-column:1/-1}
 .lab-book-foot strong{font-size:15px;color:#143246}
 .lab-submit,.service-submit{border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:42px;cursor:pointer;font-family:inherit;width:100%}
 .lab-submit:disabled{opacity:.7;cursor:wait}

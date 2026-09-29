@@ -1,4 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,7 +25,30 @@ import { pharmacyReturnKey } from "../src/pharmacyTrack.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataFile = path.join(root, "data", "partners.json");
+const tokenFile = path.join(root, "data", "partner-tokens.json");
 const tokens = new Map();
+
+function hydratePartnerTokens() {
+  try {
+    const parsed = JSON.parse(readFileSync(tokenFile, "utf8"));
+    for (const [token, id] of Object.entries(parsed && typeof parsed === "object" ? parsed : {})) {
+      if (token && id) tokens.set(String(token), String(id));
+    }
+  } catch {
+    /* first run or empty file */
+  }
+}
+
+function persistPartnerTokens() {
+  try {
+    mkdirSync(path.dirname(tokenFile), { recursive: true });
+    writeFileSync(tokenFile, `${JSON.stringify(Object.fromEntries(tokens), null, 2)}\n`);
+  } catch {
+    /* keep serving even if the token cache cannot be written */
+  }
+}
+
+hydratePartnerTokens();
 
 const KIND_OPTIONS = [
   "medicine",
@@ -188,7 +212,8 @@ function sanitizePartner(row) {
     kinds,
     mobile: String(row.mobile || "").replace(/\D/g, "").slice(0, 10),
     outletId: clipText(row.outletId, 40),
-    pins: normalizeStorePins(row.pins),
+    address: clipText(row.address, 160),
+    pins: normalizeStorePins(row.pins.length ? row.pins : row.pin || row.pinCode),
     loginId,
     passwordHash: String(row.passwordHash || "").trim(),
     partnerPercent: normalizePartnerPercent(row.partnerPercent, kinds),
@@ -259,6 +284,7 @@ export async function partnerLogin(loginId, password) {
   }
   const token = randomBytes(24).toString("hex");
   tokens.set(token, partner.id);
+  persistPartnerTokens();
   return { token, partner: publicPartner(partner) };
 }
 
@@ -297,6 +323,12 @@ export async function setPartnerLogin(id, { loginId, password } = {}) {
 export async function createPartner(body = {}) {
   const name = clipText(body.name, 80);
   if (!name) return { ok: false, error: "Partner name is required." };
+  const address = clipText(body.address, 160);
+  const pin = String(body.pin || body.pinCode || (Array.isArray(body.pins) ? body.pins[0] : ""))
+    .replace(/\D/g, "")
+    .slice(0, 6);
+  if (!address) return { ok: false, error: "Address is required." };
+  if (pin.length !== 6) return { ok: false, error: "A 6-digit PIN is required." };
   const list = await readPartners();
   const id =
     clipText(body.id, 40) ||
@@ -311,7 +343,10 @@ export async function createPartner(body = {}) {
     kinds: body.kinds,
     mobile: body.mobile,
     outletId: body.outletId,
-    pins: body.pins,
+    address,
+    pin,
+    pinCode: pin,
+    pins: [pin],
     partnerPercent: body.partnerPercent,
   });
   list.push(row);
@@ -363,6 +398,11 @@ export function orderKind(row) {
   if (service === "radiology") return "radiology";
   if (service === "lab") return "lab";
   return kind || "medicine";
+}
+
+/** Login partners use P-LAB-01 style ids. Catalog brands (lal-pathlabs) are only a preference. */
+export function isExclusivePartnerId(id) {
+  return /^P-[A-Z0-9]+-\d+/i.test(String(id || "").trim());
 }
 
 function isPendingPartnerConfirm(row) {
@@ -428,7 +468,7 @@ export function partnerCanAccessJob(partner, row, now = Date.now()) {
     return assignedToMe || pharmacyMine || pinOk;
   }
   if (row.partnerId && row.partnerId === partner.id) return true;
-  if (row.partnerId) return false;
+  if (isExclusivePartnerId(row.partnerId) && row.partnerId !== partner.id) return false;
   if (!isPendingPartnerConfirm(row)) return false;
   return true;
 }

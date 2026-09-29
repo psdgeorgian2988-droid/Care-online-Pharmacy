@@ -1,8 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  customerPaymentModeLabel,
   formatOrderMobile,
+  isCustomerCompletedDetail,
   orderAssignedLabel,
+  orderKindExtras,
   orderLineItems,
   orderOutletLabel,
   orderPartnerAssignment,
@@ -10,6 +13,7 @@ import {
   orderPaymentSummary,
   orderSlotLines,
   orderTrackLabel,
+  showOrderPartnerBlock,
 } from "./orderFullFields.js";
 
 const labOrder = {
@@ -104,8 +108,109 @@ test("only the pharmacy partner desk hides the customer mobile", () => {
   assert.equal(formatOrderMobile("9876543210", "staff", "medicine"), "9876543210");
 });
 
+test("lab report extras open the file instead of a blank href", () => {
+  const extras = orderKindExtras({
+    ...labOrder,
+    reportFileName: "cbc.pdf",
+    reportFileData: "data:application/pdf;base64,aaa",
+  });
+  const report = extras.find((row) => row.label === "Report");
+  assert.equal(report.openFile, true);
+  assert.equal(report.href, undefined);
+  assert.equal(report.value, "CBC, KFT.pdf");
+});
+
+test("partner-collected COD payment is the same for customer, partner, and staff", () => {
+  const collected = {
+    ...labOrder,
+    partnerConfirmed: true,
+    partnerConfirmStatus: "accepted",
+    paymentMethod: "upi",
+    paymentStatus: "paid",
+    paid: true,
+    paidOn: "partner",
+    collector: "partner",
+  };
+  const customer = orderPaymentSummary(collected, "customer");
+  const partner = orderPaymentSummary(collected, "partner");
+  const staff = orderPaymentSummary(collected, "staff");
+  assert.equal(customer.paid, true);
+  assert.equal(partner.paid, true);
+  assert.equal(staff.paid, true);
+  assert.match(customer.methodText, /UPI/i);
+  assert.match(partner.methodText, /UPI/i);
+  assert.match(staff.methodText, /UPI/i);
+  assert.match(customer.statusText, /collected by partner/i);
+  assert.match(partner.statusText, /collected by partner/i);
+  assert.match(staff.statusText, /collected by partner/i);
+  const cash = orderPaymentSummary(
+    { ...collected, paymentMethod: "cod" },
+    "customer"
+  );
+  assert.equal(cash.paid, true);
+  assert.match(cash.methodText, /cash/i);
+  assert.match(cash.statusText, /Paid/i);
+});
+
 test("list row labels stay compact", () => {
   assert.equal(orderOutletLabel({ ...labOrder, outletName: "Gurugram Outlet" }), "Gurugram Outlet");
   assert.equal(orderAssignedLabel(labOrder), "Unassigned");
   assert.equal(orderPaymentModeLabel(labOrder, "partner"), "After partner acceptance");
+});
+
+const completedLab = {
+  ...labOrder,
+  id: "LAB-DONE-1",
+  trackStatus: "done",
+  trackCompleted: true,
+  partnerId: "pathcare",
+  partner: "Pathcare",
+  partnerName: "Ravi Lab",
+  partnerMobile: "9000000001",
+  technicianName: "Ravi Lab",
+  technicianMobile: "9000000001",
+  partnerGstin: "06AAAAA0000A1Z5",
+  paymentMethod: "upi",
+  paymentStatus: "paid",
+  paid: true,
+};
+
+test("customer completed detail is date, number, items, and payment only", () => {
+  assert.equal(isCustomerCompletedDetail(completedLab, "customer"), true);
+  assert.equal(isCustomerCompletedDetail(labOrder, "customer"), false);
+  assert.equal(isCustomerCompletedDetail(completedLab, "partner"), false);
+  assert.equal(showOrderPartnerBlock(completedLab, "customer"), false);
+  assert.equal(showOrderPartnerBlock(labOrder, "customer"), false);
+  assert.equal(
+    showOrderPartnerBlock({ ...labOrder, partnerId: "pathcare", partnerName: "Ravi" }, "customer"),
+    true
+  );
+  assert.equal(showOrderPartnerBlock(completedLab, "partner"), true);
+  assert.equal(showOrderPartnerBlock(completedLab, "staff"), true);
+});
+
+test("customer completed extras drop partner and in-charge rows", () => {
+  const extras = orderKindExtras(completedLab, "customer");
+  assert.equal(
+    extras.some((row) => /partner|in-charge|gstin|licence|assigned/i.test(row.label)),
+    false
+  );
+  const partnerExtras = orderKindExtras(completedLab, "partner");
+  assert.equal(partnerExtras.some((row) => row.label === "Lab Partner"), true);
+});
+
+test("customer payment mode maps cash, UPI, card, QR, and bank", () => {
+  assert.equal(customerPaymentModeLabel({ paymentMethod: "cod" }), "Cash");
+  assert.equal(customerPaymentModeLabel({ paymentMethod: "cash" }), "Cash");
+  assert.equal(customerPaymentModeLabel({ paymentMethod: "upi" }), "UPI");
+  assert.equal(customerPaymentModeLabel({ paymentMethod: "qr" }), "QR");
+  assert.equal(customerPaymentModeLabel({ paymentMethod: "card" }), "Card");
+  assert.equal(customerPaymentModeLabel({ paymentMethod: "debit" }), "Card");
+  assert.equal(customerPaymentModeLabel({ paymentMethod: "credit" }), "Credit Card");
+  assert.equal(customerPaymentModeLabel({ paymentMethod: "card", cardFunding: "credit" }), "Credit Card");
+  assert.equal(customerPaymentModeLabel({ paymentMethod: "card", cardFunding: "debit" }), "Card");
+  assert.equal(customerPaymentModeLabel({ paymentMethod: "bank" }), "Bank");
+  assert.doesNotMatch(customerPaymentModeLabel(completedLab), /%/);
+  const customerPay = orderPaymentSummary(completedLab, "customer");
+  assert.equal(customerPay.showSplit, false);
 });

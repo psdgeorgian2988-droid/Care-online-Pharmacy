@@ -13,6 +13,18 @@ import {
   isAwaitingPartnerConfirm,
 } from "./orderConfirm.js";
 import { diagnosticStepLabel, isDiagnosticKind } from "./labPipeline.js";
+import { isOngoingTrackOrder } from "./orderStatus.js";
+import { customerMobilesFromOrders } from "./orderSync.js";
+
+export { customerMobilesFromOrders };
+
+export {
+  completedOrders,
+  isCompletedOrder,
+  isOngoingTrackOrder,
+  isPartnerEnRoute,
+  ongoingTrackOrders,
+} from "./orderStatus.js";
 
 export const ORDER_STORAGE = {
   medicine: "mediHomeOrders",
@@ -469,6 +481,9 @@ export function withTracking(record, kind = recordKind(record)) {
 }
 
 export function tickTracking(record, now = Date.now()) {
+  if (!isOngoingTrackOrder(record)) {
+    return record;
+  }
   const kind = recordKind(record);
   if (!Number.isFinite(Number(record?.destLat)) || !Number.isFinite(Number(record?.destLng))) {
     return record;
@@ -610,13 +625,13 @@ export async function refreshOrderFromServer(id) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.order) return local || null;
     const kind = data.order.kind || data.order.orderType || recordKind(data.order);
-    return persistOrder(withTracking({ ...(local || {}), ...data.order, kind }, kind));
+    return persistLocalOrder(withTracking({ ...(local || {}), ...data.order, kind }, kind));
   } catch {
     return local || null;
   }
 }
 
-export function persistOrder(unified, patch = {}) {
+function writePersistedOrder(unified, patch = {}) {
   const kind = unified.kind || recordKind(unified);
   const merged = { ...unified, ...patch, kind };
   const next = { ...merged, ...ensureOrderCodes(merged) };
@@ -627,9 +642,69 @@ export function persistOrder(unified, patch = {}) {
     ? list.map((row) => (sameRecord(row, next) ? stripViewFields({ ...row, ...next }) : row))
     : [stripViewFields(next), ...list];
   writeList(key, nextList);
-  const saved = unifyOrder(next, kind);
-  publishOrder(saved);
+  return unifyOrder(next, kind);
+}
+
+export function persistLocalOrder(unified, patch = {}) {
+  return writePersistedOrder(unified, patch);
+}
+
+export function persistOrder(unified, patch = {}) {
+  const saved = writePersistedOrder(unified, patch);
+  publishOrder({
+    ...saved,
+    kind: saved.kind,
+    orderType: saved.orderType || saved.kind,
+  });
   return saved;
+}
+
+export async function persistAndSendOrder(unified, patch = {}) {
+  const saved = writePersistedOrder(unified, patch);
+  await publishOrder({
+    ...saved,
+    kind: saved.kind,
+    orderType: saved.orderType || saved.kind,
+  });
+  return saved;
+}
+
+function readProfileForOrders() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem("mediHomeUser") || "null");
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function syncMyOrdersFromServer(orders = loadAllOrders()) {
+  const mobiles = customerMobilesFromOrders(orders, readProfileForOrders());
+  const seen = new Set();
+  for (const mobile of mobiles) {
+    try {
+      const res = await apiFetch(`/api/orders/mine?mobile=${encodeURIComponent(mobile)}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !Array.isArray(data.orders)) continue;
+      for (const row of data.orders) {
+        const kind = row.kind || row.orderType || recordKind(row);
+        const id = recordId({ ...row, kind }, kind);
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        persistLocalOrder(withTracking({ ...row, kind }, kind));
+      }
+    } catch {
+      /* keep local rows if the list endpoint is down */
+    }
+  }
+  for (const order of Array.isArray(orders) ? orders : []) {
+    const id = String(order.bookingId || order.id || order.requestId || "");
+    if (!id || seen.has(id)) continue;
+    if (!isOngoingTrackOrder(order) && !isAwaitingPartnerConfirm(order)) continue;
+    const latest = await refreshOrderFromServer(id);
+    if (latest) seen.add(String(latest.id || latest.bookingId || id));
+  }
+  return loadAllOrders();
 }
 
 function stripViewFields(record) {
@@ -662,6 +737,9 @@ export async function attachPinAndTracking(record, pinValue) {
 
 export function ensureTracking(record) {
   const kind = recordKind(record);
+  if (!isOngoingTrackOrder(record)) {
+    return unifyOrder(record, kind);
+  }
   if (isAwaitingPartnerConfirm(record)) {
     return unifyOrder(
       withTracking(

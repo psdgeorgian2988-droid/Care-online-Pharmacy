@@ -149,6 +149,26 @@ export function medicineAwaitingPharmacyFields(extras = {}) {
   };
 }
 
+/** Catalog brands (lal-pathlabs) are a preference. Exclusive login ids like P-LAB-01 claim later. */
+export function diagnosticPartnerRouteFields(partner = {}, extras = {}) {
+  const preferredPartnerId = String(
+    extras.preferredPartnerId || partner.id || extras.partnerId || ""
+  ).trim();
+  const preferredPartner = String(
+    extras.preferredPartner || partner.name || extras.partnerName || ""
+  ).trim();
+  return {
+    preferredPartner,
+    preferredPartnerId,
+    partner: preferredPartner,
+    partnerId: "",
+    partnerGstin: extras.partnerGstin ?? partner.gstin,
+    partnerDlNo: extras.partnerDlNo ?? partner.dlNo,
+    partnerArea: extras.partnerArea ?? partner.area,
+    partnerAddress: extras.partnerAddress ?? partner.address,
+  };
+}
+
 export function diagnosticRequestFields(kind, extras = {}) {
   const requestedTimeSlot = String(
     extras.timeSlot || extras.requestedTimeSlot || ""

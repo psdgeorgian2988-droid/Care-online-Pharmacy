@@ -226,6 +226,76 @@ test("shared ledger text names both parties and the amount due", () => {
   assert.match(text, /MediHome/);
 });
 
+test("medicine checkout ignores wallet points even when requested", () => {
+  const quote = quoteCheckout({
+    kind: "medicine",
+    saleRupees: 200,
+    listRupees: 200,
+    pin: "110001",
+    useWallet: true,
+    walletCoins: 510,
+  });
+  assert.equal(quote.pointsDiscountRupees, 0);
+  assert.equal(quote.pointsUsed, 0);
+  assert.equal(quote.payableRupees, 200);
+});
+
+test("lab checkout applies 10 points per rupee only above 500 points", () => {
+  const tooLow = quoteCheckout({
+    kind: "lab",
+    saleRupees: 800,
+    listRupees: 800,
+    pin: "110001",
+    useWallet: true,
+    walletCoins: 500,
+  });
+  assert.equal(tooLow.pointsDiscountRupees, 0);
+  assert.equal(tooLow.payableRupees, 800);
+
+  const quote = quoteCheckout({
+    kind: "lab",
+    saleRupees: 800,
+    listRupees: 800,
+    pin: "110001",
+    useWallet: true,
+    walletCoins: 510,
+    paymentMethod: "upi",
+  });
+  assert.equal(quote.pointsDiscountRupees, 51);
+  assert.equal(quote.pointsUsed, 510);
+  assert.equal(quote.payableRupees, 749);
+});
+
+test("COD service checkout does not apply MediHome points", () => {
+  const quote = quoteCheckout({
+    kind: "lab",
+    saleRupees: 800,
+    listRupees: 800,
+    pin: "110001",
+    useWallet: true,
+    walletCoins: 510,
+    paymentMethod: "cod",
+  });
+  assert.equal(quote.pointsDiscountRupees, 0);
+  assert.equal(quote.pointsUsed, 0);
+  assert.equal(quote.payableRupees, 800);
+});
+
+test("mixed cart applies points only to the non-medicine portion", () => {
+  const quote = quoteCheckout({
+    kind: "cart",
+    saleRupees: 300,
+    listRupees: 300,
+    pin: "110001",
+    useWallet: true,
+    walletCoins: 510,
+    walletEligibleRupees: 200,
+    paymentMethod: "upi",
+  });
+  assert.equal(quote.pointsDiscountRupees, 51);
+  assert.equal(quote.payableRupees, 249);
+});
+
 test("order bill includes a shareable settlement ledger", () => {
   const bill = buildOrderBill({
     kind: "homecare",
