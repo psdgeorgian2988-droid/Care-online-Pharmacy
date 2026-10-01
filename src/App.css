@@ -7082,8 +7082,8 @@ html:not(.is-native-app):not(.is-customer-app):not(.is-installed-app) #root {
   --app-muted: #5d7180;
   --app-frame: 430px;
   --app-nav-h: 64px;
-  --app-ticker-h: 40px;
-  --app-footer-h: 44px;
+  --app-ticker-h: 0px;
+  --app-footer-h: 0px;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
@@ -7102,12 +7102,12 @@ html:not(.is-native-app):not(.is-customer-app):not(.is-installed-app) #root {
   color: var(--app-ink);
 }
 
-/* Ticker + social footer on every customer page */
+/* Customer app is not the website chrome */
 .app-customer > .top-ticker,
 .app-customer > footer.app-footer {
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
   flex: 0 0 auto !important;
   align-items: center !important;
   justify-content: center !important;

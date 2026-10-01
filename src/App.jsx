@@ -325,7 +325,7 @@ function App() {
   const features = useFeatures();
   const appRole = readAppRole();
   const customerShell =
-    isAppShell() && !isOps && appRole !== "staff" && appRole !== "partner";
+    !isOps && appRole !== "staff" && appRole !== "partner";
 
   useEffect(() => {
     const root = document.documentElement;
