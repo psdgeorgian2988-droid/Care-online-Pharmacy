@@ -14,6 +14,7 @@ import {
   clampSplitPercent,
   defaultPartnerPercentFor,
   resplitOrder,
+  splitExtrasForAssignedPartner,
 } from "../src/paymentSplit.js";
 import { partnerAppKind } from "../src/partnerApp.js";
 import {
@@ -62,102 +63,36 @@ const KIND_OPTIONS = [
   "stepdown",
 ];
 
-const SEED = [
-  {
-    id: "P-MED-01",
-    name: "Ravi Kumar",
-    role: "Medicine rider",
-    kinds: ["medicine"],
-    mobile: "9654222901",
-    outletId: "MH-OUT-CD",
-  },
-  {
-    id: "P-LAB-01",
-    name: "Neha Sharma",
-    role: "Phlebotomist",
-    kinds: ["lab"],
-    mobile: "9654222902",
-    outletId: "MH-OUT-CD",
-  },
-  {
-    id: "P-RAD-01",
-    name: "Imaging Desk — Green Park",
-    role: "Radiology centre",
-    kinds: ["radiology"],
-    mobile: "9654222903",
-    outletId: "MH-OUT-SD",
-  },
-  {
-    id: "P-HC-01",
-    name: "Priya Singh",
-    role: "Home Care nurse",
-    kinds: ["homecare"],
-    mobile: "9654222904",
-    outletId: "MH-OUT-SD",
-  },
-  {
-    id: "P-HC-02",
-    name: "Ankit Sharma",
-    role: "Home Care nurse",
-    kinds: ["homecare"],
-    mobile: "9654222914",
-    outletId: "MH-OUT-SD",
-  },
-  {
-    id: "P-HC-03",
-    name: "Kavita Rai",
-    role: "Home Care caregiver",
-    kinds: ["homecare"],
-    mobile: "9654222924",
-    outletId: "MH-OUT-CD",
-  },
-  {
-    id: "P-HC-04",
-    name: "Rohan Malhotra",
-    role: "Physiotherapist",
-    kinds: ["homecare"],
-    mobile: "9654222934",
-    outletId: "MH-OUT-WD",
-  },
-  {
-    id: "P-HC-05",
-    name: "Meena Joshi",
-    role: "Home Care nurse",
-    kinds: ["homecare"],
-    mobile: "9654222944",
-    outletId: "MH-OUT-ND",
-  },
-  {
-    id: "P-PSY-01",
-    name: "Dr. Ananya Mehra",
-    role: "Psychologist",
-    kinds: ["psychologist"],
-    mobile: "9654222907",
-    outletId: "MH-OUT-SD",
-  },
-  {
-    id: "P-AMB-01",
-    name: "Sanjay Ambulance",
-    role: "Ambulance operator",
-    kinds: ["ambulance"],
-    mobile: "9654222905",
-    outletId: "MH-OUT-HQ",
-  },
-  {
-    id: "P-SD-01",
-    name: "Dwarka Step-Down desk",
-    role: "Step-down centre",
-    kinds: ["stepdown"],
-    mobile: "9654222906",
-    outletId: "MH-OUT-DWK",
-  },
-];
+const SEED = [];
 
 export function normalizePartnerLoginId(value) {
   return String(value || "")
     .trim()
     .toLowerCase()
     .replace(/\s+/g, "");
+}
+
+/** Partner login ID is the 10-digit mobile. A short or non-numeric value is not a login. */
+export function partnerLoginIdFromMobile(mobile) {
+  const digits = String(mobile || "").replace(/\D/g, "").slice(0, 10);
+  return digits.length === 10 ? digits : "";
+}
+
+/** Partner passwords are exactly 6 digits. Staff passwords are not checked here. */
+export function partnerPasswordError(password, { required = true } = {}) {
+  const secret = String(password ?? "");
+  if (!secret) return required ? "Password must be exactly 6 digits." : "";
+  if (!/^\d{6}$/.test(secret)) return "Password must be exactly 6 digits.";
+  return "";
+}
+
+/** New partners sign in with their mobile, ignoring any separate login ID. */
+export function partnerCreateCredentials(body = {}) {
+  const loginId = partnerLoginIdFromMobile(body.mobile);
+  if (!loginId) return { ok: false, error: "Login ID is the 10-digit mobile number." };
+  const error = partnerPasswordError(body.password);
+  if (error) return { ok: false, error };
+  return { ok: true, loginId, mobile: loginId, password: String(body.password) };
 }
 
 export function hashPartnerPassword(password, salt = randomBytes(16).toString("hex")) {
@@ -213,11 +148,22 @@ function sanitizePartner(row) {
     mobile: String(row.mobile || "").replace(/\D/g, "").slice(0, 10),
     outletId: clipText(row.outletId, 40),
     address: clipText(row.address, 160),
-    pins: normalizeStorePins(row.pins.length ? row.pins : row.pin || row.pinCode),
+    pins: normalizeStorePins(
+      Array.isArray(row.pins) && row.pins.length ? row.pins : row.pin || row.pinCode
+    ),
     loginId,
     passwordHash: String(row.passwordHash || "").trim(),
+    passwordResetAt: Number(row.passwordResetAt) > 0 ? Number(row.passwordResetAt) : 0,
+    passwordResetBy:
+      row.passwordResetBy === "admin" || row.passwordResetBy === "partner"
+        ? row.passwordResetBy
+        : "",
     partnerPercent: normalizePartnerPercent(row.partnerPercent, kinds),
   };
+}
+
+export function partnerRegisteredMobile(partner) {
+  return partnerLoginIdFromMobile(partner?.loginId) || partnerLoginIdFromMobile(partner?.mobile);
 }
 
 export function publicPartner(row) {
@@ -225,10 +171,16 @@ export function publicPartner(row) {
   const clean = sanitizePartner(row);
   if (!clean) return null;
   const { passwordHash, pin, ...rest } = clean;
+  const resetBy =
+    clean.passwordResetBy === "admin" || clean.passwordResetBy === "partner"
+      ? clean.passwordResetBy
+      : "";
   return {
     ...rest,
     loginId: clean.loginId || "",
     hasLogin: Boolean(clean.loginId && passwordHash),
+    passwordResetAt: Number(clean.passwordResetAt) || 0,
+    passwordResetBy: resetBy,
   };
 }
 
@@ -275,6 +227,17 @@ function findByLoginId(list, loginId) {
   return list.find((row) => normalizePartnerLoginId(row.loginId) === wanted) || null;
 }
 
+export async function findPartnerByMobile(mobile) {
+  const loginId = partnerLoginIdFromMobile(mobile);
+  if (!loginId) return null;
+  const list = await readPartners();
+  return (
+    findByLoginId(list, loginId) ||
+    list.find((row) => partnerLoginIdFromMobile(row.mobile) === loginId) ||
+    null
+  );
+}
+
 export async function partnerLogin(loginId, password) {
   const list = await readPartners();
   const partner = findByLoginId(list, loginId);
@@ -288,29 +251,61 @@ export async function partnerLogin(loginId, password) {
   return { token, partner: publicPartner(partner) };
 }
 
+/** Hashes a new 6-digit partner password and records who reset it. Does not write the file. */
+export function partnerPasswordResetRecord(password, meta = {}) {
+  const error = partnerPasswordError(password);
+  if (error) return { ok: false, error };
+  return {
+    ok: true,
+    passwordHash: hashPartnerPassword(password),
+    passwordResetAt: Number(meta.resetAt) > 0 ? Number(meta.resetAt) : Date.now(),
+    passwordResetBy: meta.resetBy === "admin" ? "admin" : "partner",
+  };
+}
+
+function revokePartnerSessions(partnerId) {
+  const id = String(partnerId || "");
+  if (!id) return;
+  for (const [token, partner] of tokens) {
+    if (partner === id) tokens.delete(token);
+  }
+  persistPartnerTokens();
+}
+
+/** Stores a password hash from a completed OTP reset and drops existing partner sessions. */
+export async function savePartnerPasswordReset(id, record = {}) {
+  const passwordHash = String(record.passwordHash || "").trim();
+  if (!passwordHash.includes(":")) {
+    return { ok: false, error: "Password must be exactly 6 digits." };
+  }
+  const list = await readPartners();
+  const index = list.findIndex((row) => row.id === id);
+  if (index < 0) return { ok: false, error: "Partner not found." };
+  list[index] = {
+    ...list[index],
+    passwordHash,
+    passwordResetAt: Number(record.passwordResetAt) > 0 ? Number(record.passwordResetAt) : Date.now(),
+    passwordResetBy: record.passwordResetBy === "admin" ? "admin" : "partner",
+  };
+  await writePartners(list);
+  revokePartnerSessions(id);
+  return { ok: true, partner: publicPartner(list[index]) };
+}
+
 export async function setPartnerLogin(id, { loginId, password } = {}) {
   const list = await readPartners();
   const index = list.findIndex((row) => row.id === id);
   if (index < 0) return { ok: false, error: "Partner not found." };
-  const nextId = normalizePartnerLoginId(loginId);
-  if (!nextId || nextId.length < 3) {
-    return { ok: false, error: "Login ID must be at least 3 characters." };
-  }
-  if (!/^[a-z0-9._-]{3,40}$/.test(nextId)) {
-    return { ok: false, error: "Login ID can use letters, numbers, dot, hyphen, and underscore." };
-  }
+  const nextId = partnerLoginIdFromMobile(loginId);
+  if (!nextId) return { ok: false, error: "Login ID is the 10-digit mobile number." };
   const taken = list.find(
     (row, rowIndex) => rowIndex !== index && normalizePartnerLoginId(row.loginId) === nextId
   );
   if (taken) return { ok: false, error: "That login ID is already in use." };
   const secret = String(password || "");
   const current = list[index];
-  if (!current.passwordHash && secret.length < 8) {
-    return { ok: false, error: "Password must be at least 8 characters." };
-  }
-  if (secret && secret.length < 8) {
-    return { ok: false, error: "Password must be at least 8 characters." };
-  }
+  const passwordError = partnerPasswordError(secret, { required: !current.passwordHash });
+  if (passwordError) return { ok: false, error: passwordError };
   list[index] = {
     ...current,
     loginId: nextId,
@@ -329,6 +324,8 @@ export async function createPartner(body = {}) {
     .slice(0, 6);
   if (!address) return { ok: false, error: "Address is required." };
   if (pin.length !== 6) return { ok: false, error: "A 6-digit PIN is required." };
+  const credentials = partnerCreateCredentials(body);
+  if (!credentials.ok) return credentials;
   const list = await readPartners();
   const id =
     clipText(body.id, 40) ||
@@ -336,29 +333,26 @@ export async function createPartner(body = {}) {
   if (list.some((row) => row.id === id)) {
     return { ok: false, error: "A partner with that id already exists." };
   }
+  if (list.some((row) => normalizePartnerLoginId(row.loginId) === credentials.loginId)) {
+    return { ok: false, error: "That login ID is already in use." };
+  }
   const row = sanitizePartner({
     id,
     name,
     role: body.role,
     kinds: body.kinds,
-    mobile: body.mobile,
+    mobile: credentials.mobile,
     outletId: body.outletId,
     address,
     pin,
     pinCode: pin,
     pins: [pin],
+    loginId: credentials.loginId,
+    passwordHash: hashPartnerPassword(credentials.password),
     partnerPercent: body.partnerPercent,
   });
   list.push(row);
   await writePartners(list);
-  if (body.loginId || body.password) {
-    const login = await setPartnerLogin(id, {
-      loginId: body.loginId,
-      password: body.password,
-    });
-    if (!login.ok) return login;
-    return login;
-  }
   return { ok: true, partner: publicPartner(row) };
 }
 
@@ -554,7 +548,7 @@ export async function assignPartnerToOrder(orderId, body) {
   };
   if (existing && !existing.split?.staffSet) {
     patch.split = {
-      ...resplitOrder(existing, { partnerPercent: partner.partnerPercent }),
+      ...resplitOrder(existing, splitExtrasForAssignedPartner(existing, partner)),
       staffSet: false,
     };
   }

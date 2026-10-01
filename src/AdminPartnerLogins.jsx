@@ -1,5 +1,12 @@
-import { useState } from "react";
-import { createStaffPartner, patchStaffPartner, setStaffPartnerLogin } from "./adminApi";
+import { Fragment, useState } from "react";
+import {
+  confirmStaffPartnerReset,
+  confirmStaffPartnerSplit,
+  createStaffPartner,
+  requestStaffPartnerReset,
+  requestStaffPartnerSplit,
+  setStaffPartnerLogin,
+} from "./adminApi";
 import { kindLabel, partnerRole } from "./orderTracking";
 import { defaultPartnerPercentFor } from "./paymentSplit";
 import {
@@ -7,9 +14,10 @@ import {
   countPartnersInCategory,
   partnerCategoryLabel,
   partnerCreateLocation,
-  partnerServicePins,
+  partnerUpdateShowsSplit,
   partnersInCategory,
 } from "./partnerAdmin";
+import { partnerPasswordResetLabel, partnerResetDeliveryMessage } from "./partnerResetCopy";
 
 const emptyCreate = (kind = "medicine") => ({
   name: "",
@@ -18,9 +26,7 @@ const emptyCreate = (kind = "medicine") => ({
   mobile: "",
   address: "",
   pin: "",
-  loginId: "",
   password: "",
-  partnerPercent: defaultPartnerPercentFor(kind),
 });
 
 export default function AdminPartnerLogins({ partners, onChange }) {
@@ -31,26 +37,48 @@ export default function AdminPartnerLogins({ partners, onChange }) {
   const [busyId, setBusyId] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const [resetFor, setResetFor] = useState("");
+  const [resetDraft, setResetDraft] = useState({
+    password: "",
+    otp: "",
+    phase: "",
+    info: "",
+  });
+  const [splitFor, setSplitFor] = useState("");
+  const [splitDraft, setSplitDraft] = useState({
+    partnerPercent: "",
+    otp: "",
+    phase: "",
+    info: "",
+  });
 
   const listed = partnersInCategory(partners, category);
 
   const draftFor = (partner) =>
     drafts[partner.id] || {
-      loginId: partner.loginId || "",
+      loginId: partner.loginId || partner.mobile || "",
       password: "",
-      partnerPercent:
-        partner.partnerPercent ?? defaultPartnerPercentFor(partner.kinds?.[0]),
     };
 
   const saveLogin = async (partner) => {
     const draft = draftFor(partner);
+    const loginId = String(draft.loginId || "").replace(/\D/g, "").slice(0, 10);
+    const password = String(draft.password || "").replace(/\D/g, "").slice(0, 6);
+    if (!/^\d{10}$/.test(loginId)) {
+      setError("Login ID is the 10-digit mobile number.");
+      return;
+    }
+    if (password ? !/^\d{6}$/.test(password) : !partner.hasLogin) {
+      setError("Password must be exactly 6 digits.");
+      return;
+    }
     setBusyId(partner.id);
     setError("");
     setNote("");
     try {
       const data = await setStaffPartnerLogin(partner.id, {
-        loginId: draft.loginId,
-        password: draft.password,
+        loginId,
+        password,
       });
       onChange?.(data.partners || []);
       setDrafts((current) => ({
@@ -58,7 +86,6 @@ export default function AdminPartnerLogins({ partners, onChange }) {
         [partner.id]: {
           loginId: data.partner?.loginId || draft.loginId,
           password: "",
-          partnerPercent: draft.partnerPercent,
         },
       }));
       setNote(`Login Saved For ${partner.name}.`);
@@ -69,19 +96,116 @@ export default function AdminPartnerLogins({ partners, onChange }) {
     }
   };
 
-  const saveSplit = async (partner) => {
-    const draft = draftFor(partner);
+  const openSplit = (partner) => {
+    setSplitFor(partner.id);
+    setResetFor("");
+    setSplitDraft({
+      partnerPercent: String(
+        partner.partnerPercent ?? defaultPartnerPercentFor(partner.kinds?.[0])
+      ),
+      otp: "",
+      phase: "",
+      info: "",
+    });
+    setError("");
+    setNote("");
+  };
+
+  const sendSplitOtp = async (partner) => {
+    const partnerPercent = Number(splitDraft.partnerPercent);
+    if (!Number.isFinite(partnerPercent) || partnerPercent < 0 || partnerPercent > 100) {
+      setError("Partner split must be between 0 and 100.");
+      return;
+    }
     setBusyId(`split-${partner.id}`);
     setError("");
     setNote("");
     try {
-      const data = await patchStaffPartner(partner.id, {
-        partnerPercent: Number(draft.partnerPercent),
-      });
-      onChange?.(data.partners || []);
-      setNote(`Split saved for ${partner.name}: partner ${data.partner?.partnerPercent}%.`);
+      const data = await requestStaffPartnerSplit(partner.id, partnerPercent);
+      setSplitDraft((current) => ({
+        ...current,
+        partnerPercent: String(partnerPercent),
+        phase: "otp",
+        info: partnerResetDeliveryMessage(data),
+      }));
     } catch (err) {
-      setError(err.message || "Could not save partner split.");
+      setError(err.message || "Could not send the split OTP.");
+    } finally {
+      setBusyId("");
+    }
+  };
+
+  const confirmSplit = async (partner) => {
+    const otp = String(splitDraft.otp || "").replace(/\D/g, "").slice(0, 6);
+    if (!/^\d{6}$/.test(otp)) {
+      setError("Enter the 6-digit OTP.");
+      return;
+    }
+    setBusyId(`split-${partner.id}`);
+    setError("");
+    setNote("");
+    try {
+      const data = await confirmStaffPartnerSplit(partner.id, otp);
+      onChange?.(data.partners || []);
+      setSplitFor("");
+      setSplitDraft({ partnerPercent: "", otp: "", phase: "", info: "" });
+      setNote(`Split updated for ${partner.name}: partner ${data.partner?.partnerPercent}%.`);
+    } catch (err) {
+      setError(err.message || "Could not update the partner split.");
+    } finally {
+      setBusyId("");
+    }
+  };
+
+  const openReset = (partner) => {
+    setResetFor(partner.id);
+    setSplitFor("");
+    setResetDraft({ password: "", otp: "", phase: "", info: "" });
+    setError("");
+    setNote("");
+  };
+
+  const sendResetOtp = async (partner) => {
+    const password = String(resetDraft.password || "").replace(/\D/g, "").slice(0, 6);
+    if (!/^\d{6}$/.test(password)) {
+      setError("Password must be exactly 6 digits.");
+      return;
+    }
+    setBusyId(`reset-${partner.id}`);
+    setError("");
+    setNote("");
+    try {
+      const data = await requestStaffPartnerReset(partner.id, password);
+      setResetDraft((current) => ({
+        ...current,
+        password,
+        phase: "otp",
+        info: partnerResetDeliveryMessage(data),
+      }));
+    } catch (err) {
+      setError(err.message || "Could not send the reset OTP.");
+    } finally {
+      setBusyId("");
+    }
+  };
+
+  const confirmReset = async (partner) => {
+    const otp = String(resetDraft.otp || "").replace(/\D/g, "").slice(0, 6);
+    if (!/^\d{6}$/.test(otp)) {
+      setError("Enter the 6-digit OTP.");
+      return;
+    }
+    setBusyId(`reset-${partner.id}`);
+    setError("");
+    setNote("");
+    try {
+      const data = await confirmStaffPartnerReset(partner.id, otp);
+      onChange?.(data.partners || []);
+      setResetFor("");
+      setResetDraft({ password: "", otp: "", phase: "", info: "" });
+      setNote(`Password reset for ${partner.name}. They sign in with the new 6-digit password.`);
+    } catch (err) {
+      setError(err.message || "Could not reset the password.");
     } finally {
       setBusyId("");
     }
@@ -89,16 +213,11 @@ export default function AdminPartnerLogins({ partners, onChange }) {
 
   const setCreateKind = (kind) => {
     setCreate((current) => {
-      const prevDefault = defaultPartnerPercentFor(current.kinds[0]);
       const keepRole = current.role && current.role !== partnerRole(current.kinds[0]);
       return {
         ...current,
         kinds: [kind],
         role: keepRole ? current.role : partnerRole(kind),
-        partnerPercent:
-          Number(current.partnerPercent) === prevDefault
-            ? defaultPartnerPercentFor(kind)
-            : current.partnerPercent,
       };
     });
   };
@@ -118,11 +237,19 @@ export default function AdminPartnerLogins({ partners, onChange }) {
       setError(location.error);
       return;
     }
+    if (!/^\d{10}$/.test(create.mobile)) {
+      setError("Login ID is the 10-digit mobile number.");
+      return;
+    }
+    if (!/^\d{6}$/.test(create.password)) {
+      setError("Password must be exactly 6 digits.");
+      return;
+    }
     setBusyId("new");
     setError("");
     setNote("");
     try {
-      const data = await createStaffPartner({
+      const payload = {
         ...create,
         kinds: [kind],
         role: create.role || partnerRole(kind),
@@ -130,12 +257,16 @@ export default function AdminPartnerLogins({ partners, onChange }) {
         pin: location.pin,
         pinCode: location.pin,
         pins: location.pins,
-      });
+      };
+      delete payload.partnerPercent;
+      const data = await createStaffPartner(payload);
       onChange?.(data.partners || []);
       setCategory(kind);
+      setAdding(true);
       setCreate(emptyCreate(kind));
-      setAdding(false);
-      setNote(`Partner Saved. Share The Login ID And Password With ${data.partner?.name || "The Partner"}.`);
+      setNote(
+        `Partner Saved. Share the mobile number (login ID) and 6-digit password with ${data.partner?.name || "the partner"}.`
+      );
     } catch (err) {
       setError(err.message || "Could Not Create Partner.");
     } finally {
@@ -219,6 +350,7 @@ export default function AdminPartnerLogins({ partners, onChange }) {
               Mobile
               <input
                 inputMode="numeric"
+                autoComplete="tel"
                 value={create.mobile}
                 onChange={(event) =>
                   setCreate((current) => ({
@@ -226,47 +358,62 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                     mobile: event.target.value.replace(/\D/g, "").slice(0, 10),
                   }))
                 }
-              />
-            </label>
-            <label>
-              Login ID
-              <input
-                value={create.loginId}
-                onChange={(event) => setCreate((current) => ({ ...current, loginId: event.target.value }))}
-                placeholder="First login ID"
+                placeholder="10-digit mobile"
                 required
+                minLength={10}
+                maxLength={10}
+                pattern="\d{10}"
               />
+              <span className="admin-outlet-area">Login ID</span>
             </label>
             <label>
               Password
               <input
                 type="password"
+                inputMode="numeric"
                 value={create.password}
-                onChange={(event) => setCreate((current) => ({ ...current, password: event.target.value }))}
-                placeholder="First password"
-                autoComplete="new-password"
-                required
-                minLength={8}
-              />
-            </label>
-            <label>
-              Partner split %
-              <input
-                type="number"
-                min={0}
-                max={100}
-                required
-                value={create.partnerPercent}
                 onChange={(event) =>
                   setCreate((current) => ({
                     ...current,
-                    partnerPercent: event.target.value,
+                    password: event.target.value.replace(/\D/g, "").slice(0, 6),
                   }))
                 }
+                placeholder="6-digit password"
+                autoComplete="new-password"
+                required
+                minLength={6}
+                maxLength={6}
+                pattern="\d{6}"
               />
-              <span className="admin-outlet-area">
-                MediHome {100 - Number(create.partnerPercent || 0)}%
-              </span>
+            </label>
+            <label>
+              Address
+              <input
+                value={create.address}
+                onChange={(event) =>
+                  setCreate((current) => ({ ...current, address: event.target.value }))
+                }
+                placeholder="Street, area, city"
+                required
+              />
+            </label>
+            <label>
+              PIN
+              <input
+                inputMode="numeric"
+                value={create.pin}
+                onChange={(event) =>
+                  setCreate((current) => ({
+                    ...current,
+                    pin: event.target.value.replace(/\D/g, "").slice(0, 6),
+                  }))
+                }
+                placeholder="6-digit PIN"
+                required
+                minLength={6}
+                maxLength={6}
+                pattern="\d{6}"
+              />
             </label>
           </div>
           <div className="admin-feature-actions">
@@ -294,7 +441,6 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                 <th>Category</th>
                 <th>Login ID</th>
                 <th>Password</th>
-                <th>Partner %</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -302,13 +448,20 @@ export default function AdminPartnerLogins({ partners, onChange }) {
             <tbody>
               {listed.length === 0 ? (
                 <tr>
-                  <td colSpan="7">No {partnerCategoryLabel(category)} partners yet.</td>
+                  <td colSpan={6}>
+                    No {partnerCategoryLabel(category)} partners yet.
+                  </td>
                 </tr>
               ) : (
                 listed.map((partner) => {
                   const draft = draftFor(partner);
+                  const resetLabel = partnerPasswordResetLabel(partner);
+                  const resetOpen = resetFor === partner.id;
+                  const splitOpen = splitFor === partner.id;
+                  const columnCount = 6;
                   return (
-                    <tr key={partner.id}>
+                    <Fragment key={partner.id}>
+                    <tr>
                       <td>
                         {partner.name}
                         {partner.mobile ? (
@@ -331,62 +484,50 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                       <td>
                         <input
                           aria-label={`Login ID for ${partner.name}`}
+                          inputMode="numeric"
+                          maxLength={10}
                           value={draft.loginId}
                           onChange={(event) =>
                             setDrafts((current) => ({
                               ...current,
-                              [partner.id]: { ...draft, loginId: event.target.value },
+                              [partner.id]: {
+                                ...draft,
+                                loginId: event.target.value.replace(/\D/g, "").slice(0, 10),
+                              },
                             }))
                           }
-                          placeholder="Create login ID"
+                          placeholder="10-digit mobile"
                         />
                       </td>
                       <td>
                         <input
                           type="password"
+                          inputMode="numeric"
+                          maxLength={6}
                           aria-label={`Password for ${partner.name}`}
                           value={draft.password}
                           onChange={(event) =>
                             setDrafts((current) => ({
                               ...current,
-                              [partner.id]: { ...draft, password: event.target.value },
+                              [partner.id]: {
+                                ...draft,
+                                password: event.target.value.replace(/\D/g, "").slice(0, 6),
+                              },
                             }))
                           }
-                          placeholder={partner.hasLogin ? "New password" : "First password"}
+                          placeholder="6-digit password"
                           autoComplete="new-password"
                         />
                       </td>
                       <td>
-                        <div className="admin-split-row">
-                          <input
-                            type="number"
-                            min={0}
-                            max={100}
-                            aria-label={`Partner split percent for ${partner.name}`}
-                            value={draft.partnerPercent}
-                            onChange={(event) =>
-                              setDrafts((current) => ({
-                                ...current,
-                                [partner.id]: {
-                                  ...draft,
-                                  partnerPercent: event.target.value,
-                                },
-                              }))
-                            }
-                          />
-                          <span className="admin-outlet-area">
-                            MediHome {100 - Number(draft.partnerPercent || 0)}%
-                          </span>
-                          <button
-                            type="button"
-                            disabled={busyId === `split-${partner.id}`}
-                            onClick={() => saveSplit(partner)}
-                          >
-                            {busyId === `split-${partner.id}` ? "Saving…" : "Save Split"}
-                          </button>
-                        </div>
+                        {partner.hasLogin ? "Login Set" : "Needs First Login"}
+                        {resetLabel ? (
+                          <>
+                            <br />
+                            <span className="admin-outlet-area">{resetLabel}</span>
+                          </>
+                        ) : null}
                       </td>
-                      <td>{partner.hasLogin ? "Login Set" : "Needs First Login"}</td>
                       <td>
                         <button
                           type="button"
@@ -395,8 +536,165 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                         >
                           {busyId === partner.id ? "Saving…" : "Save Login"}
                         </button>
+                        <button
+                          type="button"
+                          disabled={busyId === `reset-${partner.id}`}
+                          onClick={() => (resetOpen ? setResetFor("") : openReset(partner))}
+                        >
+                          {resetOpen ? "Cancel" : "Reset password"}
+                        </button>
+                        {partnerUpdateShowsSplit(category) ? (
+                          <button
+                            type="button"
+                            disabled={busyId === `split-${partner.id}`}
+                            onClick={() => (splitOpen ? setSplitFor("") : openSplit(partner))}
+                          >
+                            {splitOpen ? "Cancel" : "Update split"}
+                          </button>
+                        ) : null}
                       </td>
                     </tr>
+                    {resetOpen ? (
+                      <tr>
+                        <td colSpan={columnCount}>
+                          <div className="admin-partner-reset">
+                            <p className="admin-hint">
+                              Enter the new 6-digit password. An OTP is texted to the partner&apos;s
+                              registered mobile when an SMS gateway is configured. The password is saved
+                              only after that OTP is entered.
+                            </p>
+                            <input
+                              type="password"
+                              inputMode="numeric"
+                              maxLength={6}
+                              aria-label={`New password for ${partner.name}`}
+                              placeholder="New 6-digit password"
+                              autoComplete="new-password"
+                              value={resetDraft.password}
+                              onChange={(event) =>
+                                setResetDraft((current) => ({
+                                  ...current,
+                                  password: event.target.value.replace(/\D/g, "").slice(0, 6),
+                                  phase: current.phase === "otp" ? "" : current.phase,
+                                  otp: current.phase === "otp" ? "" : current.otp,
+                                  info: current.phase === "otp" ? "" : current.info,
+                                }))
+                              }
+                            />
+                            <button
+                              type="button"
+                              disabled={busyId === `reset-${partner.id}`}
+                              onClick={() => sendResetOtp(partner)}
+                            >
+                              {busyId === `reset-${partner.id}` && resetDraft.phase !== "otp"
+                                ? "Sending…"
+                                : resetDraft.phase === "otp"
+                                  ? "Send OTP again"
+                                  : "Send OTP"}
+                            </button>
+                            {resetDraft.phase === "otp" ? (
+                              <>
+                                {resetDraft.info ? <p className="admin-hint">{resetDraft.info}</p> : null}
+                                <input
+                                  inputMode="numeric"
+                                  maxLength={6}
+                                  aria-label={`OTP for ${partner.name}`}
+                                  placeholder="6-digit OTP"
+                                  autoComplete="one-time-code"
+                                  value={resetDraft.otp}
+                                  onChange={(event) =>
+                                    setResetDraft((current) => ({
+                                      ...current,
+                                      otp: event.target.value.replace(/\D/g, "").slice(0, 6),
+                                    }))
+                                  }
+                                />
+                                <button
+                                  type="button"
+                                  disabled={busyId === `reset-${partner.id}`}
+                                  onClick={() => confirmReset(partner)}
+                                >
+                                  {busyId === `reset-${partner.id}` ? "Saving…" : "Confirm reset"}
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                    {splitOpen ? (
+                      <tr>
+                        <td colSpan={columnCount}>
+                          <div className="admin-partner-reset">
+                            <p className="admin-hint">
+                              Update split texts an OTP to the partner&apos;s registered mobile when an
+                              SMS gateway is configured. The percent is saved only after that OTP is
+                              entered. Without a gateway the code is stored but not texted.
+                            </p>
+                            <label>
+                              Partner split %
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                aria-label={`Partner split percent for ${partner.name}`}
+                                value={splitDraft.partnerPercent}
+                                onChange={(event) =>
+                                  setSplitDraft((current) => ({
+                                    ...current,
+                                    partnerPercent: event.target.value,
+                                    phase: current.phase === "otp" ? "" : current.phase,
+                                    otp: current.phase === "otp" ? "" : current.otp,
+                                    info: current.phase === "otp" ? "" : current.info,
+                                  }))
+                                }
+                              />
+                            </label>
+                            <span className="admin-outlet-area">
+                              MediHome {100 - Number(splitDraft.partnerPercent || 0)}%
+                            </span>
+                            <button
+                              type="button"
+                              disabled={busyId === `split-${partner.id}`}
+                              onClick={() => sendSplitOtp(partner)}
+                            >
+                              {busyId === `split-${partner.id}` && splitDraft.phase !== "otp"
+                                ? "Sending…"
+                                : splitDraft.phase === "otp"
+                                  ? "Send OTP again"
+                                  : "Send OTP"}
+                            </button>
+                            {splitDraft.phase === "otp" ? (
+                              <>
+                                {splitDraft.info ? <p className="admin-hint">{splitDraft.info}</p> : null}
+                                <input
+                                  inputMode="numeric"
+                                  maxLength={6}
+                                  aria-label={`Split OTP for ${partner.name}`}
+                                  placeholder="6-digit OTP"
+                                  autoComplete="one-time-code"
+                                  value={splitDraft.otp}
+                                  onChange={(event) =>
+                                    setSplitDraft((current) => ({
+                                      ...current,
+                                      otp: event.target.value.replace(/\D/g, "").slice(0, 6),
+                                    }))
+                                  }
+                                />
+                                <button
+                                  type="button"
+                                  disabled={busyId === `split-${partner.id}`}
+                                  onClick={() => confirmSplit(partner)}
+                                >
+                                  {busyId === `split-${partner.id}` ? "Saving…" : "Update split"}
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                    </Fragment>
                   );
                 })
               )}

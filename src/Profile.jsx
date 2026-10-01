@@ -28,6 +28,7 @@ import {
 import { noContactEmailProps, noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import AutofillTrap from "./AutofillTrap";
 import { PROFILE_KEY, useLoginSession, writeLoginSession } from "./authSession";
+import CustomerLogOut from "./CustomerLogOut.jsx";
 import { MEMBER_ROLE, holderActor } from "./familyAccount";
 import { pickLoginPin } from "./loginPin";
 
@@ -189,6 +190,9 @@ function Profile() {
               </div>
             </dl>
           </section>
+          <div className="profile-actions">
+            <CustomerLogOut className="profile-logout-btn" />
+          </div>
         </div>
       </>
     );
@@ -348,6 +352,9 @@ function Profile() {
         <div className="profile-refer-wrap">
           <ReferFamily />
         </div>
+        <div className="profile-actions">
+          <CustomerLogOut className="profile-logout-btn" />
+        </div>
       </div>
     </>
   );
@@ -382,9 +389,10 @@ const styles = `
   .profile-hint{margin-top:4px;color:#5d7180;font-size:11px}
   .profile-success{margin:0;padding:10px 12px;border-radius:8px;background:#e5f8ee;color:#1c9b61;font-size:13px;font-weight:600}
   .profile-actions{display:flex;flex-wrap:wrap;gap:8px;max-width:760px;margin:0 auto 14px}
-  .profile-save-btn,.profile-edit-btn{border:none;border-radius:8px;padding:11px 16px;font-size:14px;font-weight:800;cursor:pointer}
+  .profile-save-btn,.profile-edit-btn,.profile-logout-btn{border:none;border-radius:8px;padding:11px 16px;font-size:14px;font-weight:800;cursor:pointer}
   .profile-save-btn{background:#1a6b7a;color:#fff}
   .profile-edit-btn{background:#fff;color:#1a6b7a;border:1px solid #d7e2e9}
+  .profile-logout-btn{background:#fff;color:#9b3d3d;border:1px solid #e4c4c4}
   .profile-member-details{display:grid;gap:10px;margin:0}
   .profile-member-details div{display:grid;gap:2px}
   .profile-member-details dt{font-size:11px;font-weight:800;color:#5d7180}

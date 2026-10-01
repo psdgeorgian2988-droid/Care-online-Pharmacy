@@ -730,7 +730,7 @@ export default function PrescriptionReview() {
 }
 
 const styles = `
-.rx-page{max-width:1100px;margin:0 auto;padding:16px 16px 140px;box-sizing:border-box}
+.rx-page{width:100%;max-width:none;margin:0;padding:16px 16px 140px;box-sizing:border-box}
 .rx-head{margin:0 0 16px}
 .rx-kicker{margin:0 0 4px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1a6b7a}
 .rx-head h1{margin:0 0 6px;font-size:clamp(22px,4vw,28px);font-weight:800;color:#143246}

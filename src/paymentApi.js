@@ -111,6 +111,8 @@ export async function settleCheckoutPayment({
   description,
   pointsUsed = 0,
   pointsDiscountRupees = 0,
+  tests,
+  labId,
 }) {
   const instrument = getCheckoutInstrument();
   const paidOn = instrument.paidOn === "partner" ? "partner" : "customer";
@@ -129,6 +131,7 @@ export async function settleCheckoutPayment({
     collector,
     paymentMethod: method,
     paidOn,
+    tests: String(kind || "").toLowerCase() === "lab" ? tests : undefined,
   });
   if (collector === "partner") {
     return {
@@ -198,6 +201,8 @@ export async function settleCheckoutPayment({
     collector,
     paymentMethod: method,
     paidOn,
+    tests: String(kind || "").toLowerCase() === "lab" ? tests : undefined,
+    labId,
   });
   maybeSaveInstrument(mobile, method, instrument);
   return {
@@ -240,6 +245,8 @@ export async function takeOnlinePayment({
   collector,
   paymentMethod,
   paidOn,
+  tests,
+  labId,
 }) {
   const created = await createPaymentOrder({
     amountRupees,
@@ -254,6 +261,8 @@ export async function takeOnlinePayment({
     collector,
     paymentMethod,
     paidOn,
+    tests,
+    labId,
   });
 
   if (created.testCheckout) {

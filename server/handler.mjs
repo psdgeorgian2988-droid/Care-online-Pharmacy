@@ -6,8 +6,11 @@ import {
   clampSplitPercent,
   resplitOrder,
   resolveCollector,
+  splitExtrasForAssignedPartner,
   splitPayment,
 } from "../src/paymentSplit.js";
+import { stampLabOrderTests } from "../src/labTestSplit.js";
+import { listAddedLabTests, addLabTest, updateLabTestSplit } from "./labCatalog.mjs";
 import { isOnlinePayment } from "../src/paymentMethods.js";
 import { publicSplit } from "../src/payeeBank.js";
 import { partnerCollectPatch } from "../src/partnerCollect.js";
@@ -57,6 +60,13 @@ import {
   setPartnerLogin,
   updatePartner,
 } from "./partners.mjs";
+import {
+  confirmAdminPartnerReset,
+  confirmPartnerForgotPassword,
+  requestAdminPartnerReset,
+  requestPartnerForgotPassword,
+} from "./partnerReset.mjs";
+import { confirmAdminPartnerSplit, requestAdminPartnerSplit } from "./partnerSplitOtp.mjs";
 import { deductOrderStock, listPartnerInventory } from "./stock.mjs";
 import { findBatch, publicCatalog, readCatalog } from "./catalog.mjs";
 import {
@@ -139,6 +149,8 @@ function splitFromOrderBody(kind, pin, body, payable) {
     couponLabel: body.split?.couponLabel || "",
     paymentMethod,
     paidOn,
+    tests: String(kind || "").toLowerCase() === "lab" ? body.tests : undefined,
+    collector: body.collector || body.split?.collector,
   });
 }
 
@@ -156,7 +168,13 @@ function enrichOrder(body) {
     collector: next.collector || next.split?.collector,
   });
   next.paidOn = next.collector === "partner" ? "partner" : "customer";
-  if (next.split && !next.split.splitMode) {
+  const labKind =
+    String(kind).toLowerCase() === "lab" || String(next.serviceType || "").toLowerCase() === "lab";
+  if (labKind && Array.isArray(next.tests) && next.tests.length && !next.split?.staffSet && total > 0) {
+    next.split = splitFromOrderBody(next.kind || "lab", pin, next, total);
+    next.collector = next.split.collector;
+    next.paidOn = next.split.paidOn;
+  } else if (next.split && !next.split.splitMode) {
     next.split = attachSettlement(next.split, {
       collector: next.collector,
       paymentMethod: next.paymentMethod,
@@ -204,6 +222,11 @@ export async function handleApi(req, res) {
   try {
     if (pathname === "/api/catalog" && req.method === "GET") {
       send(res, 200, publicCatalog(await readCatalog()));
+      return true;
+    }
+
+    if (pathname === "/api/lab-tests" && req.method === "GET") {
+      send(res, 200, { tests: await listAddedLabTests() });
       return true;
     }
 
@@ -256,6 +279,14 @@ export async function handleApi(req, res) {
       const paymentMethod = String(body.paymentMethod || "online");
       const paidOn = body.paidOn === "partner" ? "partner" : "customer";
       const collector = resolveCollector({ method: paymentMethod, paidOn });
+      let tests = body.tests;
+      if (kind.toLowerCase() === "lab") {
+        const added = await listAddedLabTests();
+        tests = stampLabOrderTests(body.tests, {
+          labId: body.labId || body.preferredLabId || body.tests?.[0]?.partnerId || "",
+          added,
+        });
+      }
       const split = splitPayment(kind, amountRupees, pin, {
         saleRupees: body.saleRupees ?? amountRupees,
         payableRupees: amountRupees,
@@ -263,6 +294,7 @@ export async function handleApi(req, res) {
         collector,
         paymentMethod,
         paidOn,
+        tests: kind.toLowerCase() === "lab" ? tests : undefined,
       });
       const digital = isOnlinePayment(paymentMethod);
       const payment = {
@@ -378,6 +410,32 @@ export async function handleApi(req, res) {
       return true;
     }
 
+    if (pathname === "/api/partner/forgot" && req.method === "POST") {
+      const body = await readJson(req);
+      const result = await requestPartnerForgotPassword(body.mobile || body.loginId);
+      if (!result.ok) {
+        send(res, result.status || 400, { error: result.error });
+        return true;
+      }
+      send(res, 200, result.body);
+      return true;
+    }
+
+    if (pathname === "/api/partner/forgot/confirm" && req.method === "POST") {
+      const body = await readJson(req);
+      const result = await confirmPartnerForgotPassword({
+        mobile: body.mobile || body.loginId,
+        otp: body.otp,
+        password: body.password,
+      });
+      if (!result.ok) {
+        send(res, result.status || 400, { error: result.error });
+        return true;
+      }
+      send(res, 200, result.body);
+      return true;
+    }
+
     if (pathname === "/api/partner/jobs" && req.method === "GET") {
       const token = readToken(req) || url.searchParams.get("token") || "";
       const partnerId =
@@ -429,6 +487,99 @@ export async function handleApi(req, res) {
       return true;
     }
 
+    if (pathname === "/api/admin/lab-tests" && req.method === "POST") {
+      if (!requireStaff(req, res)) return true;
+      const body = await readJson(req);
+      const created = await addLabTest(body);
+      if (!created.ok) {
+        send(res, 400, { error: created.error });
+        return true;
+      }
+      send(res, 200, { test: created.test, tests: created.tests });
+      return true;
+    }
+
+    const labTestSplitMatch = pathname.match(/^\/api\/admin\/lab-tests\/([^/]+)$/);
+    if (labTestSplitMatch && req.method === "PATCH") {
+      if (!requireStaff(req, res)) return true;
+      const body = await readJson(req);
+      const updated = await updateLabTestSplit(decodeURIComponent(labTestSplitMatch[1]), body);
+      if (!updated.ok) {
+        send(res, 400, { error: updated.error });
+        return true;
+      }
+      send(res, 200, { test: updated.test, tests: updated.tests });
+      return true;
+    }
+
+    const partnerResetConfirm = pathname.match(
+      /^\/api\/admin\/partners\/([^/]+)\/reset-password\/confirm$/
+    );
+    if (partnerResetConfirm && req.method === "POST") {
+      if (!requireStaff(req, res)) return true;
+      const body = await readJson(req);
+      const result = await confirmAdminPartnerReset(
+        decodeURIComponent(partnerResetConfirm[1]),
+        body.otp
+      );
+      if (!result.ok) {
+        send(res, result.status || 400, { error: result.error });
+        return true;
+      }
+      send(res, 200, { ...result.body, partners: await listPartners() });
+      return true;
+    }
+
+    const partnerReset = pathname.match(/^\/api\/admin\/partners\/([^/]+)\/reset-password$/);
+    if (partnerReset && req.method === "POST") {
+      if (!requireStaff(req, res)) return true;
+      const body = await readJson(req);
+      const result = await requestAdminPartnerReset(
+        decodeURIComponent(partnerReset[1]),
+        body.password
+      );
+      if (!result.ok) {
+        send(res, result.status || 400, { error: result.error });
+        return true;
+      }
+      send(res, 200, result.body);
+      return true;
+    }
+
+    const partnerSplitConfirm = pathname.match(
+      /^\/api\/admin\/partners\/([^/]+)\/split-otp\/confirm$/
+    );
+    if (partnerSplitConfirm && req.method === "POST") {
+      if (!requireStaff(req, res)) return true;
+      const body = await readJson(req);
+      const result = await confirmAdminPartnerSplit(
+        decodeURIComponent(partnerSplitConfirm[1]),
+        body.otp
+      );
+      if (!result.ok) {
+        send(res, result.status || 400, { error: result.error });
+        return true;
+      }
+      send(res, 200, { ...result.body, partners: await listPartners() });
+      return true;
+    }
+
+    const partnerSplitOtp = pathname.match(/^\/api\/admin\/partners\/([^/]+)\/split-otp$/);
+    if (partnerSplitOtp && req.method === "POST") {
+      if (!requireStaff(req, res)) return true;
+      const body = await readJson(req);
+      const result = await requestAdminPartnerSplit(
+        decodeURIComponent(partnerSplitOtp[1]),
+        body.partnerPercent
+      );
+      if (!result.ok) {
+        send(res, result.status || 400, { error: result.error });
+        return true;
+      }
+      send(res, 200, result.body);
+      return true;
+    }
+
     const partnerLoginMatch = pathname.match(/^\/api\/admin\/partners\/([^/]+)\/login$/);
     if (partnerLoginMatch && req.method === "PATCH") {
       if (!requireStaff(req, res)) return true;
@@ -446,6 +597,12 @@ export async function handleApi(req, res) {
     if (partnerUpdateMatch && req.method === "PATCH") {
       if (!requireStaff(req, res)) return true;
       const body = await readJson(req);
+      if (body.partnerPercent != null || body.platformPercent != null) {
+        send(res, 400, {
+          error: "Update split sends an OTP to the partner's registered mobile first.",
+        });
+        return true;
+      }
       const updated = await updatePartner(decodeURIComponent(partnerUpdateMatch[1]), body);
       if (!updated.ok) {
         send(res, 400, { error: updated.error });
@@ -751,7 +908,7 @@ export async function handleApi(req, res) {
           patch.split = {
             ...resplitOrder(
               { ...existing, ...patch },
-              { partnerPercent: partner.partnerPercent }
+              splitExtrasForAssignedPartner(existing, partner)
             ),
             staffSet: false,
           };
@@ -1069,6 +1226,14 @@ export async function handleApi(req, res) {
 
     if (pathname === "/api/orders" && req.method === "POST") {
       const body = await readJson(req);
+      const incomingKind = String(body.kind || body.orderType || body.serviceType || "").toLowerCase();
+      if (incomingKind === "lab") {
+        const added = await listAddedLabTests();
+        body.tests = stampLabOrderTests(body.tests, {
+          labId: body.preferredLabId || body.tests?.[0]?.partnerId || "",
+          added,
+        });
+      }
       const incoming = enrichOrder(body);
       incoming.orderType = incoming.orderType || incoming.kind;
       const wanted = orderId(incoming);

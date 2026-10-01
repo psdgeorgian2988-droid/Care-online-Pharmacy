@@ -87,8 +87,12 @@ function hashSeed(value) {
   return hash >>> 0;
 }
 
-export function trackHref(id) {
-  return `#track?id=${encodeURIComponent(String(id || ""))}`;
+export function trackHref(id, from = "") {
+  const params = new URLSearchParams();
+  params.set("id", String(id || ""));
+  const source = String(from || "").trim().toLowerCase();
+  if (source) params.set("from", source);
+  return `#track?${params.toString()}`;
 }
 
 export function isOrderCompleted(order) {

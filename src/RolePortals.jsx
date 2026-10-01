@@ -85,7 +85,7 @@ export function PartnerPortal() {
       bullets={[
         "Confirm lab, radiology, and Home Care requests",
         "Collect, deliver, and complete assigned visits",
-        "Sign in with the Login ID created on the Staff Desk",
+        "Sign in with your 10-digit mobile and 6-digit password",
       ]}
       actions={
         <>

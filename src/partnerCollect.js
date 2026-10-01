@@ -220,8 +220,11 @@ export function partnerCollectPatch(existing = {}, body = {}, now = Date.now()) 
             existing.split?.saleRupees ?? existing.saleRupees ?? payable,
           payableRupees: existing.split?.payableRupees ?? payable,
           couponCode: existing.split?.couponCode || existing.couponCode || "",
-          platformPercent: existing.split?.platformPercent,
-          partnerPercent: existing.split?.partnerPercent,
+          platformPercent:
+            kind === "lab" && !existing.split?.staffSet
+              ? undefined
+              : existing.split?.platformPercent,
+          tests: kind === "lab" ? existing.tests || existing.items : undefined,
           paymentMethod,
           paidOn,
         }),

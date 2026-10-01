@@ -1,6 +1,15 @@
 import { useMemo, useState } from "react";
-import { addReview, REVIEW_SERVICES } from "./reviewStore";
+import { addReview, loadReviews, REVIEW_SERVICES } from "./reviewStore";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
+import { parseAppHash } from "./hashRoute";
+import { loadAllOrders } from "./orderTracking";
+import {
+  findReviewForOrder,
+  matchStoredOrder,
+  orderReviewKey,
+  reviewHashForOrder,
+  reviewServiceForOrder,
+} from "./orderReview";
 
 function readProfile() {
   try {
@@ -17,15 +26,25 @@ function readProfile() {
   }
 }
 
+function orderFromFeedbackHash() {
+  if (typeof window === "undefined") return null;
+  const id = parseAppHash(window.location.hash).id;
+  if (!id) return null;
+  return matchStoredOrder(loadAllOrders(), id) || { id };
+}
+
 function Feedback() {
   const profile = useMemo(() => readProfile(), []);
+  const linkedOrder = orderFromFeedbackHash();
+  const linkedId = orderReviewKey(linkedOrder);
+  const savedForOrder = linkedId ? findReviewForOrder(loadReviews(), linkedId) : null;
   const [form, setForm] = useState({
     name: profile.name,
     mobile: profile.mobile,
-    service: "medicines",
+    service: linkedOrder ? reviewServiceForOrder(linkedOrder) : "medicines",
     rating: 5,
     comment: "",
-    referenceId: "",
+    referenceId: linkedId,
   });
   const [errors, setErrors] = useState({});
   const [saved, setSaved] = useState(null);
@@ -68,7 +87,8 @@ function Feedback() {
       service: form.service,
       rating: Number(form.rating),
       comment: form.comment.trim(),
-      referenceId: form.referenceId.trim(),
+      orderId: linkedId || undefined,
+      referenceId: (linkedId || form.referenceId).trim(),
       createdAt: now.toLocaleString(),
       createdAtMs: now.getTime(),
     };
@@ -76,7 +96,9 @@ function Feedback() {
     setSaved(review);
   };
 
-  if (saved) {
+  const shown = savedForOrder || saved;
+
+  if (shown) {
     return (
       <>
         <style>{styles}</style>
@@ -87,15 +109,16 @@ function Feedback() {
             <p>Your review is saved on this device and listed on the Reviews page.</p>
             <div className="confirm-card">
               <div className="confirm-head">
-                <h2>{saved.name}</h2>
-                <span>{saved.rating} / 5</span>
+                <h2>{shown.name}</h2>
+                <span>{shown.rating} / 5</span>
               </div>
-              <p className="review-quote">{saved.comment}</p>
+              <p className="review-quote">{shown.comment}</p>
             </div>
             <div className="confirm-actions">
-              <a className="service-submit" href="#reviews">
-                Read reviews
+              <a className="service-submit" href={reviewHashForOrder(shown.orderId || shown.referenceId || linkedId)}>
+                Read review
               </a>
+              {linkedId ? null : (
               <button
                 type="button"
                 className="service-submit"
@@ -114,6 +137,7 @@ function Feedback() {
               >
                 Write another
               </button>
+              )}
             </div>
           </section>
         </div>
@@ -193,6 +217,7 @@ function Feedback() {
               value={form.referenceId}
               onChange={handleChange}
               placeholder="Optional, e.g. from My Orders"
+              readOnly={Boolean(linkedId)}
             />
           </div>
 

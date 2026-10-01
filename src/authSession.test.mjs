@@ -23,11 +23,13 @@ const {
   LOGIN_SESSION_KEY,
   PROFILE_KEY,
   customerGreeting,
+  hasAccountSession,
   logoutSession,
   needsCustomerWelcome,
   readLoginSession,
   writeLoginSession,
 } = await import("./authSession.js");
+const { logOutCustomer } = await import("./customerLogout.js");
 
 function seedAsha() {
   localStorage.setItem(
@@ -96,6 +98,89 @@ test("login persists Asha in localStorage so #home can greet after a dropped tab
   assert.equal(localStorage.getItem(LOGIN_SESSION_KEY), null);
   assert.equal(readLoginSession(), null);
   assert.equal(needsCustomerWelcome(readLoginSession()), true);
+});
+
+test("guests and signed-out visitors are not account sessions", () => {
+  assert.equal(hasAccountSession(null), false);
+  assert.equal(hasAccountSession({ mobile: "9876543210", isGuest: true }), false);
+  assert.equal(hasAccountSession({ name: "Asha" }), false);
+  assert.equal(
+    hasAccountSession({ name: "Asha", mobile: "9876543210" }),
+    true
+  );
+});
+
+test("log out clears the customer login and guest checkout, then returns to welcome", () => {
+  localStorage.clear();
+  sessionStorage.clear();
+  seedAsha();
+  writeLoginSession({
+    name: "Asha",
+    mobile: "9876543210",
+    creatorMobile: "9876543210",
+  });
+  sessionStorage.setItem("mediHomeEntryChosen", "1");
+  localStorage.setItem(
+    "mediHomeGuestCheckout",
+    JSON.stringify({ name: "Guest", mobile: "9876543210", isGuest: true })
+  );
+  localStorage.setItem("mediHomePartnerToken", "keep-partner");
+  localStorage.setItem("mediHomeStaffToken", "keep-staff");
+
+  const pushed = [];
+  globalThis.window = {
+    location: {
+      hash: "#profile",
+      pathname: "/",
+      search: "?app=1",
+      href: "http://localhost/?app=1#profile",
+    },
+    history: {
+      pushState(_state, _title, url) {
+        pushed.push(String(url));
+      },
+    },
+    dispatchEvent() {
+      return true;
+    },
+  };
+
+  try {
+    logOutCustomer();
+  } finally {
+    delete globalThis.window;
+  }
+
+  assert.equal(localStorage.getItem(LOGIN_SESSION_KEY), null);
+  assert.equal(readLoginSession(), null);
+  assert.equal(needsCustomerWelcome(null), true);
+  assert.equal(localStorage.getItem("mediHomeGuestCheckout"), null);
+  assert.equal(localStorage.getItem(PROFILE_KEY) != null, true);
+  assert.equal(localStorage.getItem("mediHomePartnerToken"), "keep-partner");
+  assert.equal(localStorage.getItem("mediHomeStaffToken"), "keep-staff");
+  assert.ok(pushed.some((url) => url.includes("#home")));
+  assert.equal(pushed.some((url) => url.includes("#partner") || url.includes("#admin")), false);
+});
+
+test("log out is shown for registered customers on account and both shells", () => {
+  const profile = readFileSync(new URL("./Profile.jsx", import.meta.url), "utf8");
+  const header = readFileSync(new URL("./AppHeader.jsx", import.meta.url), "utf8");
+  const app = readFileSync(new URL("./App.jsx", import.meta.url), "utf8");
+  const button = readFileSync(new URL("./CustomerLogOut.jsx", import.meta.url), "utf8");
+  const tabs = readFileSync(new URL("./AppBottomNav.jsx", import.meta.url), "utf8");
+
+  assert.match(button, /Log out/);
+  assert.match(button, /hasAccountSession\(user\)/);
+  assert.match(profile, /CustomerLogOut/);
+  assert.match(header, /CustomerLogOut/);
+  assert.match(app, /CustomerLogOut/);
+  assert.match(app, /className="site-logout-btn"/);
+  assert.match(app, /className="home-account-btn"/);
+  assert.match(app, /hasAccountSession\(user\)/);
+  assert.match(
+    tabs,
+    /Account[\s\S]*Medicines[\s\S]*Labs[\s\S]*Orders[\s\S]*Doctor[\s\S]*Medical Record[\s\S]*Home Care[\s\S]*Vaccination/
+  );
 });
 
 test("create account and login send a new holder to #home, not Profile", () => {

@@ -1,5 +1,6 @@
 import MediHomeLogoLink from "./MediHomeLogoLink";
 import HeaderCart from "./HeaderCart";
+import CustomerLogOut from "./CustomerLogOut.jsx";
 import { goBackHash } from "./hashRoute";
 
 function BackIcon() {
@@ -33,7 +34,10 @@ export default function AppHeader() {
         size="md"
         aria-label="MediHome welcome"
       />
-      <HeaderCart className="app-chrome-header-cart" />
+      <div className="app-chrome-end">
+        <CustomerLogOut className="app-chrome-logout" />
+        <HeaderCart className="app-chrome-header-cart" />
+      </div>
     </header>
   );
 }

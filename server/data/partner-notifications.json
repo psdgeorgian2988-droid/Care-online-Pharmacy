@@ -1,6 +1,17 @@
 {
   "notifications": [
     {
+      "id": "N-muninbi1-P-MUNIFUHK-E9DF-0",
+      "partnerId": "P-MUNIFUHK-E9DF",
+      "orderId": "MH-LAB-VERIFY-1",
+      "kind": "lab",
+      "type": "new_order",
+      "title": "New lab booking",
+      "body": "#MH-LAB-VERIFY-1 · Neha Sharma · PIN 110001",
+      "createdAt": 1790737123322,
+      "readAt": null
+    },
+    {
       "id": "N-mum31smn-P-LAB-01-0",
       "partnerId": "P-LAB-01",
       "orderId": "MH-LAB-462221",

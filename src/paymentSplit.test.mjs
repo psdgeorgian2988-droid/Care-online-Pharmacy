@@ -312,3 +312,47 @@ test("order bill includes a shareable settlement ledger", () => {
   assert.match(bill.ledgerText, /Due From Service Provider/);
   assert.equal(bill.settlement.splitMode, "reverse");
 });
+
+test("lab line items use each test percent, not the partner record", () => {
+  const split = splitPayment("lab", 1000, "110001", {
+    saleRupees: 1000,
+    tests: [
+      { name: "CBC", price: 400, partnerPercent: 80 },
+      { name: "Lipid", price: 600, partnerPercent: 60 },
+    ],
+  });
+  assert.equal(split.partnerRupees, 680);
+  assert.equal(split.partnerPercent, 68);
+  assert.equal(split.platformPercent, 32);
+});
+
+test("pathcare transfer price is the lab partner share for that test", () => {
+  const split = splitPayment("lab", 150, "110001", {
+    tests: [{ name: "Absolute Eosinophil Count", price: 150, tp: 98 }],
+  });
+  assert.equal(split.partnerRupees, 98);
+});
+
+test("a staff partner percent still overrides lab test splits", () => {
+  const order = {
+    kind: "lab",
+    total: 1000,
+    tests: [
+      { price: 400, partnerPercent: 80 },
+      { price: 600, partnerPercent: 60 },
+    ],
+  };
+  assert.equal(resplitOrder(order, {}).partnerRupees, 680);
+  assert.equal(resplitOrder(order, { partnerPercent: 70 }).partnerPercent, 70);
+});
+
+test("non-lab services ignore test percents and keep the service split", () => {
+  const radiology = splitPayment("radiology", 1000, "110001", {
+    tests: [{ price: 1000, partnerPercent: 10 }],
+  });
+  assert.equal(radiology.partnerPercent, 85);
+  const medicine = splitPayment("medicine", 1000, "110001", {
+    tests: [{ price: 1000, partnerPercent: 10 }],
+  });
+  assert.equal(medicine.partnerPercent, 60);
+});

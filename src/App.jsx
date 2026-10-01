@@ -34,7 +34,6 @@ import ErrorBoundary from "./ErrorBoundary";
 import AuthPage from "./AuthPage";
 import {
   hasAccountSession,
-  logoutSession,
   rememberReturnHash,
   useLoginSession,
 } from "./authSession";
@@ -43,9 +42,12 @@ import { featureEnabled, pausedServiceTitle, routeEnabled } from "./salesReport"
 import {
   goToHash,
   homeCatalogSectionKeys,
+  isAdminBackHash,
   isHomeSectionKey,
   MEDICAL_RECORD_HOME_HASH,
+  orderBackActor,
   parseAppHash,
+  readOrderBackContext,
 } from "./hashRoute";
 import { peekRxLabCheckout } from "./medicineCartStore";
 import PortalsChooser, { CustomerPortal, PartnerPortal, StaffPortal } from "./RolePortals";
@@ -73,15 +75,28 @@ import {
 import LogoMark from "./LogoMark";
 import MediHomeLogoLink from "./MediHomeLogoLink";
 import AppHeader from "./AppHeader";
+import CustomerLogOut from "./CustomerLogOut.jsx";
 
 const AUTH_ROUTES = new Set(["#login", "#register", "#forgot"]);
 
 const OPS_LINKS = [
+  { href: "#partner", label: "Partner" },
   { href: "#admin", label: "Admin Panel" },
-  { href: "#partner-desk", label: "Partner Desk" },
 ];
 
 const TICKER_TEXT = "YOUR COMPLETE HEALTHCARE ECOSYSTEM AT YOUR DOORSTEP";
+
+function SiteOpsLinks({ className = "" }) {
+  return (
+    <nav className={`site-ops-links${className ? ` ${className}` : ""}`} aria-label="Partner and admin">
+      {OPS_LINKS.map((link) => (
+        <a key={link.href} href={link.href}>
+          {link.label}
+        </a>
+      ))}
+    </nav>
+  );
+}
 
 function SiteTicker() {
   return (
@@ -96,10 +111,11 @@ function SiteTicker() {
   );
 }
 
-function SiteFooter() {
+function SiteFooter({ showOpsLinks = false }) {
   return (
     <footer className="app-footer">
       <p>© 2026 MediHome. All rights reserved.</p>
+      {showOpsLinks ? <SiteOpsLinks className="footer-ops" /> : null}
       <SocialLinks className="footer-social" />
     </footer>
   );
@@ -200,7 +216,7 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
       <div className="home-shell">
         <div className="home-hero-row">
           <aside className="home-account-card" aria-label="Account">
-            {user ? (
+            {hasAccountSession(user) ? (
               <>
                 <a className="home-account-btn is-primary" href="#profile">
                   Profile
@@ -208,16 +224,7 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
                 <a className="home-account-btn" href="#register">
                   Edit Account
                 </a>
-                <button
-                  type="button"
-                  className="home-account-btn"
-                  onClick={() => {
-                    logoutSession();
-                    goToHash("#home");
-                  }}
-                >
-                  Logout
-                </button>
+                <CustomerLogOut className="home-account-btn" />
               </>
             ) : (
               <>
@@ -234,6 +241,7 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
               </>
             )}
           </aside>
+          <SiteOpsLinks className="home-ops-entry" />
         </div>
 
         <HomePrescriptionUpload />
@@ -304,9 +312,14 @@ function App() {
     step: scanStep,
     lab: selectedLab,
     service: hashService,
+    from: hashFrom,
   } = parseAppHash(hash);
   const isAuthRoute = AUTH_ROUTES.has(route);
-  const isOps = route === "#admin" || isPartnerDeskRoute(route);
+  const backActor = orderBackActor({ ...readOrderBackContext(), fromHash: hash });
+  const isOps =
+    route === "#admin" ||
+    isPartnerDeskRoute(route) ||
+    (route === "#track" && (isAdminBackHash(hash) || backActor === "admin"));
   const opsDeskKind = partnerDeskKindFromRoute(route);
   const barePartnerDesk = opsDeskKind === "stepdown" || opsDeskKind === "lab";
   const features = useFeatures();
@@ -344,13 +357,15 @@ function App() {
   }, [route]);
 
   useEffect(() => {
-    if (isOps || appRole === "staff" || appRole === "partner") return undefined;
+    if (isOps || appRole === "staff" || appRole === "partner" || backActor !== "customer") {
+      return undefined;
+    }
     if (AUTH_ROUTES.has(route)) return undefined;
     if (needsCustomerWelcome(user) && route !== "#home" && route !== "#checkout") {
       goToHash("#home");
     }
     return undefined;
-  }, [appRole, isOps, route, sessionTick, user]);
+  }, [appRole, backActor, isOps, route, sessionTick, user]);
 
   useEffect(() => {
     const recordsHome = route === "#home" && hashService === "reports";
@@ -402,7 +417,7 @@ function App() {
       case "#scan":
         return <ScanPage scanId={trackId} scanStep={scanStep} />;
       case "#track":
-        return <TrackPage trackId={trackId} />;
+        return <TrackPage trackId={trackId} from={hashFrom} />;
       case "#education":
         return <HealthEducation />;
       case "#about":
@@ -491,7 +506,7 @@ function App() {
             <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
           </ErrorBoundary>
         </main>
-        {barePartnerDesk ? null : <SiteFooter />}
+        {barePartnerDesk ? null : <SiteFooter showOpsLinks />}
         {barePartnerDesk ? null : (
           <SiteFloatingHelp needHelpOpen={needHelpOpen} setNeedHelpOpen={setNeedHelpOpen} />
         )}
@@ -556,13 +571,18 @@ function App() {
 
       <header className="site-topbar">
         <div className="site-topbar-inner">
-          <div className="site-topbar-slot is-start" aria-hidden="true" />
+          <div className="site-topbar-slot is-start">
+            <SiteOpsLinks className="site-topbar-ops" />
+          </div>
           <MediHomeLogoLink
             className="site-topbar-brand"
             size="lg"
             aria-label="MediHome welcome"
           />
-          <HeaderCart className="site-topbar-header-cart" />
+          <div className="site-topbar-end">
+            <CustomerLogOut className="site-logout-btn" />
+            <HeaderCart className="site-topbar-header-cart" />
+          </div>
         </div>
       </header>
 
@@ -584,7 +604,7 @@ function App() {
         </ErrorBoundary>
       </main>
 
-      <SiteFooter />
+      <SiteFooter showOpsLinks />
       <SiteFloatingHelp needHelpOpen={needHelpOpen} setNeedHelpOpen={setNeedHelpOpen} />
     </div>
   );

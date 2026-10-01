@@ -22,6 +22,7 @@ import {
 } from "./orderFullFields";
 import { openBatchReport } from "./batchStore";
 import { openReportFile, reportFileForOrder } from "./labPipeline";
+import OrderFeedbackCta from "./OrderFeedbackCta";
 
 function MetaRow({ label, value, href, onOpen }) {
   if (!value && !onOpen) return null;
@@ -54,6 +55,8 @@ export default function OrderFullView({
   rxEditable = false,
   rxBusy = false,
   onCorrectMedicine,
+  onBack,
+  backLabel = "Back to orders",
 }) {
   if (!order) return null;
   const kind = orderKind(order);
@@ -85,6 +88,13 @@ export default function OrderFullView({
       aria-label={completedCustomer ? "Completed order" : "Full order"}
     >
       <style>{`${rxShareCardStyles}${styles}`}</style>
+      {onBack ? (
+        <p className="order-full-back-wrap">
+          <button type="button" className="order-full-back" onClick={onBack}>
+            {backLabel}
+          </button>
+        </p>
+      ) : null}
       <div className="order-full-grid">
         <div>
           <p className="order-full-kicker">{kindLabel(kind)}</p>
@@ -153,17 +163,6 @@ export default function OrderFullView({
                   value={`${pay.discount}${pay.coupon ? ` · ${pay.coupon}` : ""}`}
                 />
               ) : null}
-              <MetaRow
-                label="Staff split"
-                value={[
-                  pay.platformPercent != null ? `MH ${pay.platformPercent}% ${pay.platform}` : "",
-                  pay.partnerPercent != null
-                    ? `Partner ${pay.partnerPercent}% ${pay.partner}`
-                    : "",
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              />
             </>
           ) : null}
         </div>
@@ -246,6 +245,10 @@ export default function OrderFullView({
         </p>
       ) : null}
 
+      {completedCustomer ? (
+        <OrderFeedbackCta order={order} audience="customer" />
+      ) : null}
+
       {showRx && !completedCustomer ? (
         <RxShareCard
           record={order}
@@ -266,6 +269,8 @@ export default function OrderFullView({
 
 const styles = `
 .order-full{margin:0;padding:10px 0;text-align:left;color:#34546b}
+.order-full-back-wrap{margin:0 0 10px}
+.order-full-back{border:0;background:none;padding:0;color:#1a6b7a;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
 .order-full-kicker{margin:0 0 4px;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#1a6b7a}
 .order-full h3{margin:0 0 6px;font-size:15px;color:#143246}
 .order-full h4{margin:12px 0 6px;padding:8px 0 6px;border-bottom:1px solid #edf1f3;font-size:13px;color:#143246}

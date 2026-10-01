@@ -203,10 +203,26 @@ export function writeTestCart(cart, store) {
   }
 }
 
+function labCartSplitFields(test, kind) {
+  if (kind !== "lab" || !test || typeof test !== "object") return {};
+  const price = Number(test.price);
+  const tp = Number(test.tp);
+  const explicit = Number(test.partnerPercent);
+  const fields = {};
+  if (price > 0 && Number.isFinite(tp) && tp >= 0) fields.tp = tp;
+  if (Number.isFinite(explicit)) {
+    fields.partnerPercent = Math.min(100, Math.max(0, Math.round(explicit)));
+  } else if (fields.tp != null && price > 0) {
+    fields.partnerPercent = Math.min(100, Math.max(0, Math.round((tp / price) * 100)));
+  }
+  return fields;
+}
+
 function normalizeTestCartItem(test, meta = {}) {
   const id = test?.id || test?.testId;
   const partnerId = meta.partnerId || test?.partnerId;
   if (!id || !partnerId) return null;
+  const kind = meta.kind || test.kind || "lab";
   return {
     id,
     name: test.name || test.testName || id,
@@ -214,9 +230,10 @@ function normalizeTestCartItem(test, meta = {}) {
     code: test.code || test.testId || id,
     prepType: test.prepType || "none",
     instruction: test.instruction || "",
-    kind: meta.kind || test.kind || "lab",
+    kind,
     partnerId,
     partnerName: meta.partnerName || test.partnerName || "",
+    ...labCartSplitFields(test, kind),
   };
 }
 

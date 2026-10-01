@@ -4,6 +4,16 @@ export const PARTNER_CATEGORY_TABS = ADMIN_SERVICE_TABS.filter(
   (tab) => tab.value !== "all" && tab.value !== "refund"
 );
 
+/** Add-partner never asks for a split. Staff change it later with Update split. */
+export function partnerCreateShowsSplit() {
+  return false;
+}
+
+/** Partner-record split is for every category except lab, which is set per test. */
+export function partnerUpdateShowsSplit(kind) {
+  return String(kind || "").toLowerCase() !== "lab";
+}
+
 export function partnerPrimaryKind(partner) {
   const kinds = Array.isArray(partner?.kinds) ? partner.kinds : [];
   const first = String(kinds[0] || "").toLowerCase();

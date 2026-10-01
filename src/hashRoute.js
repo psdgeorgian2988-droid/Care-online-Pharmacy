@@ -1,3 +1,8 @@
+import { staffToken } from "./adminApi.js";
+import { readAppRole } from "./appRuntime.js";
+import { isPartnerDeskRoute, partnerAppKind, partnerDeskHash } from "./partnerApp.js";
+import { partnerSession } from "./partnerApi.js";
+
 export function parseAppHash(rawHash) {
   let value = rawHash || "";
   if (value.startsWith("#")) {
@@ -21,6 +26,7 @@ export function parseAppHash(rawHash) {
   let service = "";
   let lab = "";
   let section = "";
+  let from = "";
   try {
     const params = new URLSearchParams(query);
     q = (params.get("q") || "").trim();
@@ -30,6 +36,7 @@ export function parseAppHash(rawHash) {
     service = (params.get("service") || "").trim();
     lab = (params.get("lab") || "").trim();
     section = (params.get("section") || "").trim().toLowerCase();
+    from = (params.get("from") || "").trim().toLowerCase();
   } catch {
     q = "";
     id = "";
@@ -38,6 +45,7 @@ export function parseAppHash(rawHash) {
     service = "";
     lab = "";
     section = "";
+    from = "";
   }
   const HASH_ALIASES = {
     social: "contact",
@@ -63,6 +71,8 @@ export function parseAppHash(rawHash) {
     vaccination: "home",
     "home-records": "home",
     homerecords: "home",
+    "staff-orders": "admin",
+    stafforders: "admin",
   };
   const mapped = HASH_ALIASES[path] || path;
   const route = !mapped || mapped === "home" ? "#home" : `#${mapped}`;
@@ -91,7 +101,21 @@ export function parseAppHash(rawHash) {
     plan,
     service: resolvedService,
     lab,
+    from,
   };
+}
+
+export const ADMIN_HOME_HASH = "#admin";
+
+export function adminOrderHash(id) {
+  const value = String(id || "").trim();
+  return value ? `#admin?id=${encodeURIComponent(value)}` : ADMIN_HOME_HASH;
+}
+
+export function isAdminBackHash(rawHash) {
+  const { route, from } = parseAppHash(rawHash);
+  if (route === "#admin") return true;
+  return route === "#track" && (from === "admin" || from === "staff");
 }
 
 export const MEDICAL_RECORD_HOME_HASH = "#home?service=reports";
@@ -198,7 +222,8 @@ export function hashesMatch(leftHash, rightHash) {
     left.step === right.step &&
     left.plan === right.plan &&
     left.service === right.service &&
-    left.lab === right.lab
+    left.lab === right.lab &&
+    left.from === right.from
   );
 }
 
@@ -229,8 +254,121 @@ export function catalogParentHash(sectionKey, currentHash = "") {
   return sectionParentHash(sectionKey);
 }
 
-export function parentHashFor(rawHash) {
-  const { route, service, lab, id, plan, q } = parseAppHash(rawHash);
+export const STAFF_ORDERS_ID = "staff-orders";
+
+function partnerHasSession(partner) {
+  return Boolean(
+    partner &&
+      (partner.id ||
+        partner.role ||
+        (Array.isArray(partner.kinds) && partner.kinds.length))
+  );
+}
+
+export function readOrderBackContext() {
+  let token = "";
+  let partner = null;
+  let appRole = "";
+  try {
+    token = staffToken();
+  } catch {
+    token = "";
+  }
+  try {
+    partner = partnerSession().partner;
+  } catch {
+    partner = null;
+  }
+  try {
+    appRole = readAppRole();
+  } catch {
+    appRole = "";
+  }
+  return { staffToken: token, partner, appRole };
+}
+
+export function orderBackActor({
+  staffToken: token = "",
+  partner = null,
+  appRole = "",
+  fromHash = "",
+  actor = "",
+} = {}) {
+  if (actor === "admin" || actor === "staff" || actor === "partner" || actor === "customer") {
+    return actor === "staff" ? "admin" : actor;
+  }
+  const hash =
+    fromHash || (typeof window !== "undefined" ? window.location.hash || "" : "");
+  const parsed = parseAppHash(hash);
+  if (parsed.from === "admin" || parsed.from === "staff" || parsed.route === "#admin") {
+    return "admin";
+  }
+  if (String(token || "").trim() || appRole === "staff") {
+    return "admin";
+  }
+  if (partnerHasSession(partner) || appRole === "partner") return "partner";
+  return "customer";
+}
+
+export function orderBackHash(options = {}) {
+  const ctx = { ...readOrderBackContext(), ...options };
+  const actor = orderBackActor(ctx);
+  if (actor === "admin") return "#admin";
+  if (actor === "partner") {
+    return partnerDeskHash(partnerAppKind(ctx.partner), ctx.partner);
+  }
+  return "#myorders";
+}
+
+export function orderBackLabel(actor, { customer = "Back to Orders" } = {}) {
+  if (actor === "admin" || actor === "staff") return "Back to order";
+  if (actor === "partner") return "Back to orders";
+  return customer;
+}
+
+function isCustomerHomeHash(hash) {
+  if (!hash) return false;
+  const { route } = parseAppHash(hash);
+  return route === "#home";
+}
+
+function scrollStaffOrders() {
+  if (typeof document === "undefined") return;
+  const jump = () => {
+    document.getElementById(STAFF_ORDERS_ID)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+  jump();
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(jump);
+  if (typeof setTimeout === "function") setTimeout(jump, 80);
+}
+
+export function goToOrderListHash(options) {
+  const hash = orderBackHash(options);
+  goToHash(hash);
+  if (hash === "#admin") scrollStaffOrders();
+  return hash;
+}
+
+export function parentHashFor(rawHash, options) {
+  const ctx = options === undefined ? readOrderBackContext() : { actor: "", ...options };
+  const actor = orderBackActor({ ...ctx, fromHash: ctx.fromHash || rawHash });
+  const { route, service, lab, id, plan, q, from } = parseAppHash(rawHash);
+
+  if (route === "#admin") {
+    return id ? ADMIN_HOME_HASH : "";
+  }
+
+  if (route === "#track" || route === "#scan") {
+    if (from === "admin" || from === "staff") return ADMIN_HOME_HASH;
+    return orderBackHash({ ...ctx, actor, fromHash: rawHash });
+  }
+
+  if (isPartnerDeskRoute(route)) {
+    return actor === "admin" ? "#admin" : id ? route : "";
+  }
 
   if (route === "#home") {
     return service ? "#home" : "";
@@ -275,6 +413,8 @@ export function parentHashFor(rawHash) {
     return service || q ? sectionParentHash("medicine") : "#home";
   }
   if (route === "#myorders") {
+    if (actor === "admin") return "#admin";
+    if (actor === "partner") return orderBackHash({ ...ctx, actor });
     if (id) {
       return isCustomerKindService(service)
         ? `#myorders?service=${encodeURIComponent(service)}`
@@ -323,9 +463,30 @@ export function goToChildHash(childHash, parentHash = "") {
 }
 
 export function goBackHash() {
-  if (typeof window !== "undefined" && window.history.length > 1) {
+  if (typeof window === "undefined") return;
+  const current = window.location.hash || "#home";
+  const ctx = readOrderBackContext();
+  const actor = orderBackActor({ ...ctx, fromHash: current });
+
+  if (actor !== "customer") {
+    let dest = parentHashFor(current, { ...ctx, actor });
+    if (!dest || isCustomerHomeHash(dest)) {
+      dest = orderBackHash({ ...ctx, actor });
+    }
+    if (!dest || hashesMatch(current, dest)) {
+      if (dest === "#admin" || parseAppHash(current).route === "#admin") {
+        scrollStaffOrders();
+      }
+      return;
+    }
+    goToHash(dest);
+    if (dest === "#admin") scrollStaffOrders();
+    return;
+  }
+
+  if (window.history.length > 1) {
     window.history.back();
     return;
   }
-  goToHash(parentHashFor(window.location.hash || "#home") || "#home");
+  goToHash(parentHashFor(current, { ...ctx, actor }) || "#home");
 }

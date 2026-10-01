@@ -54,6 +54,7 @@ import {
   partnerSession,
   patchPartnerJob,
 } from "./partnerApi";
+import PartnerForgotPassword from "./PartnerForgotPassword";
 import { stockOnHandForItem } from "./stockReport";
 import OrderQr from "./OrderQr.jsx";
 import {
@@ -136,7 +137,8 @@ function previewPartnerSplit(job, paymentMethod) {
     saleRupees: sale,
     payableRupees: payable,
     couponCode: job.split?.couponCode || job.couponCode || "",
-    platformPercent: job.split?.platformPercent,
+    platformPercent: kind === "lab" && !job.split?.staffSet ? undefined : job.split?.platformPercent,
+    tests: kind === "lab" ? job.tests : undefined,
     paymentMethod,
     paidOn: "partner",
   });
@@ -148,6 +150,8 @@ export default function Partner({ deskKind = "" }) {
   const [partner, setPartner] = useState(session.partner);
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
+  const [showForgot, setShowForgot] = useState(false);
+  const [loginNote, setLoginNote] = useState("");
   const [error, setError] = useState("");
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -431,6 +435,7 @@ export default function Partner({ deskKind = "" }) {
   const handleLogin = async (event) => {
     event.preventDefault();
     setError("");
+    setLoginNote("");
     try {
       const data = await partnerLogin(loginId, password);
       const appKind = partnerAppKind(data.partner);
@@ -521,14 +526,32 @@ export default function Partner({ deskKind = "" }) {
             <span className="service-kicker">{appTitle}</span>
             <h1>{appTitle} Login</h1>
           </section>
+          {showForgot ? (
+            <PartnerForgotPassword
+              initialMobile={loginId}
+              onCancel={() => {
+                setShowForgot(false);
+                setError("");
+              }}
+              onDone={() => {
+                setShowForgot(false);
+                setPassword("");
+                setError("");
+                setLoginNote("Password updated. Sign in with the new 6-digit password.");
+              }}
+            />
+          ) : (
           <form className="service-form admin-login" onSubmit={handleLogin}>
             <div className="field">
               <label htmlFor="partner-login-id">Login ID</label>
               <input
                 id="partner-login-id"
                 autoComplete="username"
+                inputMode="numeric"
+                placeholder="10-digit mobile"
+                maxLength={10}
                 value={loginId}
-                onChange={(e) => setLoginId(e.target.value)}
+                onChange={(e) => setLoginId(e.target.value.replace(/\D/g, "").slice(0, 10))}
               />
             </div>
             <div className="field">
@@ -537,15 +560,31 @@ export default function Partner({ deskKind = "" }) {
                 id="partner-password"
                 type="password"
                 autoComplete="current-password"
+                inputMode="numeric"
+                placeholder="6-digit password"
+                maxLength={6}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value.replace(/\D/g, "").slice(0, 6))}
               />
             </div>
             {error ? <p className="admin-error">{error}</p> : null}
+            {loginNote ? <p className="admin-hint">{loginNote}</p> : null}
             <button type="submit" className="service-submit">
               Sign In
             </button>
+            <button
+              type="button"
+              className="partner-forgot-btn"
+              onClick={() => {
+                setError("");
+                setLoginNote("");
+                setShowForgot(true);
+              }}
+            >
+              Forgot password
+            </button>
           </form>
+          )}
         </div>
       </>
     );
@@ -566,6 +605,7 @@ export default function Partner({ deskKind = "" }) {
             </button>
             <button
               type="button"
+              aria-label="Log out"
               onClick={() => {
                 partnerLogout();
                 setToken("");
@@ -573,7 +613,7 @@ export default function Partner({ deskKind = "" }) {
                 setJobs([]);
               }}
             >
-              Sign Out
+              Log out
             </button>
           </div>
         </section>
@@ -1984,7 +2024,7 @@ function roundRemaining(payable, parts) {
 
 const styles = `
 ${rxShareCardStyles}
-.partner-page{max-width:1240px}
+.partner-page{width:100%;max-width:none}
 .partner-job-detail td{background:#f7fbfd;border-bottom:8px solid #eef3f6}
 .admin-hero{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
 .admin-hero-actions{display:flex;flex-wrap:wrap;gap:6px}
@@ -2036,6 +2076,7 @@ ${rxShareCardStyles}
 .partner-tech,.partner-report-note{margin:4px 0 0;font-size:12px;color:#34546b;font-weight:700}
 .partner-scan-link{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:4px 8px;border-radius:6px;background:#1a6b7a;color:#fff;font-size:12px;font-weight:700;text-decoration:none}
 .admin-login{max-width:420px}
+.partner-forgot-btn{margin-top:4px;height:36px;border:none;background:transparent;color:#1a6b7a;font:inherit;font-size:13px;font-weight:800;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}
 .order-category{margin:0 0 16px}

@@ -5,13 +5,44 @@ import {
   REVIEW_SERVICES,
   serviceLabel,
 } from "./reviewStore";
+import { parseAppHash } from "./hashRoute";
+import { loadAllOrders } from "./orderTracking";
+import {
+  feedbackHashForOrder,
+  findReviewForOrder,
+  matchStoredOrder,
+  orderKindForReviewService,
+} from "./orderReview";
+import { serviceKind } from "./orderStatus";
 
 function starText(rating) {
   const n = Math.max(1, Math.min(5, Number(rating) || 0));
   return "★".repeat(n) + "☆".repeat(5 - n);
 }
 
+function orderReviewFromHash() {
+  if (typeof window === "undefined") return { id: "", review: null, order: null };
+  const id = parseAppHash(window.location.hash).id;
+  if (!id) return { id: "", review: null, order: null };
+  const order = matchStoredOrder(loadAllOrders(), id);
+  const review = findReviewForOrder(loadReviews(), id);
+  return { id, review, order };
+}
+
+function myOrderHref(focused) {
+  const id = focused.id;
+  const kind = focused.order
+    ? serviceKind(focused.order)
+    : orderKindForReviewService(focused.review?.service);
+  const params = new URLSearchParams();
+  if (kind) params.set("service", kind);
+  if (id) params.set("id", id);
+  const query = params.toString();
+  return query ? `#myorders?${query}` : "#myorders";
+}
+
 function Reviews() {
+  const focused = orderReviewFromHash();
   const reviews = useMemo(() => loadReviews(), []);
   const stats = reviewStats(reviews);
   const [filter, setFilter] = useState("all");
@@ -38,6 +69,43 @@ function Reviews() {
           </div>
         </section>
 
+        {focused.id ? (
+          <div className="review-list">
+            {focused.review ? (
+              <article className="review-card">
+                <header>
+                  <div>
+                    <h2>{focused.review.name}</h2>
+                    <p>
+                      {serviceLabel(focused.review.service)}
+                      {focused.id ? ` · ${focused.id}` : ""}
+                    </p>
+                  </div>
+                  <span className="review-stars" aria-label={`${focused.review.rating} out of 5`}>
+                    {starText(focused.review.rating)}
+                  </span>
+                </header>
+                <p>{focused.review.comment}</p>
+                <time dateTime={String(focused.review.createdAtMs || "")}>
+                  {focused.review.createdAt}
+                </time>
+              </article>
+            ) : (
+              <p className="info-footnote">
+                No review saved for this order yet.{" "}
+                <a href={feedbackHashForOrder(focused.id)}>Share feedback</a>
+              </p>
+            )}
+            <p className="info-footnote">
+              <a href={myOrderHref(focused)}>Back to this order</a>
+              {" · "}
+              <a href="#reviews">All reviews</a>
+            </p>
+          </div>
+        ) : null}
+
+        {focused.id ? null : (
+        <>
         <div className="review-toolbar">
           <div className="review-filters" role="tablist" aria-label="Filter reviews">
             <button
@@ -87,6 +155,8 @@ function Reviews() {
             ))}
           </div>
         )}
+        </>
+        )}
       </div>
     </>
   );
@@ -112,6 +182,7 @@ const styles = `
 .review-card > p{margin:0;color:#34546b;font-size:14px;line-height:1.5}
 .review-card time{display:block;margin-top:8px;color:#7a8b96;font-size:12px}
 .info-footnote{max-width:760px;margin:8px auto 0;color:#5d7180;font-size:13px}
+.info-footnote a{color:#1a6b7a;font-weight:700;text-decoration:none}
 @media (max-width:800px){.service-page{padding:14px}}
 `;
 

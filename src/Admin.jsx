@@ -5,7 +5,6 @@ import {
   fetchStaffSettings,
   patchStaffOrder,
   patchStaffSettings,
-  publishOrder,
   staffLogin,
   staffLogout,
   staffToken,
@@ -17,7 +16,6 @@ import {
   TRACK_STEPS,
   doneLabel,
   kindLabel,
-  loadAllOrders,
   persistOrder,
   trackHref,
 } from "./orderTracking";
@@ -52,8 +50,8 @@ import {
   topMover,
   yoySnapshot,
 } from "./salesReport";
-import { OrderStatusTrack } from "./adminStatus";
 import AdminPartnerLogins from "./AdminPartnerLogins";
+import AdminLabTests from "./AdminLabTests";
 import {
   BarList,
   CompareBars,
@@ -73,10 +71,35 @@ import {
 } from "./orderStatus";
 import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateToday, isoDateYearsAgo } from "./personFields";
+import {
+  adminOrderHash,
+  goToHash,
+  goToOrderListHash,
+  orderBackLabel,
+  parseAppHash,
+} from "./hashRoute";
 import OrderFullView from "./OrderFullView.jsx";
 import OrderListTable from "./OrderListTable.jsx";
 import RefundStatusPanel from "./RefundStatus.jsx";
 import { isRefundOrder, refundTrackKey } from "./refundTrack";
+import {
+  isDeclinedPartnerOrder,
+  partnersForStaffAssign,
+  showStaffAssignPartner,
+  staffAssignPartnerPatch,
+} from "./adminAssign";
+
+function orderMatchesAdminId(order, id) {
+  const wanted = String(id || "").trim();
+  if (!wanted) return false;
+  return [order.id, order.bookingId, order.requestId].some(
+    (value) => String(value || "") === wanted
+  );
+}
+
+function closeAdminOrder() {
+  goToOrderListHash({ actor: "admin" });
+}
 
 function downloadCsv(filename, text) {
   const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
@@ -110,6 +133,7 @@ function Admin() {
   const [reportTo, setReportTo] = useState("");
   const [reportRows, setReportRows] = useState(null);
   const [chartPeriod, setChartPeriod] = useState("mtd");
+  const [chartView, setChartView] = useState("");
   const [openOrderId, setOpenOrderId] = useState("");
   const [refundFilter, setRefundFilter] = useState("");
 
@@ -156,6 +180,38 @@ function Admin() {
     return () => clearInterval(timer);
   }, [token]);
 
+  useEffect(() => {
+    const sync = () => {
+      const { route, id } = parseAppHash(window.location.hash);
+      if (route !== "#admin") return;
+      setOpenOrderId(id || "");
+    };
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!openOrderId || filter) return;
+    const order = orders.find((row) => orderMatchesAdminId(row, openOrderId));
+    if (order) {
+      setFilter(isRefundOrder(order) ? "refund" : serviceKind(order) || "all");
+      return;
+    }
+    if (orders.length) setFilter("all");
+  }, [openOrderId, filter, orders]);
+
+  const openAdminOrder = (id) => {
+    const next = String(id || "").trim();
+    if (next) {
+      goToHash(adminOrderHash(next));
+      setOpenOrderId(next);
+      return;
+    }
+    closeAdminOrder();
+    setOpenOrderId("");
+  };
+
   const filtered = useMemo(() => {
     if (!filter) return [];
     if (filter === "refund") {
@@ -167,6 +223,9 @@ function Admin() {
     }
     return orders.filter((order) => {
       if (filter !== "all" && serviceKind(order) !== filter) return false;
+      if (statusFilter === "unassigned") {
+        return matchesStatusFilter(order, "unassigned") || isDeclinedPartnerOrder(order);
+      }
       return matchesStatusFilter(order, statusFilter);
     });
   }, [orders, filter, statusFilter, refundFilter]);
@@ -182,7 +241,8 @@ function Admin() {
       open: matrix.open,
       inProgress: matrix.inProgress,
       done: matrix.done,
-      unassigned: matrix.unassigned,
+      unassigned:
+        matrix.unassigned + scope.filter((order) => isDeclinedPartnerOrder(order)).length,
       total: scope.length,
     };
   }, [orders, filter, filtered.length]);
@@ -272,30 +332,14 @@ function Admin() {
 
   const handleAssign = async (order, partnerId) => {
     const id = order.id || order.bookingId || order.requestId;
+    const patch = staffAssignPartnerPatch(order, partnerId);
     setError("");
     try {
-      const data = await patchStaffOrder(id, { partnerId });
-      persistOrder(order, data.order || { partnerId });
+      const data = await patchStaffOrder(id, patch);
+      persistOrder(order, data.order || patch);
       await loadDesk();
     } catch (err) {
       setError(err.message || "Could Not Assign Partner.");
-    }
-  };
-
-  const handleSplit = async (order, partnerPercent) => {
-    const id = order.id || order.bookingId || order.requestId;
-    const next = Number(partnerPercent);
-    if (!Number.isFinite(next) || next < 0 || next > 100) {
-      setError("Partner split must be between 0 and 100.");
-      return;
-    }
-    setError("");
-    try {
-      const data = await patchStaffOrder(id, { partnerPercent: next });
-      persistOrder(order, data.order || { split: { ...order.split, partnerPercent: next } });
-      await loadDesk();
-    } catch (err) {
-      setError(err.message || "Could Not Update Split.");
     }
   };
 
@@ -309,13 +353,6 @@ function Admin() {
     } catch (err) {
       setError(err.message || "Could not update refund.");
     }
-  };
-
-  const importBrowserOrders = async () => {
-    setError("");
-    const local = loadAllOrders();
-    await Promise.all(local.map((row) => publishOrder(row)));
-    await loadDesk();
   };
 
   const saveWebinars = async (next) => {
@@ -481,18 +518,16 @@ function Admin() {
             <button type="button" onClick={loadDesk} disabled={loading}>
               {loading ? "Refreshing…" : "Refresh"}
             </button>
-            <button type="button" onClick={importBrowserOrders}>
-              Import This Browser
-            </button>
             <button
               type="button"
+              aria-label="Log out"
               onClick={() => {
                 staffLogout();
                 setToken("");
                 setOrders([]);
               }}
             >
-              Sign Out
+              Log out
             </button>
           </div>
         </section>
@@ -634,14 +669,19 @@ function Admin() {
               audience="staff"
               empty={loading ? "Loading…" : "No refund or return orders yet."}
               openId={openOrderId}
-              onOpen={setOpenOrderId}
+              onOpen={openAdminOrder}
               renderDetail={(order) => {
                 const id = order.id || order.bookingId || order.requestId;
                 const kind = serviceKind(order);
                 const step = trackKey(order);
                 return (
                   <div className="admin-order-detail-inner">
-                    <OrderFullView order={order} audience="staff" />
+                    <OrderFullView
+                      order={order}
+                      audience="staff"
+                      onBack={closeAdminOrder}
+                      backLabel={orderBackLabel("admin")}
+                    />
                     <RefundStatusPanel
                       order={order}
                       audience="staff"
@@ -663,7 +703,7 @@ function Admin() {
                       </label>
                     </div>
                     <p>
-                      <a href={trackHref(id)}>Live Track</a>
+                      <a href={trackHref(id, "admin")}>Live Track</a>
                     </p>
                   </div>
                 );
@@ -681,14 +721,19 @@ function Admin() {
               audience="staff"
               empty={loading ? "Loading…" : `No ${group.title.toLowerCase()}.`}
               openId={openOrderId}
-              onOpen={setOpenOrderId}
+              onOpen={openAdminOrder}
               renderDetail={(order) => {
                 const id = order.id || order.bookingId || order.requestId;
                 const kind = serviceKind(order);
                 const step = trackKey(order);
                 return (
                   <div className="admin-order-detail-inner">
-                    <OrderFullView order={order} audience="staff" />
+                    <OrderFullView
+                      order={order}
+                      audience="staff"
+                      onBack={closeAdminOrder}
+                      backLabel={orderBackLabel("admin")}
+                    />
                     {isRefundOrder(order) || String(kind) === "medicine" ? (
                       <RefundStatusPanel
                         order={order}
@@ -697,27 +742,23 @@ function Admin() {
                       />
                     ) : null}
                     <div className="admin-order-tools">
+                      {showStaffAssignPartner("staff") ? (
                       <label>
-                        Assigned to
+                        Assign partner
                         <select
                           value={order.partnerId || ""}
+                          aria-label={`Assign partner for order ${id}`}
                           onChange={(event) => handleAssign(order, event.target.value)}
                         >
                           <option value="">Unassigned</option>
-                          {partners
-                            .filter(
-                              (row) =>
-                                !row.kinds?.length ||
-                                row.kinds.includes(kind) ||
-                                row.id === order.partnerId
-                            )
-                            .map((row) => (
-                              <option key={row.id} value={row.id}>
-                                {row.name}
-                              </option>
-                            ))}
+                          {partnersForStaffAssign(partners, kind, order.partnerId).map((row) => (
+                            <option key={row.id} value={row.id}>
+                              {row.name}
+                            </option>
+                          ))}
                         </select>
                       </label>
+                      ) : null}
                       <label>
                         Status
                         <select
@@ -731,37 +772,9 @@ function Admin() {
                           ))}
                         </select>
                       </label>
-                      <label>
-                        Partner %
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          defaultValue={
-                            order.split?.partnerPercent ??
-                            partners.find((row) => row.id === order.partnerId)
-                              ?.partnerPercent ??
-                            ""
-                          }
-                          key={`${id}-${order.split?.partnerPercent ?? ""}-${order.updatedAt || ""}`}
-                          aria-label={`Partner split percent for order ${id}`}
-                          onBlur={(event) => {
-                            const next = Number(event.target.value);
-                            const current = Number(order.split?.partnerPercent);
-                            if (Number.isFinite(next) && next !== current) {
-                              handleSplit(order, next);
-                            }
-                          }}
-                        />
-                      </label>
-                      {order.split?.partnerPercent != null ? (
-                        <span className="admin-outlet-area">
-                          MediHome {100 - Number(order.split.partnerPercent)}%
-                        </span>
-                      ) : null}
                     </div>
                     <p>
-                      <a href={trackHref(id)}>Live Track</a>
+                      <a href={trackHref(id, "admin")}>Live Track</a>
                     </p>
                   </div>
                 );
@@ -835,6 +848,7 @@ function Admin() {
         />
 
         <AdminPartnerLogins partners={partners} onChange={setPartners} />
+        <AdminLabTests />
 
         <section className="admin-panel" aria-label="Chart Period">
           <h2>Growth And Degrowth Charts</h2>
@@ -1071,34 +1085,20 @@ function Admin() {
             </div>
           ) : null}
         </section>
-
-        <OrderStatusTrack
-          orders={orders}
-          filter={filter}
-          statusFilter={statusFilter}
-          onSelect={(kind, step) => {
-            setFilter(kind);
-            setStatusFilter(step);
-            document
-              .getElementById("staff-orders")
-              ?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }}
-          onStatus={handleStatus}
-        />
       </div>
     </>
   );
 }
 
 const styles = `
-.admin-page{max-width:1240px}
-.admin-tabs{margin:0 auto 12px;max-width:1240px}
+.admin-page{width:100%;max-width:none}
+.admin-tabs{margin:0 0 12px;width:100%;max-width:none}
 .admin-hero{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
 .admin-hero-actions{display:flex;flex-wrap:wrap;gap:6px}
 .admin-hero-actions button,.admin-report-controls button,.admin-scan-link{border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
 .admin-login{max-width:420px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}
-.admin-retention-note{margin:0 auto 12px;max-width:1240px;font-size:12px;line-height:1.45;color:#34546b}
+.admin-retention-note{margin:0 0 12px;width:100%;max-width:none;font-size:12px;line-height:1.45;color:#34546b}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}
 .order-category{margin:0 0 18px}
 .order-category h2{margin:0 0 8px;font-size:16px;color:#143246}
@@ -1189,39 +1189,6 @@ const styles = `
 .admin-report-controls label{display:flex;flex-direction:column;gap:4px;font-size:12px}
 .admin-report-controls select,.admin-report-controls input[type=date]{min-height:34px;border:1px solid #d7e2e9;border-radius:8px;padding:4px 8px;font:inherit}
 .admin-dmy{min-width:280px;flex:1 1 280px}
-.admin-status-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 12px}
-.admin-status-kpis button{border:1px solid #e4ecef;border-radius:10px;background:#f7fafc;padding:10px 12px;text-align:left;font:inherit;cursor:pointer}
-.admin-status-kpis button.is-on{background:#e7f1f6;border-color:#b7d0dc}
-.admin-status-kpis button.is-warn{background:#fff6ef}
-.admin-status-kpis span{display:block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
-.admin-status-kpis strong{display:block;margin-top:4px;font-size:22px;color:#123b5d}
-.admin-status-matrix{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px}
-.admin-status-matrix th,.admin-status-matrix td{padding:6px;border-bottom:1px solid #edf1f3;text-align:center}
-.admin-status-matrix th:first-child,.admin-status-matrix td:first-child{text-align:left}
-.admin-status-matrix button{border:0;background:transparent;color:inherit;font:inherit;font-weight:700;min-width:28px;padding:4px 6px;border-radius:6px;cursor:pointer}
-.admin-status-cell.is-on,.admin-status-matrix button.is-on{background:#e7f1f6}
-.admin-status-matrix .is-warn{color:#c47a2c}
-.admin-pipe{display:grid;grid-template-columns:repeat(5,minmax(160px,1fr));gap:8px;overflow:auto;align-items:start}
-.admin-pipe-col{background:#f7fafc;border:1px solid #e4ecef;border-radius:10px;padding:8px;min-height:120px}
-.admin-pipe-col header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.admin-pipe-col h3{margin:0;font-size:12px}
-.admin-pipe-col ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-.admin-pipe-card{background:#fff;border:1px solid #e4ecef;border-radius:8px;padding:8px}
-.admin-pipe-card-top{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#5d7180}
-.admin-pipe-card strong{display:block;margin:4px 0 2px;font-size:13px}
-.admin-pipe-card p{margin:0 0 6px;font-size:12px}
-.admin-pipe-card button{border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:11px;font-weight:700;padding:4px 8px;cursor:pointer}
-.admin-pipe-col.is-confirmed header{color:#c47a2c}
-.admin-pipe-col.is-assigned header{color:#2a7de1}
-.admin-pipe-col.is-on_the_way header{color:#1a6b7a}
-.admin-pipe-col.is-arriving header{color:#6b5b95}
-.admin-pipe-col.is-done header{color:#1a7a45}
-.admin-status-pill{display:inline-block;margin:0 6px 4px 0;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:800}
-.admin-status-pill.is-confirmed{background:#fff3e4;color:#c47a2c}
-.admin-status-pill.is-assigned{background:#e7f0ff;color:#2a7de1}
-.admin-status-pill.is-on_the_way{background:#e6f4f7;color:#1a6b7a}
-.admin-status-pill.is-arriving{background:#eee8f6;color:#6b5b95}
-.admin-status-pill.is-done{background:#e7f6ef;color:#1a7a45}
 .admin-table tr.is-unassigned{background:#fffaf4}
 .admin-table td select,.admin-table td input{max-width:160px}
 .admin-partner-create{margin-top:14px;padding:12px;border:1px solid #e4ecef;border-radius:12px;background:#fff}
@@ -1233,6 +1200,10 @@ const styles = `
 .admin-partner-kinds{display:flex;flex-wrap:wrap;gap:8px;font-weight:600}
 .admin-partner-kinds label{flex-direction:row;align-items:center;gap:6px;font-weight:600}
 .admin-partner-create button{border:1px solid #1a6b7a;border-radius:6px;background:#1a6b7a;color:#fff;font:inherit;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer}
+.admin-partner-reset{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0}
+.admin-partner-reset .admin-hint{flex:1 1 100%;margin:0}
+.admin-partner-reset input{max-width:200px;min-height:34px;padding:6px 8px;border:1px solid #d7e2e9;border-radius:6px;font:inherit}
+.admin-partners-box .admin-table td button+button{margin-left:6px}
 .admin-order-toggle{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;border:0;background:transparent;padding:0;font:inherit;font-weight:800;color:#1a6b7a;cursor:pointer}
 .admin-order-toggle span{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
 .admin-order-toggle.is-on span{color:#1a6b7a}
@@ -1246,15 +1217,12 @@ const styles = `
 @media (max-width:800px){.admin-partner-grid{grid-template-columns:1fr}}
 .admin-care-tag{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#e8f1f6;color:#1a6b7a;font-size:13px;font-weight:700;letter-spacing:.01em;flex:none}
 .admin-care-tag em{font-style:normal;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:#1a6b7a;color:#fff;font-size:11px;line-height:18px;text-align:center}
-@media (max-width:1100px){
-  .admin-pipe{grid-template-columns:repeat(5,minmax(180px,1fr))}
-}
 @media (max-width:900px){
-  .admin-kpis,.admin-chart-grid,.admin-switches,.admin-status-kpis,.admin-order-status-row{grid-template-columns:1fr 1fr}
+  .admin-kpis,.admin-chart-grid,.admin-switches,.admin-order-status-row{grid-template-columns:1fr 1fr}
 }
 @media (max-width:800px){.admin-hero{flex-direction:column}}
 @media (max-width:640px){
-  .admin-kpis,.admin-chart-grid,.admin-switches,.admin-status-kpis,.admin-order-status-row{grid-template-columns:1fr}
+  .admin-kpis,.admin-chart-grid,.admin-switches,.admin-order-status-row{grid-template-columns:1fr}
 }
 `;
 

@@ -85,6 +85,58 @@ export async function createStaffPartner(body) {
   );
 }
 
+export async function requestStaffPartnerReset(id, password) {
+  return parseResponse(
+    await apiFetch(`/api/admin/partners/${encodeURIComponent(id)}/reset-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${staffToken()}`,
+      },
+      body: JSON.stringify({ password }),
+    })
+  );
+}
+
+export async function requestStaffPartnerSplit(id, partnerPercent) {
+  return parseResponse(
+    await apiFetch(`/api/admin/partners/${encodeURIComponent(id)}/split-otp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${staffToken()}`,
+      },
+      body: JSON.stringify({ partnerPercent }),
+    })
+  );
+}
+
+export async function confirmStaffPartnerSplit(id, otp) {
+  return parseResponse(
+    await apiFetch(`/api/admin/partners/${encodeURIComponent(id)}/split-otp/confirm`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${staffToken()}`,
+      },
+      body: JSON.stringify({ otp }),
+    })
+  );
+}
+
+export async function confirmStaffPartnerReset(id, otp) {
+  return parseResponse(
+    await apiFetch(`/api/admin/partners/${encodeURIComponent(id)}/reset-password/confirm`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${staffToken()}`,
+      },
+      body: JSON.stringify({ otp }),
+    })
+  );
+}
+
 export async function setStaffPartnerLogin(id, body) {
   return parseResponse(
     await apiFetch(`/api/admin/partners/${encodeURIComponent(id)}/login`, {
@@ -101,6 +153,36 @@ export async function setStaffPartnerLogin(id, body) {
 export async function patchStaffPartner(id, body) {
   return parseResponse(
     await apiFetch(`/api/admin/partners/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${staffToken()}`,
+      },
+      body: JSON.stringify(body),
+    })
+  );
+}
+
+export async function fetchAddedLabTests() {
+  return parseResponse(await apiFetch("/api/lab-tests"));
+}
+
+export async function createStaffLabTest(body) {
+  return parseResponse(
+    await apiFetch("/api/admin/lab-tests", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${staffToken()}`,
+      },
+      body: JSON.stringify(body),
+    })
+  );
+}
+
+export async function patchStaffLabTest(id, body) {
+  return parseResponse(
+    await apiFetch(`/api/admin/lab-tests/${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

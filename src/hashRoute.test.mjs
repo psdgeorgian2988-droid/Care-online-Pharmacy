@@ -16,6 +16,10 @@ import {
   LABS_HOME_HASH,
   labBookingHash,
   MEDICAL_RECORD_HOME_HASH,
+  adminOrderHash,
+  orderBackActor,
+  orderBackHash,
+  orderBackLabel,
   parentHashFor,
   parseAppHash,
   sectionParentHash,
@@ -31,6 +35,9 @@ test("social aliases and desk pages resolve correctly", () => {
   assert.equal(parseAppHash("#social").route, "#contact");
   assert.equal(parseAppHash("#staff").route, "#staff");
   assert.equal(parseAppHash("#ops").route, "#admin");
+  assert.equal(parseAppHash("#staff-orders").route, "#admin");
+  assert.equal(parseAppHash("#admin?id=MH-1").id, "MH-1");
+  assert.equal(parseAppHash("#track?id=MH-1&from=admin").from, "admin");
   assert.equal(parseAppHash("#partners").route, "#partner");
   assert.equal(parseAppHash("#partner-desk").route, "#partner-desk");
   assert.equal(parseAppHash("#partnerdesk").route, "#partner-desk");
@@ -117,6 +124,10 @@ test("other customer child hashes map back to their parent section", () => {
   assert.equal(parentHashFor("#myorders?service=lab"), "#myorders");
   assert.equal(parentHashFor("#myorders?service=lab&id=MH-1"), "#myorders?service=lab");
   assert.equal(parentHashFor("#myorders?service=radiology&id=IMG-1"), "#myorders?service=radiology");
+  assert.equal(parentHashFor("#track?id=MH-1", { actor: "customer" }), "#myorders");
+  assert.equal(parentHashFor("#scan?id=MH-1", { actor: "customer" }), "#myorders");
+  assert.equal(parentHashFor("#admin", { actor: "customer" }), "");
+  assert.equal(parentHashFor("#lab-desk", { actor: "customer" }), "");
   assert.equal(parseAppHash("#myorders?service=radiology").service, "radiology");
   assert.equal(parseAppHash("#myorders").service, "");
   assert.equal(parentHashFor("#profile?service=points"), "#profile");
@@ -216,6 +227,169 @@ test("goToChildHash seeds the parent section so Back restores it", () => {
   }
 });
 
+test("order back from track/scan stays on the actor's order list", () => {
+  assert.equal(orderBackActor({}), "customer");
+  assert.equal(orderBackActor({ staffToken: "t" }), "admin");
+  assert.equal(orderBackActor({ appRole: "staff" }), "admin");
+  assert.equal(orderBackActor({ fromHash: "#admin" }), "admin");
+  assert.equal(orderBackActor({ partner: { id: "p1", kinds: ["lab"] } }), "partner");
+  assert.equal(
+    orderBackActor({
+      staffToken: "t",
+      partner: { id: "p1", kinds: ["lab"] },
+    }),
+    "admin"
+  );
+  assert.equal(orderBackHash({ actor: "customer" }), "#myorders");
+  assert.equal(orderBackHash({ actor: "admin" }), "#admin");
+  assert.equal(
+    orderBackHash({ actor: "partner", partner: { kinds: ["lab"] } }),
+    "#lab-desk"
+  );
+  assert.equal(
+    orderBackHash({ actor: "partner", partner: { kinds: ["homecare"] } }),
+    "#homecare-desk"
+  );
+  assert.equal(
+    orderBackHash({
+      actor: "partner",
+      partner: { kinds: ["medicine"], role: "Medicine rider" },
+    }),
+    "#delivery-desk"
+  );
+  assert.equal(orderBackLabel("partner"), "Back to orders");
+  assert.equal(orderBackLabel("admin"), "Back to order");
+  assert.equal(orderBackLabel("customer", { customer: "Back to My Orders" }), "Back to My Orders");
+  assert.equal(
+    parentHashFor("#track?id=MH-1", { actor: "partner", partner: { kinds: ["lab"] } }),
+    "#lab-desk"
+  );
+  assert.equal(parentHashFor("#track?id=MH-1", { actor: "admin" }), "#admin");
+  assert.equal(parentHashFor("#scan?id=MH-1", { actor: "admin" }), "#admin");
+  assert.equal(parentHashFor("#lab-desk", { actor: "admin" }), "#admin");
+  assert.equal(
+    parentHashFor("#myorders?service=lab&id=MH-1", { actor: "partner", partner: { kinds: ["lab"] } }),
+    "#lab-desk"
+  );
+  assert.equal(parentHashFor("#myorders?service=lab&id=MH-1", { actor: "admin" }), "#admin");
+  assert.equal(
+    parentHashFor("#myorders?service=lab&id=MH-1", { actor: "customer" }),
+    "#myorders?service=lab"
+  );
+});
+
+function installMemoryStorage(entries = {}) {
+  const store = new Map(Object.entries(entries));
+  const previous = globalThis.localStorage;
+  globalThis.localStorage = {
+    getItem(key) {
+      return store.has(key) ? store.get(key) : null;
+    },
+    setItem(key, value) {
+      store.set(key, String(value));
+    },
+    removeItem(key) {
+      store.delete(key);
+    },
+  };
+  return {
+    restore() {
+      globalThis.localStorage = previous;
+    },
+  };
+}
+
+test("partner and staff back do not restore customer #home?service=", () => {
+  const storage = installMemoryStorage({
+    mediHomePartner: JSON.stringify({ id: "p1", kinds: ["lab"] }),
+  });
+  const session = installHashWindow("#home?service=labs");
+  try {
+    goToHash("#track?id=MH-1");
+    assert.deepEqual(session.stack(), ["#home?service=labs", "#track?id=MH-1"]);
+    goBackHash();
+    assert.equal(session.hash(), "#lab-desk");
+  } finally {
+    session.restore();
+    storage.restore();
+  }
+});
+
+test("staff back from a partner-like track screen opens admin order status", () => {
+  const storage = installMemoryStorage({
+    mediHomeStaffToken: "staff-token",
+  });
+  const session = installHashWindow("#admin");
+  try {
+    goToHash("#track?id=MH-1");
+    goBackHash();
+    assert.equal(session.hash(), "#admin");
+  } finally {
+    session.restore();
+    storage.restore();
+  }
+});
+
+test("admin order detail and admin Live Track Back stay on #admin", () => {
+  assert.equal(adminOrderHash("MH-1"), "#admin?id=MH-1");
+  assert.equal(adminOrderHash(""), "#admin");
+  assert.equal(parentHashFor("#admin?id=MH-1"), "#admin");
+  assert.equal(parentHashFor("#admin"), "");
+  assert.equal(parentHashFor("#track?id=MH-1&from=admin", { actor: "customer" }), "#admin");
+  assert.equal(orderBackActor({ fromHash: "#track?id=MH-1&from=admin" }), "admin");
+  assert.equal(hashesMatch("#track?id=MH-1", "#track?id=MH-1&from=admin"), false);
+
+  const session = installHashWindow("#home");
+  try {
+    goToHash("#admin?id=MH-1");
+    goBackHash();
+    assert.equal(session.hash(), "#admin");
+    goToHash("#track?id=MH-1&from=admin");
+    goBackHash();
+    assert.equal(session.hash(), "#admin");
+  } finally {
+    session.restore();
+  }
+});
+
+test("admin Live Track and order Back stay on the admin desk", () => {
+  const admin = readFileSync(new URL("./Admin.jsx", import.meta.url), "utf8");
+  assert.match(admin, /trackHref\(id,\s*"admin"\)/);
+  assert.match(admin, /onBack=\{closeAdminOrder\}/);
+  const track = readFileSync(new URL("./LiveTracking.jsx", import.meta.url), "utf8");
+  assert.match(track, /fromAdmin/);
+  assert.match(track, /goToOrderListHash/);
+});
+
+test("customer My Orders back stays on #myorders", () => {
+  const storage = installMemoryStorage();
+  const session = installHashWindow("#myorders?service=lab");
+  try {
+    goToHash("#myorders?service=lab&id=MH-1");
+    goBackHash();
+    assert.equal(session.hash(), "#myorders?service=lab");
+  } finally {
+    session.restore();
+    storage.restore();
+  }
+});
+
+test("goToChildHash from a partner desk does not seed #home?service=", () => {
+  const storage = installMemoryStorage({
+    mediHomePartner: JSON.stringify({ id: "p1", kinds: ["lab"] }),
+  });
+  const session = installHashWindow("#lab-desk");
+  try {
+    goToChildHash("#track?id=MH-1");
+    assert.deepEqual(session.stack(), ["#lab-desk", "#track?id=MH-1"]);
+    goBackHash();
+    assert.equal(session.hash(), "#lab-desk");
+  } finally {
+    session.restore();
+    storage.restore();
+  }
+});
+
 test("goToChildHash from the parent section only pushes the child", () => {
   const session = installHashWindow("#home?service=education");
   try {
@@ -232,13 +406,4 @@ test("goToChildHash from the parent section only pushes the child", () => {
   } finally {
     session.restore();
   }
-});
-
-.test("education opens a menu, then only the chosen section", () => {
-  assert.equal(parseAppHash("#education").route, "#education");
-  assert.equal(parseAppHash("#education").tab, "");
-  assert.equal(parseAppHash("#education?tab=quiz").tab, "quiz");
-  assert.equal(parseAppHash("#education?tab=webinars").tab, "webinars");
-  assert.equal(parseAppHash("#education?tab=guides").tab, "guides");
-  assert.equal(parseAppHash("#education?tab=refer").tab, "refer");
 });

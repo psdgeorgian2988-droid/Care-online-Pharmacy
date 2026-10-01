@@ -1,11 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   PARTNER_CATEGORY_TABS,
   countPartnersInCategory,
   partnerCreateLocation,
+  partnerCreateShowsSplit,
   partnerPrimaryKind,
   partnerServicePins,
+  partnerUpdateShowsSplit,
   partnersInCategory,
 } from "./partnerAdmin.js";
 
@@ -47,7 +50,27 @@ test("new partner needs address and a 6-digit PIN for allocation", () => {
   assert.equal(ok.pin, "110001");
   assert.deepEqual(ok.pins, ["110001"]);
   assert.deepEqual(partnerServicePins({ pins: ["110001"], pinCode: "122001" }), [
-    "110001",
     "122001",
+    "110001",
   ]);
+});
+
+test("save partner form collects address and PIN and does not ask for a split", () => {
+  assert.equal(partnerCreateShowsSplit("lab"), false);
+  assert.equal(partnerCreateShowsSplit("medicine"), false);
+  assert.equal(partnerUpdateShowsSplit("lab"), false);
+  assert.equal(partnerUpdateShowsSplit("medicine"), true);
+  assert.equal(partnerUpdateShowsSplit("radiology"), true);
+  const source = readFileSync(new URL("./AdminPartnerLogins.jsx", import.meta.url), "utf8");
+  const formStart = source.indexOf('className="admin-partner-create"');
+  const form = source.slice(formStart, source.indexOf("</form>", formStart));
+  assert.match(form, /value=\{create\.address\}/);
+  assert.match(form, /value=\{create\.pin\}/);
+  assert.match(form, /placeholder="6-digit PIN"/);
+  assert.doesNotMatch(form, /minLength=\{8\}/);
+  assert.doesNotMatch(form, /value=\{create\.loginId\}/);
+  assert.doesNotMatch(form, /Partner split/);
+  assert.doesNotMatch(form, /partnerPercent/);
+  assert.match(source, /partnerUpdateShowsSplit\(category\)/);
+  assert.match(source, /Update split/);
 });

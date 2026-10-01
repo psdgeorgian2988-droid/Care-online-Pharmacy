@@ -24,10 +24,17 @@ import { mapsUrlForPin, normalizePin, osmEmbedUrl } from "./pinLocation";
 import AssignedAgent from "./AssignedAgent";
 import ScanActions from "./ScanActions";
 import OrderFeedbackCta from "./OrderFeedbackCta";
-import OrderFullView from "./OrderFullView.jsx";
 import ReturnMedicinePanel from "./ReturnMedicine.jsx";
 import { pharmacyReturnRequestedFields } from "./pharmacyTrack";
 import RefundStatusPanel from "./RefundStatus.jsx";
+import {
+  goToOrderListHash,
+  orderBackActor,
+  orderBackHash,
+  orderBackLabel,
+  parseAppHash,
+  readOrderBackContext,
+} from "./hashRoute";
 
 function mercatorY(lat) {
   const rad = (lat * Math.PI) / 180;
@@ -187,7 +194,13 @@ function PinCapture({ order, onSaved }) {
   );
 }
 
-export function LiveTrackingPanel({ order, onOrderChange, compact = false, showScan }) {
+export function LiveTrackingPanel({
+  order,
+  onOrderChange,
+  compact = false,
+  showScan,
+  audience = "customer",
+}) {
   const [live, setLive] = useState(order);
   const liveRef = useRef(order);
 
@@ -328,15 +341,49 @@ export function LiveTrackingPanel({ order, onOrderChange, compact = false, showS
         <PinCapture order={live} onSaved={(next) => onOrderChange?.(next)} />
       ) : null}
       {showMap && /^\d{6}$/.test(pin) ? <LiveMap order={live} /> : null}
-      <OrderFeedbackCta order={live} />
+      {String(audience).toLowerCase() === "customer" ? (
+        <OrderFeedbackCta order={live} audience="customer" />
+      ) : null}
     </section>
   );
 }
 
-export default function TrackPage({ trackId }) {
+function TrackOrderBackLink({
+  className = "orders-home-link",
+  labelCustomer = "Back to My Orders",
+  fromHash = "",
+} = {}) {
+  const ctx = readOrderBackContext();
+  const actor = orderBackActor({ ...ctx, fromHash });
+  const href = orderBackHash({ ...ctx, actor, fromHash });
+  return (
+    <a
+      className={className}
+      href={href}
+      onClick={(event) => {
+        if (actor === "customer") return;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        goToOrderListHash({ ...ctx, actor, fromHash });
+      }}
+    >
+      {orderBackLabel(actor, { customer: labelCustomer })}
+    </a>
+  );
+}
+
+export default function TrackPage({ trackId, from = "" }) {
   const [order, setOrder] = useState(null);
   const [missing, setMissing] = useState(false);
   const [others, setOthers] = useState([]);
+  const fromHash =
+    (typeof window !== "undefined" ? window.location.hash : "") ||
+    (from ? `#track?from=${encodeURIComponent(from)}` : "");
+  const fromAdmin =
+    from === "admin" ||
+    from === "staff" ||
+    parseAppHash(fromHash).from === "admin" ||
+    parseAppHash(fromHash).from === "staff";
 
   useEffect(() => {
     let cancelled = false;
@@ -369,14 +416,16 @@ export default function TrackPage({ trackId }) {
           <span className="orders-eyebrow">TRACKING</span>
           <h1>Current Status</h1>
         </div>
-        <a className="orders-home-link" href="#myorders">
-          Back to My Orders
-        </a>
+        <TrackOrderBackLink fromHash={fromHash} />
       </div>
 
       {order ? (
         <div className="order-details-page live-track-wrap">
-          <LiveTrackingPanel order={order} onOrderChange={setOrder} />
+          <LiveTrackingPanel
+            order={order}
+            onOrderChange={setOrder}
+            audience={fromAdmin ? "staff" : "customer"}
+          />
         </div>
       ) : (
         <div className="orders-empty">
@@ -387,11 +436,15 @@ export default function TrackPage({ trackId }) {
           )}
           <div className="orders-empty-actions">
             {others.slice(0, 6).map((item) => (
-              <a key={item.id} href={trackHref(item.id)}>
+              <a key={item.id} href={trackHref(item.id, fromAdmin ? "admin" : "")}>
                 Track {kindLabel(item.kind)} #{item.id}
               </a>
             ))}
-            <a href="#myorders">Open My Orders</a>
+            <TrackOrderBackLink
+              className=""
+              labelCustomer="Open My Orders"
+              fromHash={fromHash}
+            />
           </div>
         </div>
       )}

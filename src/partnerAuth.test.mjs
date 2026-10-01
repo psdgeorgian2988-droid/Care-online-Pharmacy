@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import {
   hashPartnerPassword,
   normalizePartnerLoginId,
+  partnerCreateCredentials,
+  partnerLoginIdFromMobile,
+  partnerPasswordError,
   publicPartner,
   verifyPartnerPassword,
 } from "../server/partners.mjs";
@@ -38,4 +41,32 @@ test("a partner with no login yet cannot be treated as signed in", () => {
   });
   assert.equal(published.hasLogin, false);
   assert.equal(published.loginId, "");
+});
+
+test("new partner login is the 10-digit mobile and the password is exactly 6 digits", () => {
+  assert.equal(partnerLoginIdFromMobile(" 98765-43210 "), "9876543210");
+  assert.equal(partnerLoginIdFromMobile("987654321"), "");
+  assert.equal(partnerLoginIdFromMobile("98765432101"), "9876543210");
+  assert.equal(partnerPasswordError("482915"), "");
+  assert.equal(partnerPasswordError("12345"), "Password must be exactly 6 digits.");
+  assert.equal(partnerPasswordError("1234567"), "Password must be exactly 6 digits.");
+  assert.equal(partnerPasswordError("12ab56"), "Password must be exactly 6 digits.");
+  assert.equal(partnerPasswordError("MediHome@26"), "Password must be exactly 6 digits.");
+  assert.equal(partnerPasswordError("", { required: false }), "");
+  const created = partnerCreateCredentials({
+    mobile: "98765 43210",
+    loginId: "custom-login",
+    password: "654321",
+  });
+  assert.equal(created.ok, true);
+  assert.equal(created.loginId, "9876543210");
+  assert.equal(created.mobile, "9876543210");
+  assert.equal(
+    partnerCreateCredentials({ mobile: "9876543210", password: "12345" }).ok,
+    false
+  );
+  assert.equal(
+    partnerCreateCredentials({ mobile: "987654321", password: "123456" }).error,
+    "Login ID is the 10-digit mobile number."
+  );
 });

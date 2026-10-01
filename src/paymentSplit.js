@@ -88,10 +88,12 @@ export function resplitOrder(order = {}, extras = {}) {
   const sale = Number(
     extras.saleRupees ?? order.split?.saleRupees ?? order.saleRupees ?? payable
   );
-  const platformPercent =
+  const explicitPlatform =
     extras.platformPercent != null
       ? clampSplitPercent(extras.platformPercent)
-      : platformPercentFromPartnerShare(extras.partnerPercent, kind);
+      : extras.partnerPercent != null
+        ? platformPercentFromPartnerShare(extras.partnerPercent, kind)
+        : null;
   const paymentMethod = extras.paymentMethod || order.paymentMethod || "";
   const paidOn = extras.paidOn || order.paidOn || order.split?.paidOn || "";
   return splitPayment(kind, payable, pin, {
@@ -100,11 +102,48 @@ export function resplitOrder(order = {}, extras = {}) {
     couponCode:
       extras.couponCode || order.split?.couponCode || order.couponCode || "",
     couponLabel: extras.couponLabel || order.split?.couponLabel || "",
-    platformPercent,
+    ...(explicitPlatform != null ? { platformPercent: explicitPlatform } : {}),
+    tests: extras.tests || order.tests,
     paymentMethod,
     paidOn,
     collector: extras.collector || order.collector || order.split?.collector,
   });
+}
+
+/** Lab line items keep each test's split. Other services use the partner record %. */
+export function splitExtrasForAssignedPartner(order = {}, partner = {}) {
+  const kind = String(order.kind || order.orderType || order.serviceType || "").toLowerCase();
+  if (kind === "lab") return { tests: order.tests };
+  return { partnerPercent: partner?.partnerPercent };
+}
+
+function labLinePartnerPaise(tests, fallbackPartnerPct) {
+  const lines = Array.isArray(tests) ? tests.filter((row) => row && typeof row === "object") : [];
+  if (!lines.length) return null;
+  let partnerPaise = 0;
+  let salePaise = 0;
+  let counted = 0;
+  for (const line of lines) {
+    const qty = Math.max(1, Math.round(Number(line.quantity || line.qty || 1) || 1));
+    const price = Number(line.price ?? line.saleRupees ?? line.amount);
+    if (!Number.isFinite(price) || price <= 0) continue;
+    const linePaise = rupeesToPaise(price) * qty;
+    const tp = Number(line.tp);
+    const explicit = clampSplitPercent(line.partnerPercent);
+    let sharePaise;
+    if (Number.isFinite(tp) && tp >= 0) {
+      sharePaise = Math.min(linePaise, rupeesToPaise(tp) * qty);
+    } else if (explicit != null) {
+      sharePaise = Math.round((linePaise * explicit) / 100);
+    } else {
+      sharePaise = Math.round((linePaise * fallbackPartnerPct) / 100);
+    }
+    partnerPaise += sharePaise;
+    salePaise += linePaise;
+    counted += 1;
+  }
+  if (!counted || salePaise <= 0) return null;
+  return { partnerPaise, salePaise };
 }
 
 function roundRupees(amount) {
@@ -150,11 +189,29 @@ export function splitPayment(kind, amountRupees, pin, options = {}) {
   const serviceChargePaise = rupeesToPaise(serviceCharge);
   const goodsPayablePaise = Math.max(0, payablePaise - serviceChargePaise);
   const discountPaise = Math.max(0, salePaise - goodsPayablePaise);
-  const platformPct = platformPercentFor(kind, options.platformPercent);
-  const partnerPct = 100 - platformPct;
+  const kindPartnerPct = partnerPercentFor(kind);
+  let platformPct = platformPercentFor(kind, options.platformPercent);
+  let partnerPct = 100 - platformPct;
+  const lineSplit =
+    String(kind || "").toLowerCase() === "lab" && options.platformPercent == null
+      ? labLinePartnerPaise(options.tests || options.lines, kindPartnerPct)
+      : null;
 
   // Partner share is always % of MRP / sale, not of discounted payable.
-  const partnerPaise = Math.round((salePaise * partnerPct) / 100);
+  let partnerPaise;
+  if (lineSplit) {
+    partnerPaise = lineSplit.partnerPaise;
+    if (lineSplit.salePaise > salePaise && salePaise > 0) {
+      partnerPaise = Math.round((lineSplit.partnerPaise * salePaise) / lineSplit.salePaise);
+    } else if (salePaise > lineSplit.salePaise) {
+      partnerPaise += Math.round(((salePaise - lineSplit.salePaise) * kindPartnerPct) / 100);
+    }
+    partnerPct = salePaise > 0 ? Math.round((partnerPaise * 100) / salePaise) : partnerPct;
+    partnerPct = Math.min(100, Math.max(0, partnerPct));
+    platformPct = 100 - partnerPct;
+  } else {
+    partnerPaise = Math.round((salePaise * partnerPct) / 100);
+  }
   // MediHome absorbs all discounts/points; fee is added to MediHome only.
   const partnerTransferPaise = Math.min(partnerPaise, goodsPayablePaise);
   const platformSettledPaise = payablePaise - partnerTransferPaise;
@@ -431,6 +488,7 @@ export function quoteCheckout({
   couponCode,
   pin,
   platformPercent,
+  tests,
   collector,
   paymentMethod,
   paidOn,
@@ -488,6 +546,7 @@ export function quoteCheckout({
     couponCode: coupon?.code || "",
     couponLabel: coupon?.label || "",
     platformPercent,
+    tests,
     collector,
     paymentMethod,
     paidOn,

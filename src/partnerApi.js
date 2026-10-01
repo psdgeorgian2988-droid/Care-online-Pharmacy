@@ -52,6 +52,26 @@ export function partnerLogout() {
   setPartnerSession("", null);
 }
 
+export async function requestPartnerPasswordReset(mobile) {
+  return parseResponse(
+    await apiFetch("/api/partner/forgot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mobile }),
+    })
+  );
+}
+
+export async function confirmPartnerPasswordReset({ mobile, otp, password }) {
+  return parseResponse(
+    await apiFetch("/api/partner/forgot/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mobile, otp, password }),
+    })
+  );
+}
+
 export async function fetchPartnerStock() {
   const { token, partner } = partnerSession();
   const params = new URLSearchParams({

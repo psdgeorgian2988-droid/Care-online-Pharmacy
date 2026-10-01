@@ -28,6 +28,11 @@ import {
   scanStepTitle,
 } from "./orderQr";
 import { featureEnabled } from "./salesReport";
+import {
+  goToOrderListHash,
+  orderBackHash,
+  orderBackLabel,
+} from "./hashRoute";
 
 function currentScanContext() {
   const partner = partnerSession().partner;
@@ -298,9 +303,14 @@ export default function ScanPage({ scanId, scanStep }) {
     next !== "already_done" &&
     !result?.autoMismatch &&
     !stepMismatch;
-  const backHref = app === "partner" ? "#partner-desk" : app === "admin" ? "#admin" : "#myorders";
-  const backLabel =
-    app === "partner" ? "Partner Desk" : app === "admin" ? "Staff Desk" : "My Orders";
+  const backHref = orderBackHash({ actor: app, partner });
+  const backLabel = orderBackLabel(app, { customer: "My Orders" });
+  const goBackToOrders = (event) => {
+    if (app === "customer") return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    goToOrderListHash({ actor: app, partner });
+  };
   const showComingSoon =
     app !== "admin" &&
     !busy &&
@@ -332,7 +342,7 @@ export default function ScanPage({ scanId, scanStep }) {
                 : scanBlockedCopy(app)}
           </p>
         </div>
-        <a className="orders-home-link" href={backHref}>
+        <a className="orders-home-link" href={backHref} onClick={goBackToOrders}>
           {backLabel}
         </a>
       </div>
@@ -421,6 +431,7 @@ export default function ScanPage({ scanId, scanStep }) {
 
           <LiveTrackingPanel
             order={result.order}
+            audience={app}
             onOrderChange={(nextOrder) =>
               setResult((prev) => ({ ...prev, order: nextOrder }))
             }
@@ -440,7 +451,7 @@ export default function ScanPage({ scanId, scanStep }) {
               Scan Another QR
             </button>
           ) : (
-            <a className="service-submit scan-again" href={backHref}>
+            <a className="service-submit scan-again" href={backHref} onClick={goBackToOrders}>
               {backLabel}
             </a>
           )}
@@ -479,7 +490,7 @@ export default function ScanPage({ scanId, scanStep }) {
         <div className="scan-panel">
           <p>{busy ? "Opening this order…" : scanBlockedCopy(app)}</p>
           {error ? <p className="scan-error">{error}</p> : null}
-          <a className="scan-file" href={backHref}>
+          <a className="scan-file" href={backHref} onClick={goBackToOrders}>
             {backLabel}
           </a>
         </div>
@@ -489,7 +500,7 @@ export default function ScanPage({ scanId, scanStep }) {
 }
 
 const styles = `
-.scan-panel{max-width:560px;margin:0 auto;padding:14px;background:#fff;border:1px solid #e4ecef;border-radius:12px;text-align:center}
+.scan-panel{width:100%;max-width:none;margin:0;padding:14px;background:#fff;border:1px solid #e4ecef;border-radius:12px;text-align:center}
 .scan-video{width:100%;max-height:320px;border-radius:10px;background:#143246;object-fit:cover}
 .scan-panel p{margin:10px 0;color:#34546b;font-size:14px}
 .scan-error{color:#d84b4b !important}

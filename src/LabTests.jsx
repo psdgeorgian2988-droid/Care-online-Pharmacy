@@ -22,6 +22,8 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { DIAGNOSTIC_LABS, IMAGING_CENTRES } from "./diagnosticPartners";
+import { mergeAddedLabTests, withLabPartnerSplit } from "./labTestSplit";
+import { defaultPartnerPercentFor } from "./paymentSplit";
 import {
   checkoutPaymentPersistFields,
   checkoutUsesPayCta,
@@ -53,6 +55,7 @@ import {
   openAppointmentSlots,
 } from "./appointmentSlot";
 import { goToHash, LABS_HOME_HASH, labBookingHash } from "./hashRoute";
+import { apiFetch } from "./apiBase";
 import {
   addTestToCart,
   LAB_BOOKING_OPEN_EVENT,
@@ -127,18 +130,25 @@ const TEST_PREP = {
   mammography: { prepType: "imaging", instruction: PREP_COPY.mammo },
 };
 
-function withPrep(partners) {
+function withPrep(partners, { split = false } = {}) {
   return partners.map((partner) => ({
     ...partner,
-    tests: partner.tests.map((test) => ({
-      ...test,
-      prepType: TEST_PREP[test.id]?.prepType || "none",
-      instruction: TEST_PREP[test.id]?.instruction || "",
-    })),
+    tests: partner.tests.map((test) => {
+      const next = {
+        ...test,
+        prepType: TEST_PREP[test.id]?.prepType || "none",
+        instruction: TEST_PREP[test.id]?.instruction || "",
+      };
+      if (!split) return next;
+      return {
+        ...next,
+        partnerPercent: withLabPartnerSplit(next).partnerPercent ?? defaultPartnerPercentFor("lab"),
+      };
+    }),
   }));
 }
 
-const LABS = withPrep(DIAGNOSTIC_LABS);
+const LABS = withPrep(DIAGNOSTIC_LABS, { split: true });
 const RADIOLOGY_PARTNERS = withPrep(IMAGING_CENTRES);
 
 const PROFILE_KEYS = [
@@ -279,7 +289,25 @@ function LabTests() {
   const busyWait = useBusyOverlay(submitting || paying, busyKind);
   const [prepPopup, setPrepPopup] = useState(null);
 
-  const selectedLab = useMemo(() => LABS.find((lab) => lab.id === selectedLabId), [selectedLabId]);
+  const [addedLabTests, setAddedLabTests] = useState([]);
+  const labCatalog = useMemo(() => mergeAddedLabTests(LABS, addedLabTests), [addedLabTests]);
+  const selectedLab = useMemo(
+    () => labCatalog.find((lab) => lab.id === selectedLabId),
+    [labCatalog, selectedLabId]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch("/api/lab-tests")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && Array.isArray(data?.tests)) setAddedLabTests(data.tests);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const labTestOptions = useMemo(() => {
     const all = (selectedLab?.tests || []).map((test, index) => ({
       ...test,
@@ -405,7 +433,7 @@ function LabTests() {
     if (!rxBoot?.tests?.length) return;
     const kind = rxBoot.serviceType === "radiology" ? "radiology" : "lab";
     const partnerId = rxBoot.partnerId;
-    const partner = (kind === "radiology" ? RADIOLOGY_PARTNERS : LABS).find(
+    const partner = (kind === "radiology" ? RADIOLOGY_PARTNERS : labCatalog).find(
       (row) => row.id === partnerId
     );
     rxBoot.tests.forEach((test) =>
@@ -457,7 +485,7 @@ function LabTests() {
       if (!payload?.tests?.length) return;
       const kind = payload.serviceType === "radiology" ? "radiology" : "lab";
       const partnerId = payload.partnerId || "";
-      const partner = (kind === "radiology" ? RADIOLOGY_PARTNERS : LABS).find(
+      const partner = (kind === "radiology" ? RADIOLOGY_PARTNERS : labCatalog).find(
         (row) => row.id === partnerId
       );
       payload.tests.forEach((test) =>
@@ -761,6 +789,8 @@ function LabTests() {
         method: payMethod,
         ...pay,
         kind,
+        tests: kind === "lab" ? booking.tests : undefined,
+        labId: booking.preferredLabId || booking.tests?.[0]?.partnerId || "",
         pin: booking.pinCode || booking.pin,
         name: booking.patientName,
         mobile: booking.mobile,
@@ -969,6 +999,7 @@ function LabTests() {
                 <PaymentBlock
                   kind={isLabBooking ? "lab" : "radiology"}
                   amount={Number(booking.total) || 0}
+                  tests={isLabBooking ? booking.tests : undefined}
                   pin={booking.pinCode}
                   method={payMethod}
                   onMethodChange={setPayMethod}
@@ -1153,7 +1184,7 @@ function LabTests() {
                       role="tablist"
                       aria-labelledby="lab-partner-tabs-label"
                     >
-                      {LABS.map((lab) => (
+                      {labCatalog.map((lab) => (
                         <button
                           key={lab.id}
                           type="button"
