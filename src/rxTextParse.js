@@ -97,9 +97,22 @@ function durationFromMatch(match) {
   return "";
 }
 
+const HEADER_RE =
+  /^(?:patient|date|dr|doctor|clinic|hospital|rx|prescription|age|sex|m\/f|opd)\b/i;
+const MED_START_RE =
+  /(?:^|\s)((?:tab(?:let)?s?|cap(?:sule)?s?|syp|syr(?:up)?|inj(?:ection)?)\.?\s+.+)$/i;
+
+function medicineSegment(line) {
+  const raw = String(line || "").replace(NUMBERED_RE, "").trim();
+  const fromForm = raw.match(MED_START_RE);
+  if (fromForm) return fromForm[1].trim();
+  return raw;
+}
+
 function cleanName(raw) {
   return String(raw || "")
     .replace(NUMBERED_RE, "")
+    .replace(/^(?:tab(?:let)?s?|cap(?:sule)?s?|syp|syr(?:up)?|inj(?:ection)?)\.?\s+/i, "")
     .replace(CHART_RE, " ")
     .replace(DURATION_RE, " ")
     .replace(FREQ_RE, " ")
@@ -139,8 +152,9 @@ function formFromLine(line) {
 }
 
 export function parseMedicineLine(line) {
-  const raw = String(line || "").replace(NUMBERED_RE, "").trim();
+  const raw = medicineSegment(line);
   if (!raw || raw.length < 3) return null;
+  if (HEADER_RE.test(raw) && !MED_START_RE.test(raw)) return null;
 
   const chart = raw.match(CHART_RE)?.[1]?.replace(/\s+/g, "") || "";
   const freqCode = raw.match(FREQ_RE)?.[1] || "";

@@ -41,6 +41,23 @@ test("extracts medicines and lab tests from a full Rx", () => {
   assert.equal(parsed.tests.some((row) => row.name === "Vitamin D"), true);
 });
 
+test("strips Tab. prefix so Dolo and Pantocid canonicalize", () => {
+  const dolo = parseMedicineLine("Tab. Dolo 650 1-0-1 x 5 days");
+  assert.match(dolo.name, /^dolo/i);
+  const panto = parseMedicineLine("Tab. Pantocid 40 1-0-0 before food 5 days");
+  assert.match(panto.name, /pantocid/i);
+});
+
+test("does not treat the patient header as a medicine", () => {
+  const parsed = parseRxText(`
+    Patient: Test Customer  Date: 19/10/2026
+    1. Tab. Azithral 500mg 1-0-0 x 3 days after food
+  `);
+  assert.equal(parsed.medicines.length, 1);
+  assert.match(parsed.medicines[0].name, /azithral/i);
+  assert.equal(/patient/i.test(parsed.medicines[0].name), false);
+});
+
 test("reads a medicine line with strength even without Tab prefix", () => {
   const med = parseMedicineLine("Azithral 500mg");
   assert.match(med.name, /azithral/i);

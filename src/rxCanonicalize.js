@@ -1,7 +1,7 @@
 import { RX_MEDICINES, RX_TESTS } from "./data/rxMedicalLexicon.js";
 
 const FORM_PREFIX =
-  /^(?:tab(?:let)?s?|cap(?:sule)?s?|syp|syr(?:up)?|inj(?:ection)?|oint(?:ment)?|drops?|sachet|susp(?:ension)?)\s+/i;
+  /^(?:tab(?:let)?s?|cap(?:sule)?s?|syp|syr(?:up)?|inj(?:ection)?|oint(?:ment)?|drops?|sachet|susp(?:ension)?)\.?\s+/i;
 
 const JUNK_NAME =
   /^(?:unknown(?:\s+(?:medicine|test))?|medicine|test|adv|advice|investigation|investigations|rx|prescription|nil|none)$/i;
