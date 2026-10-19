@@ -1,5 +1,5 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
-import { execFile } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { execFile, execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -12,42 +12,45 @@ export function distIndex(distDir) {
   return path.join(distDir, "index.html");
 }
 
-function latestMtime(target) {
-  if (!existsSync(target)) return 0;
-  const info = statSync(target);
-  if (info.isFile()) return info.mtimeMs;
-  let latest = info.mtimeMs;
-  for (const entry of readdirSync(target, { withFileTypes: true })) {
-    if (entry.name === "node_modules" || entry.name === "dist" || entry.name === ".git") {
-      continue;
-    }
-    const next = latestMtime(path.join(target, entry.name));
-    if (next > latest) latest = next;
-  }
-  return latest;
+function distStampPath(distDir) {
+  return path.join(distDir, ".source-stamp");
 }
 
-function sourceIsNewerThanDist(distDir) {
-  const built = distIndex(distDir);
-  if (!existsSync(built)) return true;
-  const distTime = statSync(built).mtimeMs;
-  const watched = ["src", "index.html", "vite.config.js", "vite.config.mjs", "public"].map(
-    (name) => path.join(projectRoot, name)
-  );
-  return watched.some((item) => latestMtime(item) > distTime);
+function currentSourceStamp() {
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: projectRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "";
+  }
+}
+
+function builtSourceStamp(distDir) {
+  const stamp = distStampPath(distDir);
+  if (!existsSync(stamp)) return "";
+  try {
+    return readFileSync(stamp, "utf8").trim();
+  } catch {
+    return "";
+  }
 }
 
 export async function ensureWebsiteBuild(distDir) {
-  if (existsSync(distIndex(distDir)) && !sourceIsNewerThanDist(distDir)) {
-    return false;
-  }
+  const sourceStamp = currentSourceStamp();
+  const builtStamp = builtSourceStamp(distDir);
+  const haveBuild = existsSync(distIndex(distDir));
+  const stampMatches = Boolean(sourceStamp) && sourceStamp === builtStamp;
+  if (haveBuild && stampMatches) return false;
 
   const viteBin = path.join(projectRoot, "node_modules", "vite", "bin", "vite.js");
   if (!existsSync(viteBin)) {
     throw new Error("Vite is not installed. Run npm ci, then npm start.");
   }
 
-  console.log("Website source is newer than dist; running npm run build…");
+  console.log("Website source changed; running npm run build…");
   const heapMb = String(process.env.MEDIHOME_BUILD_HEAP_MB || "1024");
   await execFileAsync(
     process.execPath,
@@ -61,6 +64,9 @@ export async function ensureWebsiteBuild(distDir) {
 
   if (!existsSync(distIndex(distDir))) {
     throw new Error("Website build finished but dist/index.html is missing.");
+  }
+  if (sourceStamp) {
+    writeFileSync(distStampPath(distDir), `${sourceStamp}\n`);
   }
   return true;
 }
