@@ -7394,54 +7394,51 @@ html.is-customer-app .app-chrome-header,
 
 .home-rx-upload {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid #d7e7eb;
-  border-radius: 14px;
-  background: #ffffff;
-}
-
-.home-rx-upload > div:first-child {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.home-rx-kicker {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #1a6b7a;
-}
-
-.home-rx-upload strong {
-  font-size: 15px;
-  font-weight: 800;
-  color: #143246;
-}
-
-.home-rx-upload span {
-  font-size: 12px;
-  color: #5d7180;
-}
-
-.home-rx-file {
-  font-style: normal;
-  font-size: 12px;
-  font-weight: 700;
-  color: #1a6b7a;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  width: max-content;
   max-width: 100%;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.home-rx-upload input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.home-rx-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid #c5d8e0;
+  border-radius: 999px;
+  background: #fff;
+  color: #1a6b7a;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.home-rx-tab.is-on {
+  background: #1a6b7a;
+  color: #fff;
+  border-color: #1a6b7a;
+}
+
+.home-rx-tab:disabled {
+  opacity: 0.65;
+  cursor: wait;
 }
 
 .home-rx-remove {
@@ -7472,44 +7469,6 @@ html.is-customer-app .app-chrome-header,
   color: #b64b4b;
   font-size: 12px;
   font-weight: 700;
-}
-
-.home-rx-actions {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 8px;
-}
-
-.home-rx-actions input[type="file"] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.home-rx-view {
-  font-size: 13px;
-  font-weight: 800;
-  color: #1a6b7a;
-  text-decoration: none;
-}
-
-.home-rx-view:hover {
-  text-decoration: underline;
-}
-
-@media (max-width: 560px) {
-  .home-rx-upload {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .home-rx-actions {
-    flex-wrap: wrap;
-    justify-content: flex-start;
-  }
 }
 
 /* Document scrolls; main grows with content (not a nested scrollport). */
