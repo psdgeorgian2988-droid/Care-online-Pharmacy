@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 const ABOUT_SLIDES = [
   {
     title: "MediHome",
@@ -33,38 +31,35 @@ const ABOUT_SLIDES = [
   },
 ];
 
-const HOLD_MS = 4200;
-const FADE_MS = 700;
+function rotatingSlides(start) {
+  const rotated = [
+    ...ABOUT_SLIDES.slice(start),
+    ...ABOUT_SLIDES.slice(0, start),
+  ];
+  return [...rotated, ...rotated];
+}
 
 export default function HomeAboutSlides({ side = "left" } = {}) {
-  const start = side === "right" ? 2 : 0;
-  const [index, setIndex] = useState(start);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setIndex((current) => (current + 1) % ABOUT_SLIDES.length);
-    }, HOLD_MS);
-    return () => window.clearTimeout(timer);
-  }, [index]);
-
-  const slide = ABOUT_SLIDES[index] || ABOUT_SLIDES[0];
+  const start = side === "right" ? 3 : 0;
+  const slides = rotatingSlides(start);
 
   return (
     <aside
       className={`home-side-slides is-${side}`}
       aria-label={`MediHome ${side} highlights`}
     >
-      <article
-        className="home-side-slide"
-        style={{ "--slide-fade-ms": `${FADE_MS}ms` }}
-      >
-        <img src={slide.image} alt="" decoding="async" />
-        <div className="home-side-slide-copy">
-          <p className="home-side-slide-kicker">MediHome</p>
-          <h3>{slide.title}</h3>
-          <p>{slide.text}</p>
-        </div>
-      </article>
+      <div className="home-side-slides-track" aria-hidden="true">
+        {slides.map((slide, index) => (
+          <article className="home-side-slide" key={`${side}-${slide.title}-${index}`}>
+            <img src={slide.image} alt="" decoding="async" />
+            <div className="home-side-slide-copy">
+              <p className="home-side-slide-kicker">MediHome</p>
+              <h3>{slide.title}</h3>
+              <p>{slide.text}</p>
+            </div>
+          </article>
+        ))}
+      </div>
     </aside>
   );
 }
