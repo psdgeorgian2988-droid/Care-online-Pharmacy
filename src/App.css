@@ -7862,24 +7862,14 @@ html.is-customer-app .app-chrome-header,
 
 .app-home-subgrid {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: stretch;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: thin;
+  width: 100%;
+  overflow: visible;
   padding: 2px 0 8px;
   box-sizing: border-box;
-}
-
-.app-home-subgrid::before,
-.app-home-subgrid::after {
-  content: "";
-  flex: 1 1 0;
-  min-width: 0;
-  pointer-events: none;
 }
 
 .app-home-subitem {
@@ -7900,7 +7890,6 @@ html.is-customer-app .app-chrome-header,
   color: #1a3d48;
   box-shadow: 0 2px 8px rgba(20, 88, 100, 0.06);
   box-sizing: border-box;
-  scroll-snap-align: start;
 }
 
 .app-home-subitem:active {
@@ -8008,7 +7997,8 @@ html[data-layout="phone"] .home-landing .app-home-catalog.is-mobile-web .app-hom
 html[data-layout="tablet"] .home-landing .app-home-catalog.is-desktop-web .app-home-subgrid,
 html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-home-subgrid {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
 }
 
