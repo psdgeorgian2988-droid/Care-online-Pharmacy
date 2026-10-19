@@ -1,6 +1,6 @@
 /**
- * Prescription extraction: Cursor AI vision when CURSOR_API_KEY is set,
- * otherwise built-in OCR so the review page still reads the Rx.
+ * Prescription extraction pipeline:
+ * 1) OCR  2) vision AI (when CURSOR_API_KEY is set)  3) medical validation.
  */
 
 import { readFileSync } from "node:fs";
@@ -8,11 +8,18 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseRxText } from "../src/rxTextParse.js";
 import { ocrPrescriptionImage } from "./prescriptionOcr.mjs";
-import { callCursorVision, cursorConfigured } from "./prescriptionCursor.mjs";
 import {
-  canonicalizePrescription,
-  compactLexiconForPrompt,
-} from "../src/rxCanonicalize.js";
+  callCursorMedicalValidation,
+  callCursorVision,
+  cursorConfigured,
+  extractJsonText,
+  normalizeImageMime,
+} from "./prescriptionCursor.mjs";
+import { compactLexiconForPrompt } from "../src/rxCanonicalize.js";
+import {
+  medicalValidationPrompt,
+  medicallyValidatePrescription,
+} from "../src/rxMedicalValidate.js";
 import { HANDWRITING_HINTS } from "../src/data/rxMedicalLexicon.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -97,28 +104,27 @@ function inferTimesPerDay(row) {
 function stripDataUrl(fileData = "") {
   const raw = String(fileData || "");
   const m = raw.match(/^data:([^;]+);base64,(.+)$/i);
-  if (m) return { mime: m[1], base64: m[2], dataUrl: raw };
+  if (m) {
+    const mime = normalizeImageMime(m[1]);
+    return { mime, base64: m[2], dataUrl: `data:${mime};base64,${m[2]}` };
+  }
   if (/^[A-Za-z0-9+/=\s]+$/.test(raw.slice(0, 80)) && raw.length > 80) {
-    return { mime: "application/octet-stream", base64: raw.replace(/\s/g, ""), dataUrl: "" };
+    const base64 = raw.replace(/\s/g, "");
+    return {
+      mime: "application/octet-stream",
+      base64,
+      dataUrl: `data:application/octet-stream;base64,${base64}`,
+    };
   }
   return { mime: "", base64: "", dataUrl: raw };
 }
 
 function safeJsonParse(text) {
-  const raw = String(text || "").trim();
+  const raw = extractJsonText(text);
   if (!raw) return null;
   try {
     return JSON.parse(raw);
   } catch {
-    const start = raw.indexOf("{");
-    const end = raw.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      try {
-        return JSON.parse(raw.slice(start, end + 1));
-      } catch {
-        return null;
-      }
-    }
     return null;
   }
 }
@@ -173,55 +179,51 @@ function normalizeResult(parsed, meta = {}) {
   };
 }
 
-async function tryOcrParsed({ dataUrl, mime, fileName }) {
-  if (!mime.startsWith("image/") || !dataUrl) return { parsed: null, text: "" };
+async function tryOcrParsed({ dataUrl, mime }) {
+  const imageMime = normalizeImageMime(mime);
+  if (!imageMime.startsWith("image/") || !dataUrl) return { parsed: null, text: "" };
   try {
     const text = await ocrPrescriptionImage(dataUrl);
     const parsed = text ? parseRxText(text) : null;
     return { parsed, text };
   } catch {
-    return { parsed: null, text: "", fileName };
+    return { parsed: null, text: "" };
   }
 }
 
-async function ocrExtraction({ dataUrl, mime, fileName }) {
-  if (!mime.startsWith("image/")) {
-    throw new Error(
-      "Photograph the prescription as a JPG or PNG so medicines can be read."
-    );
-  }
-  const { parsed, text } = await tryOcrParsed({ dataUrl, mime, fileName });
-  const result = canonicalizePrescription(
-    normalizeResult(parsed || {}, { aiMode: "ocr", model: "tesseract" })
-  );
+function localValidated(aiNorm, ocrNorm, meta) {
+  const result = medicallyValidatePrescription(aiNorm || {}, ocrNorm);
+  result.aiMode = meta.aiMode || result.aiMode || "ocr+validate";
+  result.model = meta.model || result.model || "";
+  if (meta.warning) result.warning = [result.warning, meta.warning].filter(Boolean).join(" ");
+  if (meta.fileHint) result.fileHint = meta.fileHint;
   if (!result.medicines.length && !result.tests.length) {
-    result.warning = text
-      ? "The prescription was scanned, but medicine names were not clear enough to name safely. Try a closer, well-lit photo."
-      : "Could not read text from this prescription. Try a closer, well-lit photo.";
-    if (text) result.notes = text.slice(0, 600);
+    result.warning =
+      result.warning ||
+      (meta.ocrText
+        ? "The prescription was scanned, but medicine names were not clear enough to name safely. Try a closer, well-lit photo."
+        : "Could not read text from this prescription. Try a closer, well-lit photo.");
+    if (meta.ocrText && !result.notes) result.notes = String(meta.ocrText).slice(0, 600);
   }
-  result.fileHint = fileName;
   return result;
 }
 
-async function cursorExtraction({ mime, base64, dataUrl, fileName }) {
-  const ocr = await tryOcrParsed({ dataUrl, mime, fileName });
-  const { text, model } = await callCursorVision({
-    mime,
-    base64,
-    fileName,
-    systemPrompt: buildSystemPrompt(),
-    ocrHint: ocr.text,
+async function medicalAiValidate(candidate, ocrText, model) {
+  const { text, model: usedModel } = await callCursorMedicalValidation({
+    prompt: medicalValidationPrompt({
+      ocrText,
+      candidate,
+      lexicon: compactLexiconForPrompt(),
+    }),
   });
   const parsed = safeJsonParse(text);
   if (!parsed) {
-    throw new Error("Cursor AI returned an unreadable prescription response.");
+    throw new Error("Medical validation AI returned an unreadable response.");
   }
-  const ai = normalizeResult(parsed, { aiMode: "cursor", model });
-  const ocrNorm = ocr.parsed
-    ? normalizeResult(ocr.parsed, { aiMode: "ocr", model: "tesseract" })
-    : null;
-  return canonicalizePrescription(ai, ocrNorm);
+  return normalizeResult(parsed, {
+    aiMode: "ocr+ai+validate",
+    model: usedModel || model || "medical-validate",
+  });
 }
 
 export function aiConfigured() {
@@ -235,38 +237,80 @@ export async function parsePrescriptionPayload({
   fileType = "",
 } = {}) {
   loadDotEnv();
-  const { mime, base64, dataUrl } = stripDataUrl(fileData);
-  const resolvedMime = mime || fileType || "application/octet-stream";
+  const stripped = stripDataUrl(fileData);
+  let mime = normalizeImageMime(stripped.mime || fileType || "application/octet-stream");
+  let { base64, dataUrl } = stripped;
+  if (base64 && mime.startsWith("image/") && !/^data:image\//i.test(dataUrl)) {
+    dataUrl = `data:${mime};base64,${base64}`;
+  }
   const name = String(fileName || "prescription").trim();
 
-  if (!dataUrl) {
+  if (!dataUrl && !base64) {
     throw new Error(
       "Prescription file data is missing or too large to analyze. Re-upload a smaller image or PDF."
     );
   }
 
-  if (cursorConfigured()) {
-    try {
-      return await cursorExtraction({
-        mime: resolvedMime,
-        base64,
-        dataUrl,
-        fileName: name,
-      });
-    } catch (error) {
-      const fallback = await ocrExtraction({
-        dataUrl,
-        mime: resolvedMime,
-        fileName: name,
-      });
-      fallback.warning = [error.message, fallback.warning].filter(Boolean).join(" ");
-      return fallback;
-    }
+  if (!mime.startsWith("image/")) {
+    throw new Error(
+      "Photograph the prescription as a JPG or PNG so medicines can be read."
+    );
   }
 
-  return ocrExtraction({
-    dataUrl,
-    mime: resolvedMime,
-    fileName: name,
+  const ocr = await tryOcrParsed({ dataUrl, mime });
+  const ocrNorm = ocr.parsed
+    ? normalizeResult(ocr.parsed, { aiMode: "ocr", model: "tesseract" })
+    : { medicines: [], tests: [], notes: ocr.text || "" };
+
+  if (!cursorConfigured()) {
+    return localValidated(ocrNorm, ocrNorm, {
+      aiMode: "ocr+validate",
+      model: "tesseract+lexicon",
+      ocrText: ocr.text,
+      fileHint: name,
+    });
+  }
+
+  let visionNorm = null;
+  let visionModel = "";
+  let visionError = "";
+  try {
+    const { text, model } = await callCursorVision({
+      mime,
+      base64,
+      fileName: name,
+      systemPrompt: buildSystemPrompt(),
+      ocrHint: ocr.text,
+    });
+    const parsed = safeJsonParse(text);
+    if (!parsed) {
+      throw new Error("Cursor AI returned an unreadable prescription response.");
+    }
+    visionModel = model;
+    visionNorm = normalizeResult(parsed, { aiMode: "cursor", model });
+  } catch (error) {
+    visionError = error.message || "Vision AI could not read this prescription.";
+  }
+
+  const merged = localValidated(visionNorm || ocrNorm, ocrNorm, {
+    aiMode: visionNorm ? "ocr+ai" : "ocr+validate",
+    model: visionModel || "tesseract+lexicon",
+    warning: visionError,
+    ocrText: ocr.text,
+    fileHint: name,
   });
+
+  try {
+    const validated = await medicalAiValidate(merged, ocr.text, visionModel);
+    return localValidated(validated, ocrNorm, {
+      aiMode: "ocr+ai+validate",
+      model: validated.model || visionModel,
+      fileHint: name,
+      ocrText: ocr.text,
+    });
+  } catch (error) {
+    merged.warning = [merged.warning, error.message].filter(Boolean).join(" ");
+    merged.aiMode = visionNorm ? "ocr+ai+lexicon" : "ocr+validate";
+    return merged;
+  }
 }

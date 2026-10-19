@@ -29,6 +29,13 @@ test("recognizes dolo, pantocid and ambrol", () => {
   assert.equal(canonicalizeMedicineName("Syp Ambrol").salt, "Ambroxol");
 });
 
+test("maps OCR AZ1THRAL to azithromycin without swapping class", () => {
+  const hit = canonicalizeMedicineName("AZ1THRAL");
+  assert.equal(hit.verified, true);
+  assert.match(hit.name, /azithral|azithromycin/i);
+  assert.equal(hit.salt, "Azithromycin");
+});
+
 test("maps lasetol to laretol and mednovit d3 to mednovit cd3", () => {
   const laretol = canonicalizeMedicineName("Lasetol");
   assert.equal(laretol.verified, true);

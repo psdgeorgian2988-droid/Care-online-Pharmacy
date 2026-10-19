@@ -124,12 +124,22 @@ function bestMedicine(rawName) {
   const qToken = firstToken(query);
   const nameToken = firstToken(bestKind === "salt" ? best.salt : best.brand);
   const otherToken = firstToken(bestKind === "salt" ? best.brand : best.salt);
+  const prefixClose = (left, right) => {
+    const a = String(left || "").slice(0, 3);
+    const b = String(right || "").slice(0, 3);
+    if (!a || !b) return false;
+    if (a === b) return true;
+    const ha = handwritingFold(a);
+    const hb = handwritingFold(b);
+    if (ha === hb) return true;
+    return levenshtein(ha, hb) <= 1 || levenshtein(a, b) <= 1;
+  };
   if (
     qToken.length >= 4 &&
     nameToken.length >= 4 &&
-    qToken.slice(0, 3) !== nameToken.slice(0, 3) &&
-    qToken.slice(0, 3) !== otherToken.slice(0, 3) &&
-    bestScore < 96
+    !prefixClose(qToken, nameToken) &&
+    !prefixClose(qToken, otherToken) &&
+    bestScore < 92
   ) {
     return null;
   }
@@ -205,6 +215,7 @@ export function canonicalizeMedicineName(rawName, extra = {}) {
     salt,
     strength: extra.strength || "",
     asWritten: written,
+    score: salt ? 80 : 0,
   };
 }
 

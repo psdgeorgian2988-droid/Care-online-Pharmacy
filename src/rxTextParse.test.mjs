@@ -40,3 +40,17 @@ test("extracts medicines and lab tests from a full Rx", () => {
   assert.equal(parsed.tests.some((row) => row.name === "LFT"), true);
   assert.equal(parsed.tests.some((row) => row.name === "Vitamin D"), true);
 });
+
+test("reads a medicine line with strength even without Tab prefix", () => {
+  const med = parseMedicineLine("Azithral 500mg");
+  assert.match(med.name, /azithral/i);
+  assert.equal(med.strength.toLowerCase(), "500mg");
+});
+
+test("joins a split OCR name and dose onto one medicine", () => {
+  const parsed = parseRxText("Dolo 650\n1-0-1 x 5 days after food");
+  assert.equal(parsed.medicines.length, 1);
+  assert.match(parsed.medicines[0].name, /dolo/i);
+  assert.equal(parsed.medicines[0].timesPerDay, "2 times a day");
+  assert.equal(parsed.medicines[0].duration, "5 days");
+});
