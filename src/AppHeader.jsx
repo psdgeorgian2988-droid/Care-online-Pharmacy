@@ -18,7 +18,7 @@ function BackIcon() {
   );
 }
 
-export default function AppHeader() {
+export default function AppHeader({ hideCart = false } = {}) {
   return (
     <header className="app-chrome-header">
       <button
@@ -36,7 +36,7 @@ export default function AppHeader() {
       />
       <div className="app-chrome-end">
         <CustomerLogOut className="app-chrome-logout" />
-        <HeaderCart className="app-chrome-header-cart" />
+        {hideCart ? null : <HeaderCart className="app-chrome-header-cart" />}
       </div>
     </header>
   );

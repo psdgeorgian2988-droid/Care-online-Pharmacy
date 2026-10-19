@@ -2242,8 +2242,9 @@ max-width: none;
   flex-shrink: 0 !important;
 
   color: #ffffff !important;
-  font-size: 13px !important;
-  font-weight: 700 !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
 
   white-space: nowrap !important;
 
@@ -2255,7 +2256,7 @@ max-width: none;
   color: #ffffff !important;
 
   margin-left: 44px !important;
-  font-size: 14px !important;
+  font-size: 16px !important;
 }
 
 @keyframes tickerMove {
@@ -3875,7 +3876,7 @@ body,
   right: auto !important;
   grid-area: ticker !important;
   width: 100% !important;
-  height: 40px !important;
+  height: 46px !important;
   z-index: 20 !important;
 }
 
@@ -4174,38 +4175,61 @@ body,
   width: auto;
   min-width: 0;
   height: 32px;
+  min-height: 32px;
   padding: 0 12px;
   border-radius: 999px;
   border: 1px solid #1a6b7a;
-  background: #ffffff;
-  color: #1a6b7a;
+  background: #1a6b7a;
+  color: #ffffff;
   font-family: inherit;
   font-size: 12px;
   font-weight: 800;
   text-decoration: none;
   cursor: pointer;
   white-space: nowrap;
+  box-shadow: none;
+}
+
+.home-landing .home-account-btn.is-partner {
+  background: #1565c0;
+  border-color: #1565c0;
+  color: #ffffff;
 }
 
 .home-landing .home-account-btn.is-login {
-  background: #087f8c;
-  border-color: #087f8c;
+  background: #00897b;
+  border-color: #00897b;
   color: #ffffff;
-  box-shadow: 0 4px 10px rgba(8, 127, 140, 0.25);
 }
 
 .home-landing .home-account-btn.is-primary {
-  background: #1e8a73;
-  border-color: #1e8a73;
+  background: #2e7d32;
+  border-color: #2e7d32;
   color: #ffffff;
-  box-shadow: 0 4px 10px rgba(30, 138, 115, 0.25);
 }
 
 .home-landing .home-account-btn.is-guest {
-  background: #1a6b7a;
-  border-color: #1a6b7a;
+  background: #ef6c00;
+  border-color: #ef6c00;
   color: #ffffff;
-  box-shadow: 0 4px 10px rgba(26, 107, 122, 0.25);
+}
+
+.home-landing .home-account-btn.is-admin {
+  background: #6a1b9a;
+  border-color: #6a1b9a;
+  color: #ffffff;
+}
+
+.home-landing .home-account-btn.is-edit {
+  background: #0277bd;
+  border-color: #0277bd;
+  color: #ffffff;
+}
+
+.home-landing .home-account-btn.is-logout {
+  background: #c62828;
+  border-color: #c62828;
+  color: #ffffff;
 }
 
 .home-landing .home-account-btn:hover {
@@ -5688,9 +5712,9 @@ a.order-details-btn {
 }
 
 .top-ticker {
-  height: 40px !important;
-  min-height: 40px !important;
-  max-height: 40px !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  max-height: 46px !important;
 }
 
 .app > footer.app-footer {
@@ -7087,7 +7111,7 @@ html:not(.is-native-app):not(.is-customer-app):not(.is-installed-app) #root {
   --app-muted: #5d7180;
   --app-frame: 430px;
   --app-nav-h: 64px;
-  --app-ticker-h: 40px;
+  --app-ticker-h: 46px;
   --app-footer-h: 44px;
   display: flex !important;
   flex-direction: column !important;
@@ -7397,6 +7421,15 @@ html.is-customer-app .app-chrome-header,
   color: var(--app-ink);
 }
 
+.home-rx-cart-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin: 0 0 12px;
+}
+
 .home-rx-upload {
   display: flex;
   flex-wrap: wrap;
@@ -7404,11 +7437,36 @@ html.is-customer-app .app-chrome-header,
   gap: 8px;
   width: max-content;
   max-width: 100%;
-  margin: 0 0 12px;
+  margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
   justify-self: start;
+}
+
+.home-rx-cart .shop-cart-btn {
+  min-height: 32px;
+  height: 32px;
+  padding: 0 12px;
+  gap: 6px;
+  border: 1px solid #c2410c;
+  background: #c2410c;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.home-rx-cart .shop-cart-icon,
+.home-rx-cart .shop-cart-icon svg {
+  width: 16px;
+  height: 16px;
+  color: #ffffff;
+}
+
+.home-rx-cart .shop-cart-badge {
+  top: -6px;
+  right: -7px;
 }
 
 .home-rx-upload input[type="file"] {
@@ -7423,18 +7481,20 @@ html.is-customer-app .app-chrome-header,
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  height: 32px;
   min-height: 32px;
   padding: 0 12px;
-  border: 1px solid #c5d8e0;
+  border: 1px solid #455a64;
   border-radius: 999px;
-  background: #fff;
-  color: #1a6b7a;
+  background: #455a64;
+  color: #ffffff;
   font: inherit;
   font-size: 12px;
   font-weight: 800;
   text-decoration: none;
   cursor: pointer;
   white-space: nowrap;
+  box-shadow: none;
 }
 
 .home-rx-tab.is-on {
@@ -10369,7 +10429,7 @@ html:has(.app-customer) .app-bottom-nav {
 
 /* —— Device layouts: phone / tablet / laptop by width + aspect ratio —— */
 :root {
-  --shell-ticker-h: 40px;
+  --shell-ticker-h: 46px;
   --shell-topbar-h: 72px;
   --shell-footer-h: 44px;
   --shell-pad-x: 16px;
@@ -10387,7 +10447,7 @@ html:has(.app:not(.app-customer):not(.app-ops)) #root {
 }
 
 .app:not(.app-ops):not(.app-customer) {
-  --shell-ticker-h: 40px;
+  --shell-ticker-h: 46px;
   --shell-topbar-h: 72px;
   --shell-footer-h: 44px;
   background: #eaf4fb !important;
@@ -10481,7 +10541,7 @@ html:has(.app:not(.app-customer):not(.app-ops)) #root {
 
 /* Phone: full-bleed stretch, compact chrome */
 html[data-layout="phone"] {
-  --shell-ticker-h: 34px;
+  --shell-ticker-h: 40px;
   --shell-topbar-h: 60px;
   --shell-footer-h: 44px;
   --shell-pad-x: 10px;
@@ -10525,7 +10585,7 @@ html[data-layout="phone"] .app-customer {
 
 /* Tablet: mid stretch */
 html[data-layout="tablet"] {
-  --shell-ticker-h: 38px;
+  --shell-ticker-h: 44px;
   --shell-topbar-h: 68px;
   --shell-footer-h: 42px;
   --shell-pad-x: 16px;
@@ -10545,7 +10605,7 @@ html[data-layout="tablet"] .app-customer .app-frame {
 
 /* Laptop / wide landscape: roomy desktop layout */
 html[data-layout="laptop"] {
-  --shell-ticker-h: 40px;
+  --shell-ticker-h: 46px;
   --shell-topbar-h: 76px;
   --shell-footer-h: 44px;
   --shell-pad-x: 16px;
@@ -10803,7 +10863,7 @@ html[data-layout="phone"] .slideshow-review-text {
 @media (orientation: landscape) and (max-height: 500px) {
   html[data-layout="phone"],
   html[data-layout="tablet"] {
-    --shell-ticker-h: 28px;
+    --shell-ticker-h: 34px;
     --shell-topbar-h: 52px;
     --shell-footer-h: 36px;
     --content-pad-y: 12px;

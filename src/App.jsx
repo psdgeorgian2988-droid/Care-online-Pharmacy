@@ -216,19 +216,22 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
       <div className="home-shell">
         <div className="home-hero-row">
           <aside className="home-account-card" aria-label="Account">
+            <a className="home-account-btn is-partner" href="#partner">
+              Partner
+            </a>
             {hasAccountSession(user) ? (
               <>
                 <a className="home-account-btn is-primary" href="#profile">
                   Profile
                 </a>
-                <a className="home-account-btn" href="#register">
+                <a className="home-account-btn is-edit" href="#register">
                   Edit Account
                 </a>
-                <CustomerLogOut className="home-account-btn" />
+                <CustomerLogOut className="home-account-btn is-logout" />
               </>
             ) : (
               <>
-                <a className="home-account-btn is-primary" href="#login">
+                <a className="home-account-btn is-login" href="#login">
                   Login / Register
                 </a>
                 <button
@@ -240,8 +243,10 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
                 </button>
               </>
             )}
+            <a className="home-account-btn is-admin" href="#admin">
+              Admin Panel
+            </a>
           </aside>
-          <SiteOpsLinks className="home-ops-entry" />
         </div>
 
         <HomePrescriptionUpload />
@@ -537,7 +542,7 @@ function App() {
         <Seo route={route} />
         <SiteTicker />
         <div className="app-frame">
-          <AppHeader />
+          <AppHeader hideCart={route === "#home" && !hashService} />
           <main id="app-scroll">
             {welcomeGate || isAuthRoute ? null : <WebinarNotice />}
             {welcomeGate || isAuthRoute ? null : <SlotOfferBanner />}
@@ -572,7 +577,7 @@ function App() {
       <header className="site-topbar">
         <div className="site-topbar-inner">
           <div className="site-topbar-slot is-start">
-            <SiteOpsLinks className="site-topbar-ops" />
+            {route === "#home" ? null : <SiteOpsLinks className="site-topbar-ops" />}
           </div>
           <MediHomeLogoLink
             className="site-topbar-brand"
@@ -581,7 +586,9 @@ function App() {
           />
           <div className="site-topbar-end">
             <CustomerLogOut className="site-logout-btn" />
-            <HeaderCart className="site-topbar-header-cart" />
+            {route === "#home" && !hashService ? null : (
+              <HeaderCart className="site-topbar-header-cart" />
+            )}
           </div>
         </div>
       </header>
@@ -604,7 +611,7 @@ function App() {
         </ErrorBoundary>
       </main>
 
-      <SiteFooter showOpsLinks />
+      <SiteFooter showOpsLinks={route !== "#home"} />
       <SiteFloatingHelp needHelpOpen={needHelpOpen} setNeedHelpOpen={setNeedHelpOpen} />
     </div>
   );
