@@ -1,10 +1,10 @@
 import { RX_MEDICINES, RX_TESTS } from "./data/rxMedicalLexicon.js";
 
 const FORM_PREFIX =
-  /^(?:tab(?:let)?s?|cap(?:sule)?s?|syp|syr(?:up)?|inj(?:ection)?|oint(?:ment)?|drops?|sachet|susp(?:ension)?)\.?\s+/i;
+  /^(?:tab(?:let)?s?\.?|t\.?|cap(?:sule)?s?\.?|syp\.?|syr(?:up)?\.?|inj(?:ection)?\.?|oint(?:ment)?\.?|drops?\.?|sachet\.?|susp(?:ension)?\.?)\s+/i;
 
 const JUNK_NAME =
-  /^(?:unknown(?:\s+(?:medicine|test))?|medicine|test|adv|advice|investigation|investigations|rx|prescription|nil|none)$/i;
+  /^(?:unknown(?:\s+(?:medicine|test))?|medicine|test|adv|advice|investigation|investigations|rx|prescription|nil|none|self|amount|paid|print|hurts|lot|rs|ref|bill|time|date|opd|card|hospital|clinic)$/i;
 
 export function foldRx(value) {
   return String(value || "")
@@ -74,21 +74,24 @@ function scoreAlias(query, alias, hwQuery) {
   const hwA = handwritingFold(alias);
   if (!q || !a) return 0;
   if (q === a || hwQuery === hwA) return 100;
-  if (a.length >= 4 && (q.startsWith(a) || a.startsWith(q))) return 92;
+  if (a.length >= 5 && q.startsWith(a)) return 92;
+  if (a.length >= 6 && a.startsWith(q) && q.length >= 6 && q.length / a.length >= 0.7) return 92;
   if (a.length >= 5 && (q.includes(a) || a.includes(q))) {
     const shorter = Math.min(q.length, a.length);
     const longer = Math.max(q.length, a.length);
-    if (shorter / longer >= 0.72) return 88;
+    if (shorter >= 6 && shorter / longer >= 0.78) return 88;
   }
   const dist = Math.min(levenshtein(q, a), levenshtein(hwQuery, hwA));
   const limit = editLimit(q, a);
-  if (limit && dist <= limit) return Math.max(70, 96 - dist * 8);
+  if (limit && dist <= limit && Math.min(q.length, a.length) >= 6) {
+    return Math.max(70, 96 - dist * 8);
+  }
   return 0;
 }
 
 function stripStrength(value) {
   return String(value || "")
-    .replace(/\b\d+(?:\.\d+)?\s*(?:mg|mcg|g|ml|iu|%)\b/gi, " ")
+    .replace(/\b\d+(?:\.\d+)?\s*(?:mg|mcg|μg|ug|g|ml|iu|%)\b/gi, " ")
     .replace(/\b\d{2,4}\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();

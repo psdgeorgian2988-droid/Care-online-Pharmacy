@@ -4,6 +4,7 @@ import {
   readPrescriptionDraft,
 } from "./prescriptionDraft.js";
 import { readPrescriptionParse } from "./prescriptionAi.js";
+import { rxDoseCode } from "./rxTextParse.js";
 
 function compactMedicine(med = {}) {
   return {
@@ -15,6 +16,7 @@ function compactMedicine(med = {}) {
     duration: med.durationDays || med.duration || "",
     timesPerDay: med.timesPerDay || med.frequency || "",
     timing: med.timing || "",
+    doseCode: med.doseCode || rxDoseCode(med),
     quantity: med.quantity || "",
     instructions: med.instructions || "",
     verified: med.verified !== false,

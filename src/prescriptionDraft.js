@@ -1,7 +1,7 @@
 export const PRESCRIPTION_DRAFT_KEY = "mediHomePrescriptionDraft";
 export const PRESCRIPTION_EVENT = "mediHomePrescription";
-export const MAX_PRESCRIPTION_BYTES = 4 * 1024 * 1024;
-const MAX_IMAGE_EDGE = 1600;
+export const MAX_PRESCRIPTION_BYTES = 6 * 1024 * 1024;
+const MAX_IMAGE_EDGE = 2400;
 
 const ALLOWED_EXT = /\.(pdf|png|jpe?g|webp)$/i;
 
@@ -106,7 +106,7 @@ async function compressImageToDraft(file) {
     if (!ctx) throw new Error("Could not prepare that image.");
     ctx.drawImage(img, 0, 0, width, height);
 
-    let quality = 0.82;
+    let quality = 0.92;
     let dataUrl = canvas.toDataURL("image/jpeg", quality);
     while (dataUrlBytes(dataUrl) > MAX_PRESCRIPTION_BYTES && quality > 0.45) {
       quality -= 0.12;
@@ -136,10 +136,14 @@ export async function fileToPrescriptionDraft(file) {
   const isPdf = type === "application/pdf" || /\.pdf$/i.test(file.name || "");
 
   if (isImage) {
-    try {
-      return await compressImageToDraft(file);
-    } catch (error) {
-      if (file.size > MAX_PRESCRIPTION_BYTES) throw error;
+    const alreadySmall = file.size > 0 && file.size <= MAX_PRESCRIPTION_BYTES;
+    const skipShrink = alreadySmall && file.size <= 2 * 1024 * 1024;
+    if (!skipShrink) {
+      try {
+        return await compressImageToDraft(file);
+      } catch (error) {
+        if (file.size > MAX_PRESCRIPTION_BYTES) throw error;
+      }
     }
   }
 

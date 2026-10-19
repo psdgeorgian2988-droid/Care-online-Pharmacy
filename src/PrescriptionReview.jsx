@@ -13,8 +13,10 @@ import {
   readPrescriptionParse,
   setPrescriptionMedicinesConfirmed,
   updatePrescriptionMedicine,
+  writePrescriptionParse,
   PRESCRIPTION_PARSE_EVENT,
 } from "./prescriptionAi";
+import { saveConfirmedDigitalRx } from "./digitalRxRecord";
 import { lookupPrescriptionMedicine } from "./Medicines";
 import { addMedicineToCart, addTestToCart, cartHasMedicine, openShopCart, writeRxLabCheckout } from "./medicineCartStore";
 import {
@@ -24,13 +26,14 @@ import {
   splitRxTestNames,
   suggestedPacks,
 } from "./prescriptionShop";
+import { rxDoseCode } from "./rxTextParse";
 
 function durationLabel(med) {
   return med?.durationDays || med?.duration || "Not specified";
 }
 
 function timesADayLabel(med) {
-  return med?.timesPerDay || med?.frequency || med?.timing || "Not specified";
+  return rxDoseCode(med) || med?.timesPerDay || med?.frequency || "Not specified";
 }
 
 export default function PrescriptionReview() {
@@ -136,7 +139,18 @@ export default function PrescriptionReview() {
   };
 
   const toggleMedicinesConfirmed = (checked) => {
-    const next = setPrescriptionMedicinesConfirmed(checked);
+    let next = setPrescriptionMedicinesConfirmed(checked);
+    if (checked && next) {
+      try {
+        const saved = saveConfirmedDigitalRx(next, draft);
+        if (saved?.id && next.accountRecordId !== saved.id) {
+          writePrescriptionParse({ ...next, accountRecordId: saved.id });
+          next = readPrescriptionParse() || { ...next, accountRecordId: saved.id };
+        }
+      } catch {
+        setError("Could not save this digital Rx to Medical Records.");
+      }
+    }
     if (next) setParsed(next);
   };
 
@@ -426,7 +440,9 @@ export default function PrescriptionReview() {
                     <div className="rx-med-title">
                       <strong>{med.name}</strong>
                       {med.strength ? <em>{med.strength}</em> : null}
-                      {med.form ? <span className="rx-chip">{med.form}</span> : null}
+                      {rxDoseCode(med) ? (
+                        <span className="rx-dose-code">{rxDoseCode(med)}</span>
+                      ) : null}
                       {med.userCorrected ? (
                         <span className="rx-chip">Corrected</span>
                       ) : med.verified === false ? (
@@ -487,19 +503,9 @@ export default function PrescriptionReview() {
                         <span>For how many days</span>
                         <strong>{durationLabel(med)}</strong>
                       </div>
-                      <div>
-                        <span>Times a day</span>
-                        <strong>{timesADayLabel(med)}</strong>
-                      </div>
                     </div>
-                    {(med.timing || med.instructions || med.quantity) && (
+                    {(med.instructions || med.quantity) && (
                       <dl className="rx-med-grid">
-                        {med.timing ? (
-                          <>
-                            <dt>Timing</dt>
-                            <dd>{med.timing}</dd>
-                          </>
-                        ) : null}
                         {med.quantity ? (
                           <>
                             <dt>Qty</dt>
@@ -537,9 +543,13 @@ export default function PrescriptionReview() {
                 <span>I confirm all medicines are correct</span>
               </button>
               {parsed?.medicinesConfirmed ? (
-                <p className="rx-confirm-ok">Medicines confirmed. You can order now.</p>
+                <p className="rx-confirm-ok">
+                  Medicines confirmed. Digital Rx saved in Medical Records → Prescriptions.
+                  {" "}
+                  <a href="#reports?service=prescription">Open Rx tab</a>
+                </p>
               ) : (
-                <p className="rx-confirm-wait">Tick the box above, then order.</p>
+                <p className="rx-confirm-wait">Tick the box above after any corrections, then order.</p>
               )}
             </div>
           ) : null}
@@ -774,9 +784,10 @@ const styles = `
 .rx-list-block h3{margin:10px 0 8px;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#1a6b7a}
 .rx-med-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
 .rx-med-list li{padding:12px;border:1px solid #e8eef2;border-radius:10px;background:#fff}
-.rx-med-title{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;margin-bottom:10px}
+.rx-med-title{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;margin-bottom:6px}
 .rx-med-title strong{font-size:15px;color:#143246}
 .rx-med-title em{font-style:normal;font-size:13px;font-weight:700;color:#1a6b7a}
+.rx-dose-code{font-size:12px;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:999px;background:#1a6b7a;color:#fff}
 .rx-chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#e8f4f6;color:#1a6b7a}
 .rx-chip.is-warn{background:#fff3e6;color:#8a5a12}
 .rx-salt{margin:0 0 8px;font-size:12px;color:#5d7180}
@@ -797,7 +808,8 @@ const styles = `
 .rx-tick{flex:0 0 auto;width:22px;height:22px;border:2px solid #1a6b7a;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;line-height:1;color:#1a6b7a;background:#fff}
 .rx-confirm-ok{margin:10px 0 0 !important;color:#1a6b7a !important;font-weight:700}
 .rx-confirm-wait{margin:10px 0 0 !important;color:#8a5a12 !important}
-.rx-med-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 8px}
+.rx-confirm-ok a{color:#1a6b7a;font-weight:800}
+.rx-med-stats{display:grid;grid-template-columns:1fr;gap:8px;margin:0 0 8px}
 .rx-med-stats > div{padding:8px 10px;border-radius:8px;background:#f3fafb;border:1px solid #d7e8ec}
 .rx-med-stats span{display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5d7180;margin-bottom:2px}
 .rx-med-stats strong{font-size:14px;color:#143246}

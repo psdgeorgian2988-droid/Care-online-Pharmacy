@@ -4,6 +4,7 @@ import {
   compactLexiconForPrompt,
   foldRx,
 } from "./rxCanonicalize.js";
+import { rxDoseCode } from "./rxTextParse.js";
 
 function saltOf(row) {
   return foldRx(row?.salt || row?.name);
@@ -44,6 +45,7 @@ export function pickSaferMedicine(aiRow, ocrRow) {
         timesPerDay: ai.timesPerDay || ocr.timesPerDay || "",
         timing: ai.timing || ocr.timing || "",
         frequency: ai.frequency || ocr.frequency || ai.timesPerDay || ocr.timesPerDay || "",
+        doseCode: ai.doseCode || ocr.doseCode || "",
       };
     }
     if (ai.verified && ocr.verified && saltOf(ai) !== saltOf(ocr)) {
@@ -109,6 +111,7 @@ export function medicallyValidatePrescription(aiParsed = {}, ocrParsed = null) {
     ...row,
     durationDays: row.durationDays || row.duration || "",
     timesPerDay: row.timesPerDay || row.frequency || row.timing || "",
+    doseCode: row.doseCode || rxDoseCode(row),
   }));
 
   if (!merged.medicines.length && !merged.tests.length && ocrParsed?.notes) {

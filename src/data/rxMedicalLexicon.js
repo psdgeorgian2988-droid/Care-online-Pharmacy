@@ -33,10 +33,11 @@ export const RX_MEDICINES = [
   { brand: "Cetzine", salt: "Cetirizine", strength: "10 mg", form: "tablet", aliases: ["cetzine", "okacet", "alerid", "zyrtec", "cetirizine"] },
   { brand: "Levocet", salt: "Levocetirizine", strength: "5 mg", form: "tablet", aliases: ["levocet", "xyzal", "levocetirizine"] },
   { brand: "Allegra", salt: "Fexofenadine", strength: "120 mg", form: "tablet", aliases: ["allegra", "fexofenadine"] },
-  { brand: "Zincovit", salt: "Multivitamin + Zinc", strength: "", form: "syrup", aliases: ["zincovit", "a to z", "supradyn"] },
+  { brand: "Zincovit", salt: "Multivitamin + Zinc", strength: "", form: "syrup", aliases: ["zincovit", "supradyn"] },
   { brand: "Becosules", salt: "Vitamin B complex", strength: "", form: "capsule", aliases: ["becosules", "becosules z"] },
-  { brand: "Laretol", salt: "Lactulose", strength: "", form: "syrup", aliases: ["laretol", "lasetol", "lasitol", "laretol syrup", "lactulose", "lactihep", "duphalac"] },
-  { brand: "Mednovit CD3", salt: "Calcium + Vitamin D3", strength: "", form: "tablet", aliases: ["mednovit cd3", "mednovit d3", "mednovit", "med novit", "mednovitcd3", "mednovit-cd3"] },
+  { brand: "Laretol", salt: "Calcitriol", strength: "0.25 mcg", form: "capsule", aliases: ["laretol", "lasetol", "lasctol", "lasitol", "lsttol", "laretol 0.25", "calcitriol", "rocaltrol"] },
+  { brand: "Duphalac", salt: "Lactulose", strength: "", form: "syrup", aliases: ["duphalac", "lactulose", "lactihep"] },
+  { brand: "Mednovit CD3", salt: "Calcium + Vitamin D3", strength: "", form: "capsule", aliases: ["mednovit cd3", "mednovit d3", "mednovit", "med novit", "mednovitcd3", "mednovit-cd3", "meduoy", "mebuoy", "mednov", "meio", "meloy"] },
   { brand: "Shelcal", salt: "Calcium + Vitamin D3", strength: "500 mg", form: "tablet", aliases: ["shelcal", "calcimax", "calcium"] },
   { brand: "Uprise D3", salt: "Vitamin D3", strength: "", form: "capsule", aliases: ["uprise", "uprise d3", "calcirol", "vitamin d3", "cholecalciferol"] },
   { brand: "Meftal-P", salt: "Mefenamic acid", strength: "", form: "suspension", aliases: ["meftal p", "meftal-p", "meftal"] },
@@ -55,6 +56,8 @@ export const RX_MEDICINES = [
   { brand: "Liv 52", salt: "Hepatoprotective", strength: "", form: "tablet", aliases: ["liv 52", "liv52"] },
   { brand: "Wysolone", salt: "Prednisolone", strength: "5 mg", form: "tablet", aliases: ["wysolone", "wysolone 5", "prednisolone", "omnacortil"] },
   { brand: "Pangraf", salt: "Tacrolimus", strength: "1 mg", form: "capsule", aliases: ["pangraf", "vingraf", "tacgraf", "tacrolimus", "pangraf 1"] },
+  { brand: "Prograf", salt: "Tacrolimus", strength: "1 mg", form: "capsule", aliases: ["prograf"] },
+  { brand: "Prosigo", salt: "CKD pre-probiotic", strength: "", form: "capsule", aliases: ["prosigo", "prosig", "prosigz", "progiag", "pro gy", "pvo gy", "prosigo 45"] },
   { brand: "Vingraf", salt: "Tacrolimus", strength: "1 mg", form: "capsule", aliases: ["vingraf"] },
   { brand: "Immutil", salt: "Mycophenolate mofetil", strength: "500 mg", form: "tablet", aliases: ["immutil", "immurow", "immutal"] },
   { brand: "Cellcept", salt: "Mycophenolate mofetil", strength: "500 mg", form: "tablet", aliases: ["cellcept", "mycofit", "mofilet", "mycophenolate", "mmf"] },
@@ -65,8 +68,12 @@ export const RX_MEDICINES = [
   { brand: "Mixtard", salt: "Biphasic insulin", strength: "", form: "injection", aliases: ["mixtard", "huminsulin 30/70"] },
   { brand: "Janumet", salt: "Sitagliptin + Metformin", strength: "50/500 mg", form: "tablet", aliases: ["janumet", "janumet 50/500", "istamet", "sitagliptin"] },
   { brand: "Amaryl", salt: "Glimepiride", strength: "2 mg", form: "tablet", aliases: ["amaryl", "glimestar", "glimepiride"] },
-  { brand: "Arkamin", salt: "Clonidine", strength: "0.1 mg", form: "tablet", aliases: ["arkamin", "clonidine"] },
+  { brand: "Arkamin", salt: "Clonidine", strength: "0.1 mg", form: "tablet", aliases: ["arkamin", "arkamun", "arkmin", "arbrirnin", "ae brirnin", "brirnin", "clonidine"] },
   { brand: "Dapanox", salt: "Dapagliflozin", strength: "10 mg", form: "tablet", aliases: ["dapanox", "dapanex", "dapagliflozin", "forxiga", "oxra"] },
+  { brand: "Koglok-DS", salt: "Alpha ketoanalogue", strength: "DS", form: "tablet", aliases: ["koglok ds", "koglok-ds", "koglok", "koglor", "keglor", "keglok", "kogtok", "leoplok", "le oplk", "leoplk", "klog ds", "klog-ds"] },
+  { brand: "More Fe", salt: "Iron polysaccharide", strength: "150 mg", form: "capsule", aliases: ["more fe", "more-fe", "morefe", "moy fe", "moe fe", "noxe fe"] },
+  { brand: "Noxfer", salt: "Iron + Folic acid", strength: "", form: "capsule", aliases: ["noxfer", "noxfer xt"] },
+  { brand: "Sobisis EC Forte", salt: "Sodium bicarbonate", strength: "1000 mg", form: "tablet", aliases: ["sobisis ec forte", "sobisis forte", "sobisis ec", "sobisis", "sobosis", "seber", "sebegs", "sebo", "sodosis", "nodosis", "sobisis el forte"] },
   { brand: "Famocid", salt: "Famotidine", strength: "40 mg", form: "tablet", aliases: ["famocid", "famotidine", "pepcid"] },
   { brand: "Pantodac", salt: "Pantoprazole", strength: "40 mg", form: "tablet", aliases: ["pantodac"] },
   { brand: "Sporlac", salt: "Lactic acid bacillus", strength: "", form: "tablet", aliases: ["sporlac", "vizylac", "enterogermina"] },
@@ -85,7 +92,9 @@ export const RX_TESTS = [
   { name: "Dengue Profile", aliases: ["dengue profile", "dengue duo"] },
   { name: "Malaria Parasite (MP)", aliases: ["mp", "malaria", "malaria parasite", "pf pv"] },
   { name: "Liver Function Test (LFT)", aliases: ["lft", "liver function", "liver profile"] },
-  { name: "Kidney Function Test (KFT)", aliases: ["kft", "rft", "kidney function", "renal function"] },
+  { name: "Kidney Function Test (KFT)", aliases: ["kft", "rft", "kidney function", "renal function", "renal function test"] },
+  { name: "Intact PTH (iPTH)", aliases: ["ipth", "i pth", "i-pth", "intact pth", "pth", "parathyroid"] },
+  { name: "Urine Protein/Creatinine Ratio", aliases: ["urine pc ratio", "urine p/c", "urine pcr", "upcr", "pc ratio", "protein creatinine ratio", "urine pc"] },
   { name: "Lipid Profile", aliases: ["lipid", "lipid profile", "cholesterol"] },
   { name: "Thyroid Profile", aliases: ["thyroid", "tsh", "t3 t4 tsh", "thyroid profile"] },
   { name: "HbA1c - Diabetes Test", aliases: ["hba1c", "hb a1c", "glycated hemoglobin"] },
@@ -109,9 +118,12 @@ export const RX_TESTS = [
 
 export const HANDWRITING_HINTS = `Indian doctor handwriting rules:
 - Read brand names letter by letter. Do not replace a name with a more common drug.
-- Charting: 1-0-1 twice daily, 1-1-1 thrice, 1-0-0 once, BD/TDS/OD/HS/SOS.
+- Charting: 1-0-1 twice daily, 1-1-1 thrice, 1-0-0 or 1-OD once, 1-1 twice, BD/TDS/OD/HS/SOS.
 - Duration: 5/7 means 5 days. x 5 days means 5 days.
-- Form prefixes: Tab, Cap, Syp, Inj, Ung, Gtt.
+- Form prefixes: T. and Tab = tablet, Cap = capsule, Syp, Inj, Ung, Gtt.
+- Strength: 0.25μgm / 0.25 mcg are micrograms (calcitriol), not mg.
 - Lookalikes: a/o, e/c, n/u, r/n, l/t, 0/O, 1/l, 5/S, rn/m, cl/d, vv/w.
 - Pediatric Rx often has syrups (Syp) and 1½ dosing.
-- Investigations are usually under Adv / Ix / Inv: CBC, CRP, Typhidot, Dengue IgM/NS1, LFT, KFT, TSH.`;
+- Investigations are usually under Adv / Ix / Inv: CBC, ESR, CRP, iPTH, RFT/KFT, Urine R/M, Urine PCR, Typhidot, Dengue IgM/NS1, LFT, TSH.
+- Nephrology OPD often has Laretol (calcitriol), Mednovit CD3, Arkamin, Koglok DS, More Fe, Prosigo (not Prograf), Sobisis/Nodosis.
+- Never turn Prosigo into Prograf/tacrolimus, or More Fe / Koglok DS into another brand.`;

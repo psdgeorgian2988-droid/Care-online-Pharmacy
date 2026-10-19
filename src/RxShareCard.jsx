@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { hasPartnerRxShare } from "./rxPartnerShare";
+import { rxDoseCode } from "./rxTextParse";
 
 function durationLabel(med) {
-  return med?.duration || "Not specified";
-}
-
-function timesLabel(med) {
-  return med?.timesPerDay || "Not specified";
+  return med?.durationDays || med?.duration || "Not specified";
 }
 
 export default function RxShareCard({
@@ -98,9 +95,13 @@ export default function RxShareCard({
                     const editing = editingId === key;
                     return (
                       <li key={key}>
-                        <strong>{med.name}</strong>
-                        {med.strength ? ` ${med.strength}` : ""}
-                        {med.form ? ` · ${med.form}` : ""}
+                        <div className="rx-share-brand">
+                          <strong>{med.name}</strong>
+                          {med.strength ? <em>{med.strength}</em> : null}
+                          {rxDoseCode(med) ? (
+                            <span className="rx-share-dose">{rxDoseCode(med)}</span>
+                          ) : null}
+                        </div>
                         {med.partnerCorrected ? (
                           <em className="rx-share-fixed">
                             Partner corrected
@@ -111,9 +112,6 @@ export default function RxShareCard({
                         ) : med.userCorrected ? (
                           <em className="rx-share-fixed">Customer corrected</em>
                         ) : null}
-                        <em>
-                          {durationLabel(med)} · {timesLabel(med)}
-                        </em>
                         {editable ? (
                           editing ? (
                             <div className="rx-share-edit">
@@ -170,6 +168,7 @@ export default function RxShareCard({
                             </button>
                           )
                         ) : null}
+                        <em>For how many days: {durationLabel(med)}</em>
                       </li>
                     );
                   })}
@@ -205,11 +204,14 @@ export const rxShareCardStyles = `
 .rx-share-pane iframe{width:100%;height:180px;border:0;border-radius:6px;background:#fff}
 .rx-share-pane ol,.rx-share-pane ul{margin:6px 0 0;padding-left:16px}
 .rx-share-pane em{display:block;font-style:normal;font-size:11px;color:#5d7180}
+.rx-share-brand{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px}
+.rx-share-brand em{display:inline;font-style:normal;font-weight:700;color:#1a6b7a}
+.rx-share-dose{display:inline-flex;min-width:0 !important;font-size:11px;font-weight:800;letter-spacing:.04em;padding:1px 7px;border-radius:999px;background:#1a6b7a;color:#fff}
 .rx-share-fixed{color:#1a6b7a !important;font-weight:700}
 .rx-share-file{margin-top:6px !important;font-size:11px !important;word-break:break-all}
 .rx-share-ok{color:#1a6b7a !important;font-weight:700}
 .rx-share-error{color:#b64b4b !important;font-weight:700}
-.rx-share-correct{margin-top:4px;border:1px solid #1a6b7a;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:11px;font-weight:800;min-height:28px;padding:4px 8px;cursor:pointer}
+.rx-share-correct{margin:4px 0;border:1px solid #1a6b7a;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:11px;font-weight:800;min-height:28px;padding:4px 8px;cursor:pointer}
 .rx-share-edit{display:grid;gap:6px;margin-top:6px}
 .rx-share-edit input{width:100%;box-sizing:border-box;min-height:32px;padding:6px 8px;border:1px solid #d7e2e9;border-radius:6px;font:inherit;font-size:12px}
 @media (max-width:720px){

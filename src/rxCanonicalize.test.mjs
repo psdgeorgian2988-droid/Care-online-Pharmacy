@@ -40,12 +40,32 @@ test("maps lasetol to laretol and mednovit d3 to mednovit cd3", () => {
   const laretol = canonicalizeMedicineName("Lasetol");
   assert.equal(laretol.verified, true);
   assert.match(laretol.name, /laretol/i);
-  assert.match(laretol.salt, /lactulose/i);
+  assert.match(laretol.salt, /calcitriol/i);
   const mednovit = canonicalizeMedicineName("Mednovit D3");
   assert.equal(mednovit.verified, true);
   assert.match(mednovit.name, /mednovit cd3/i);
   assert.equal(canonicalizeMedicineName("Arkamin").salt, "Clonidine");
   assert.equal(canonicalizeMedicineName("Dapanox").salt, "Dapagliflozin");
+  assert.equal(canonicalizeMedicineName("Prograf").salt, "Tacrolimus");
+  assert.match(canonicalizeMedicineName("More Fe").name, /more fe/i);
+  assert.match(canonicalizeMedicineName("Sobisis EC Forte").salt, /bicarbonate/i);
+  assert.match(canonicalizeMedicineName("Koglok DS").name, /koglok/i);
+});
+
+test("does not map Prosigo, More Fe or Koglok DS to Prograf", () => {
+  const prosigo = canonicalizeMedicineName("Prosigo");
+  assert.equal(prosigo.verified, true);
+  assert.match(prosigo.name, /prosigo/i);
+  assert.notEqual(prosigo.salt, "Tacrolimus");
+  assert.equal(/prograf/i.test(prosigo.name), false);
+  const ocr = canonicalizeMedicineName("Prosigz");
+  assert.match(ocr.name, /prosigo/i);
+  assert.equal(/prograf/i.test(ocr.name), false);
+  const moreFe = canonicalizeMedicineName("Moy Fe");
+  assert.match(moreFe.name, /more fe/i);
+  const koglok = canonicalizeMedicineName("Koglok DS");
+  assert.match(koglok.name, /koglok/i);
+  assert.match(koglok.salt, /ketoanalogue/i);
 });
 
 test("keeps a patient-corrected medicine name", () => {
@@ -55,7 +75,7 @@ test("keeps a patient-corrected medicine name", () => {
   });
   assert.equal(parsed.medicines[0].name, "Laretol");
   assert.equal(parsed.medicines[0].userCorrected, true);
-  assert.match(parsed.medicines[0].salt, /lactulose/i);
+  assert.match(parsed.medicines[0].salt, /calcitriol/i);
 });
 
 test("splits CBC / CRP and keeps typhidot/dengue", () => {
