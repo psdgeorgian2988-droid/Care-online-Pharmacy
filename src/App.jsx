@@ -56,6 +56,7 @@ import CustomerHome from "./CustomerHome";
 import HomeServiceCatalog from "./HomeServiceCatalog";
 import LabsHub from "./LabsHub";
 import HomePrescriptionUpload from "./HomePrescriptionUpload";
+import { HomeWithAboutSlides } from "./HomeAboutSlides";
 import { useIsPhoneLayout } from "./useLayoutMode";
 import AppBottomNav from "./AppBottomNav";
 import BackToHome from "./BackToHome";
@@ -213,6 +214,7 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
 
   return (
     <div className="home-content home-landing">
+      <HomeWithAboutSlides>
       <div className="home-shell">
         <div className="home-hero-row">
           <aside className="home-account-card" aria-label="Account">
@@ -260,6 +262,7 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
 
         <HomeReviewsTeaser />
       </div>
+      </HomeWithAboutSlides>
     </div>
   );
 }
