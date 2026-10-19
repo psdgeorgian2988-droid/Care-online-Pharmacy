@@ -7717,6 +7717,7 @@ html.is-customer-app .app-chrome-header,
 
 .home-side-slides {
   --home-side-slide-h: min(640px, calc(100vh - 180px));
+  --home-side-card-h: 220px;
   display: none;
 }
 
@@ -7724,20 +7725,23 @@ html.is-customer-app .app-chrome-header,
   display: flex;
   flex-direction: column;
   will-change: transform;
-  animation: home-side-marquee-up 42s linear infinite;
+  animation: home-side-marquee-up 24s linear infinite;
+  animation-play-state: running;
 }
 
 .home-side-slides.is-right .home-side-slides-track {
-  animation-duration: 48s;
-  animation-delay: -18s;
+  animation-duration: 28s;
+  animation-delay: -10s;
 }
 
 .home-side-slide {
   position: relative;
   overflow: hidden;
-  flex: 0 0 var(--home-side-slide-h);
+  flex: 0 0 var(--home-side-card-h);
   width: 100%;
-  height: var(--home-side-slide-h);
+  height: var(--home-side-card-h);
+  margin: 0 0 8px;
+  border-radius: 14px;
   background: #145864;
 }
 
@@ -7811,7 +7815,7 @@ html.is-customer-app .app-chrome-header,
     overflow: hidden;
     height: var(--home-side-slide-h);
     border-radius: 16px;
-    background: #145864;
+    background: #0f3f48;
   }
 }
 
