@@ -73,7 +73,7 @@ export default function HomePrescriptionUpload() {
             type="button"
             className="home-rx-tab"
             disabled={busy}
-            onClick={() => cameraRef.current?.click()}
+            onClick={() => fileRef.current?.click()}
           >
             {busy ? "Uploading…" : "Replace"}
           </button>
@@ -95,7 +95,7 @@ export default function HomePrescriptionUpload() {
           type="button"
           className="home-rx-tab is-on"
           disabled={busy}
-          onClick={() => cameraRef.current?.click()}
+          onClick={() => fileRef.current?.click()}
         >
           {busy ? "Uploading…" : "Upload Rx"}
         </button>

@@ -4149,37 +4149,42 @@ body,
 
 .home-landing .home-account-card {
   display: flex;
+  flex-wrap: wrap;
   flex-direction: row;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
-  gap: 16px;
-  width: 100%;
+  gap: 8px;
+  width: max-content;
+  max-width: 100%;
   margin: 0;
-  padding: 16px;
-  background: linear-gradient(180deg, #ffffff 0%, #eef8fb 100%);
-  border: 1px solid #c5e0ea;
-  border-radius: 16px;
-  box-shadow: 0 8px 22px rgba(26, 107, 122, 0.12);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   box-sizing: border-box;
+  justify-self: start;
 }
 
 .home-landing .home-account-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 1 1 0;
+  flex: 0 0 auto;
   width: auto;
   min-width: 0;
-  height: 42px;
-  border-radius: 10px;
-  border: 2px solid #1a6b7a;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #1a6b7a;
   background: #ffffff;
   color: #1a6b7a;
   font-family: inherit;
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 800;
   text-decoration: none;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .home-landing .home-account-btn.is-login {
@@ -7403,6 +7408,7 @@ html.is-customer-app .app-chrome-header,
   padding: 0;
   border: 0;
   background: transparent;
+  justify-self: start;
 }
 
 .home-rx-upload input[type="file"] {
@@ -7428,6 +7434,7 @@ html.is-customer-app .app-chrome-header,
   font-weight: 800;
   text-decoration: none;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .home-rx-tab.is-on {
