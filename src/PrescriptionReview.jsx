@@ -329,8 +329,8 @@ export default function PrescriptionReview() {
         <p className="rx-kicker">Prescription</p>
         <h1>Digital prescription</h1>
         <p className="rx-lead">
-          Left: preview of the uploaded Rx. Right: AI list of medicines and tests, including how
-          many days and how many times a day.
+          Left: preview of the uploaded Rx. Right: OCR plus medical AI list of medicines and
+          tests, including how many days and how many times a day.
         </p>
       </header>
 
@@ -370,15 +370,24 @@ export default function PrescriptionReview() {
           <div className="rx-pane-head">
             <h2>Recognized list</h2>
             <button type="button" className="rx-rerun" disabled={busy} onClick={rerun}>
-              {busy ? "Reading…" : "Re-run AI"}
+              {busy ? "Reading…" : "Re-read Rx"}
             </button>
           </div>
 
           {busy && !medicines.length && !tests.length ? (
-            <p className="rx-status">AI is reading the prescription…</p>
+            <p className="rx-status">OCR + medical AI is reading the prescription…</p>
           ) : null}
           {error ? <p className="rx-error">{error}</p> : null}
           {parsed?.warning ? <p className="rx-warn">{parsed.warning}</p> : null}
+          {parsed?.aiMode ? (
+            <p className="rx-status">
+              {parsed.aiMode.includes("validate")
+                ? "Checked with OCR and medical validation"
+                : parsed.aiMode.includes("ocr")
+                  ? "Read with OCR"
+                  : "Read with medical AI"}
+            </p>
+          ) : null}
 
           {(parsed?.patientName || parsed?.doctorName || parsed?.date) && (
             <div className="rx-meta">

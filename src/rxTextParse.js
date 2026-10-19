@@ -1,3 +1,5 @@
+import { canonicalizeMedicineName } from "./rxCanonicalize.js";
+
 const FORM_RE =
   /^(?:tab(?:let)?s?|cap(?:sule)?s?|syp|syr(?:up)?|inj(?:ection)?|oint(?:ment)?|crm|cream|gel|drops?|inh|respule|sachet|powd(?:er)?|lotion|spray|susp(?:ension)?|mouthwash|elixir|lozenges?)\b\.?/i;
 
@@ -146,7 +148,9 @@ export function parseMedicineLine(line) {
   const duration = durationFromMatch(raw.match(DURATION_RE));
   const food = raw.match(FOOD_RE)?.[1] || "";
   const form = formFromLine(raw);
-  const looksMed = Boolean(form || chart || freqCode);
+  const draftName = cleanName(raw);
+  const known = draftName ? canonicalizeMedicineName(draftName, { strength, form }) : null;
+  const looksMed = Boolean(form || chart || freqCode || strength || known?.verified);
   if (!looksMed) return null;
 
   const name = cleanName(raw);
@@ -186,12 +190,44 @@ export function parseTestsFromText(text) {
   return found;
 }
 
+function isDoseOnly(line) {
+  const raw = String(line || "").trim();
+  if (!raw) return false;
+  const withoutDose = cleanName(raw);
+  return (
+    withoutDose.length < 3 &&
+    Boolean(raw.match(CHART_RE) || raw.match(FREQ_RE) || raw.match(DURATION_RE) || raw.match(STRENGTH_RE))
+  );
+}
+
+function mergeDoseLines(lines) {
+  const out = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const cur = lines[i];
+    const next = lines[i + 1] || "";
+    if (!parseMedicineLine(cur) && next && parseMedicineLine(`${cur} ${next}`)) {
+      out.push(`${cur} ${next}`);
+      i += 1;
+      continue;
+    }
+    if (parseMedicineLine(cur) && isDoseOnly(next) && parseMedicineLine(`${cur} ${next}`)) {
+      out.push(`${cur} ${next}`);
+      i += 1;
+      continue;
+    }
+    out.push(cur);
+  }
+  return out;
+}
+
 export function parseRxText(text) {
-  const lines = cleanOcrText(text)
-    .replace(/\u00a0/g, " ")
-    .split(/\r?\n|,(?=\s*(?:tab|cap|syp|inj)\b)/i)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const lines = mergeDoseLines(
+    cleanOcrText(text)
+      .replace(/\u00a0/g, " ")
+      .split(/\r?\n|,(?=\s*(?:tab|cap|syp|inj)\b)/i)
+      .map((line) => line.trim())
+      .filter(Boolean)
+  );
 
   const medicines = [];
   const seenMed = new Set();
