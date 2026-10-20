@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { goToHash } from "./hashRoute";
+import HeaderCart from "./HeaderCart.jsx";
 import { clearPrescriptionParse } from "./prescriptionAi";
 import {
   clearPrescriptionDraft,
@@ -9,7 +10,7 @@ import {
   writePrescriptionDraft,
 } from "./prescriptionDraft";
 
-export default function HomePrescriptionUpload() {
+export default function HomePrescriptionUpload({ showCart = true } = {}) {
   const fileRef = useRef(null);
   const cameraRef = useRef(null);
   const [draft, setDraft] = useState(() => readPrescriptionDraft());
@@ -45,38 +46,11 @@ export default function HomePrescriptionUpload() {
   };
 
   return (
-    <section
-      className="home-rx-upload"
-      aria-label={draft?.fileName ? "Uploaded prescription" : "Upload prescription"}
-    >
-      <div>
-        <p className="home-rx-kicker">Prescription</p>
-        <strong>{draft?.fileName ? "Prescription uploaded" : "Upload prescription"}</strong>
-        <span>
-          {draft?.fileName
-            ? draft.fileName
-            : "Take a photo on your phone, or choose an image / PDF"}
-        </span>
-        {draft?.fileName ? (
-          <em className="home-rx-file">
-            Already on file
-            <button
-              type="button"
-              className="home-rx-remove"
-              aria-label="Remove uploaded prescription"
-              title="Remove prescription"
-              onClick={() => {
-                clearPrescriptionParse();
-                clearPrescriptionDraft();
-              }}
-            >
-              ×
-            </button>
-          </em>
-        ) : null}
-        {status ? <small className="home-rx-error">{status}</small> : null}
-      </div>
-      <div className="home-rx-actions">
+    <div className="home-rx-cart-row">
+      <section
+        className="home-rx-upload"
+        aria-label={draft?.fileName ? "Uploaded prescription" : "Upload prescription"}
+      >
         <input
           ref={cameraRef}
           id="homeRxCamera"
@@ -94,47 +68,43 @@ export default function HomePrescriptionUpload() {
         />
         {draft?.fileName ? (
           <>
-            <a className="app-home-cta" href="#prescription">
-              View digital Rx
+            <a className="home-rx-tab is-on" href="#prescription">
+              Uploaded Rx
             </a>
             <button
               type="button"
-              className="home-rx-view"
-              disabled={busy}
-              onClick={() => cameraRef.current?.click()}
-            >
-              {busy ? "Uploading…" : "Retake"}
-            </button>
-            <button
-              type="button"
-              className="home-rx-view"
+              className="home-rx-tab"
               disabled={busy}
               onClick={() => fileRef.current?.click()}
             >
               {busy ? "Uploading…" : "Replace"}
             </button>
+            <button
+              type="button"
+              className="home-rx-remove"
+              aria-label="Remove uploaded prescription"
+              title="Remove prescription"
+              onClick={() => {
+                clearPrescriptionParse();
+                clearPrescriptionDraft();
+              }}
+            >
+              ×
+            </button>
           </>
         ) : (
-          <>
-            <button
-              type="button"
-              className="app-home-cta"
-              disabled={busy}
-              onClick={() => cameraRef.current?.click()}
-            >
-              {busy ? "Opening camera…" : "Take photo"}
-            </button>
-            <button
-              type="button"
-              className="app-home-cta is-quiet"
-              disabled={busy}
-              onClick={() => fileRef.current?.click()}
-            >
-              {busy ? "Uploading…" : "Upload Rx"}
-            </button>
-          </>
+          <button
+            type="button"
+            className="home-rx-tab is-on"
+            disabled={busy}
+            onClick={() => fileRef.current?.click()}
+          >
+            {busy ? "Uploading…" : "Upload Rx"}
+          </button>
         )}
-      </div>
-    </section>
+        {status ? <small className="home-rx-error">{status}</small> : null}
+      </section>
+      {showCart ? <HeaderCart className="home-rx-cart" /> : null}
+    </div>
   );
 }

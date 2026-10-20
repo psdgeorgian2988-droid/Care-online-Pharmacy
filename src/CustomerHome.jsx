@@ -10,6 +10,7 @@ import { isAwaitingPartnerConfirm } from "./orderConfirm";
 import CustomerWelcome from "./CustomerWelcome";
 import HomeServiceCatalog from "./HomeServiceCatalog";
 import HomePrescriptionUpload from "./HomePrescriptionUpload";
+import { HomeWithAboutSlides } from "./HomeAboutSlides";
 import LabsHub from "./LabsHub";
 import { homeCatalogSectionKeys } from "./hashRoute";
 
@@ -57,15 +58,18 @@ export default function CustomerHome({ sectionKey = "" } = {}) {
   if (sectionKey) {
     return (
       <div className="app-home is-fill is-account">
+        <HomeWithAboutSlides>
         <section className="account-more" aria-label="Services">
           <HomeServiceCatalog sectionKeys={homeCatalogSectionKeys(sectionKey)} />
         </section>
+        </HomeWithAboutSlides>
       </div>
     );
   }
 
   return (
     <div className="app-home is-fill is-account">
+      <HomeWithAboutSlides>
       {hello ? <p className="app-home-hello">{hello}</p> : null}
 
       {activeOrder ? (
@@ -89,6 +93,7 @@ export default function CustomerHome({ sectionKey = "" } = {}) {
       <section className="account-more" aria-label="Services">
         <HomeServiceCatalog />
       </section>
+      </HomeWithAboutSlides>
     </div>
   );
 }

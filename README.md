@@ -32,6 +32,8 @@ docker run --rm -p 3001:3001 medihome
 3. Change the staff password. Default staff login is `admin` / `MediHome@26` unless you set `MEDIHOME_ADMIN_USER` and `MEDIHOME_ADMIN_PASSWORD`.
 4. Host the app, then attach **medihome.co.in**.
 
+For prescription handwriting OCR, enable the Cloud Vision API in Google Cloud and set the server-only `GOOGLE_CLOUD_VISION_API_KEY` environment variable. The parser uses `DOCUMENT_TEXT_DETECTION`; if the key is missing or the service is unavailable, it falls back to local Tesseract OCR. Restrict the key to Cloud Vision and never put it in a `VITE_` variable.
+
 ### GoDaddy Node.js Hosting (same account as the domain)
 
 The domain is already at GoDaddy. Production is `npm start` (`node app.js`), which serves `dist/` plus the API. Do **not** start with `npm run dev` or Vite (port 5173). Vite is in `dependencies` so a missing `dist/` can be built on first start.

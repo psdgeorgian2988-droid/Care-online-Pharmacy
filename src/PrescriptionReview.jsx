@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { goToHash } from "./hashRoute";
 import {
   clearPrescriptionDraft,
+  fileToPrescriptionDraft,
   prescriptionDraftIsImage,
   prescriptionDraftIsPdf,
   readPrescriptionDraft,
+  writePrescriptionDraft,
   PRESCRIPTION_EVENT,
 } from "./prescriptionDraft";
 import {
@@ -46,7 +48,10 @@ export default function PrescriptionReview() {
   const [labPick, setLabPick] = useState({});
   const [editingId, setEditingId] = useState("");
   const [editName, setEditName] = useState("");
+  const [showScan, setShowScan] = useState(false);
   const actionsRef = useRef(null);
+  const cameraRef = useRef(null);
+  const fileRef = useRef(null);
 
   useEffect(() => {
     const refresh = () => {
@@ -113,6 +118,27 @@ export default function PrescriptionReview() {
     setMenu("");
     setEditingId("");
     setEditName("");
+    setShowScan(false);
+  };
+
+  const onPickFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setBusy(true);
+    setError("");
+    try {
+      const next = await fileToPrescriptionDraft(file);
+      clearPrescriptionParse();
+      writePrescriptionDraft(next);
+      setDraft(next);
+      setParsed(null);
+      setShowScan(false);
+    } catch (err) {
+      setError(err?.message || "Upload failed.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const startNameEdit = (med) => {
@@ -318,74 +344,100 @@ export default function PrescriptionReview() {
     openShopCart();
   };
 
-  if (!draft?.fileName) {
-    return (
-      <div className="rx-page">
-        <header className="rx-head">
-          <p className="rx-kicker">Prescription</p>
-          <h1>Digital prescription</h1>
-          <p className="rx-lead">Upload a prescription on Home to digitize medicines and tests.</p>
-        </header>
-        <div className="rx-empty-card">
-          <p>No prescription uploaded yet.</p>
-          <button type="button" className="rx-primary" onClick={() => goToHash("#home")}>
-            Go to Home upload
-          </button>
-        </div>
-        <style>{styles}</style>
-      </div>
-    );
-  }
-
   return (
     <div className="rx-page">
       <header className="rx-head">
         <p className="rx-kicker">Prescription</p>
         <h1>Digital prescription</h1>
         <p className="rx-lead">
-          Left: preview of the uploaded Rx. Right: OCR plus medical AI list of medicines and
-          tests, including how many days and how many times a day.
+          Upload a small Rx photo, then check the brand, dose code, and days.
         </p>
       </header>
 
-      <div className="rx-split">
-        <section className="rx-pane rx-pane-left" aria-label="Uploaded prescription">
-          <div className="rx-pane-head">
-            <h2>Uploaded Rx</h2>
-            <div className="rx-pane-head-tools">
-              <span>{draft.fileName}</span>
-              <button
-                type="button"
-                className="rx-remove"
-                aria-label="Remove uploaded prescription"
-                title="Remove prescription"
-                onClick={removePrescription}
-              >
-                ×
-              </button>
-            </div>
-          </div>
-          <div className="rx-preview">
-            {showImage ? (
-              <img src={draft.fileData} alt="Uploaded prescription" />
-            ) : showPdf ? (
-              <iframe title="Uploaded prescription PDF" src={draft.fileData} />
-            ) : (
-              <div className="rx-pdf">
-                <strong>File saved</strong>
-                <p>{draft.fileName}</p>
-                <p className="rx-pdf-hint">Preview is unavailable for this file type.</p>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="rx-pane rx-pane-right" aria-label="Digitized medicines and tests">
-          <div className="rx-pane-head">
-            <h2>Recognized list</h2>
+      <div className="rx-tabs" role="toolbar" aria-label="Prescription file">
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={onPickFile}
+        />
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*,application/pdf,.pdf,.png,.jpg,.jpeg,.webp"
+          onChange={onPickFile}
+        />
+        {draft?.fileName ? (
+          <button
+            type="button"
+            className={`rx-tab${showScan ? " is-on" : ""}`}
+            aria-pressed={showScan}
+            onClick={() => setShowScan((open) => !open)}
+          >
+            Uploaded Rx
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="rx-tab is-on"
+            disabled={busy}
+            onClick={() => cameraRef.current?.click()}
+          >
+            {busy ? "Uploading…" : "Upload Rx"}
+          </button>
+        )}
+        {draft?.fileName ? (
+          <>
+            <button
+              type="button"
+              className="rx-tab"
+              disabled={busy}
+              onClick={() => fileRef.current?.click()}
+            >
+              Replace
+            </button>
+            <button
+              type="button"
+              className="rx-remove"
+              aria-label="Remove uploaded prescription"
+              title="Remove prescription"
+              onClick={removePrescription}
+            >
+              ×
+            </button>
             <button type="button" className="rx-rerun" disabled={busy} onClick={rerun}>
               {busy ? "Reading…" : "Re-read Rx"}
             </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="rx-tab"
+            disabled={busy}
+            onClick={() => fileRef.current?.click()}
+          >
+            Photo / PDF
+          </button>
+        )}
+      </div>
+
+      {showScan && draft?.fileName ? (
+        <div className="rx-scan" aria-label="Uploaded prescription">
+          {showImage ? (
+            <img src={draft.fileData} alt="Uploaded prescription" />
+          ) : showPdf ? (
+            <iframe title="Uploaded prescription PDF" src={draft.fileData} />
+          ) : (
+            <p>{draft.fileName}</p>
+          )}
+        </div>
+      ) : null}
+
+      {draft?.fileName ? (
+      <section className="rx-pane" aria-label="Digitized medicines and tests">
+          <div className="rx-pane-head">
+            <h2>Recognized list</h2>
           </div>
 
           {busy && !medicines.length && !tests.length ? (
@@ -396,9 +448,9 @@ export default function PrescriptionReview() {
           {parsed?.aiMode ? (
             <p className="rx-status">
               {parsed.aiMode.includes("validate")
-                ? "Checked with OCR and medical validation"
+                ? `Checked with ${parsed.ocrProvider === "google-cloud-vision" ? "Google Cloud Vision handwriting OCR" : "OCR"} and medical validation`
                 : parsed.aiMode.includes("ocr")
-                  ? "Read with OCR"
+                  ? `Read with ${parsed.ocrProvider === "google-cloud-vision" ? "Google Cloud Vision handwriting OCR" : "OCR"}`
                   : "Read with medical AI"}
             </p>
           ) : null}
@@ -741,7 +793,7 @@ export default function PrescriptionReview() {
             ) : null}
           </div>
         </section>
-      </div>
+      ) : null}
 
       <style>{styles}</style>
     </div>
@@ -753,23 +805,21 @@ const styles = `
 .rx-head{margin:0 0 16px}
 .rx-kicker{margin:0 0 4px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1a6b7a}
 .rx-head h1{margin:0 0 6px;font-size:clamp(22px,4vw,28px);font-weight:800;color:#143246}
-.rx-lead{margin:0;font-size:14px;line-height:1.45;color:#5d7180}
-.rx-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
-.rx-pane{background:#fff;border:1px solid #e4ecef;border-radius:14px;overflow:visible;min-width:0}
-.rx-pane-left{overflow:hidden}
+.rx-lead{margin:0 0 12px;font-size:14px;line-height:1.45;color:#5d7180}
+.rx-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px}
+.rx-tabs input[type="file"]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.rx-tab{border:1px solid #c5d8e0;border-radius:999px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:800;min-height:32px;padding:0 12px;cursor:pointer}
+.rx-tab.is-on{background:#1a6b7a;color:#fff;border-color:#1a6b7a}
+.rx-tab:disabled{opacity:.65;cursor:wait}
+.rx-scan{margin:0 0 12px;max-width:min(280px,100%);padding:8px;border:1px solid #e4ecef;border-radius:10px;background:#f7fbfd}
+.rx-scan img{display:block;width:100%;max-height:180px;object-fit:contain;border-radius:6px;background:#fff}
+.rx-scan iframe{width:100%;height:180px;border:0;border-radius:6px;background:#fff}
+.rx-scan p{margin:0;font-size:12px;color:#5d7180}
+.rx-pane{background:#fff;border:1px solid #e4ecef;border-radius:14px;overflow:visible;min-width:0;padding-bottom:14px}
 .rx-pane-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid #eef3f6;background:#f7fbfd}
 .rx-pane-head h2{margin:0;font-size:15px;font-weight:800;color:#143246}
-.rx-pane-head span{font-size:12px;font-weight:600;color:#5d7180;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46vw}
-.rx-pane-head-tools{display:flex;align-items:center;gap:8px;min-width:0;max-width:70%}
-.rx-preview{position:relative;padding:12px;min-height:320px;display:flex;align-items:center;justify-content:center;background:#f3f7f9}
 .rx-remove{flex:0 0 auto;width:28px;height:28px;border:1px solid #d7c3c3;border-radius:50%;background:#fff;color:#b64b4b;font:inherit;font-size:20px;line-height:1;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0}
 .rx-remove:hover,.rx-remove:focus-visible{background:#fdeeee;border-color:#e8b4b4}
-.rx-preview img{max-width:100%;max-height:min(70vh,640px);object-fit:contain;border-radius:8px;box-shadow:0 4px 18px rgba(20,50,70,.12)}
-.rx-preview iframe{width:100%;height:min(70vh,640px);border:0;background:#fff;border-radius:8px}
-.rx-pdf{text-align:center;padding:28px 16px;color:#34546b}
-.rx-pdf strong{display:inline-block;padding:8px 12px;border-radius:8px;background:#1a6b7a;color:#fff;font-size:13px}
-.rx-pdf-hint{margin:10px 0 0;font-size:12px;color:#5d7180}
-.rx-pane-right{padding-bottom:14px}
 .rx-rerun,.rx-primary,.rx-secondary{border:0;border-radius:8px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 14px}
 .rx-rerun{background:#fff;color:#1a6b7a;border:1px solid #c5d8e0}
 .rx-rerun:disabled{opacity:.65;cursor:wait}
@@ -844,10 +894,7 @@ const styles = `
 .rx-lab-picks em{font-style:normal;font-weight:800}
 .rx-primary{background:#1a6b7a;color:#fff}
 .rx-secondary{background:#fff;color:#1a6b7a;border:1px solid #c5d8e0}
-.rx-empty-card{padding:28px 18px;text-align:center;border:1px solid #e4ecef;border-radius:14px;background:#fff}
-.rx-empty-card p{margin:0 0 14px;color:#5d7180}
 @media (max-width:900px){
-  .rx-split{grid-template-columns:1fr}
-  .rx-preview{min-height:240px}
+  .rx-scan{max-width:100%}
 }
 `;

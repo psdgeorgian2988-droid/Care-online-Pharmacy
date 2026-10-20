@@ -7,10 +7,13 @@ import {
   readPrescriptionDraft,
   writePrescriptionDraft,
 } from "./prescriptionDraft";
+import { clearPrescriptionParse } from "./prescriptionAi";
 
 export default function CheckoutPrescriptionUpload({
   idPrefix = "checkout",
   error = "",
+  compact = false,
+  required = false,
 }) {
   const cameraRef = useRef(null);
   const fileRef = useRef(null);
@@ -36,6 +39,7 @@ export default function CheckoutPrescriptionUpload({
     setStatus("");
     try {
       const next = await fileToPrescriptionDraft(file);
+      clearPrescriptionParse();
       writePrescriptionDraft(next);
       setDraft(next);
     } catch (err) {
@@ -47,6 +51,56 @@ export default function CheckoutPrescriptionUpload({
 
   const ready = hasPrescriptionDraft() || Boolean(draft?.fileName);
   const name = draft?.fileName || prescriptionDraftName();
+
+  if (compact) {
+    return (
+      <div className="checkout-rx-tab-row" aria-label="Prescription upload">
+        <input
+          ref={cameraRef}
+          id={`${idPrefix}-rx-camera`}
+          className="checkout-rx-tab-input"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={onFile}
+        />
+        <input
+          ref={fileRef}
+          id={`${idPrefix}-rx-file`}
+          className="checkout-rx-tab-input"
+          type="file"
+          accept="image/*,application/pdf,.pdf,.png,.jpg,.jpeg,.webp"
+          onChange={onFile}
+        />
+        <button
+          type="button"
+          className="home-rx-tab is-on"
+          disabled={busy}
+          onClick={() => fileRef.current?.click()}
+        >
+          {busy ? "Uploading…" : ready ? "Uploaded Rx" : "Upload Rx"}
+        </button>
+        {ready ? (
+          <>
+            <span className="checkout-rx-tab-name" title={name}>{name}</span>
+            <button
+              type="button"
+              className="home-rx-tab"
+              disabled={busy}
+              onClick={() => fileRef.current?.click()}
+            >
+              Replace
+            </button>
+          </>
+        ) : required ? (
+          <span className="checkout-rx-tab-hint">Required for this order</span>
+        ) : null}
+        {status || error ? (
+          <small className="checkout-rx-error">{status || error}</small>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className={`checkout-rx${ready ? " is-ready" : ""}`}>
