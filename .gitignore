@@ -20,6 +20,7 @@ ios/App/App/public/
 *.aab
 *.ipa
 *.dSYM.zip
+server/data/.customer-wipe
 server/data/partner-tokens.json
 server/data/partner-reset-otps.json
 server/data/partner-split-otps.json

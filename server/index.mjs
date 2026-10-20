@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { handleApi } from "./handler.mjs";
 import { serveStatic } from "./static.mjs";
 import { distIndex, ensureWebsiteBuild } from "./ensureBuild.mjs";
+import { wipeCustomerServerDataThroughToday } from "./customerWipe.mjs";
 import { bindHttpServer, productionListen } from "./listenOptions.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -42,13 +43,15 @@ bindHttpServer(server, listen, () => {
   console.log(`MediHome website + API on http://${where}`);
 });
 
-if (!distReady) {
-  ensureWebsiteBuild(distDir)
-    .then(() => {
-      distReady = true;
-    })
-    .catch((err) => {
-      distError = err instanceof Error ? err.message : String(err);
-      console.error(distError);
-    });
-}
+wipeCustomerServerDataThroughToday().catch((err) => {
+  console.error(err instanceof Error ? err.message : String(err));
+});
+
+ensureWebsiteBuild(distDir)
+  .then(() => {
+    distReady = true;
+  })
+  .catch((err) => {
+    distError = err instanceof Error ? err.message : String(err);
+    console.error(distError);
+  });
