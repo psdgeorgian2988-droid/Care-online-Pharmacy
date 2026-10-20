@@ -32,19 +32,21 @@ export default function HomeCurrentStatus() {
     };
   }, []);
 
-  const href = activeOrder
-    ? trackHref(activeOrder.id || activeOrder.bookingId)
-    : "#myorders";
-  const detail = activeOrder ? orderCurrentStatus(activeOrder) : "Current Status";
+  if (!activeOrder) return null;
+
+  const href = trackHref(activeOrder.id || activeOrder.bookingId);
+  const detail = orderCurrentStatus(activeOrder);
 
   return (
-    <a
-      className={`home-rx-tab home-status-tab${activeOrder ? " is-live" : ""}`}
-      href={href}
-      aria-label={activeOrder ? `Current Status: ${detail}` : "Current Status"}
-      title={detail}
-    >
-      Current Status
-    </a>
+    <div className="home-rx-cart-row home-track-row">
+      <a
+        className="home-rx-tab home-status-tab is-live"
+        href={href}
+        aria-label={`Track order: ${detail}`}
+        title={detail}
+      >
+        Track
+      </a>
+    </div>
   );
 }

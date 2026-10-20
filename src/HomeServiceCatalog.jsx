@@ -6,6 +6,7 @@ import ServiceCartoon from "./ServiceCartoon";
 import ServiceIcon from "./serviceIcons";
 import { hasAccountSession, useLoginSession } from "./authSession";
 import { catalogParentHash, goToChildHash, goToHash } from "./hashRoute";
+import HomePrescriptionUpload from "./HomePrescriptionUpload";
 
 export default function HomeServiceCatalog({ className = "", sectionKeys } = {}) {
   const features = useFeatures();
@@ -99,6 +100,11 @@ export default function HomeServiceCatalog({ className = "", sectionKeys } = {})
               section.label
             )}
           </h2>
+          {sectionPage && section.key === "medicine" ? (
+            <div className="home-rx-cart-row is-medicine-rx">
+              <HomePrescriptionUpload />
+            </div>
+          ) : null}
           <div className="app-home-subgrid">
             {section.items.map((item, itemIndex) => (
               <a

@@ -51,6 +51,8 @@ import {
   readPrescriptionDraft,
 } from "./prescriptionDraft";
 import { goToHash, parseAppHash } from "./hashRoute";
+import HeaderCart from "./HeaderCart.jsx";
+import HomePrescriptionUpload from "./HomePrescriptionUpload";
 import MedicineSearchTools from "./MedicineSearchTools";
 import { matchExactMediHomeFromPhoto } from "./medicineStripSearch";
 import { groupMedicineFamilies, medicineInCategory } from "./medicineSaltGroups";
@@ -3443,6 +3445,10 @@ function Medicines({ initialSearch = "" }) {
               at affordable price.
             </p>
           </div>
+        </div>
+        <div className="home-rx-cart-row medicines-order-tools">
+          <HomePrescriptionUpload />
+          <HeaderCart className="home-rx-cart" />
         </div>
         <div className="medicine-category-boxes">
           {categories.map((item) => (

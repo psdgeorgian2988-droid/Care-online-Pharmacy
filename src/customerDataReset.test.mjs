@@ -40,19 +40,33 @@ test("one-time reset clears customer registration and orders", () => {
   assert.equal(JSON.parse(localStorage.getItem(PROFILE_KEY)).name, "New");
 });
 
-test("app boots the one-time wipe and hides header cart on home", () => {
+test("app boots the one-time wipe and keeps home free of Rx and cart tabs", () => {
   const app = readFileSync(new URL("./App.jsx", import.meta.url), "utf8");
   const home = readFileSync(new URL("./CustomerHome.jsx", import.meta.url), "utf8");
+  const catalog = readFileSync(new URL("./HomeServiceCatalog.jsx", import.meta.url), "utf8");
+  const medicines = readFileSync(new URL("./Medicines.jsx", import.meta.url), "utf8");
   const rx = readFileSync(new URL("./HomePrescriptionUpload.jsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("./App.css", import.meta.url), "utf8");
   assert.match(app, /resetCustomerDataThroughToday\(\)/);
   assert.match(app, /hideCart=\{hideHomeCart\}/);
   assert.match(app, /hideHomeCart \? null : <HeaderCart/);
-  assert.match(home, /HomePrescriptionUpload/);
-  assert.match(rx, /home-rx-cart-row/);
-  assert.match(rx, /HomeCurrentStatus/);
+  assert.match(app, /route === "#medicine-search"/);
+  assert.match(app, /HomeCurrentStatus/);
+  assert.doesNotMatch(app, /HomePrescriptionUpload/);
+  assert.match(home, /HomeCurrentStatus/);
+  assert.doesNotMatch(home, /HomePrescriptionUpload/);
+  assert.match(catalog, /HomePrescriptionUpload/);
+  assert.match(catalog, /section.key === "medicine"/);
+  assert.match(medicines, /HomePrescriptionUpload/);
+  assert.match(medicines, /medicines-order-tools/);
+  assert.match(medicines, /className="home-rx-cart"/);
   assert.match(rx, /className="home-rx-tab/);
-  assert.match(rx, /className="home-rx-cart"/);
+  assert.doesNotMatch(rx, /HomeCurrentStatus/);
+  assert.doesNotMatch(rx, /HeaderCart/);
   const status = readFileSync(new URL("./HomeCurrentStatus.jsx", import.meta.url), "utf8");
-  assert.match(status, /Current Status/);
+  assert.match(status, /Track/);
+  assert.match(status, /if \(!activeOrder\) return null/);
   assert.match(status, /home-status-tab/);
+  assert.match(css, /medicines-order-tools/);
+  assert.match(css, /\.app-home-heading \{[\s\S]*text-align: center/);
 });

@@ -55,7 +55,7 @@ import { isPartnerDeskRoute, partnerDeskKindFromRoute } from "./partnerApp";
 import CustomerHome from "./CustomerHome";
 import HomeServiceCatalog from "./HomeServiceCatalog";
 import LabsHub from "./LabsHub";
-import HomePrescriptionUpload from "./HomePrescriptionUpload";
+import HomeCurrentStatus from "./HomeCurrentStatus";
 import { useIsPhoneLayout } from "./useLayoutMode";
 import AppBottomNav from "./AppBottomNav";
 import BackToHome from "./BackToHome";
@@ -245,7 +245,7 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
           <SiteOpsLinks className="home-ops-entry" />
         </div>
 
-        <HomePrescriptionUpload />
+        <HomeCurrentStatus />
 
         <div className="home-services-catalog" id="home-services">
           <HomeServiceCatalog
@@ -317,7 +317,8 @@ function App() {
     from: hashFrom,
   } = parseAppHash(hash);
   const isAuthRoute = AUTH_ROUTES.has(route);
-  const hideHomeCart = route === "#home" && !hashService;
+  const hideHomeCart =
+    (route === "#home" && !hashService) || route === "#medicine-search";
   const backActor = orderBackActor({ ...readOrderBackContext(), fromHash: hash });
   const isOps =
     route === "#admin" ||

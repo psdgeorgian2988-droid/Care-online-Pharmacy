@@ -44,14 +44,14 @@ export default function ComingSoon({
 }
 
 const styles = `
-.coming-soon{position:relative;overflow:hidden;width:100%;max-width:none;margin:0;padding:16px;border-radius:12px;background:#f7fbfe;border:1px solid #d3e6f3;text-align:left;color:#143246;box-shadow:none}
+.coming-soon{position:relative;overflow:hidden;width:100%;max-width:none;margin:0;padding:16px;border-radius:12px;background:#f7fbfe;border:1px solid #d3e6f3;text-align:center;color:#143246;box-shadow:none}
 .coming-soon.is-compact{margin:0;padding:16px;box-shadow:none}
 .coming-soon-glow,.coming-soon-pulse{display:none}
 .coming-soon-kicker{position:relative;margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#2f7a7a}
 .coming-soon h1{position:relative;margin:0 0 8px;font-size:clamp(18px,2.2vw,26px);line-height:1.25;color:#143246}
 .coming-soon-lead,.coming-soon-thanks{position:relative;margin:0 0 10px;max-width:none;color:#5d7180;font-size:15px;line-height:1.5}
 .coming-soon-thanks{color:#1a6b7a;font-weight:600}
-.coming-soon-actions{position:relative;display:flex;flex-wrap:wrap;justify-content:flex-start;gap:8px;margin-top:14px}
+.coming-soon-actions{position:relative;display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px}
 .coming-soon-actions a{border-radius:8px;padding:8px 14px;text-decoration:none;font-size:13px;font-weight:700}
 .coming-soon-actions a:first-child{background:#1a6b7a;color:#fff}
 .coming-soon-actions a:nth-child(2),.coming-soon-actions a:nth-child(3){background:#fff;color:#1a6b7a;border:1px solid #cfe0e8}

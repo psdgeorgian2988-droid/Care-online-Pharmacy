@@ -2,7 +2,7 @@ import { useState } from "react";
 import { customerGreeting, needsCustomerWelcome, useLoginSession } from "./authSession";
 import CustomerWelcome from "./CustomerWelcome";
 import HomeServiceCatalog from "./HomeServiceCatalog";
-import HomePrescriptionUpload from "./HomePrescriptionUpload";
+import HomeCurrentStatus from "./HomeCurrentStatus";
 import LabsHub from "./LabsHub";
 import { homeCatalogSectionKeys } from "./hashRoute";
 
@@ -38,7 +38,7 @@ export default function CustomerHome({ sectionKey = "" } = {}) {
     <div className="app-home is-fill is-account">
       {hello ? <p className="app-home-hello">{hello}</p> : null}
 
-      <HomePrescriptionUpload />
+      <HomeCurrentStatus />
 
       <section className="account-more" aria-label="Services">
         <HomeServiceCatalog />
