@@ -104,10 +104,10 @@ export default function HomeServiceCatalog({ className = "", sectionKeys } = {})
               section.label
             )}
           </h2>
-          {SECTION_ORDER_KINDS[section.key] ? (
+          {focusedCatalog && SECTION_ORDER_KINDS[section.key] ? (
             <SectionOrderTools
               kinds={SECTION_ORDER_KINDS[section.key]}
-              showUpload={focusedCatalog && SECTION_UPLOAD_RX.has(section.key)}
+              showUpload={SECTION_UPLOAD_RX.has(section.key)}
             />
           ) : null}
           <div className="app-home-subgrid">

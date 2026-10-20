@@ -55,7 +55,6 @@ import { isPartnerDeskRoute, partnerDeskKindFromRoute } from "./partnerApp";
 import CustomerHome from "./CustomerHome";
 import HomeServiceCatalog from "./HomeServiceCatalog";
 import LabsHub from "./LabsHub";
-import HomeCurrentStatus from "./HomeCurrentStatus";
 import { useIsPhoneLayout } from "./useLayoutMode";
 import AppBottomNav from "./AppBottomNav";
 import BackToHome from "./BackToHome";
@@ -244,8 +243,6 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
           </aside>
           <SiteOpsLinks className="home-ops-entry" />
         </div>
-
-        <HomeCurrentStatus />
 
         <div className="home-services-catalog" id="home-services">
           <HomeServiceCatalog

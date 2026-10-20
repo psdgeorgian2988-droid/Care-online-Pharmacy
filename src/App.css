@@ -7416,11 +7416,22 @@ html.is-customer-app .app-chrome-header,
   margin: 0 auto 12px;
 }
 
+.medicines-page .medicines-order-tools.section-order-tools,
+.medicines-page .medicines-order-tools {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 10px;
+}
+
 .section-order-tools .home-rx-cart.shop-cart-slot,
 .section-order-tools .home-rx-cart,
 .medicines-order-tools .home-rx-cart.shop-cart-slot,
 .medicines-order-tools .home-rx-cart {
-  margin: 0;
+  margin: 0 auto;
+  justify-self: center;
 }
 
 .home-rx-start {
@@ -7435,15 +7446,15 @@ html.is-customer-app .app-chrome-header,
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   width: max-content;
   max-width: 100%;
   height: 32px;
-  margin: 0;
+  margin: 0 auto;
   padding: 0;
   border: 0;
   background: transparent;
-  justify-self: start;
 }
 
 .home-rx-cart-row .home-rx-cart.shop-cart-slot,
@@ -7461,7 +7472,8 @@ html.is-customer-app .app-chrome-header,
 .section-order-tools.home-rx-cart-row .home-rx-cart,
 .medicines-order-tools.home-rx-cart-row .home-rx-cart.shop-cart-slot,
 .medicines-order-tools.home-rx-cart-row .home-rx-cart {
-  margin: 0;
+  margin: 0 auto !important;
+  justify-self: center;
 }
 
 .home-rx-tab,
@@ -10925,6 +10937,12 @@ html[data-layout="phone"] .slideshow-review-text {
   align-items: center;
   justify-self: end;
   z-index: 5;
+}
+
+.medicines-page .shop-cart-slot.home-rx-cart,
+.medicines-order-tools .shop-cart-slot {
+  justify-self: center;
+  margin: 0 auto;
 }
 
 .home-rx-cart-row .home-rx-cart .shop-cart-btn {

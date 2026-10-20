@@ -51,10 +51,11 @@ test("app boots the one-time wipe and keeps home free of Rx and cart tabs", () =
   assert.match(app, /hideCart=\{hideHomeCart\}/);
   assert.match(app, /hideHomeCart \? null : <HeaderCart/);
   assert.match(app, /route === "#medicine-search"/);
-  assert.match(app, /HomeCurrentStatus/);
+  assert.doesNotMatch(app, /HomeCurrentStatus/);
   assert.doesNotMatch(app, /HomePrescriptionUpload/);
-  assert.match(home, /HomeCurrentStatus/);
+  assert.doesNotMatch(home, /HomeCurrentStatus/);
   assert.doesNotMatch(home, /HomePrescriptionUpload/);
+  assert.match(catalog, /focusedCatalog && SECTION_ORDER_KINDS/);
   assert.match(catalog, /SectionOrderTools/);
   assert.match(catalog, /SECTION_UPLOAD_RX/);
   assert.match(medicines, /SectionOrderTools/);
