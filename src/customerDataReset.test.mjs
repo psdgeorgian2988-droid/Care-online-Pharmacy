@@ -47,8 +47,12 @@ test("app boots the one-time wipe and hides header cart on home", () => {
   assert.match(app, /resetCustomerDataThroughToday\(\)/);
   assert.match(app, /hideCart=\{hideHomeCart\}/);
   assert.match(app, /hideHomeCart \? null : <HeaderCart/);
-  assert.doesNotMatch(home, /Current Status/);
+  assert.match(home, /HomePrescriptionUpload/);
   assert.match(rx, /home-rx-cart-row/);
+  assert.match(rx, /HomeCurrentStatus/);
   assert.match(rx, /className="home-rx-tab/);
   assert.match(rx, /className="home-rx-cart"/);
+  const status = readFileSync(new URL("./HomeCurrentStatus.jsx", import.meta.url), "utf8");
+  assert.match(status, /Current Status/);
+  assert.match(status, /home-status-tab/);
 });
