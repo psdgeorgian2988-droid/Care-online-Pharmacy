@@ -65,6 +65,7 @@ import RefundBanner from "./RefundBanner";
 import StepdownDecisionBanner from "./StepdownDecisionBanner";
 import ReportReadyBanner from "./ReportReadyBanner";
 import CustomerWelcome, { needsCustomerWelcome } from "./CustomerWelcome";
+import { resetCustomerDataThroughToday } from "./customerDataReset";
 import {
   isAppShell,
   isInstalledApp,
@@ -276,6 +277,7 @@ function PausedService({ route, features }) {
 }
 
 function App() {
+  resetCustomerDataThroughToday();
   const [hash, setHash] = useState(window.location.hash);
   const [needHelpOpen, setNeedHelpOpen] = useState(false);
   const [sessionTick, setSessionTick] = useState(0);
@@ -315,6 +317,7 @@ function App() {
     from: hashFrom,
   } = parseAppHash(hash);
   const isAuthRoute = AUTH_ROUTES.has(route);
+  const hideHomeCart = route === "#home" && !hashService;
   const backActor = orderBackActor({ ...readOrderBackContext(), fromHash: hash });
   const isOps =
     route === "#admin" ||
@@ -537,7 +540,7 @@ function App() {
         <Seo route={route} />
         <SiteTicker />
         <div className="app-frame">
-          <AppHeader />
+          <AppHeader hideCart={hideHomeCart} />
           <main id="app-scroll">
             {welcomeGate || isAuthRoute ? null : <WebinarNotice />}
             {welcomeGate || isAuthRoute ? null : <SlotOfferBanner />}
@@ -581,7 +584,7 @@ function App() {
           />
           <div className="site-topbar-end">
             <CustomerLogOut className="site-logout-btn" />
-            <HeaderCart className="site-topbar-header-cart" />
+            {hideHomeCart ? null : <HeaderCart className="site-topbar-header-cart" />}
           </div>
         </div>
       </header>
