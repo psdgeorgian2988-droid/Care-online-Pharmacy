@@ -1,7 +1,7 @@
 export const PRESCRIPTION_DRAFT_KEY = "mediHomePrescriptionDraft";
 export const PRESCRIPTION_EVENT = "mediHomePrescription";
 export const MAX_PRESCRIPTION_BYTES = 6 * 1024 * 1024;
-const MAX_IMAGE_EDGE = 2400;
+const MAX_IMAGE_EDGE = 3200;
 
 const ALLOWED_EXT = /\.(pdf|png|jpe?g|webp)$/i;
 
@@ -137,7 +137,7 @@ export async function fileToPrescriptionDraft(file) {
 
   if (isImage) {
     const alreadySmall = file.size > 0 && file.size <= MAX_PRESCRIPTION_BYTES;
-    const skipShrink = alreadySmall && file.size <= 2 * 1024 * 1024;
+    const skipShrink = alreadySmall && file.size <= 4 * 1024 * 1024;
     if (!skipShrink) {
       try {
         return await compressImageToDraft(file);

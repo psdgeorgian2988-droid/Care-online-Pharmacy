@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   medicallyValidatePrescription,
   pickSaferMedicine,
+  restoreDroppedRxItems,
 } from "./rxMedicalValidate.js";
 import { extractJsonText } from "../server/prescriptionCursor.mjs";
 
@@ -31,6 +32,47 @@ test("medical validation merges OCR tests and drops the wrong AI salt", () => {
   assert.equal(result.tests.some((row) => /CBC/i.test(row.name)), true);
   assert.equal(result.tests.some((row) => /CRP/i.test(row.name)), true);
   assert.equal(result.tests.some((row) => /Typhidot/i.test(row.name)), true);
+});
+
+test("keeps the full AI medicine list when OCR only caught the first lines", () => {
+  const result = medicallyValidatePrescription(
+    {
+      medicines: [
+        { name: "Laretol", strength: "0.25 mcg" },
+        { name: "Mednovit CD3" },
+        { name: "Arkamin", strength: "0.1 mg" },
+        { name: "Koglok DS" },
+        { name: "More Fe" },
+        { name: "Dapanox", strength: "10 mg" },
+      ],
+    },
+    {
+      medicines: [{ name: "Lasetol 0.25μgm" }, { name: "Mednovit CD3" }],
+    }
+  );
+  const names = result.medicines.map((row) => row.name.toLowerCase()).join(" | ");
+  assert.match(names, /laretol|lasetol|calcitriol/);
+  assert.match(names, /mednovit/);
+  assert.match(names, /arkamin/);
+  assert.match(names, /koglok/);
+  assert.match(names, /more fe/);
+  assert.match(names, /dapanox/);
+  assert.equal(result.medicines.length >= 6, true);
+});
+
+test("restoreDroppedRxItems puts back medicines a later pass omitted", () => {
+  const restored = restoreDroppedRxItems(
+    { medicines: [{ name: "Dolo", strength: "650 mg" }], tests: [{ name: "CBC" }] },
+    {
+      medicines: [
+        { name: "Dolo", strength: "650 mg" },
+        { name: "Pantocid", strength: "40 mg" },
+      ],
+      tests: [{ name: "CBC" }, { name: "LFT" }],
+    }
+  );
+  assert.equal(restored.medicines.length, 2);
+  assert.equal(restored.tests.some((row) => /LFT/i.test(row.name)), true);
 });
 
 test("extracts JSON from markdown fences for the medical AI reply", () => {

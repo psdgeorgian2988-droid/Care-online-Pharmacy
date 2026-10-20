@@ -1,4 +1,4 @@
-const OCR_PSM = ["6", "4", "11"];
+const OCR_PSM = ["6", "4", "11", "3"];
 
 let workerPromise = null;
 
@@ -131,6 +131,8 @@ export async function ocrPrescriptionImage(fileData = "") {
   const parts = [];
   let best = "";
   let bestScore = -1;
+  let fullPage = "";
+  let fullScore = -1;
 
   for (let i = 0; i < variants.length; i += 1) {
     const psms = i === 0 ? OCR_PSM : ["6"];
@@ -141,9 +143,37 @@ export async function ocrPrescriptionImage(fileData = "") {
       best = recognized.best;
       bestScore = score;
     }
+    if (i === 0 && score >= fullScore) {
+      fullPage = recognized.best;
+      fullScore = score;
+    }
   }
 
-  const combined = Array.from(new Set([best, ...parts].filter(Boolean))).join("\n");
+  fullPage = fullPage || best;
+  const extra = [];
+  const seen = new Set(
+    String(fullPage || "")
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((word) => word.length > 3)
+  );
+  for (const blob of parts.slice(1)) {
+    const novel = String(blob || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => {
+        if (line.length < 4) return false;
+        const tokens = line.toLowerCase().split(/\s+/).filter((word) => word.length > 3);
+        return tokens.some((word) => !seen.has(word));
+      });
+    extra.push(...novel);
+    for (const line of novel) {
+      for (const word of line.toLowerCase().split(/\s+/)) {
+        if (word.length > 3) seen.add(word);
+      }
+    }
+  }
+  const combined = [fullPage, ...extra, best].filter(Boolean).join("\n");
   if (combined.trim()) return combined;
 
   const fallback = await worker.recognize(raw);

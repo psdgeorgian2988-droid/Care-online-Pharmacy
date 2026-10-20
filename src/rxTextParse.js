@@ -219,8 +219,8 @@ export function parseMedicineLine(line) {
   }
   const letterCount = name.replace(/[^a-z]/gi, "").length;
   if (!known?.verified) {
-    if (letterCount < 3 || name.length > 42) return null;
-    if (name.split(/\s+/).length > 4) return null;
+    if (letterCount < 3 || name.length > 48) return null;
+    if (name.split(/\s+/).length > 6) return null;
     if (!form && !strength && !chart && !freqCode) return null;
     if (form && !strength && !chart && !freqCode && letterCount < 5) return null;
   }
@@ -400,7 +400,10 @@ export function parseRxText(text) {
   const kept = medicines.filter((row) => {
     if (row.salt) return true;
     const hit = canonicalizeMedicineName(row.name, row);
-    return Boolean(hit.verified || (row.strength && row.form && row.name.replace(/[^a-z]/gi, "").length >= 4));
+    if (hit.verified) return true;
+    const letters = row.name.replace(/[^a-z]/gi, "").length;
+    if (row.form && (row.strength || row.timesPerDay || row.timing) && letters >= 3) return true;
+    return Boolean(row.strength && row.form && letters >= 4);
   });
 
   return {

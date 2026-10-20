@@ -143,7 +143,7 @@ A first-pass OCR draft follows. It is often wrong on handwriting. Use the IMAGE 
 
 OCR DRAFT:
 """
-${String(ocrHint).slice(0, 2500)}
+${String(ocrHint).slice(0, 8000)}
 """`
     : "";
 
@@ -151,7 +151,7 @@ ${String(ocrHint).slice(0, 2500)}
 ${ocrBlock}
 
 Digitize this prescription file named "${fileName || "prescription"}".
-List every medicine with duration (how many days) and how many times a day it must be taken, plus any lab/radiology tests.
+List EVERY medicine on the page with duration (how many days) and how many times a day it must be taken, plus EVERY lab/radiology test. Do not omit later lines.
 Return ONLY valid JSON. Do not edit files.`.trim();
 
   const imageMime = normalizeImageMime(mime);

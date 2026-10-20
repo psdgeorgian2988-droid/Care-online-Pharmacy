@@ -136,6 +136,35 @@ test("recovers noisy OCR fragments from a handwritten nephrology Rx", () => {
   assert.match(names, /koglok/);
 });
 
+test("keeps a long printed chart of eight medicines and their tests", () => {
+  const parsed = parseRxText(`
+    1. Tab. Azithral 500mg 1-0-0 x 3 days after food
+    2. Tab. Dolo 650 1-0-1 x 5 days
+    3. Tab. Pantocid 40 1-0-0 before food 5 days
+    4. Cap. Becosules OD x 10 days
+    5. Syp. Zincovit 5ml BD x 7 days
+    6. Tab. Montair 10mg 0-0-1 x 14 days
+    7. Tab. Levocet 5mg 0-0-1 x 7 days
+    8. Tab. Augmentin 625 1-0-1 x 5 days
+    Adv: CBC, CRP, LFT, Vitamin D
+  `);
+  assert.equal(parsed.medicines.length >= 8, true);
+  const names = parsed.medicines.map((row) => row.name.toLowerCase()).join(" | ");
+  assert.match(names, /azithral/);
+  assert.match(names, /dolo/);
+  assert.match(names, /pantocid|pantoprazole|pan/);
+  assert.match(names, /becosules/);
+  assert.match(names, /zincovit/);
+  assert.match(names, /montair|montelukast/);
+  assert.match(names, /levocet/);
+  assert.match(names, /augmentin|amoxicillin/);
+  const tests = parsed.tests.map((row) => row.name.toLowerCase()).join(" | ");
+  assert.match(tests, /cbc/);
+  assert.match(tests, /crp/);
+  assert.match(tests, /lft/);
+  assert.match(tests, /vitamin d/);
+});
+
 test("maps OD, BD, TDS, HS and SOS as inline dose codes", () => {
   assert.equal(rxDoseCode(parseMedicineLine("Tab Azithral 500mg 1-0-0 x 3 days")), "OD");
   assert.equal(rxDoseCode(parseMedicineLine("Syp. Zincovit 5ml BD x 7 days")), "BD");

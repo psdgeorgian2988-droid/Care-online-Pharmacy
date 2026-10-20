@@ -19,6 +19,7 @@ import { compactLexiconForPrompt } from "../src/rxCanonicalize.js";
 import {
   medicalValidationPrompt,
   medicallyValidatePrescription,
+  restoreDroppedRxItems,
 } from "../src/rxMedicalValidate.js";
 import { HANDWRITING_HINTS } from "../src/data/rxMedicalLexicon.js";
 
@@ -48,6 +49,8 @@ function buildSystemPrompt() {
   const { meds, tests } = compactLexiconForPrompt();
   return `You are a clinical pharmacist reading an Indian doctor's handwritten or printed prescription for MediHome.
 
+Extract EVERY medicine line and EVERY investigation on the page. Do not stop after the first few. Unknown brands stay as written.
+
 ${HANDWRITING_HINTS}
 
 Medical knowledge you MUST use:
@@ -55,8 +58,9 @@ Medical knowledge you MUST use:
 - If a word is unclear, transcribe the letters you can see. Leave the name empty rather than guessing a popular medicine.
 - Keep strength, form, duration and times-a-day only when they are on the Rx.
 - Tests: split combined lines such as "CBC / CRP" into separate tests. Use standard names (CBC, CRP, Typhidot IgM, Dengue IgM, LFT, KFT, TSH).
+- The known list is spelling help only. Do not omit a written medicine because it is missing from the list.
 
-Known Indian OPD medicines (match only if the written name fits): ${meds}.
+Known Indian OPD medicines: ${meds}.
 Known tests: ${tests}.
 
 Return ONLY valid JSON (no markdown) with this shape:
@@ -302,7 +306,8 @@ export async function parsePrescriptionPayload({
 
   try {
     const validated = await medicalAiValidate(merged, ocr.text, visionModel);
-    return localValidated(validated, ocrNorm, {
+    const complete = restoreDroppedRxItems(validated, merged);
+    return localValidated(complete, ocrNorm, {
       aiMode: "ocr+ai+validate",
       model: validated.model || visionModel,
       fileHint: name,

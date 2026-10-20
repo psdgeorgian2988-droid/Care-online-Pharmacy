@@ -337,10 +337,8 @@ export function canonicalizePrescription(parsed = {}, ocrParsed = null) {
 }
 
 export function compactLexiconForPrompt() {
-  const meds = RX_MEDICINES.map(
-    (row) => `${row.brand} (${row.salt}${row.strength ? `, ${row.strength}` : ""})`
-  ).join("; ");
-  const tests = RX_TESTS.map((row) => row.name).join("; ");
+  const meds = [...new Set(RX_MEDICINES.map((row) => row.brand))].join(", ");
+  const tests = RX_TESTS.map((row) => row.name).join(", ");
   return { meds, tests };
 }
 
