@@ -8,6 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseRxText } from "../src/rxTextParse.js";
 import { ocrPrescriptionImage } from "./prescriptionOcr.mjs";
+import { googleVisionConfigured, googleVisionOcr } from "./googleVisionOcr.mjs";
 import {
   callCursorMedicalValidation,
   callCursorVision,
@@ -182,12 +183,35 @@ function normalizeResult(parsed, meta = {}) {
 async function tryOcrParsed({ dataUrl, mime }) {
   const imageMime = normalizeImageMime(mime);
   if (!imageMime.startsWith("image/") || !dataUrl) return { parsed: null, text: "" };
+  let googleError = "";
+  if (googleVisionConfigured()) {
+    try {
+      const text = await googleVisionOcr(dataUrl);
+      return { parsed: text ? parseRxText(text) : null, text, provider: "google-cloud-vision" };
+    } catch (error) {
+      googleError = error?.message || "Google Cloud Vision OCR failed.";
+    }
+  }
   try {
     const text = await ocrPrescriptionImage(dataUrl);
     const parsed = text ? parseRxText(text) : null;
-    return { parsed, text };
+    return {
+      parsed,
+      text,
+      provider: "tesseract",
+      warning: googleError
+        ? `Google Cloud Vision OCR could not be used; the local OCR fallback was used. ${googleError}`
+        : "",
+    };
   } catch {
-    return { parsed: null, text: "" };
+    return {
+      parsed: null,
+      text: "",
+      provider: "tesseract",
+      warning: googleError
+        ? `Google Cloud Vision OCR could not be used; the local OCR fallback was unavailable. ${googleError}`
+        : "",
+    };
   }
 }
 
@@ -195,6 +219,7 @@ function localValidated(aiNorm, ocrNorm, meta) {
   const result = medicallyValidatePrescription(aiNorm || {}, ocrNorm);
   result.aiMode = meta.aiMode || result.aiMode || "ocr+validate";
   result.model = meta.model || result.model || "";
+  result.ocrProvider = meta.ocrProvider || "tesseract";
   if (meta.warning) result.warning = [result.warning, meta.warning].filter(Boolean).join(" ");
   if (meta.fileHint) result.fileHint = meta.fileHint;
   if (!result.medicines.length && !result.tests.length) {
@@ -259,13 +284,15 @@ export async function parsePrescriptionPayload({
 
   const ocr = await tryOcrParsed({ dataUrl, mime });
   const ocrNorm = ocr.parsed
-    ? normalizeResult(ocr.parsed, { aiMode: "ocr", model: "tesseract" })
+    ? normalizeResult(ocr.parsed, { aiMode: "ocr", model: ocr.provider || "tesseract" })
     : { medicines: [], tests: [], notes: ocr.text || "" };
 
   if (!cursorConfigured()) {
     return localValidated(ocrNorm, ocrNorm, {
       aiMode: "ocr+validate",
-      model: "tesseract+lexicon",
+      model: `${ocr.provider || "tesseract"}+lexicon`,
+      ocrProvider: ocr.provider,
+      warning: ocr.warning,
       ocrText: ocr.text,
       fileHint: name,
     });
@@ -294,8 +321,9 @@ export async function parsePrescriptionPayload({
 
   const merged = localValidated(visionNorm || ocrNorm, ocrNorm, {
     aiMode: visionNorm ? "ocr+ai" : "ocr+validate",
-    model: visionModel || "tesseract+lexicon",
-    warning: visionError,
+    model: visionModel || `${ocr.provider || "tesseract"}+lexicon`,
+    ocrProvider: ocr.provider,
+    warning: [ocr.warning, visionError].filter(Boolean).join(" "),
     ocrText: ocr.text,
     fileHint: name,
   });
@@ -305,6 +333,7 @@ export async function parsePrescriptionPayload({
     return localValidated(validated, ocrNorm, {
       aiMode: "ocr+ai+validate",
       model: validated.model || visionModel,
+      ocrProvider: ocr.provider,
       fileHint: name,
       ocrText: ocr.text,
     });

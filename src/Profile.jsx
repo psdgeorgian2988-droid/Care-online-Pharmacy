@@ -29,6 +29,7 @@ import { noContactEmailProps, noContactMobileProps, noContactNameProps } from ".
 import AutofillTrap from "./AutofillTrap";
 import { PROFILE_KEY, useLoginSession, writeLoginSession } from "./authSession";
 import CustomerLogOut from "./CustomerLogOut.jsx";
+import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
 import { MEMBER_ROLE, holderActor } from "./familyAccount";
 import { pickLoginPin } from "./loginPin";
 
@@ -190,6 +191,11 @@ function Profile() {
               </div>
             </dl>
           </section>
+          <section className="profile-card profile-prescription-card" aria-label="Prescription">
+            <h2>Prescription</h2>
+            <p>Upload or replace a prescription for this family member.</p>
+            <HomePrescriptionUpload showCart={false} />
+          </section>
           <div className="profile-actions">
             <CustomerLogOut className="profile-logout-btn" />
           </div>
@@ -240,6 +246,12 @@ function Profile() {
               </div>
             ) : null}
           </div>
+        </section>
+
+        <section className="profile-card profile-prescription-card" aria-label="Prescription">
+          <h2>Prescription</h2>
+          <p>Upload or replace a prescription for your account.</p>
+          <HomePrescriptionUpload showCart={false} />
         </section>
 
         <section className="profile-card" aria-label="Family tree">
@@ -378,6 +390,8 @@ const styles = `
   .profile-refer-wrap,.profile-form{max-width:760px;margin:0 auto 14px}
   .profile-form{display:grid;gap:14px}
   .profile-card{max-width:760px;margin:0 auto 14px;padding:18px;background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.06);display:grid;gap:12px}
+  .profile-prescription-card h2{margin:0;color:#123b59;font-size:16px}
+  .profile-prescription-card>p{margin:0;color:#607589;font-size:13px;line-height:1.4}
   .profile-field{display:flex;flex-direction:column}
   .profile-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
   .profile-field label span{color:#e34d4d}

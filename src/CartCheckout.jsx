@@ -23,6 +23,7 @@ import {
   showCustomerPayNow,
 } from "./paymentMethods";
 import BusyWait, { PatienceNote, useBusyOverlay } from "./BusyWait";
+import CheckoutPrescriptionUpload from "./CheckoutPrescriptionUpload.jsx";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { findDiagnosticParty } from "./diagnosticPartners";
 import BookingFlow from "./BookingFlow";
@@ -49,6 +50,7 @@ import {
   openAppointmentSlots,
 } from "./appointmentSlot";
 import { goToHash } from "./hashRoute";
+import { hasAccountSession, useLoginSession } from "./authSession";
 import {
   MEDICINE_CART_EVENT,
   TEST_CART_EVENT,
@@ -105,6 +107,8 @@ function paymentKindFor(medicines, tests) {
 }
 
 export default function CartCheckout() {
+  const user = useLoginSession();
+  const isRegisteredMember = hasAccountSession(user);
   const [medicines, setMedicines] = useState(() => readMedicineCart());
   const [tests, setTests] = useState(() => readTestCart());
   const profile = useMemo(() => readUserProfile() || {}, []);
@@ -585,6 +589,14 @@ export default function CartCheckout() {
         <p>Pay for medicines and tests together through one payment.</p>
       </header>
 
+      {!empty && !isRegisteredMember ? (
+        <CheckoutPrescriptionUpload
+          idPrefix="guest-checkout"
+          compact
+          required={needsRx}
+        />
+      ) : null}
+
       {empty ? (
         <div className="checkout-panel">
           <p>Your cart is empty.</p>
@@ -763,7 +775,7 @@ export default function CartCheckout() {
               </div>
             ) : null}
 
-            {needsRx && !hasRx ? (
+            {needsRx && isRegisteredMember && !hasRx ? (
               <div className="checkout-rx">
                 <label htmlFor="cartRx">Prescription</label>
                 <input
@@ -773,7 +785,7 @@ export default function CartCheckout() {
                   onChange={(event) => setPrescriptionFile(event.target.files[0])}
                 />
               </div>
-            ) : needsRx ? (
+            ) : needsRx && isRegisteredMember ? (
               <div className="checkout-rx is-ready">
                 <p>Using uploaded prescription: {rxName}</p>
               </div>
