@@ -99,7 +99,7 @@ export default function HomeServiceCatalog({ className = "", sectionKeys } = {})
               section.label
             )}
           </h2>
-          <div className="app-home-subgrid" role="list">
+          <div className="app-home-subgrid">
             {section.items.map((item, itemIndex) => (
               <a
                 key={item.id}
