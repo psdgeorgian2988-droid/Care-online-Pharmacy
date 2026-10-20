@@ -15,6 +15,7 @@ import {
 import { noContactFieldProps } from "./noContactAutofill";
 import { persistAndSendOrder, persistOrder, trackHref, withTracking } from "./orderTracking";
 import { goHomeAfterPaidCheckout } from "./checkoutComplete";
+import HomeCurrentStatus from "./HomeCurrentStatus";
 import { parseAppHash } from "./hashRoute";
 import { partnerAcceptFields } from "./orderConfirm";
 import PaymentBlock from "./PaymentBlock";
@@ -506,6 +507,7 @@ function Ambulance() {
             <p>Emergency or Planned Transfer in Delhi NCR.</p>
           </div>
         </section>
+        <HomeCurrentStatus kinds={["ambulance"]} />
 
         <form className="service-form" onSubmit={handleSubmit} autoComplete="off">
           <AutofillTrap />

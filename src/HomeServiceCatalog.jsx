@@ -6,7 +6,10 @@ import ServiceCartoon from "./ServiceCartoon";
 import ServiceIcon from "./serviceIcons";
 import { hasAccountSession, useLoginSession } from "./authSession";
 import { catalogParentHash, goToChildHash, goToHash } from "./hashRoute";
-import HomePrescriptionUpload from "./HomePrescriptionUpload";
+import SectionOrderTools, {
+  SECTION_ORDER_KINDS,
+  SECTION_UPLOAD_RX,
+} from "./SectionOrderTools";
 
 export default function HomeServiceCatalog({ className = "", sectionKeys } = {}) {
   const features = useFeatures();
@@ -27,6 +30,7 @@ export default function HomeServiceCatalog({ className = "", sectionKeys } = {})
     }));
   }, [features, sectionKeys, showReports]);
   const sectionPage = sectionKeys?.length === 1;
+  const focusedCatalog = Array.isArray(sectionKeys) && sectionKeys.length > 0;
 
   useEffect(() => {
     if (!sectionPage || sectionKeys?.[0] !== "reports") return undefined;
@@ -100,10 +104,11 @@ export default function HomeServiceCatalog({ className = "", sectionKeys } = {})
               section.label
             )}
           </h2>
-          {sectionPage && section.key === "medicine" ? (
-            <div className="home-rx-cart-row is-medicine-rx">
-              <HomePrescriptionUpload />
-            </div>
+          {SECTION_ORDER_KINDS[section.key] ? (
+            <SectionOrderTools
+              kinds={SECTION_ORDER_KINDS[section.key]}
+              showUpload={focusedCatalog && SECTION_UPLOAD_RX.has(section.key)}
+            />
           ) : null}
           <div className="app-home-subgrid">
             {section.items.map((item, itemIndex) => (

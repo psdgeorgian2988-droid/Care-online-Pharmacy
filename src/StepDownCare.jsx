@@ -8,6 +8,7 @@ import {
 } from "./pinLocation";
 import { persistOrder, refreshOrderFromServer, trackHref, withTracking } from "./orderTracking";
 import { parseAppHash } from "./hashRoute";
+import SectionOrderTools from "./SectionOrderTools";
 import { awaitingPartnerMessage, initialOrderStatus } from "./orderConfirm";
 import { orderCurrentStatus } from "./orderStatus";
 import {
@@ -960,6 +961,7 @@ function StepDownCare() {
             </button>
           </div>
         </header>
+        <SectionOrderTools kinds={["stepdown"]} showUpload />
 
         {tab === "find" ? (
           <div className="lab-shell sd-find">

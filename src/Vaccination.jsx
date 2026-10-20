@@ -10,6 +10,7 @@ import {
   recordVaccinationDose,
   upsertVaccinationPerson,
 } from "./vaccinationRecord";
+import HomeCurrentStatus from "./HomeCurrentStatus";
 import {
   BOOKING_EVENT,
   applyPersonToBooking,
@@ -277,6 +278,7 @@ function Vaccination({ embedded = false, person = null } = {}) {
             </a>
           </div>
         </section>
+        <HomeCurrentStatus kinds={["vaccination", "homecare"]} />
 
         <section className="service-form vac-record">
           <div className="vac-book-card">

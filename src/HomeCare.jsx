@@ -4,6 +4,7 @@ import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
 import { persistAndSendOrder, persistOrder, trackHref, withTracking } from "./orderTracking";
 import { goHomeAfterPaidCheckout } from "./checkoutComplete";
+import HomeCurrentStatus from "./HomeCurrentStatus";
 import { partnerAcceptFields } from "./orderConfirm";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
@@ -598,6 +599,7 @@ function HomeCare() {
             <h1>Nurse, Caregiver Or Physiotherapy At Home</h1>
           </div>
         </section>
+        <HomeCurrentStatus kinds={["homecare"]} />
 
         <form className="service-form" onSubmit={handleSubmit}>
           <BookingFlow

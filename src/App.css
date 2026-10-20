@@ -7410,11 +7410,14 @@ html.is-customer-app .app-chrome-header,
 
 .home-track-row,
 .home-rx-cart-row.is-medicine-rx,
+.home-rx-cart-row.section-order-tools,
 .medicines-order-tools {
   justify-content: center;
   margin: 0 auto 12px;
 }
 
+.section-order-tools .home-rx-cart.shop-cart-slot,
+.section-order-tools .home-rx-cart,
 .medicines-order-tools .home-rx-cart.shop-cart-slot,
 .medicines-order-tools .home-rx-cart {
   margin: 0;
@@ -7454,6 +7457,8 @@ html.is-customer-app .app-chrome-header,
   flex: 0 0 auto;
 }
 
+.section-order-tools.home-rx-cart-row .home-rx-cart.shop-cart-slot,
+.section-order-tools.home-rx-cart-row .home-rx-cart,
 .medicines-order-tools.home-rx-cart-row .home-rx-cart.shop-cart-slot,
 .medicines-order-tools.home-rx-cart-row .home-rx-cart {
   margin: 0;

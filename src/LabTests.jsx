@@ -16,6 +16,7 @@ import {
   isAwaitingCustomerSlotConfirm,
 } from "./orderConfirm";
 import { goHomeAfterPaidCheckout } from "./checkoutComplete";
+import SectionOrderTools from "./SectionOrderTools";
 import SlotOfferCard from "./SlotOfferCard";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
@@ -1159,6 +1160,7 @@ function LabTests() {
             </a>
           )}
         </header>
+        <SectionOrderTools kinds={isLab ? ["lab"] : ["radiology"]} showUpload />
 
         <form className="lab-shell" onSubmit={handleBooking}>
           {hideCatalog ? null : (

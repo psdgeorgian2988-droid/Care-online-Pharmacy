@@ -10,6 +10,7 @@ import {
   withTracking,
 } from "./orderTracking";
 import { goHomeAfterPaidCheckout } from "./checkoutComplete";
+import HomeCurrentStatus from "./HomeCurrentStatus";
 import { parseAppHash } from "./hashRoute";
 import {
   appointmentSlotLabel,
@@ -498,6 +499,7 @@ function Psychologist() {
             </p>
           </div>
         </section>
+        <HomeCurrentStatus kinds={["psychologist"]} />
 
         <form className="service-form" onSubmit={handleSubmit}>
           <BookingFlow

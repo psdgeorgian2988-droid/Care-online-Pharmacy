@@ -51,8 +51,7 @@ import {
   readPrescriptionDraft,
 } from "./prescriptionDraft";
 import { goToHash, parseAppHash } from "./hashRoute";
-import HeaderCart from "./HeaderCart.jsx";
-import HomePrescriptionUpload from "./HomePrescriptionUpload";
+import SectionOrderTools from "./SectionOrderTools";
 import MedicineSearchTools from "./MedicineSearchTools";
 import { matchExactMediHomeFromPhoto } from "./medicineStripSearch";
 import { groupMedicineFamilies, medicineInCategory } from "./medicineSaltGroups";
@@ -3446,10 +3445,12 @@ function Medicines({ initialSearch = "" }) {
             </p>
           </div>
         </div>
-        <div className="home-rx-cart-row medicines-order-tools">
-          <HomePrescriptionUpload />
-          <HeaderCart className="home-rx-cart" />
-        </div>
+        <SectionOrderTools
+          kinds={["medicine", "cart"]}
+          showUpload
+          showCart
+          className="medicines-order-tools"
+        />
         <div className="medicine-category-boxes">
           {categories.map((item) => (
             <button

@@ -4,6 +4,7 @@ import AssignedAgent from "./AssignedAgent";
 import { resolvePinLocation } from "./pinLocation";
 import { persistAndSendOrder, persistOrder, refreshOrderFromServer, trackHref, withTracking } from "./orderTracking";
 import { goHomeAfterPaidCheckout } from "./checkoutComplete";
+import HomeCurrentStatus from "./HomeCurrentStatus";
 import {
   appointmentSlotLabel,
   diagnosticRequestFields,
@@ -489,6 +490,7 @@ export default function DoctorAppointment() {
             </p>
           </div>
         </section>
+        <HomeCurrentStatus kinds={["doctor"]} />
         <form className="service-form" onSubmit={handleSubmit}>
           <BookingFlow
             idPrefix="doc"
