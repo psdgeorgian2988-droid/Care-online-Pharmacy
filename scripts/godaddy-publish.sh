@@ -142,27 +142,29 @@ if [[ -z "${GDDY_PAT:-}" ]]; then
     exit 1
   fi
 fi
-if ! command -v zip >/dev/null 2>&1; then
-  echo "zip is required to pack the app for upload." >&2
-  exit 1
-fi
-
-zip_path="${1:-/tmp/medihome-godaddy.zip}"
-rm -f "$zip_path"
-(
-  cd "$ROOT"
-  zip -r "$zip_path" . \
-    -x 'node_modules/*' \
-    -x 'dist/*' \
-    -x '.git/*' \
-    -x '.env' \
-    -x '.env.*' \
-    -x 'android/*' \
-    -x 'ios/*' \
-    -x '*.log' \
-    >/dev/null
-)
-echo "Zip $(wc -c < "$zip_path") bytes -> $zip_path"
+pack_zip() {
+  if ! command -v zip >/dev/null 2>&1; then
+    echo "zip is required to pack the app for upload." >&2
+    return 1
+  fi
+  local zip_path="${1:-/tmp/medihome-godaddy.zip}"
+  rm -f "$zip_path"
+  (
+    cd "$ROOT"
+    zip -r "$zip_path" . \
+      -x 'node_modules/*' \
+      -x 'dist/*' \
+      -x '.git/*' \
+      -x '.env' \
+      -x '.env.*' \
+      -x 'android/*' \
+      -x 'ios/*' \
+      -x '*.log' \
+      >/dev/null
+  )
+  echo "Zip $(wc -c < "$zip_path") bytes -> $zip_path" >&2
+  printf '%s' "$zip_path"
+}
 
 app_id="${GODADDY_APP_ID:-}"
 if [[ -z "$app_id" ]]; then
@@ -187,10 +189,39 @@ if [[ -z "$app_id" ]]; then
 fi
 echo "Using app $app_id"
 
-echo "Uploading source…"
-upload_json="$(gddy hosting source upload --app-id "$app_id" --file "$zip_path" --json)"
+pull_github_source() {
+  local repo="${GODADDY_GITHUB_REPO:-psdgeorgian2988-droid/Care-online-Pharmacy}"
+  local branch="${GODADDY_GITHUB_BRANCH:-main}"
+  echo "Pulling connected repository $repo ($branch)…" >&2
+  gddy hosting source github --app-id "$app_id" --repo "$repo" --branch "$branch" --json
+}
+
+upload_zip_source() {
+  local zip_path
+  zip_path="$(pack_zip /tmp/medihome-godaddy.zip)"
+  echo "Uploading zip…" >&2
+  gddy hosting source upload --app-id "$app_id" --file "$zip_path" --json
+}
+
+if [[ "${GODADDY_SOURCE:-github}" == "zip" ]]; then
+  upload_json="$(upload_zip_source)"
+else
+  set +e
+  upload_json="$(pull_github_source)"
+  pull_code=$?
+  set -e
+  printf '%s\n' "$upload_json"
+  if [[ "$pull_code" != "0" ]] || printf '%s' "$upload_json" | grep -q '"error"'; then
+    echo "GitHub pull did not start. Uploading a zip instead." >&2
+    upload_json="$(upload_zip_source)"
+  fi
+fi
 echo "$upload_json"
-import_id="$(printf '%s' "$upload_json" | json_get importId)"
+import_id="$(printf '%s' "$upload_json" | json_get importId || true)"
+if [[ -z "$import_id" ]]; then
+  echo "No import id from source update." >&2
+  exit 1
+fi
 wait_status "import" "gddy hosting source status --app-id $app_id --import-id $import_id --json" >/dev/null
 
 echo "Attaching a Web Hosting plan if one is free…"
