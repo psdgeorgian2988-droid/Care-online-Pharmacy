@@ -35,10 +35,6 @@ export default function HomeServiceCatalog({ className = "", sectionKeys } = {})
     }));
   }, [features, sectionKeys, showReports]);
   const sectionPage = sectionKeys?.length === 1;
-  const labsHub =
-    sectionKeys?.length === 2 &&
-    sectionKeys.includes("lab") &&
-    sectionKeys.includes("radiology");
 
   useEffect(() => {
     if (!sectionPage || sectionKeys?.[0] !== "reports") return undefined;
@@ -92,9 +88,6 @@ export default function HomeServiceCatalog({ className = "", sectionKeys } = {})
             : "Services"
       }
     >
-      {labsHub ? (
-        <HomePrescriptionUpload idPrefix="catalog-labs" detect="labs" />
-      ) : null}
       {sections.map((section, sectionIndex) => (
         <div
           key={section.key}
@@ -103,7 +96,7 @@ export default function HomeServiceCatalog({ className = "", sectionKeys } = {})
           style={{ "--section-index": sectionIndex }}
           tabIndex={section.key === "reports" ? -1 : undefined}
         >
-          {!labsHub && Array.isArray(sectionKeys) && sectionKeys.length && RX_DETECT[section.key] ? (
+          {sectionPage && RX_DETECT[section.key] ? (
             <HomePrescriptionUpload
               idPrefix={`catalog-${section.key}`}
               detect={RX_DETECT[section.key]}

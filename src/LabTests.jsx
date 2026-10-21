@@ -1164,6 +1164,7 @@ function LabTests() {
         <HomePrescriptionUpload
           idPrefix="lab-diagnostics"
           detect={isLab ? "lab" : "radiology"}
+          showCart
         />
 
         <form className="lab-shell" onSubmit={handleBooking}>
