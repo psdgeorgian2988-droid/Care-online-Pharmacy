@@ -7843,23 +7843,13 @@ html.is-customer-app .app-chrome-header,
 
 @media (min-width: 960px) {
   .home-with-side-slides {
-    grid-template-columns: 200px minmax(0, 1fr) 200px;
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .home-side-slides {
-    display: block;
-    position: sticky;
-    top: 8px;
-    overflow: hidden;
-    height: var(--home-side-slide-h);
-    border-radius: 16px;
-    background: #0f3f48;
-  }
-}
-
-@media (min-width: 1280px) {
-  .home-with-side-slides {
-    grid-template-columns: 240px minmax(0, 1fr) 240px;
+  .home-side-slides,
+  .home-side-slides-track {
+    display: none !important;
+    animation: none !important;
   }
 }
 
@@ -7906,6 +7896,11 @@ html.is-customer-app .app-chrome-header,
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+html[data-layout="laptop"] .app-home-subgrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .app-home-subitem {
@@ -8034,13 +8029,13 @@ html[data-layout="phone"] .home-landing .app-home-catalog.is-mobile-web .app-hom
 
 html[data-layout="tablet"] .home-landing .app-home-catalog.is-desktop-web .app-home-subgrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
 html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-home-subgrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -10898,8 +10893,13 @@ html[data-layout="laptop"] .app-first.is-home.is-login-screen .app-first-center.
   z-index: 6 !important;
 }
 
-html[data-layout="laptop"] .app-first.is-home.is-login-screen .slideshow-reviews {
-  bottom: clamp(8px, 1.5dvh, 16px);
+html[data-layout="laptop"] .slideshow-reviews,
+html[data-layout="laptop"] .home-side-slides {
+  display: none !important;
+}
+
+html[data-layout="laptop"] .home-side-slides-track {
+  animation: none !important;
 }
 
 html[data-layout="laptop"] .app-first-actions.is-entry {

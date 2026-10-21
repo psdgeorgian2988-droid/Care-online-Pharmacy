@@ -1,3 +1,5 @@
+import { useLayoutMode } from "./useLayoutMode";
+
 const ABOUT_SLIDES = [
   {
     title: "MediHome",
@@ -40,6 +42,8 @@ function rotatingSlides(start) {
 }
 
 export default function HomeAboutSlides({ side = "left" } = {}) {
+  const layout = useLayoutMode();
+  if (layout === "laptop") return null;
   const start = side === "right" ? 3 : 0;
   const slides = rotatingSlides(start);
 
