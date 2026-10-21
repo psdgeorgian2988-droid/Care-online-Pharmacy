@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { goToHash } from "./hashRoute";
 import HeaderCart from "./HeaderCart.jsx";
 import { clearPrescriptionParse } from "./prescriptionAi";
+import { normalizeRxDetect } from "./rxDetect.js";
 import {
   clearPrescriptionDraft,
   fileToPrescriptionDraft,
@@ -10,7 +11,11 @@ import {
   writePrescriptionDraft,
 } from "./prescriptionDraft";
 
-export default function HomePrescriptionUpload({ showCart = true } = {}) {
+export default function HomePrescriptionUpload({
+  showCart = true,
+  idPrefix = "home",
+  detect = "",
+} = {}) {
   const fileRef = useRef(null);
   const cameraRef = useRef(null);
   const [draft, setDraft] = useState(() => readPrescriptionDraft());
@@ -36,7 +41,7 @@ export default function HomePrescriptionUpload({ showCart = true } = {}) {
     try {
       const next = await fileToPrescriptionDraft(file);
       clearPrescriptionParse();
-      writePrescriptionDraft(next);
+      writePrescriptionDraft({ ...next, detect: normalizeRxDetect(detect) });
       goToHash("#prescription");
     } catch (err) {
       setStatus(err?.message || "Upload failed.");
@@ -53,7 +58,7 @@ export default function HomePrescriptionUpload({ showCart = true } = {}) {
       >
         <input
           ref={cameraRef}
-          id="homeRxCamera"
+          id={`${idPrefix}RxCamera`}
           type="file"
           accept="image/*"
           capture="environment"
@@ -61,14 +66,27 @@ export default function HomePrescriptionUpload({ showCart = true } = {}) {
         />
         <input
           ref={fileRef}
-          id="homeRxFile"
+          id={`${idPrefix}RxFile`}
           type="file"
           accept="image/*,application/pdf,.pdf,.png,.jpg,.jpeg,.webp"
           onChange={onFile}
         />
         {draft?.fileName ? (
           <>
-            <a className="home-rx-tab is-on" href="#prescription">
+            <a
+              className="home-rx-tab is-on"
+              href="#prescription"
+              onClick={(event) => {
+                event.preventDefault();
+                const mode = normalizeRxDetect(detect);
+                const current = readPrescriptionDraft();
+                if (current && mode && current.detect !== mode) {
+                  clearPrescriptionParse();
+                  writePrescriptionDraft({ ...current, detect: mode });
+                }
+                goToHash("#prescription");
+              }}
+            >
               Uploaded Rx
             </a>
             <button

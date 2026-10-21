@@ -29,6 +29,7 @@ import {
   suggestedPacks,
 } from "./prescriptionShop";
 import { rxDoseCode } from "./rxTextParse";
+import { applyRxDetect, normalizeRxDetect } from "./rxDetect.js";
 
 function durationLabel(med) {
   return med?.durationDays || med?.duration || "Not specified";
@@ -71,10 +72,12 @@ export default function PrescriptionReview() {
   useEffect(() => {
     if (!draft?.fileName) return;
     const staleDemo = parsed?.aiMode === "demo" || parsed?.aiMode === "demo-fallback";
+    const wanted = normalizeRxDetect(draft.detect);
     const already =
       !staleDemo &&
       parsed?.fileName === draft.fileName &&
       parsed?.sourceSavedAt === draft.savedAt &&
+      normalizeRxDetect(parsed?.detect) === wanted &&
       (Array.isArray(parsed?.medicines) || Array.isArray(parsed?.tests));
     if (already) return;
     let cancelled = false;
@@ -93,7 +96,7 @@ export default function PrescriptionReview() {
     return () => {
       cancelled = true;
     };
-  }, [draft?.fileName, draft?.savedAt]);
+  }, [draft?.fileName, draft?.savedAt, draft?.detect]);
 
   const rerun = async () => {
     if (!draft?.fileName || busy) return;
@@ -130,8 +133,8 @@ export default function PrescriptionReview() {
     try {
       const next = await fileToPrescriptionDraft(file);
       clearPrescriptionParse();
-      writePrescriptionDraft(next);
-      setDraft(next);
+      const saved = writePrescriptionDraft({ ...next, detect: draft?.detect || "" });
+      setDraft(saved || { ...next, detect: draft?.detect || "" });
       setParsed(null);
       setShowScan(false);
     } catch (err) {
@@ -182,8 +185,14 @@ export default function PrescriptionReview() {
 
   const showImage = draft && prescriptionDraftIsImage(draft) && draft.fileData;
   const showPdf = draft && prescriptionDraftIsPdf(draft) && draft.fileData;
-  const medicines = parsed?.medicines || [];
-  const tests = parsed?.tests || [];
+  const detectMode = normalizeRxDetect(draft?.detect || parsed?.detect);
+  const focused = parsed ? applyRxDetect(parsed, detectMode) : null;
+  const medicines = focused?.medicines || [];
+  const tests = focused?.tests || [];
+  const testsOnly = detectMode === "lab" || detectMode === "radiology";
+  const medicinesOnly = detectMode === "medicine";
+  const testHeading =
+    detectMode === "radiology" ? "Radiology tests" : detectMode === "lab" ? "Lab tests" : "Tests";
   const medOffers = useMemo(
     () => medicines.map((med) => lookupPrescriptionMedicine(med)),
     [medicines]
@@ -200,8 +209,9 @@ export default function PrescriptionReview() {
             name,
           })
         );
-      }),
-    [tests]
+      })
+      .filter((offer) => detectMode !== "lab" && detectMode !== "radiology" || offer.kind === detectMode),
+    [tests, detectMode]
   );
 
   useEffect(() => {
@@ -478,6 +488,7 @@ export default function PrescriptionReview() {
             </div>
           )}
 
+          {testsOnly ? null : (
           <div className="rx-list-block">
             <h3>Medicines</h3>
             {medicines.length === 0 && !busy ? (
@@ -578,8 +589,9 @@ export default function PrescriptionReview() {
               </ol>
             )}
           </div>
+          )}
 
-          {medicines.length > 0 ? (
+          {!testsOnly && medicines.length > 0 ? (
             <div className="rx-confirm-box">
               <h3>Confirm medicines</h3>
               <p>Are all medicine names on this digital prescription correct?</p>
@@ -606,10 +618,17 @@ export default function PrescriptionReview() {
             </div>
           ) : null}
 
+          {medicinesOnly ? null : (
           <div className="rx-list-block">
-            <h3>Tests</h3>
+            <h3>{testHeading}</h3>
             {tests.length === 0 && !busy ? (
-              <p className="rx-empty">No lab/radiology tests detected.</p>
+              <p className="rx-empty">
+                {detectMode === "radiology"
+                  ? "No radiology tests detected."
+                  : detectMode === "lab"
+                    ? "No laboratory tests detected."
+                    : "No lab/radiology tests detected."}
+              </p>
             ) : (
               <ul className="rx-test-list">
                 {tests.map((test) => (
@@ -624,6 +643,7 @@ export default function PrescriptionReview() {
               </ul>
             )}
           </div>
+          )}
 
           {parsed?.notes && parsed.aiMode === "live" ? (
             <p className="rx-general-notes">{parsed.notes}</p>
@@ -631,38 +651,50 @@ export default function PrescriptionReview() {
 
           <div className="rx-actions" ref={actionsRef}>
             <div className="rx-action-row">
-              <button
-                type="button"
-                className="rx-primary"
-                disabled={!medicinesConfirmed || (!availableMeds && !availableTests)}
-                onClick={orderAllAvailable}
-              >
-                Order all available
-              </button>
-              <button
-                type="button"
-                className="rx-secondary"
-                disabled={!medicinesConfirmed}
-                aria-expanded={menu === "meds"}
-                onClick={() => setMenu((cur) => (cur === "meds" ? "" : "meds"))}
-              >
-                Order medicines
-              </button>
-              <button
-                type="button"
-                className="rx-secondary"
-                aria-expanded={menu === "tests"}
-                onClick={() => setMenu((cur) => (cur === "tests" ? "" : "tests"))}
-              >
-                Book tests
-              </button>
+              {testsOnly ? null : (
+                <>
+                  <button
+                    type="button"
+                    className="rx-primary"
+                    disabled={!medicinesConfirmed || (!availableMeds && !availableTests)}
+                    onClick={orderAllAvailable}
+                  >
+                    Order all available
+                  </button>
+                  <button
+                    type="button"
+                    className="rx-secondary"
+                    disabled={!medicinesConfirmed}
+                    aria-expanded={menu === "meds"}
+                    onClick={() => setMenu((cur) => (cur === "meds" ? "" : "meds"))}
+                  >
+                    Order medicines
+                  </button>
+                </>
+              )}
+              {medicinesOnly ? null : (
+                <button
+                  type="button"
+                  className={testsOnly ? "rx-primary" : "rx-secondary"}
+                  aria-expanded={menu === "tests"}
+                  onClick={() => setMenu((cur) => (cur === "tests" ? "" : "tests"))}
+                >
+                  Book tests
+                </button>
+              )}
               <button type="button" className="rx-secondary" onClick={() => goToHash("#home")}>
                 Back to Home
               </button>
             </div>
-            {medicines.length > 0 && !parsed?.medicinesConfirmed ? (
+            {!testsOnly && medicines.length > 0 && !parsed?.medicinesConfirmed ? (
               <p className="rx-all-hint">Confirm all medicine names with the tick above before ordering.</p>
-            ) : availableMeds || availableTests ? (
+            ) : testsOnly && availableTests ? (
+              <p className="rx-all-hint">
+                {`${availableTests} ${detectMode === "radiology" ? "radiology" : "laboratory"} test${
+                  availableTests === 1 ? "" : "s"
+                } can be booked from this prescription.`}
+              </p>
+            ) : !testsOnly && (availableMeds || availableTests) ? (
               <p className="rx-all-hint">
                 {`One click adds ${availableMeds} medicine${availableMeds === 1 ? "" : "s"} from the catalogue${
                   availableTests
@@ -672,7 +704,7 @@ export default function PrescriptionReview() {
               </p>
             ) : null}
 
-            {menu === "meds" ? (
+            {!testsOnly && menu === "meds" ? (
               <div className="rx-menu-panel" role="region" aria-label="Prescribed medicines">
                 <p className="rx-menu-title">Medicines on this Rx</p>
                 {medOffers.length === 0 ? (
@@ -737,7 +769,7 @@ export default function PrescriptionReview() {
               </div>
             ) : null}
 
-            {menu === "tests" ? (
+            {!medicinesOnly && menu === "tests" ? (
               <div className="rx-menu-panel" role="region" aria-label="Prescribed tests">
                 <p className="rx-menu-title">Tests and partner labs</p>
                 {testOffers.length === 0 ? (

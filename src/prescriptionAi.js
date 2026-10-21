@@ -1,6 +1,7 @@
 import { apiFetch } from "./apiBase.js";
 import { readPrescriptionDraft } from "./prescriptionDraft.js";
 import { canonicalizePrescription } from "./rxCanonicalize.js";
+import { applyRxDetect } from "./rxDetect.js";
 
 export const PRESCRIPTION_PARSE_KEY = "mediHomePrescriptionParse";
 export const PRESCRIPTION_PARSE_EVENT = "mediHomePrescriptionParse";
@@ -77,17 +78,21 @@ export async function digitizePrescription(draft = readPrescriptionDraft()) {
       fileName: draft.fileName,
       fileType: draft.fileType,
       fileData: draft.fileData || "",
+      detect: draft.detect || "",
     }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.error || "Could not digitize this prescription.");
   }
-  const result = {
-    ...data,
-    fileName: draft.fileName,
-    sourceSavedAt: draft.savedAt || "",
-  };
+  const result = applyRxDetect(
+    {
+      ...data,
+      fileName: draft.fileName,
+      sourceSavedAt: draft.savedAt || "",
+    },
+    draft.detect || data.detect || ""
+  );
   writePrescriptionParse(result);
   return result;
 }

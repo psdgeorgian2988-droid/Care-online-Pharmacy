@@ -9,7 +9,6 @@ import { orderCurrentStatus } from "./orderStatus";
 import { isAwaitingPartnerConfirm } from "./orderConfirm";
 import CustomerWelcome from "./CustomerWelcome";
 import HomeServiceCatalog from "./HomeServiceCatalog";
-import HomePrescriptionUpload from "./HomePrescriptionUpload";
 import { HomeWithAboutSlides } from "./HomeAboutSlides";
 import LabsHub from "./LabsHub";
 import { homeCatalogSectionKeys } from "./hashRoute";
@@ -87,8 +86,6 @@ export default function CustomerHome({ sectionKey = "" } = {}) {
           </div>
         </section>
       ) : null}
-
-      <HomePrescriptionUpload />
 
       <section className="account-more" aria-label="Services">
         <HomeServiceCatalog />

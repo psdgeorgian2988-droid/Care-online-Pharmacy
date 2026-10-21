@@ -5,6 +5,7 @@ import {
   foldRx,
 } from "./rxCanonicalize.js";
 import { rxDoseCode } from "./rxTextParse.js";
+import { rxDetectInstruction } from "./rxDetect.js";
 
 function saltOf(row) {
   return foldRx(row?.salt || row?.name);
@@ -121,7 +122,7 @@ export function medicallyValidatePrescription(aiParsed = {}, ocrParsed = null) {
   return merged;
 }
 
-export function medicalValidationPrompt({ ocrText = "", candidate = {}, lexicon } = {}) {
+export function medicalValidationPrompt({ ocrText = "", candidate = {}, lexicon, detect = "" } = {}) {
   const { meds, tests } = lexicon || compactLexiconForPrompt();
   return `You are a clinical pharmacist validating a digitized Indian OPD prescription for MediHome.
 
@@ -135,6 +136,7 @@ Rules:
 
 Known OPD medicines (match only if the written name fits): ${meds}.
 Known tests: ${tests}.
+${rxDetectInstruction(detect)}
 
 OCR DRAFT:
 """

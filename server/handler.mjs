@@ -262,6 +262,7 @@ export async function handleApi(req, res) {
         fileData: body.fileData || "",
         fileName: body.fileName || "",
         fileType: body.fileType || "",
+        detect: body.detect || "",
       });
       send(res, 200, result);
       return true;

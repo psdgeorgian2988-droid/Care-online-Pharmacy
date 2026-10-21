@@ -55,7 +55,6 @@ import { isPartnerDeskRoute, partnerDeskKindFromRoute } from "./partnerApp";
 import CustomerHome from "./CustomerHome";
 import HomeServiceCatalog from "./HomeServiceCatalog";
 import LabsHub from "./LabsHub";
-import HomePrescriptionUpload from "./HomePrescriptionUpload";
 import { HomeWithAboutSlides } from "./HomeAboutSlides";
 import { useIsPhoneLayout } from "./useLayoutMode";
 import AppBottomNav from "./AppBottomNav";
@@ -79,6 +78,30 @@ import AppHeader from "./AppHeader";
 import CustomerLogOut from "./CustomerLogOut.jsx";
 
 const AUTH_ROUTES = new Set(["#login", "#register", "#forgot"]);
+
+const RX_SECTION_CART = new Set([
+  "medicine",
+  "lab",
+  "radiology",
+  "stepdown",
+  "vaccination",
+  "labs",
+]);
+
+function cartLivesInSection(route, service, plan) {
+  if (
+    route === "#medicine-search" ||
+    route === "#labs" ||
+    route === "#stepdown" ||
+    route === "#vaccination"
+  ) {
+    return true;
+  }
+  if (route === "#homecare") {
+    return plan === "vaccination" || plan === "vaccination-child";
+  }
+  return route === "#home" && RX_SECTION_CART.has(String(service || "").toLowerCase());
+}
 
 const OPS_LINKS = [
   { href: "#partner", label: "Partner" },
@@ -251,8 +274,6 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
           </aside>
         </div>
 
-        <HomePrescriptionUpload />
-
         <div className="home-services-catalog" id="home-services">
           <HomeServiceCatalog
             className={isPhone ? "is-mobile-web" : "is-desktop-web"}
@@ -320,6 +341,7 @@ function App() {
     step: scanStep,
     lab: selectedLab,
     service: hashService,
+    plan: hashPlan,
     from: hashFrom,
   } = parseAppHash(hash);
   const isAuthRoute = AUTH_ROUTES.has(route);
@@ -545,7 +567,7 @@ function App() {
         <Seo route={route} />
         <SiteTicker />
         <div className="app-frame">
-          <AppHeader hideCart={route === "#home" && !hashService} />
+          <AppHeader hideCart={(route === "#home" && !hashService) || cartLivesInSection(route, hashService, hashPlan)} />
           <main id="app-scroll">
             {welcomeGate || isAuthRoute ? null : <WebinarNotice />}
             {welcomeGate || isAuthRoute ? null : <SlotOfferBanner />}
@@ -589,7 +611,7 @@ function App() {
           />
           <div className="site-topbar-end">
             <CustomerLogOut className="site-logout-btn" />
-            {route === "#home" && !hashService ? null : (
+            {(route === "#home" && !hashService) || cartLivesInSection(route, hashService, hashPlan) ? null : (
               <HeaderCart className="site-topbar-header-cart" />
             )}
           </div>

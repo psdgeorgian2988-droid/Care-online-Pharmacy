@@ -31,6 +31,7 @@ import {
   withBookingIdentity,
 } from "./bookingFor";
 import { HOME_VISIT_FEE } from "./vaccinationSchedule";
+import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
 import {
   BOOKING_EVENT,
   isVaccinationPlan,
@@ -598,6 +599,10 @@ function HomeCare() {
             <h1>Nurse, Caregiver Or Physiotherapy At Home</h1>
           </div>
         </section>
+
+        {isVaccinationPlan(form.carePlan) ? (
+          <HomePrescriptionUpload idPrefix="vaccination" detect="vaccination" />
+        ) : null}
 
         <form className="service-form" onSubmit={handleSubmit}>
           <BookingFlow

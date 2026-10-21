@@ -26,6 +26,7 @@ export function readPrescriptionDraft(store) {
       fileType: String(parsed.fileType || ""),
       fileData: String(parsed.fileData || ""),
       savedAt: String(parsed.savedAt || ""),
+      detect: String(parsed.detect || ""),
     };
   } catch {
     return null;
@@ -39,6 +40,7 @@ export function writePrescriptionDraft(draft, store) {
     fileType: String(draft?.fileType || ""),
     fileData: String(draft?.fileData || ""),
     savedAt: new Date().toISOString(),
+    detect: String(draft?.detect || ""),
   };
   if (!next.fileName) {
     clearPrescriptionDraft(store);

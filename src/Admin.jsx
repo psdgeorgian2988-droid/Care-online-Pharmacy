@@ -520,14 +520,13 @@ function Admin() {
             </button>
             <button
               type="button"
-              aria-label="Log out"
               onClick={() => {
                 staffLogout();
                 setToken("");
                 setOrders([]);
               }}
             >
-              Log out
+              Sign Out
             </button>
           </div>
         </section>

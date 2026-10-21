@@ -55,6 +55,7 @@ import {
   showCustomerPayNow,
 } from "./paymentMethods";
 import BookingDocumentUpload from "./BookingDocumentUpload.jsx";
+import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
 
 const STORAGE_KEY = "mediHomeStepDownBookings";
 const AMBULANCE_STORAGE_KEY = "mediHomeAmbulanceRequests";
@@ -960,6 +961,8 @@ function StepDownCare() {
             </button>
           </div>
         </header>
+
+        <HomePrescriptionUpload idPrefix="stepdown-centre" detect="stepdown" />
 
         {tab === "find" ? (
           <div className="lab-shell sd-find">

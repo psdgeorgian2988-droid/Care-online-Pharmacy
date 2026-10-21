@@ -66,6 +66,7 @@ import {
   TEST_CART_EVENT,
 } from "./medicineCartStore";
 import { isDiagnosticKind } from "./labPipeline";
+import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
 import {
   blankDiagnosticBookingForm,
   diagnosticBookingFromHash,
@@ -1159,6 +1160,11 @@ function LabTests() {
             </a>
           )}
         </header>
+
+        <HomePrescriptionUpload
+          idPrefix="lab-diagnostics"
+          detect={isLab ? "lab" : "radiology"}
+        />
 
         <form className="lab-shell" onSubmit={handleBooking}>
           {hideCatalog ? null : (

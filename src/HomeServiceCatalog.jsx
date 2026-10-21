@@ -6,6 +6,15 @@ import ServiceCartoon from "./ServiceCartoon";
 import ServiceIcon from "./serviceIcons";
 import { hasAccountSession, useLoginSession } from "./authSession";
 import { catalogParentHash, goToChildHash, goToHash } from "./hashRoute";
+import HomePrescriptionUpload from "./HomePrescriptionUpload";
+
+const RX_DETECT = {
+  medicine: "medicine",
+  lab: "lab",
+  radiology: "radiology",
+  stepdown: "stepdown",
+  vaccination: "vaccination",
+};
 
 export default function HomeServiceCatalog({ className = "", sectionKeys } = {}) {
   const features = useFeatures();
@@ -87,6 +96,12 @@ export default function HomeServiceCatalog({ className = "", sectionKeys } = {})
           style={{ "--section-index": sectionIndex }}
           tabIndex={section.key === "reports" ? -1 : undefined}
         >
+          {Array.isArray(sectionKeys) && sectionKeys.length && RX_DETECT[section.key] ? (
+            <HomePrescriptionUpload
+              idPrefix={`catalog-${section.key}`}
+              detect={RX_DETECT[section.key]}
+            />
+          ) : null}
           <h2 className="app-home-heading">
             {section.on && !sectionPage ? (
               <a

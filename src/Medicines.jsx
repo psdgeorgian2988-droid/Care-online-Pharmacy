@@ -52,6 +52,7 @@ import {
 } from "./prescriptionDraft";
 import { goToHash, parseAppHash } from "./hashRoute";
 import MedicineSearchTools from "./MedicineSearchTools";
+import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
 import { matchExactMediHomeFromPhoto } from "./medicineStripSearch";
 import { groupMedicineFamilies, medicineInCategory } from "./medicineSaltGroups";
 
@@ -3444,6 +3445,7 @@ function Medicines({ initialSearch = "" }) {
             </p>
           </div>
         </div>
+        <HomePrescriptionUpload idPrefix="medicine-purchase" detect="medicine" />
         <div className="medicine-category-boxes">
           {categories.map((item) => (
             <button

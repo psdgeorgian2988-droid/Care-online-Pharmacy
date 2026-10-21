@@ -22,6 +22,7 @@ import {
   medicallyValidatePrescription,
 } from "../src/rxMedicalValidate.js";
 import { HANDWRITING_HINTS } from "../src/data/rxMedicalLexicon.js";
+import { applyRxDetect, rxDetectInstruction } from "../src/rxDetect.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
@@ -45,8 +46,9 @@ function loadDotEnv() {
   }
 }
 
-function buildSystemPrompt() {
+function buildSystemPrompt(detect = "") {
   const { meds, tests } = compactLexiconForPrompt();
+  const focus = rxDetectInstruction(detect);
   return `You are a clinical pharmacist reading an Indian doctor's handwritten or printed prescription for MediHome.
 
 ${HANDWRITING_HINTS}
@@ -88,7 +90,8 @@ Return ONLY valid JSON (no markdown) with this shape:
   "notes": "general Rx notes"
 }
 Read Indian charting such as 1-0-1, 1-1-1, BD, TDS, OD, HS, SOS. Convert those into timesPerDay (once/twice/thrice a day) and keep timing as written.
-If duration is written as x/7 or x days, put that in duration and durationDays.`;
+If duration is written as x/7 or x days, put that in duration and durationDays.
+${focus}`;
 }
 
 function inferTimesPerDay(row) {
@@ -233,12 +236,13 @@ function localValidated(aiNorm, ocrNorm, meta) {
   return result;
 }
 
-async function medicalAiValidate(candidate, ocrText, model) {
+async function medicalAiValidate(candidate, ocrText, model, detect = "") {
   const { text, model: usedModel } = await callCursorMedicalValidation({
     prompt: medicalValidationPrompt({
       ocrText,
       candidate,
       lexicon: compactLexiconForPrompt(),
+      detect,
     }),
   });
   const parsed = safeJsonParse(text);
@@ -260,6 +264,7 @@ export async function parsePrescriptionPayload({
   fileData = "",
   fileName = "",
   fileType = "",
+  detect = "",
 } = {}) {
   loadDotEnv();
   const stripped = stripDataUrl(fileData);
@@ -288,14 +293,17 @@ export async function parsePrescriptionPayload({
     : { medicines: [], tests: [], notes: ocr.text || "" };
 
   if (!cursorConfigured()) {
-    return localValidated(ocrNorm, ocrNorm, {
-      aiMode: "ocr+validate",
-      model: `${ocr.provider || "tesseract"}+lexicon`,
-      ocrProvider: ocr.provider,
-      warning: ocr.warning,
-      ocrText: ocr.text,
-      fileHint: name,
-    });
+    return applyRxDetect(
+      localValidated(ocrNorm, ocrNorm, {
+        aiMode: "ocr+validate",
+        model: `${ocr.provider || "tesseract"}+lexicon`,
+        ocrProvider: ocr.provider,
+        warning: ocr.warning,
+        ocrText: ocr.text,
+        fileHint: name,
+      }),
+      detect
+    );
   }
 
   let visionNorm = null;
@@ -306,7 +314,7 @@ export async function parsePrescriptionPayload({
       mime,
       base64,
       fileName: name,
-      systemPrompt: buildSystemPrompt(),
+      systemPrompt: buildSystemPrompt(detect),
       ocrHint: ocr.text,
     });
     const parsed = safeJsonParse(text);
@@ -329,17 +337,20 @@ export async function parsePrescriptionPayload({
   });
 
   try {
-    const validated = await medicalAiValidate(merged, ocr.text, visionModel);
-    return localValidated(validated, ocrNorm, {
-      aiMode: "ocr+ai+validate",
-      model: validated.model || visionModel,
-      ocrProvider: ocr.provider,
-      fileHint: name,
-      ocrText: ocr.text,
-    });
+    const validated = await medicalAiValidate(merged, ocr.text, visionModel, detect);
+    return applyRxDetect(
+      localValidated(validated, ocrNorm, {
+        aiMode: "ocr+ai+validate",
+        model: validated.model || visionModel,
+        ocrProvider: ocr.provider,
+        fileHint: name,
+        ocrText: ocr.text,
+      }),
+      detect
+    );
   } catch (error) {
     merged.warning = [merged.warning, error.message].filter(Boolean).join(" ");
     merged.aiMode = visionNorm ? "ocr+ai+lexicon" : "ocr+validate";
-    return merged;
+    return applyRxDetect(merged, detect);
   }
 }

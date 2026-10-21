@@ -605,7 +605,6 @@ export default function Partner({ deskKind = "" }) {
             </button>
             <button
               type="button"
-              aria-label="Log out"
               onClick={() => {
                 partnerLogout();
                 setToken("");
@@ -613,7 +612,7 @@ export default function Partner({ deskKind = "" }) {
                 setJobs([]);
               }}
             >
-              Log out
+              Sign Out
             </button>
           </div>
         </section>

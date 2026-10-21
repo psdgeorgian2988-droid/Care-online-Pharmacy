@@ -175,8 +175,16 @@ test("log out is shown for registered customers on account and both shells", () 
   assert.match(header, /CustomerLogOut/);
   assert.match(app, /CustomerLogOut/);
   assert.match(app, /className="site-logout-btn"/);
-  assert.match(app, /className="home-account-btn"/);
+  assert.match(app, /className="home-account-btn/);
   assert.match(app, /hasAccountSession\(user\)/);
+
+  const admin = readFileSync(new URL("./Admin.jsx", import.meta.url), "utf8");
+  const partner = readFileSync(new URL("./Partner.jsx", import.meta.url), "utf8");
+  assert.equal(/Log out/.test(admin), false);
+  assert.equal(/Log out/.test(partner), false);
+  assert.match(admin, /Sign Out/);
+  assert.match(partner, /Sign Out/);
+
   assert.match(
     tabs,
     /Account[\s\S]*Medicines[\s\S]*Labs[\s\S]*Orders[\s\S]*Doctor[\s\S]*Medical Record[\s\S]*Home Care[\s\S]*Vaccination/
