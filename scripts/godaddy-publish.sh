@@ -233,16 +233,12 @@ if isinstance(root, dict) and isinstance(root.get("data"), dict):
     d = {**root, **root["data"]}
 import_id = d.get("importId") or ""
 status = str(d.get("status") or "")
-actions = json.dumps(root.get("next_actions") or [])
-ready = "deployment publish" in actions and not d.get("error")
-print(f"{import_id}\t{status}\t{int(bool(ready))}")
+print(f"{import_id}\t{status}")
 ' || true)"
 import_id="${source_meta%%$'\t'*}"
-rest="${source_meta#*$'\t'}"
-source_status="${rest%%$'\t'*}"
-source_ready="${rest#*$'\t'}"
-if [[ "$source_status" == "COMPLETED" || "$source_status" == "ACTIVE" || "$source_ready" == "1" ]]; then
-  echo "Source import is ready (${source_status:-publish next})."
+source_status="${source_meta#*$'\t'}"
+if [[ "$source_status" == "COMPLETED" || "$source_status" == "ACTIVE" ]]; then
+  echo "Source import is ready ($source_status)."
 elif [[ -n "$import_id" ]]; then
   wait_status "import" "gddy hosting source status --app-id $app_id --import-id $import_id --json" >/dev/null
 else
@@ -281,8 +277,16 @@ anycast_ip=""
 attach_hostname() {
   local host="$1"
   echo "Attaching $host…"
-  attach_json="$(gddy hosting domain attach --app-id "$app_id" --hostname "$host" --json)"
+  set +e
+  attach_json="$(gddy hosting domain attach --app-id "$app_id" --hostname "$host" --json 2>&1)"
+  attach_code=$?
+  set -e
   echo "$attach_json"
+  if printf '%s' "$attach_json" | grep -q "already attached"; then
+    echo "$host is already attached."
+  elif [[ "$attach_code" != "0" ]]; then
+    return "$attach_code"
+  fi
   domain_id="$(printf '%s' "$attach_json" | json_get domainId || true)"
   if [[ -z "$domain_id" ]]; then
     listed="$(gddy hosting domain list --app-id "$app_id" --json)"
