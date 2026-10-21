@@ -7,6 +7,10 @@ import {
 import { rxDoseCode } from "./rxTextParse.js";
 import { rxDetectInstruction } from "./rxDetect.js";
 
+export function restoreDroppedRxItems(result) {
+  return result;
+}
+
 function saltOf(row) {
   return foldRx(row?.salt || row?.name);
 }
