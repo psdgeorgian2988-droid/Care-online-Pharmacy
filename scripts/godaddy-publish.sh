@@ -294,15 +294,23 @@ attach_hostname() {
     domain_id="$(python3 -c '
 import json, sys
 want = sys.argv[1].lower()
-d = json.loads(sys.stdin.read())
+raw = sys.stdin.read()
+start = raw.find("{")
+if start < 0:
+    start = raw.find("[")
+d = json.loads(raw[start:])
 if isinstance(d, dict) and "data" in d:
     d = d["data"]
 items = d if isinstance(d, list) else (d.get("items") or [])
 for item in items:
     if str(item.get("hostname", "")).lower() == want:
-        print(item.get("id") or item.get("domainId") or "")
+        print(item.get("id") or item.get("domainId") or "attached")
         break
 ' "$host" <<<"$listed")"
+  fi
+  if [[ "$domain_id" == "attached" ]]; then
+    echo "$host is already active on the app."
+    return 0
   fi
   if [[ -z "$domain_id" ]]; then
     echo "Could not attach or find $host on the app." >&2
