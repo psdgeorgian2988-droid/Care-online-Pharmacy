@@ -386,16 +386,20 @@ for page in hosts:
         continue
     if "MediHome" not in html:
         continue
+    if "/assets/index-" in html:
+        print(f"customer app at {page}")
+        sys.exit(0)
     for css in css_urls(html, page):
         try:
             body = fetch(css)
         except Exception as exc:
             print(f"GET {css} failed: {exc}", file=sys.stderr)
             continue
-        if "--app-ticker-h:0px" in body:
+        compact = body.replace(" ", "")
+        if "--app-ticker-h:46px" in compact or "--app-ticker-h:0px" in compact:
             print(f"customer app CSS at {css}")
             sys.exit(0)
-        if "--app-ticker-h:40px" in body:
+        if "--app-ticker-h:40px" in compact:
             print(f"old website chrome CSS at {css}", file=sys.stderr)
     print("MediHome HTML without customer-app CSS", file=sys.stderr)
 sys.exit(1)
