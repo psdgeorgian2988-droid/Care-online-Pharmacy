@@ -4,6 +4,7 @@
 # Optional: GODADDY_APP_ID, GODADDY_APP_NAME, GODADDY_PUBLISH (default 1),
 #           GODADDY_DOMAIN (default medihome.co.in), GODADDY_FIX_DNS (default 1)
 set -euo pipefail
+trap 'echo "PUBLISH_FAILED line $LINENO"' ERR
 
 export PATH="${HOME}/.local/bin:${PATH}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

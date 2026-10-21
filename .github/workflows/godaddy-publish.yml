@@ -45,7 +45,7 @@ jobs:
           set -e
           sed -E 's/gd_pat_[A-Za-z0-9._-]+/[token]/g' /tmp/godaddy-publish.log | tail -n 80
           if [ "$code" != "0" ]; then
-            msg="$(sed -E 's/gd_pat_[A-Za-z0-9._-]+/[token]/g' /tmp/godaddy-publish.log | tail -n 12 | tr '\n' ' ' | cut -c1-700)"
+            msg="$(sed -E 's/gd_pat_[A-Za-z0-9._-]+/[token]/g' /tmp/godaddy-publish.log | tail -c 1800 | tr '\n' ' ')"
             echo "::error title=GoDaddy publish failed::$msg"
             exit "$code"
           fi
