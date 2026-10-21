@@ -51,6 +51,16 @@ test("radiology uploads keep imaging studies only", () => {
   assert.equal(next.detect, "radiology");
 });
 
+test("labs uploads keep laboratory tests and imaging studies", () => {
+  const next = applyRxDetect(sample, "labs");
+  assert.equal(next.medicines.length, 0);
+  assert.deepEqual(
+    next.tests.map((row) => row.name),
+    ["CBC", "Lipid profile", "MRI Brain", "X-Ray Chest"]
+  );
+  assert.equal(next.detect, "labs");
+});
+
 test("step-down uploads keep medicines and every test", () => {
   const next = applyRxDetect(sample, "stepdown");
   assert.equal(next.medicines.length, 1);

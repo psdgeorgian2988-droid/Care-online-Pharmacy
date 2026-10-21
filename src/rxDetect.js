@@ -7,6 +7,7 @@ export function normalizeRxDetect(value) {
   if (
     key === "medicine" ||
     key === "lab" ||
+    key === "labs" ||
     key === "radiology" ||
     key === "stepdown" ||
     key === "vaccination"
@@ -62,6 +63,9 @@ export function rxDetectInstruction(detect) {
   if (mode === "radiology") {
     return "This upload is for radiology. Return imaging studies only, such as MRI, CT, ultrasound, X-ray, mammography and Doppler. Do not return medicines. Do not return laboratory tests. Set medicines to an empty array.";
   }
+  if (mode === "labs") {
+    return "This upload is for the labs section. Return laboratory tests and radiology studies. Do not return medicines. Set medicines to an empty array.";
+  }
   if (mode === "stepdown") {
     return "This upload is for step-down care. Return every medicine and every laboratory or radiology test written on the prescription.";
   }
@@ -81,6 +85,9 @@ function emptyWarning(mode) {
   if (mode === "radiology") {
     return "No radiology tests could be read from this prescription. Try a closer, well-lit photo.";
   }
+  if (mode === "labs") {
+    return "No laboratory or radiology tests could be read from this prescription. Try a closer, well-lit photo.";
+  }
   return "";
 }
 
@@ -99,7 +106,9 @@ export function applyRxDetect(result, detect) {
   const tests =
     mode === "medicine"
       ? []
-      : (result.tests || []).filter((test) => testServiceKind(test.name) === mode);
+      : mode === "labs"
+        ? result.tests || []
+        : (result.tests || []).filter((test) => testServiceKind(test.name) === mode);
   const found = medicines.length > 0 || tests.length > 0;
   let warning = String(result.warning || "");
   if (!found) {

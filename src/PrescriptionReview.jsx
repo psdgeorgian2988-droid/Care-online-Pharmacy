@@ -189,7 +189,7 @@ export default function PrescriptionReview() {
   const focused = parsed ? applyRxDetect(parsed, detectMode) : null;
   const medicines = focused?.medicines || [];
   const tests = focused?.tests || [];
-  const testsOnly = detectMode === "lab" || detectMode === "radiology";
+  const testsOnly = detectMode === "lab" || detectMode === "radiology" || detectMode === "labs";
   const medicinesOnly = detectMode === "medicine";
   const testHeading =
     detectMode === "radiology" ? "Radiology tests" : detectMode === "lab" ? "Lab tests" : "Tests";
@@ -210,7 +210,10 @@ export default function PrescriptionReview() {
           })
         );
       })
-      .filter((offer) => detectMode !== "lab" && detectMode !== "radiology" || offer.kind === detectMode),
+      .filter(
+        (offer) =>
+          detectMode !== "lab" && detectMode !== "radiology" || offer.kind === detectMode
+      ),
     [tests, detectMode]
   );
 
@@ -690,7 +693,13 @@ export default function PrescriptionReview() {
               <p className="rx-all-hint">Confirm all medicine names with the tick above before ordering.</p>
             ) : testsOnly && availableTests ? (
               <p className="rx-all-hint">
-                {`${availableTests} ${detectMode === "radiology" ? "radiology" : "laboratory"} test${
+                {`${availableTests} ${
+                  detectMode === "radiology"
+                    ? "radiology"
+                    : detectMode === "labs"
+                      ? "lab or radiology"
+                      : "laboratory"
+                } test${
                   availableTests === 1 ? "" : "s"
                 } can be booked from this prescription.`}
               </p>
