@@ -217,12 +217,37 @@ else
   fi
 fi
 echo "$upload_json"
-import_id="$(printf '%s' "$upload_json" | json_get importId || true)"
-if [[ -z "$import_id" ]]; then
+source_meta="$(printf '%s' "$upload_json" | python3 -c '
+import json, sys
+raw = sys.stdin.read()
+start = raw.find("{")
+if start < 0:
+    sys.exit(0)
+try:
+    root = json.loads(raw[start:])
+except Exception:
+    sys.exit(0)
+d = root
+if isinstance(root, dict) and isinstance(root.get("data"), dict):
+    d = {**root, **root["data"]}
+import_id = d.get("importId") or ""
+status = str(d.get("status") or "")
+actions = json.dumps(root.get("next_actions") or [])
+ready = "deployment publish" in actions and not d.get("error")
+print(f"{import_id}\t{status}\t{int(bool(ready))}")
+' || true)"
+import_id="${source_meta%%$'\t'*}"
+rest="${source_meta#*$'\t'}"
+source_status="${rest%%$'\t'*}"
+source_ready="${rest#*$'\t'}"
+if [[ "$source_status" == "COMPLETED" || "$source_status" == "ACTIVE" || "$source_ready" == "1" ]]; then
+  echo "Source import is ready (${source_status:-publish next})."
+elif [[ -n "$import_id" ]]; then
+  wait_status "import" "gddy hosting source status --app-id $app_id --import-id $import_id --json" >/dev/null
+else
   echo "No import id from source update." >&2
   exit 1
 fi
-wait_status "import" "gddy hosting source status --app-id $app_id --import-id $import_id --json" >/dev/null
 
 echo "Attaching a Web Hosting plan if one is free…"
 if ! gddy hosting subscription get --app-id "$app_id" --json; then
