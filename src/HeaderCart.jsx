@@ -109,10 +109,14 @@ export default function HeaderCart({ className = "" }) {
 
   const close = () => setOpen(false);
 
-  const checkout = () => {
+  const checkout = (focusId = "") => {
     if (!medicines.length && !tests.length) return;
     close();
     goToHash("#checkout");
+    if (!focusId) return;
+    window.setTimeout(() => {
+      document.getElementById(focusId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
   };
 
   const drawer =
@@ -268,13 +272,22 @@ export default function HeaderCart({ className = "" }) {
                     : ""}
                 </p>
                 <div className="shop-cart-actions">
+                  {tests.length ? (
+                    <button
+                      type="button"
+                      className="cart-btn cart-btn-secondary"
+                      onClick={() => checkout("checkout-book")}
+                    >
+                      Book test
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="cart-btn cart-btn-primary"
                     disabled={!medicines.length && !tests.length}
-                    onClick={checkout}
+                    onClick={() => checkout(tests.length ? "checkout-pay" : "")}
                   >
-                    Checkout
+                    {tests.length ? "Payment" : "Checkout"}
                   </button>
                 </div>
               </footer>

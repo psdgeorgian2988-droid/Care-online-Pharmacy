@@ -736,7 +736,7 @@ export default function CartCheckout() {
             pinHint="Select the Village / Sector / Mohalla attached to this PIN."
           >
             {tests.length ? (
-              <div className="cart-checkout-slot">
+              <div className="cart-checkout-slot" id="checkout-book">
                 <DateMonthYearFields
                   idPrefix="cart-date"
                   name="date"
@@ -804,30 +804,32 @@ export default function CartCheckout() {
               </div>
             ) : null}
 
-            <PaymentBlock
-              kind={kind}
-              amount={billTotal}
-              saleAmount={billSale}
-              tests={tests.length ? tests : undefined}
-              pin={delivery.pinCode}
-              method={payMethod}
-              onMethodChange={setPayMethod}
-              onQuoteChange={setPayQuote}
-              onReadyChange={setPayReady}
-              cashLabel={
-                medicines.length && !tests.length
-                  ? "Cash On Delivery"
-                  : "Cash On Visit / Collection"
-              }
-              guestDetails={{
-                name: fullName,
-                mobile: mobileNumber,
-                gender: whoFor.gender,
-                dob: whoFor.dob,
-                age: whoFor.age,
-                ...delivery,
-              }}
-            />
+            <div id="checkout-pay">
+              <PaymentBlock
+                kind={kind}
+                amount={billTotal}
+                saleAmount={billSale}
+                tests={tests.length ? tests : undefined}
+                pin={delivery.pinCode}
+                method={payMethod}
+                onMethodChange={setPayMethod}
+                onQuoteChange={setPayQuote}
+                onReadyChange={setPayReady}
+                cashLabel={
+                  medicines.length && !tests.length
+                    ? "Cash On Delivery"
+                    : "Cash On Visit / Collection"
+                }
+                guestDetails={{
+                  name: fullName,
+                  mobile: mobileNumber,
+                  gender: whoFor.gender,
+                  dob: whoFor.dob,
+                  age: whoFor.age,
+                  ...delivery,
+                }}
+              />
+            </div>
 
             <div className="cart-actions">
               <button
