@@ -58,7 +58,7 @@ function money(value) {
   return `₹${Number(value || 0)}`;
 }
 
-export default function HeaderCart({ className = "" }) {
+export default function HeaderCart({ className = "", disabled = false }) {
   const [open, setOpen] = useState(false);
   const [medicines, setMedicines] = useState(() => readMedicineCart());
   const [tests, setTests] = useState(() => readTestCart());
@@ -71,6 +71,7 @@ export default function HeaderCart({ className = "" }) {
       setCount(shopCartCount());
     };
     const onOpen = () => {
+      if (disabled) return;
       sync();
       setOpen(true);
     };
@@ -84,7 +85,11 @@ export default function HeaderCart({ className = "" }) {
       window.removeEventListener(TEST_CART_EVENT, sync);
       window.removeEventListener("storage", sync);
     };
-  }, []);
+  }, [disabled]);
+
+  useEffect(() => {
+    if (disabled) setOpen(false);
+  }, [disabled]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -303,7 +308,13 @@ export default function HeaderCart({ className = "" }) {
         type="button"
         className="shop-cart-btn"
         aria-label={count ? `Open cart, ${count} items` : "Open cart"}
-        onClick={() => (open ? close() : openShopCart())}
+        disabled={disabled}
+        aria-disabled={disabled || undefined}
+        onClick={() => {
+          if (disabled) return;
+          if (open) close();
+          else openShopCart();
+        }}
       >
         <span className="shop-cart-icon">
           <CartIcon />

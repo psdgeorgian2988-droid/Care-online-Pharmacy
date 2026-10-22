@@ -38,7 +38,7 @@ import {
   useLoginSession,
 } from "./authSession";
 import { useFeatures } from "./featureFlags";
-import { featureEnabled, pausedServiceTitle, routeEnabled } from "./salesReport";
+import { featureEnabled, pausedServiceMessage, pausedServiceTitle, routeEnabled } from "./salesReport";
 import {
   goToHash,
   homeCatalogSectionKeys,
@@ -299,7 +299,11 @@ function PausedService({ route, features }) {
   const name = pausedServiceTitle(route, features);
   return (
     <div className="service-page">
-      <ComingSoon name={name} />
+      <ComingSoon
+        name={name}
+        lead={pausedServiceMessage(name)}
+        thanks="It will be here as soon as it is ready."
+      />
     </div>
   );
 }

@@ -77,7 +77,7 @@ export default function MedicalRecords({ initialTab = "lab" }) {
           <div>
             <span className="service-kicker">MediHome Medical Records</span>
             <h1>Medical Records</h1>
-            <p>This section is paused right now.</p>
+            <p>We are working hard to open Medical Records for you. Thank you for your patience.</p>
           </div>
         </section>
       </div>

@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFeatures } from "./featureFlags";
-import { featureEnabled } from "./salesReport";
+import { featureEnabled, pausedServiceMessage } from "./salesReport";
 import { HOME_SERVICE_TREE } from "./homeServiceTree";
 import ServiceCartoon from "./ServiceCartoon";
 import ServiceIcon from "./serviceIcons";
@@ -19,6 +19,7 @@ const RX_DETECT = {
 export default function HomeServiceCatalog({ className = "", sectionKeys } = {}) {
   const features = useFeatures();
   const user = useLoginSession();
+  const [pausedKey, setPausedKey] = useState("");
   const showReports = hasAccountSession(user);
   const sections = useMemo(() => {
     const allowed =
@@ -47,13 +48,19 @@ export default function HomeServiceCatalog({ className = "", sectionKeys } = {})
 
   const openSection = (event, section) => {
     event.preventDefault();
-    if (!section.on) return;
+    if (!section.on) {
+      setPausedKey(section.key);
+      return;
+    }
     goToHash(`#home?service=${section.key}`);
   };
 
   const openChild = (event, section, item) => {
     event.preventDefault();
-    if (!section.on) return;
+    if (!section.on) {
+      setPausedKey(section.key);
+      return;
+    }
     if (item.id === "med-search") {
       try {
         sessionStorage.setItem("mediHomeMedicineCategory", "Search");
@@ -92,18 +99,33 @@ export default function HomeServiceCatalog({ className = "", sectionKeys } = {})
         <div
           key={section.key}
           id={section.key === "reports" ? "home-records" : undefined}
-          className={`app-home-section${section.on ? "" : " is-off"}`}
+          className={`app-home-section${section.on ? "" : " is-off"}${
+            !section.on && (sectionPage || pausedKey === section.key) ? " is-paused-note" : ""
+          }`}
+          onClick={
+            section.on
+              ? undefined
+              : () => {
+                  setPausedKey(section.key);
+                }
+          }
           style={{ "--section-index": sectionIndex }}
           tabIndex={section.key === "reports" ? -1 : undefined}
         >
+          {!section.on && (sectionPage || pausedKey === section.key) ? (
+            <p className="app-home-paused" role="status">
+              {pausedServiceMessage(section.label)}
+            </p>
+          ) : null}
           {sectionPage && RX_DETECT[section.key] ? (
             <HomePrescriptionUpload
               idPrefix={`catalog-${section.key}`}
               detect={RX_DETECT[section.key]}
+              disabled={!section.on}
             />
           ) : null}
           <h2 className="app-home-heading">
-            {section.on && !sectionPage ? (
+            {!sectionPage ? (
               <a
                 href={`#home?service=${section.key}`}
                 onClick={(event) => openSection(event, section)}

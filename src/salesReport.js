@@ -57,6 +57,11 @@ export function routeEnabled(route, features) {
   return keys.some((key) => featureEnabled(features, key));
 }
 
+export function pausedServiceMessage(name = "this service") {
+  const label = String(name || "this service").trim() || "this service";
+  return `We are working hard to open ${label} for you. Thank you for your patience.`;
+}
+
 export function pausedServiceTitle(route, features) {
   const keys = ROUTE_FEATURES[route];
   if (!keys) return "This Service";

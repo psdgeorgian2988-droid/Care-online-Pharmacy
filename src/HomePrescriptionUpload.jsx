@@ -15,6 +15,7 @@ export default function HomePrescriptionUpload({
   showCart = true,
   idPrefix = "home",
   detect = "",
+  disabled = false,
 } = {}) {
   const fileRef = useRef(null);
   const cameraRef = useRef(null);
@@ -33,6 +34,7 @@ export default function HomePrescriptionUpload({
   }, []);
 
   const onFile = async (event) => {
+    if (disabled) return;
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
@@ -51,7 +53,7 @@ export default function HomePrescriptionUpload({
   };
 
   return (
-    <div className="home-rx-cart-row">
+    <div className={`home-rx-cart-row${disabled ? " is-disabled" : ""}`}>
       <section
         className="home-rx-upload"
         aria-label={draft?.fileName ? "Uploaded prescription" : "Upload prescription"}
@@ -62,6 +64,7 @@ export default function HomePrescriptionUpload({
           type="file"
           accept="image/*"
           capture="environment"
+          disabled={disabled}
           onChange={onFile}
         />
         <input
@@ -69,6 +72,7 @@ export default function HomePrescriptionUpload({
           id={`${idPrefix}RxFile`}
           type="file"
           accept="image/*,application/pdf,.pdf,.png,.jpg,.jpeg,.webp"
+          disabled={disabled}
           onChange={onFile}
         />
         {draft?.fileName ? (
@@ -76,8 +80,10 @@ export default function HomePrescriptionUpload({
             <a
               className="home-rx-tab is-on"
               href="#prescription"
+              aria-disabled={disabled || undefined}
               onClick={(event) => {
                 event.preventDefault();
+                if (disabled) return;
                 const mode = normalizeRxDetect(detect);
                 const current = readPrescriptionDraft();
                 if (current && mode && current.detect !== mode) {
@@ -92,8 +98,11 @@ export default function HomePrescriptionUpload({
             <button
               type="button"
               className="home-rx-tab"
-              disabled={busy}
-              onClick={() => fileRef.current?.click()}
+              disabled={busy || disabled}
+              onClick={() => {
+                if (disabled) return;
+                fileRef.current?.click();
+              }}
             >
               {busy ? "Uploading…" : "Replace"}
             </button>
@@ -102,7 +111,9 @@ export default function HomePrescriptionUpload({
               className="home-rx-remove"
               aria-label="Remove uploaded prescription"
               title="Remove prescription"
+              disabled={disabled}
               onClick={() => {
+                if (disabled) return;
                 clearPrescriptionParse();
                 clearPrescriptionDraft();
               }}
@@ -114,15 +125,18 @@ export default function HomePrescriptionUpload({
           <button
             type="button"
             className="home-rx-tab is-on"
-            disabled={busy}
-            onClick={() => fileRef.current?.click()}
+            disabled={busy || disabled}
+            onClick={() => {
+              if (disabled) return;
+              fileRef.current?.click();
+            }}
           >
             {busy ? "Uploading…" : "Upload Rx"}
           </button>
         )}
         {status ? <small className="home-rx-error">{status}</small> : null}
       </section>
-      {showCart ? <HeaderCart className="home-rx-cart" /> : null}
+      {showCart ? <HeaderCart className="home-rx-cart" disabled={disabled} /> : null}
     </div>
   );
 }
