@@ -63,7 +63,7 @@ test("partner pipeline advances confirm → technician → sample → report →
       trackStatus: "sample_collected",
       paymentStatus: "cod",
     }),
-    "upload_report"
+    "under_process"
   );
   assert.equal(
     nextDiagnosticAction({
@@ -72,7 +72,7 @@ test("partner pipeline advances confirm → technician → sample → report →
       trackStatus: "sample_collected",
       paymentStatus: "paid",
     }),
-    "upload_report"
+    "under_process"
   );
   assert.equal(
     nextDiagnosticAction({
@@ -115,9 +115,9 @@ test("field helpers set the right track status", () => {
   assert.equal(assignTechnicianFields({ name: "Neha", mobile: "9654222902" }).trackStatus, "assigned");
   assert.equal(sampleCollectedFields().trackStatus, "sample_collected");
   const uploaded = reportReadyFields({ fileName: "a.pdf", fileData: "data:application/pdf;base64,aaa" });
-  assert.equal(uploaded.trackStatus, "done");
-  assert.equal(uploaded.trackCompleted, true);
-  assert.equal(uploaded.status, "Completed");
+  assert.equal(uploaded.trackStatus, "report_uploaded");
+  assert.equal(uploaded.trackCompleted, false);
+  assert.equal(uploaded.status, "Report Uploaded");
   assert.equal(uploaded.reportFileName, "a.pdf");
   assert.equal(uploaded.reportFileData, "data:application/pdf;base64,aaa");
   const named = reportReadyFields({

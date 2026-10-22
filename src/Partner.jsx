@@ -103,9 +103,12 @@ import {
   diagnosticTestName,
   mergeOrderReportIntoStore,
   namedReportFileName,
+  markReportReadyFields,
   nextDiagnosticAction,
+  partnerJobClosed,
   reportReadyFields,
   sampleCollectedFields,
+  underProcessFields,
 } from "./labPipeline";
 import {
   medicalRecordFileCard,
@@ -345,11 +348,19 @@ export default function Partner({ deskKind = "" }) {
         } catch {
           /* local customer copy is best-effort; the job already saved */
         }
-        setLabTab("done");
+        setLabTab("uploaded");
         setLabReportError("");
         if (labReportFileRef.current) labReportFileRef.current.value = "";
+      } else if (fields?.trackStatus === "done") {
+        setLabTab("done");
       } else if (fields?.trackStatus === "sample_collected") {
         setLabTab("sample");
+        setOpenJobId(id);
+      } else if (fields?.trackStatus === "processing") {
+        setLabTab("process");
+        setOpenJobId(id);
+      } else if (fields?.trackStatus === "report_ready") {
+        setLabTab("ready");
         setOpenJobId(id);
       }
       await loadJobs();
@@ -718,7 +729,11 @@ export default function Partner({ deskKind = "" }) {
                 paid={paid}
                 paidElsewhere={paidElsewhere}
                 promptUpload={false}
-                hideDiagPanel={isLabStore && labTab === "upload"}
+                hideDiagPanel={
+                  (isLabStore && labTab === "upload") ||
+                  (isDiagnosticStore && labTab === "done") ||
+                  partnerJobClosed(job)
+                }
                 needsCollect={needsCollect}
                 method={method}
                 preview={preview}
@@ -1094,11 +1109,11 @@ function JobDetail({
   onReturnReceive,
   onOpenRecord,
 }) {
+  const closed = partnerJobClosed(job);
   const diagPanel =
     !hideDiagPanel &&
+    !closed &&
     isDiagnosticKind(kind) &&
-    String(job.trackStatus || "") !== "done" &&
-    String(job.trackStatus || "") !== "declined" &&
     (promptUpload || job.partnerConfirmed || labJobCanReceiveReport(job)) ? (
       <DiagnosticJobPanel
         job={job}
@@ -1140,7 +1155,7 @@ function JobDetail({
       ) : kind !== "medicine" && paid ? (
         <PaidOnDesk job={job} paidElsewhere={paidElsewhere} />
       ) : null}
-      {needsSlotConfirm(kind) &&
+      {closed ? null : needsSlotConfirm(kind) &&
       (String(job.trackStatus || "").toLowerCase() === "requested" ||
         job.partnerConfirmStatus === "pending" ||
         job.partnerConfirmStatus === "slot_rejected" ||
@@ -1153,12 +1168,12 @@ function JobDetail({
           onOfferSlot={onOfferSlot}
           onDecline={onDecline}
         />
-      ) : String(job.trackStatus || "").toLowerCase() === "requested" ||
+      ) : closed ? null : String(job.trackStatus || "").toLowerCase() === "requested" ||
         job.partnerConfirmStatus === "pending" ||
         (kind === "medicine" &&
           job.partnerConfirmStatus !== "accepted" &&
-          String(job.trackStatus || "") !== "declined" &&
-          String(job.trackStatus || "") !== "done") ? (
+          String(job.trackStatus || "").toLowerCase() !== "declined" &&
+          String(job.trackStatus || "").toLowerCase() !== "done") ? (
         <div className="partner-decide">
           <button
             type="button"
@@ -1522,10 +1537,12 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false }) {
   const [reportFile, setReportFile] = useState(null);
   const [localError, setLocalError] = useState("");
   const reportFileRef = useRef(null);
+  if (partnerJobClosed(job)) return null;
   const canUpload = labJobCanReceiveReport(job);
   const showUpload =
-    diagnosticKindOf(job) !== "lab" &&
-    (promptUpload || action === "upload_report" || canUpload);
+    action === "upload_report" ||
+    promptUpload ||
+    (diagnosticKindOf(job) !== "lab" && canUpload);
 
   const readFile = (file) =>
     new Promise((resolve, reject) => {
@@ -1666,6 +1683,28 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false }) {
         </button>
       ) : null}
 
+      {action === "under_process" ? (
+        <button
+          type="button"
+          className="partner-accept"
+          disabled={busy}
+          onClick={() => onAdvance(underProcessFields())}
+        >
+          Mark Under Process
+        </button>
+      ) : null}
+
+      {action === "mark_report_ready" ? (
+        <button
+          type="button"
+          className="partner-accept"
+          disabled={busy}
+          onClick={() => onAdvance(markReportReadyFields())}
+        >
+          Mark Report Ready
+        </button>
+      ) : null}
+
       {action === "complete" ? (
         <button
           type="button"
@@ -1673,7 +1712,7 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false }) {
           disabled={busy}
           onClick={() => onAdvance(diagnosticCompleteFields())}
         >
-          Mark Completed
+          Order Complete
         </button>
       ) : null}
       {uploadPanel}

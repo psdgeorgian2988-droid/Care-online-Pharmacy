@@ -1,4 +1,4 @@
-import { labJobCanReceiveReport } from "./labPipeline.js";
+import { labJobCanReceiveReport, orderHasReport } from "./labPipeline.js";
 import { customerPaidAtCheckout } from "./paymentMethods.js";
 import { isDeliveryPartner } from "./partnerRetention.js";
 import { PHARMACY_DESK_TABS, pharmacyDeskTab, pharmacyTrackKey } from "./pharmacyTrack.js";
@@ -18,15 +18,20 @@ export const PARTNER_DESK_TABS = {
     { id: "approved", label: "Approved", keys: ["confirmed"] },
     { id: "assigned", label: "Assigned", keys: ["assigned"] },
     { id: "sample", label: "Sample collected", keys: ["sample_collected"] },
-    { id: "upload", label: "Upload report", keys: ["sample_collected", "report_ready"] },
+    { id: "process", label: "Under process", keys: ["processing"] },
+    { id: "ready", label: "Report ready", keys: ["report_ready"] },
+    { id: "uploaded", label: "Report uploaded", keys: ["report_uploaded"] },
     { id: "done", label: "Order complete", keys: ["done"] },
   ],
   radiology: [
     { id: "new", label: "New orders", keys: ["requested", "slot_offered", "declined"] },
     { id: "approved", label: "Approved", keys: ["confirmed"] },
     { id: "assigned", label: "Assigned", keys: ["assigned"] },
-    { id: "reports", label: "Report ready", keys: ["report_ready"] },
-    { id: "done", label: "Completed", keys: ["done"] },
+    { id: "sample", label: "Sample collected", keys: ["sample_collected"] },
+    { id: "process", label: "Under process", keys: ["processing"] },
+    { id: "ready", label: "Report ready", keys: ["report_ready"] },
+    { id: "uploaded", label: "Report uploaded", keys: ["report_uploaded"] },
+    { id: "done", label: "Order complete", keys: ["done"] },
   ],
   homecare: GENERIC_VISIT_TABS,
   vaccination: GENERIC_VISIT_TABS,
@@ -60,7 +65,20 @@ export function partnerJobTrackKey(order, kind = "") {
   if (appKind === "medicine" || appKind === "cart") return pharmacyTrackKey(order);
   const status = String(order?.trackStatus || "").toLowerCase();
   if (status === "declined") return "declined";
-  if (order?.trackCompleted || status === "done") return "done";
+  if (appKind === "lab" || appKind === "radiology") {
+    if (status === "done" && orderHasReport(order)) return "done";
+    if (orderHasReport(order)) return "report_uploaded";
+    if (status === "report_uploaded") return "report_ready";
+    if (status === "report_ready") return "report_ready";
+    if (status === "processing") return "processing";
+    if (status === "sample_collected") return "sample_collected";
+    if (status === "done" || order?.trackCompleted) {
+      if (order?.reportReadyAt) return "report_ready";
+      if (order?.processingAt) return "processing";
+      if (order?.sampleCollectedAt) return "sample_collected";
+      return "confirmed";
+    }
+  } else if (order?.trackCompleted || status === "done") return "done";
   if (status === "report_ready") return "report_ready";
   if (status === "sample_collected") return "sample_collected";
   if (status === "slot_offered") return "slot_offered";
@@ -84,18 +102,6 @@ export function partnerDeskTab(order, kind = "") {
   if (appKind === "medicine" || appKind === "cart") return pharmacyDeskTab(order);
   const key = partnerJobTrackKey(order, appKind);
   const tabs = partnerDeskTabsFor(appKind);
-  // Prefer Upload report when several lab tabs share sample_collected / report_ready
-  // so leftover report-ready jobs stay reachable after that tab was removed.
-  if (appKind === "lab" && (key === "sample_collected" || key === "report_ready")) {
-    if (
-      key === "report_ready" &&
-      !labJobCanReceiveReport({ ...order, kind: order?.kind || order?.orderType || appKind })
-    ) {
-      return "done";
-    }
-    const upload = tabs.find((tab) => tab.id === "upload" && tab.keys.includes(key));
-    if (upload) return upload.id;
-  }
   return tabs.find((tab) => tab.keys.includes(key))?.id || "new";
 }
 
@@ -118,10 +124,8 @@ export function jobsForPartnerDeskTab(jobs, tabId, kind) {
   const wanted = String(tabId || "new");
   const list = Array.isArray(jobs) ? jobs : [];
   const appKind = String(kind || "").toLowerCase();
-  if (appKind === "lab" && wanted === "upload") {
-    return list.filter((row) =>
-      labJobCanReceiveReport({ ...row, kind: row?.kind || row?.orderType || "lab" })
-    );
+  if (appKind === "lab" && wanted === "ready") {
+    return list.filter((row) => partnerJobTrackKey(row, "lab") === "report_ready");
   }
   if (appKind === "lab" && wanted === "sample") {
     return list.filter((row) => partnerJobTrackKey(row, "lab") === "sample_collected");

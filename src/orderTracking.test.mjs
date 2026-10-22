@@ -55,6 +55,14 @@ test("isOngoingTrackOrder matches isOpenOrder: in progress only", () => {
   );
   assert.equal(
     isOngoingTrackOrder({ kind: "lab", ...diagnosticCompleteFields() }),
+    true
+  );
+  assert.equal(
+    isOngoingTrackOrder({
+      kind: "lab",
+      ...diagnosticCompleteFields(),
+      reportFileName: "CBC.pdf",
+    }),
     false
   );
   assert.equal(
@@ -69,7 +77,7 @@ test("isOngoingTrackOrder matches isOpenOrder: in progress only", () => {
 test("ongoingTrackOrders drops completed, declined, and cancelled rows", () => {
   const rows = [
     liveMedicine,
-    { id: "done", kind: "lab", ...diagnosticCompleteFields() },
+    { id: "done", kind: "lab", ...diagnosticCompleteFields(), reportFileName: "CBC.pdf" },
     { id: "declined", kind: "lab", trackStatus: "declined" },
     { id: "cancelled", kind: "stepdown", trackStatus: "cancelled" },
     {

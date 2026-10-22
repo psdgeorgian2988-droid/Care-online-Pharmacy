@@ -30,6 +30,7 @@ import AutofillTrap from "./AutofillTrap";
 import { PROFILE_KEY, useLoginSession, writeLoginSession } from "./authSession";
 import CustomerLogOut from "./CustomerLogOut.jsx";
 import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
+import ProfileReports from "./ProfileReports.jsx";
 import { MEMBER_ROLE, holderActor } from "./familyAccount";
 import { pickLoginPin } from "./loginPin";
 
@@ -196,6 +197,7 @@ function Profile() {
             <p>Upload or replace a prescription for this family member.</p>
             <HomePrescriptionUpload showCart={false} />
           </section>
+          <ProfileReports />
           <div className="profile-actions">
             <CustomerLogOut className="profile-logout-btn" />
           </div>
@@ -253,6 +255,8 @@ function Profile() {
           <p>Upload or replace a prescription for your account.</p>
           <HomePrescriptionUpload showCart={false} />
         </section>
+
+        <ProfileReports />
 
         <section className="profile-card" aria-label="Family tree">
           <FamilyTree profile={form} />

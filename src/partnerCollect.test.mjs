@@ -72,7 +72,8 @@ test("gateway payment can complete without a receipt photo", () => {
   });
   assert.equal(result.ok, true);
   assert.equal(result.patch.paymentId, "MH-PAY-gateway");
-  assert.equal(result.patch.status, "Completed");
+  assert.equal(result.patch.paymentStatus, "paid");
+  assert.equal(result.patch.status, undefined);
 });
 
 test("partner collection marks the order paid and completed", () => {
@@ -83,10 +84,9 @@ test("partner collection marks the order paid and completed", () => {
   );
   assert.equal(result.ok, true);
   assert.equal(result.patch.paymentStatus, "paid");
-  assert.equal(result.patch.status, "Completed");
-  assert.equal(result.patch.trackStatus, "done");
-  assert.equal(result.patch.trackCompleted, true);
-  assert.equal(result.patch.completedAt, 1_700_000_000_000);
+  assert.equal(result.patch.status, undefined);
+  assert.equal(result.patch.trackStatus, undefined);
+  assert.equal(result.patch.trackCompleted, undefined);
   assert.equal(result.patch.split.staffSet, true);
 });
 
@@ -103,7 +103,7 @@ test("split collection stores both parts and completes the order", () => {
   assert.equal(result.ok, true);
   assert.equal(result.patch.paymentMethod, "split");
   assert.equal(result.patch.paymentParts.length, 2);
-  assert.equal(result.patch.status, "Completed");
+  assert.equal(result.patch.status, undefined);
   assert.equal(collectionMethodFromParts(result.patch.paymentParts), "split");
   assert.equal(paymentPartsLabel(result.patch.paymentParts), "Cash / COD ₹1,000 + UPI ₹840");
 });
@@ -122,7 +122,19 @@ test("payable falls back to line items when total is missing", () => {
   );
   assert.equal(result.ok, true);
   assert.equal(result.patch.split.payableRupees, 350);
+  assert.equal(result.patch.status, undefined);
+});
+
+test("medicine collection still completes the order", () => {
+  const result = partnerCollectPatch(
+    { ...job, kind: "medicine" },
+    { paymentMethod: "upi", receipt },
+    1_700_000_000_000
+  );
+  assert.equal(result.ok, true);
   assert.equal(result.patch.status, "Completed");
+  assert.equal(result.patch.trackStatus, "done");
+  assert.equal(result.patch.trackCompleted, true);
 });
 
 test("order payment summary shows split parts without staff percent", () => {

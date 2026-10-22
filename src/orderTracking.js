@@ -12,7 +12,7 @@ import {
   isAwaitingCustomerSlotConfirm,
   isAwaitingPartnerConfirm,
 } from "./orderConfirm.js";
-import { diagnosticStepLabel, isDiagnosticKind } from "./labPipeline.js";
+import { diagnosticStepLabel, isDiagnosticKind, orderHasReport } from "./labPipeline.js";
 import { isStepdownDischarged, isStepdownOrder } from "./stepdownDesk.js";
 import { isOngoingTrackOrder } from "./orderStatus.js";
 import { customerMobilesFromOrders } from "./orderSync.js";
@@ -45,7 +45,9 @@ export const TRACK_STEPS = [
   { key: "confirmed", label: "Confirmed" },
   { key: "assigned", label: "Partner Assigned" },
   { key: "sample_collected", label: "Sample Collected" },
+  { key: "processing", label: "Under Process" },
   { key: "report_ready", label: "Report Ready" },
+  { key: "report_uploaded", label: "Report Uploaded" },
   { key: "packed", label: "Packed" },
   { key: "on_the_way", label: "On The Way" },
   { key: "arriving", label: "Arriving" },
@@ -99,6 +101,9 @@ export function trackHref(id, from = "") {
 export function isOrderCompleted(order) {
   if (!order) return false;
   if (isStepdownOrder(order)) return isStepdownDischarged(order);
+  if (isDiagnosticKind(order.kind || order.orderType || order.serviceType)) {
+    return String(order.trackStatus || "").toLowerCase() === "done" && orderHasReport(order);
+  }
   if (order.trackCompleted || order.checkDeliverAt || order.qrReceivedAt) return true;
   const status = String(order.trackStatus || order.status || "").toLowerCase();
   return (
@@ -463,7 +468,9 @@ export function withTracking(record, kind = recordKind(record)) {
   const startedAt = Number(record.trackStartedAt) || 0;
   const completed = isStepdownOrder(record)
     ? isStepdownDischarged(record)
-    : Boolean(record.trackCompleted) || checks.deliver;
+    : isDiagnosticKind(kind)
+      ? String(record.trackStatus || "").toLowerCase() === "done" && orderHasReport(record)
+      : Boolean(record.trackCompleted) || checks.deliver;
   const progress = completed
     ? 1
     : checks.pickup && startedAt
@@ -517,7 +524,7 @@ export function tickTracking(record, now = Date.now()) {
     return record;
   }
   const checks = checkpointState(record);
-  if (!isStepdownOrder(record) && (record.trackCompleted || checks.deliver)) {
+  if (!isStepdownOrder(record) && !isDiagnosticKind(kind) && (record.trackCompleted || checks.deliver)) {
     return {
       ...record,
       partnerLat: record.destLat,

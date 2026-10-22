@@ -32,25 +32,30 @@ test("radiology jobs land on New orders until the centre accepts", () => {
     partnerDeskTab({ trackStatus: "confirmed", partnerConfirmed: true }, "radiology"),
     "approved"
   );
-  assert.equal(partnerDeskTab({ trackStatus: "report_ready" }, "radiology"), "reports");
+  assert.equal(partnerDeskTab({ trackStatus: "report_ready" }, "radiology"), "ready");
   assert.deepEqual(
     partnerDeskTabsFor("radiology").map((tab) => tab.id),
-    ["new", "approved", "assigned", "reports", "done"]
+    ["new", "approved", "assigned", "sample", "process", "ready", "uploaded", "done"]
   );
 });
 
-test("lab jobs split into new, approved, sample, upload report, and order complete", () => {
+test("lab jobs split into sample, process, report ready, uploaded, and order complete", () => {
   assert.equal(partnerDeskTab({ trackStatus: "requested", partnerConfirmStatus: "pending" }, "lab"), "new");
   assert.equal(partnerDeskTab({ trackStatus: "confirmed", partnerConfirmed: true }, "lab"), "approved");
   assert.equal(partnerDeskTab({ trackStatus: "assigned", partnerConfirmed: true }, "lab"), "assigned");
-  assert.equal(partnerDeskTab({ trackStatus: "sample_collected" }, "lab"), "upload");
-  assert.equal(partnerDeskTab({ trackStatus: "sample_collected", paymentStatus: "paid" }, "lab"), "upload");
-  assert.equal(partnerDeskTab({ kind: "lab", trackStatus: "report_ready" }, "lab"), "upload");
+  assert.equal(partnerDeskTab({ trackStatus: "sample_collected" }, "lab"), "sample");
+  assert.equal(partnerDeskTab({ trackStatus: "sample_collected", paymentStatus: "paid" }, "lab"), "sample");
+  assert.equal(partnerDeskTab({ kind: "lab", trackStatus: "processing" }, "lab"), "process");
+  assert.equal(partnerDeskTab({ kind: "lab", trackStatus: "report_ready" }, "lab"), "ready");
   assert.equal(
     partnerDeskTab({ kind: "lab", trackStatus: "report_ready", trackCompleted: true }, "lab"),
+    "ready"
+  );
+  assert.equal(
+    partnerDeskTab({ trackStatus: "done", trackCompleted: true, reportFileName: "CBC.pdf" }, "lab"),
     "done"
   );
-  assert.equal(partnerDeskTab({ trackStatus: "done", trackCompleted: true }, "lab"), "done");
+  assert.equal(partnerDeskTab({ trackStatus: "done", trackCompleted: true }, "lab"), "approved");
   assert.deepEqual(
     jobsForPartnerDeskTab(
       [
@@ -59,30 +64,17 @@ test("lab jobs split into new, approved, sample, upload report, and order comple
         { id: "s1", kind: "lab", trackStatus: "sample_collected" },
         { id: "r1", kind: "lab", trackStatus: "report_ready" },
       ],
-      "upload",
+      "ready",
       "lab"
     ).map((row) => row.id),
-    ["n1", "a1", "s1", "r1"]
-  );
-  assert.deepEqual(
-    jobsForPartnerDeskTab(
-      [
-        { id: "n1", kind: "lab", trackStatus: "requested" },
-        { id: "s1", kind: "lab", trackStatus: "sample_collected" },
-        { id: "r1", kind: "lab", trackStatus: "report_ready" },
-        { id: "d1", kind: "lab", trackStatus: "done", trackCompleted: true },
-      ],
-      "upload",
-      "lab"
-    ).map((row) => row.id),
-    ["n1", "s1", "r1"]
+    ["r1"]
   );
   assert.deepEqual(
     jobsForPartnerDeskTab(
       [
         { id: "s1", kind: "lab", trackStatus: "sample_collected" },
         { id: "r1", kind: "lab", trackStatus: "report_ready" },
-        { id: "d1", kind: "lab", trackStatus: "done", trackCompleted: true },
+        { id: "d1", kind: "lab", trackStatus: "done", trackCompleted: true, reportFileName: "CBC.pdf" },
       ],
       "done",
       "lab"
@@ -103,13 +95,10 @@ test("lab jobs split into new, approved, sample, upload report, and order comple
   );
   assert.deepEqual(
     partnerDeskTabsFor("lab").map((tab) => tab.id),
-    ["new", "approved", "assigned", "sample", "upload", "done"]
+    ["new", "approved", "assigned", "sample", "process", "ready", "uploaded", "done"]
   );
-  assert.equal(
-    partnerDeskTabsFor("lab").some((tab) => tab.id === "reports" || tab.label === "Report ready"),
-    false
-  );
-  assert.equal(partnerDeskTabsFor("lab").find((tab) => tab.id === "upload")?.label, "Upload report");
+  assert.equal(partnerDeskTabsFor("lab").find((tab) => tab.id === "ready")?.label, "Report ready");
+  assert.equal(partnerDeskTabsFor("lab").find((tab) => tab.id === "uploaded")?.label, "Report uploaded");
   assert.equal(partnerDeskTabsFor("lab").find((tab) => tab.id === "done")?.label, "Order complete");
 });
 

@@ -15,6 +15,7 @@ import { isOnlinePayment } from "../src/paymentMethods.js";
 import { publicSplit } from "../src/payeeBank.js";
 import { partnerCollectPatch } from "../src/partnerCollect.js";
 import { settleStepdownCompletion } from "../src/stepdownDesk.js";
+import { settleDiagnosticCompletion } from "../src/labPipeline.js";
 import {
   customerAcceptSlotFields,
   customerDeclineOfferedSlotFields,
@@ -788,8 +789,12 @@ export async function handleApi(req, res) {
                   ? String(body.status || "Partner Assigned")
                   : body.trackStatus === "sample_collected"
                     ? String(body.status || "Sample Collected")
+                    : body.trackStatus === "processing"
+                      ? String(body.status || "Under Process")
                     : body.trackStatus === "report_ready"
                       ? String(body.status || "Report Ready")
+                      : body.trackStatus === "report_uploaded"
+                        ? String(body.status || "Report Uploaded")
                       : body.trackStatus === "slot_offered"
                         ? String(body.status || "Awaiting Customer Slot Confirmation")
                       : String(body.status || existing.status || "Updated");
@@ -817,6 +822,12 @@ export async function handleApi(req, res) {
       if (body.sampleCollectedAt) {
         patch.sampleCollectedAt = Number(body.sampleCollectedAt) || Date.now();
       }
+      if (body.processingAt) {
+        patch.processingAt = Number(body.processingAt) || Date.now();
+      }
+      if (body.reportReadyAt) {
+        patch.reportReadyAt = Number(body.reportReadyAt) || Date.now();
+      }
       if (body.reportUploadedAt) {
         patch.reportUploadedAt = Number(body.reportUploadedAt) || Date.now();
       }
@@ -831,9 +842,18 @@ export async function handleApi(req, res) {
         patch.reportFileData = data.slice(0, 2_800_000);
       }
       if (body.reportFileName || body.reportFileData) {
-        patch.trackStatus = String(body.trackStatus || patch.trackStatus || "done");
-        patch.trackCompleted = true;
-        patch.status = String(body.status || patch.status || "Completed");
+        const uploadedStatus = String(body.trackStatus || patch.trackStatus || "").toLowerCase();
+        const staysOpen = uploadedStatus === "report_uploaded" || uploadedStatus === "report_ready";
+        patch.trackStatus = staysOpen
+          ? uploadedStatus
+          : String(body.trackStatus || patch.trackStatus || "done");
+        patch.trackCompleted = staysOpen ? false : true;
+        patch.status = staysOpen
+          ? String(
+              body.status ||
+                (uploadedStatus === "report_uploaded" ? "Report Uploaded" : "Report Ready")
+            )
+          : String(body.status || patch.status || "Completed");
         if (!existing.partnerId) {
           patch.partnerId = partner.id;
           patch.partnerName = partner.name;
@@ -1061,7 +1081,7 @@ export async function handleApi(req, res) {
       }
       const updated = await patchOrder(
         orderId(existing),
-        settleStepdownCompletion(existing, patch)
+        settleDiagnosticCompletion(existing, settleStepdownCompletion(existing, patch))
       );
       if (
         updated &&
@@ -1420,7 +1440,10 @@ export async function handleApi(req, res) {
         delete leftover.platformPercent;
         if (Object.keys(leftover).length) {
           current =
-            (await patchOrder(orderKey, settleStepdownCompletion(current, leftover))) ||
+            (await patchOrder(
+              orderKey,
+              settleDiagnosticCompletion(current, settleStepdownCompletion(current, leftover))
+            )) ||
             current;
         }
         send(res, 200, { order: current });
@@ -1434,7 +1457,7 @@ export async function handleApi(req, res) {
       );
       const updated = await patchOrder(
         orderKey,
-        settleStepdownCompletion(existingAdmin, body)
+        settleDiagnosticCompletion(existingAdmin, settleStepdownCompletion(existingAdmin, body))
       );
       if (!updated) {
         send(res, 404, { error: "Order not found." });

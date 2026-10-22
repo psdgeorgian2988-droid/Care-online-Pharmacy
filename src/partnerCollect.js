@@ -4,6 +4,7 @@ import {
   paymentMethodLabel,
   PAYMENT_METHOD_OPTIONS,
 } from "./paymentMethods.js";
+import { isDiagnosticKind } from "./labPipeline.js";
 import { resolveCollector, splitPayment } from "./paymentSplit.js";
 import { stepdownBalanceDue, stepdownBillTotal } from "./stepdownBill.js";
 
@@ -204,7 +205,7 @@ export function partnerCollectPatch(existing = {}, body = {}, now = Date.now()) 
       razorpayPaymentId: String(body.razorpayPaymentId || ""),
       paymentStatus: "paid",
       paid: true,
-      ...(String(kind).toLowerCase() === "stepdown"
+      ...(String(kind).toLowerCase() === "stepdown" || isDiagnosticKind(kind)
         ? {}
         : {
             status: "Completed",

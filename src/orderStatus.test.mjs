@@ -153,7 +153,11 @@ test("isOpenOrder is the ongoing-vs-stop rule for live tracking", () => {
   assert.equal(isOpenOrder(orders[2]), true);
   assert.equal(isOpenOrder({ kind: "lab", trackStatus: "report_ready", partnerConfirmed: true, partnerConfirmStatus: "accepted" }), true);
   assert.equal(isOpenOrder({ kind: "medicine", trackStatus: "done", trackCompleted: true }), false);
-  assert.equal(isOpenOrder({ kind: "lab", trackStatus: "done", trackCompleted: true }), false);
+  assert.equal(isOpenOrder({ kind: "lab", trackStatus: "done", trackCompleted: true }), true);
+  assert.equal(
+    isOpenOrder({ kind: "lab", trackStatus: "done", trackCompleted: true, reportFileName: "CBC.pdf" }),
+    false
+  );
   assert.equal(isOpenOrder({ kind: "lab", trackStatus: "declined" }), false);
   assert.equal(isOpenOrder({ kind: "stepdown", trackStatus: "cancelled" }), false);
   assert.equal(

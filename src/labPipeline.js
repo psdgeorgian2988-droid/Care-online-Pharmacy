@@ -20,8 +20,10 @@ export const DIAGNOSTIC_TRACK_STEPS = [
   { key: "confirmed", label: "Partner Accepted" },
   { key: "assigned", label: "Partner Assigned" },
   { key: "sample_collected", label: "Sample Collected" },
+  { key: "processing", label: "Under Process" },
   { key: "report_ready", label: "Report Ready" },
-  { key: "done", label: "Completed" },
+  { key: "report_uploaded", label: "Report Uploaded" },
+  { key: "done", label: "Order Complete" },
   { key: "declined", label: "Declined" },
 ];
 
@@ -52,6 +54,25 @@ export function sampleCollectedFields(now = Date.now()) {
     trackStatus: "sample_collected",
     status: "Sample Collected",
     sampleCollectedAt: now,
+    trackCompleted: false,
+  };
+}
+
+export function underProcessFields(now = Date.now()) {
+  return {
+    trackStatus: "processing",
+    status: "Under Process",
+    processingAt: now,
+    trackCompleted: false,
+  };
+}
+
+export function markReportReadyFields(now = Date.now()) {
+  return {
+    trackStatus: "report_ready",
+    status: "Report Ready",
+    reportReadyAt: now,
+    trackCompleted: false,
   };
 }
 
@@ -189,7 +210,9 @@ export function guardOrderCompletion(existing = {}, patch = {}) {
 export function reportReadyFields(report = {}, now = Date.now()) {
   const testName = String(report.testName || "").trim();
   return {
-    ...diagnosticCompleteFields(now),
+    trackStatus: "report_uploaded",
+    status: "Report Uploaded",
+    trackCompleted: false,
     reportUploadedAt: now,
     reportFileName: namedReportFileName({ testName }, report),
     reportFileType: String(report.fileType || "").trim(),
@@ -197,6 +220,50 @@ export function reportReadyFields(report = {}, now = Date.now()) {
     reportTestName: testName,
     reportNotes: String(report.notes || "").trim(),
   };
+}
+
+/**
+ * A lab or radiology order becomes complete only after a report file is
+ * already stored and the partner marks it complete. Uploading the file
+ * stops at Report Uploaded.
+ */
+export function settleDiagnosticCompletion(existing = {}, patch = {}) {
+  if (!isDiagnosticKind(diagnosticKindOf({ ...existing, ...patch }))) return patch;
+  const status = String(patch.trackStatus || "").toLowerCase();
+  if (status === "declined" || status === "cancelled") return patch;
+  const uploadingNow =
+    Boolean(String(patch.reportFileName || "").trim() || String(patch.reportFileData || "").trim()) &&
+    !orderHasReport(existing);
+  if (uploadingNow) {
+    const next = {
+      ...patch,
+      trackStatus: "report_uploaded",
+      status: "Report Uploaded",
+      trackCompleted: false,
+    };
+    delete next.completedAt;
+    return next;
+  }
+  const wantsDone =
+    status === "done" ||
+    patch.trackCompleted === true ||
+    String(patch.status || "").toLowerCase() === "completed";
+  if (wantsDone && status === "done" && orderHasReport(existing)) {
+    return {
+      ...patch,
+      trackStatus: "done",
+      trackCompleted: true,
+      status: "Completed",
+      completedAt: patch.completedAt || Date.now(),
+    };
+  }
+  if (!wantsDone) return patch;
+  const next = { ...patch };
+  if (String(next.trackStatus || "").toLowerCase() === "done") delete next.trackStatus;
+  if (next.trackCompleted) delete next.trackCompleted;
+  if (String(next.status || "").toLowerCase() === "completed") delete next.status;
+  if (next.completedAt) delete next.completedAt;
+  return next;
 }
 
 export function orderCanReceiveReport(order) {
@@ -236,12 +303,26 @@ export function diagnosticCompleteFields(now = Date.now()) {
   };
 }
 
+export function partnerJobClosed(order) {
+  const track = String(order?.trackStatus || "").toLowerCase();
+  const label = String(order?.status || "").toLowerCase();
+  return (
+    track === "done" ||
+    track === "declined" ||
+    track === "cancelled" ||
+    label === "completed" ||
+    label === "order complete" ||
+    label === "delivered"
+  );
+}
+
 export function nextDiagnosticAction(order) {
   const kind = diagnosticKindOf(order);
   if (!isDiagnosticKind(kind)) return "";
   const confirm = String(order?.partnerConfirmStatus || "").toLowerCase();
   const slot = String(order?.slotConfirmStatus || "").toLowerCase();
   if (confirm === "slot_offered" || slot === "offered") return "await_customer_slot";
+  if (partnerJobClosed(order)) return "";
   if (confirm === "pending" || confirm === "slot_rejected" || !order?.partnerConfirmed) {
     return "confirm";
   }
@@ -249,9 +330,11 @@ export function nextDiagnosticAction(order) {
   if (status === "confirmed" || (status === "assigned" && !String(order?.technicianName || "").trim())) {
     return "assign_technician";
   }
+  if (orderHasReport(order)) return "complete";
   if (status === "assigned") return "sample_collect";
-  if (status === "sample_collected") return "upload_report";
-  if (status === "report_ready") return orderHasReport(order) ? "complete" : "upload_report";
+  if (status === "sample_collected") return "under_process";
+  if (status === "processing") return "mark_report_ready";
+  if (status === "report_ready" || status === "report_uploaded") return "upload_report";
   return "";
 }
 

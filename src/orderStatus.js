@@ -1,7 +1,7 @@
 import { isAwaitingPartnerConfirm } from "./orderConfirm.js";
 import { isStepdownCancelled } from "./stepdownCancel.js";
 import { isStepdownDischarged, isStepdownOrder, stepdownStageLabel } from "./stepdownDesk.js";
-import { diagnosticStepLabel, isDiagnosticKind } from "./labPipeline.js";
+import { diagnosticStepLabel, isDiagnosticKind, orderHasReport } from "./labPipeline.js";
 import {
   isPharmacyOrder,
   nextPharmacyStep,
@@ -77,7 +77,9 @@ export const TRACK_STATUS_STEPS = [
   { key: "confirmed", label: "Confirmed" },
   { key: "assigned", label: "Partner Assigned" },
   { key: "sample_collected", label: "Sample Collected" },
+  { key: "processing", label: "Under Process" },
   { key: "report_ready", label: "Report Ready" },
+  { key: "report_uploaded", label: "Report Uploaded" },
   { key: "packed", label: "Packed" },
   { key: "picked_up", label: "Picked up" },
   { key: "on_the_way", label: "On The Way" },
@@ -138,6 +140,35 @@ export function trackKey(order) {
     return TRACK_STATUS_STEPS.some((step) => step.key === stayKey) ? stayKey : "confirmed";
   }
   if (isPharmacyOrder(order)) return pharmacyTrackKey(order);
+  if (isDiagnosticKind(serviceKind(order))) {
+    const diagnosticStatus = String(order?.trackStatus || "").toLowerCase();
+    if (diagnosticStatus === "declined") return "declined";
+    if (diagnosticStatus === "done" && orderHasReport(order)) return "done";
+    if (orderHasReport(order)) return "report_uploaded";
+    if (diagnosticStatus === "report_uploaded") return "report_ready";
+    if (
+      isAwaitingPartnerConfirm(order) &&
+      (diagnosticStatus === "confirmed" || diagnosticStatus === "requested" || !diagnosticStatus)
+    ) {
+      return "requested";
+    }
+    if (
+      diagnosticStatus === "processing" ||
+      diagnosticStatus === "report_ready" ||
+      diagnosticStatus === "sample_collected" ||
+      diagnosticStatus === "assigned" ||
+      diagnosticStatus === "confirmed" ||
+      diagnosticStatus === "slot_offered" ||
+      diagnosticStatus === "requested"
+    ) {
+      return diagnosticStatus;
+    }
+    if (order?.reportReadyAt) return "report_ready";
+    if (order?.processingAt) return "processing";
+    if (order?.sampleCollectedAt) return "sample_collected";
+    if (isAwaitingPartnerConfirm(order)) return "requested";
+    return "confirmed";
+  }
   if (order?.trackCompleted && String(order?.trackStatus || "") !== "declined") {
     return "done";
   }

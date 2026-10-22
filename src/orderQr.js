@@ -1,6 +1,6 @@
 import { SITE } from "./siteMeta.js";
 import { isAwaitingPartnerConfirm } from "./orderConfirm.js";
-import { isDiagnosticKind } from "./labPipeline.js";
+import { isDiagnosticKind, orderHasReport } from "./labPipeline.js";
 import { isStepdownDischarged, isStepdownOrder } from "./stepdownDesk.js";
 
 export const CHECKPOINT_STEPS = [
@@ -425,7 +425,7 @@ export function qrScanPatch(order, now = Date.now()) {
       },
     };
   }
-  const medicineHandover = kind !== "stepdown";
+  const medicineHandover = kind !== "stepdown" && !isDiagnosticKind(kind);
   return {
     action: "deliver",
     patch: {
@@ -542,6 +542,17 @@ export function gatedTrackStatus(order, progressKey = "") {
   if (isStepdownOrder(order)) {
     if (isStepdownDischarged(order)) return "done";
     if (current === "done") return "confirmed";
+  } else if (
+    isDiagnosticKind(order?.kind || order?.orderType || order?.serviceType)
+  ) {
+    if (current === "done" && orderHasReport(order)) return "done";
+    if (orderHasReport(order) && current !== "done") return "report_uploaded";
+    if (current === "done") {
+      if (order?.reportReadyAt) return "report_ready";
+      if (order?.processingAt) return "processing";
+      if (order?.sampleCollectedAt) return "sample_collected";
+      return "confirmed";
+    }
   } else if (checks.deliver || order?.trackCompleted) return "done";
   if (
     current === "slot_offered" ||
@@ -568,7 +579,9 @@ export function gatedTrackStatus(order, progressKey = "") {
       current === "requested" ||
       current === "slot_offered" ||
       current === "sample_collected" ||
+      current === "processing" ||
       current === "report_ready" ||
+      current === "report_uploaded" ||
       current === "assigned" ||
       current === "confirmed" ||
       current === "declined" ||
