@@ -7,6 +7,7 @@ import {
   partnerAppTitle,
   partnerDeskHash,
   partnerDeskKindFromRoute,
+  partnerServesDesk,
 } from "./partnerApp.js";
 
 test("a partner login is one app even if extra kinds are stored", () => {
@@ -32,6 +33,26 @@ test("pharmacy desks never list lab or other partner-app jobs", () => {
   assert.deepEqual(
     jobs.map((row) => row.id),
     ["m1", "c1"]
+  );
+});
+
+test("the registration password opens the lab desk when lab is approved", () => {
+  const partner = { kinds: ["medicine", "lab"], role: "Sample collection executive" };
+  assert.equal(partnerAppKind(partner), "medicine");
+  assert.equal(partnerServesDesk(partner, "lab"), true);
+  assert.equal(partnerServesDesk({ kinds: ["lab"] }, "lab"), true);
+  assert.equal(partnerServesDesk({ kinds: ["medicine"] }, "lab"), false);
+  const jobs = jobsForPartnerApp(
+    [
+      { id: "m1", kind: "medicine" },
+      { id: "l1", kind: "lab" },
+    ],
+    partner,
+    "lab"
+  );
+  assert.deepEqual(
+    jobs.map((row) => row.id),
+    ["l1"]
   );
 });
 

@@ -153,10 +153,6 @@ function Feedback() {
           <div>
             <span className="service-kicker">Customer feedback</span>
             <h1>Tell Us How MediHome Did</h1>
-            <p>
-              Rate medicines, diagnostics, Home Care, vaccination, psychologist, or ambulance.
-              Published reviews appear on the Reviews page.
-            </p>
           </div>
         </section>
 

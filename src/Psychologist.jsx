@@ -492,10 +492,6 @@ function Psychologist() {
           <div>
             <span className="service-kicker">MediHome Psychologist</span>
             <h1>Psychologist Consultation At Home Or On Video</h1>
-            <p>
-              Confidential sessions with a MediHome psychologist. Video from
-              anywhere in Delhi NCR, or a home visit at your PIN.
-            </p>
           </div>
         </section>
 

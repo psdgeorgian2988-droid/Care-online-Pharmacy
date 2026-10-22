@@ -508,7 +508,6 @@ function Reports({ initialTab = "" } = {}) {
             <div>
               <span className="service-kicker">MediHome Medical Record</span>
               <h1>Medical Record is in your account</h1>
-              <p>Log in to see lab reports, imaging reports, prescriptions, and vaccination records for your family.</p>
               <a
                 className="service-submit"
                 href="#login"
@@ -531,13 +530,6 @@ function Reports({ initialTab = "" } = {}) {
           <div>
             <span className="service-kicker">MediHome Medical Record</span>
             <h1>{kindPage ? sectionLabel : "Medical Record"}</h1>
-            <p>
-              {!kindPage
-                ? "Choose lab reports, imaging reports, prescriptions, or vaccination records."
-                : openPatientId
-                  ? `Open a ${sectionLabel.toLowerCase()} file to view it here. Save and Print are on the opened report.`
-                  : `One record per patient. Tap a name to open that patient’s ${sectionLabel.toLowerCase()} files.`}
-            </p>
           </div>
         </section>
 

@@ -406,7 +406,7 @@ export async function handleApi(req, res) {
       const body = await readJson(req);
       const result = await partnerLogin(body.loginId || body.user, body.password);
       if (!result) {
-        send(res, 401, { error: "Wrong login ID or password. Ask MediHome staff to create your first login." });
+        send(res, 401, { error: "Wrong mobile number or password." });
         return true;
       }
       send(res, 200, result);

@@ -482,11 +482,6 @@ export default function DoctorAppointment() {
           <div>
             <span className="service-kicker">MediHome Doctors</span>
             <h1>Doctor Appointment</h1>
-            <p>
-              {showOtherSpecialty
-                ? "Choose a specialty from the list, then pick video consultation, home visit, or clinic."
-                : "Pick video consultation, home visit, or clinic for this doctor."}
-            </p>
           </div>
         </section>
         <form className="service-form" onSubmit={handleSubmit}>

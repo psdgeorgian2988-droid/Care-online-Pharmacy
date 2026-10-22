@@ -91,11 +91,6 @@ export default function MedicalRecords({ initialTab = "lab" }) {
         <div>
           <span className="service-kicker">MediHome Medical Records</span>
           <h1>Medical Records</h1>
-          <p>
-            This is where lab test reports, imaging centre reports, prescriptions,
-            and vaccination records are saved on this device — nothing is uploaded
-            to a server.
-          </p>
         </div>
       </section>
 

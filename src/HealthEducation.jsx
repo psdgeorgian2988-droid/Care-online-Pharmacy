@@ -733,10 +733,6 @@ function HealthEducation() {
         <div>
           <span className="service-kicker">MediHome Health Education</span>
           <h1>Guides, Live Webinars, And Quick Quizzes</h1>
-          <p>
-            Short, Plain-Language notes for Patients. This is
-            education, not a personal prescription — Follow your Clinician.
-          </p>
         </div>
       </section>
 

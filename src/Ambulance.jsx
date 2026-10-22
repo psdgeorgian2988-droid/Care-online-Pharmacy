@@ -503,7 +503,6 @@ function Ambulance() {
           <div>
             <span className="service-kicker">MediHome Ambulance</span>
             <h1>Request An Ambulance</h1>
-            <p>Emergency or Planned Transfer in Delhi NCR.</p>
           </div>
         </section>
 

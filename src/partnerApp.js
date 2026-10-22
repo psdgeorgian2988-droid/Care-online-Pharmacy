@@ -36,6 +36,22 @@ export function partnerAppKind(partner) {
   return PARTNER_APP_KINDS.includes(first) ? first : "medicine";
 }
 
+/** The password from registration signs in on every desk this partner is approved for. */
+export function partnerServesKind(partner, kind) {
+  const wanted = String(kind || "").toLowerCase().trim();
+  if (!wanted) return false;
+  if (wanted === "medicine" && isDeliveryPartner(partner)) return true;
+  const kinds = Array.isArray(partner?.kinds)
+    ? partner.kinds.map((row) => String(row || "").toLowerCase().trim())
+    : [];
+  if (kinds.includes(wanted)) return true;
+  return partnerAppKind(partner) === wanted;
+}
+
+export function partnerServesDesk(partner, deskKind) {
+  return partnerServesKind(partner, deskKind);
+}
+
 export function partnerDeskHash(kind, partner) {
   if (isDeliveryPartner(partner)) return "#delivery-desk";
   return DESK_BY_KIND[String(kind || "").toLowerCase()] || "#partner-desk";
@@ -84,8 +100,11 @@ export function jobKindForPartnerApp(job) {
   return raw || "medicine";
 }
 
-export function jobsForPartnerApp(jobs, partner) {
-  const kind = partnerAppKind(partner);
+export function jobsForPartnerApp(jobs, partner, deskKind = "") {
+  const kind =
+    deskKind && partnerServesKind(partner, deskKind)
+      ? String(deskKind).toLowerCase()
+      : partnerAppKind(partner);
   return (Array.isArray(jobs) ? jobs : []).filter(
     (row) => jobKindForPartnerApp(row) === kind
   );

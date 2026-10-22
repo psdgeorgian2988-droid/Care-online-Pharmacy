@@ -5,6 +5,7 @@ import {
   normalizePartnerLoginId,
   partnerCreateCredentials,
   partnerLoginIdFromMobile,
+  partnerMatchesLoginId,
   partnerPasswordError,
   publicPartner,
   verifyPartnerPassword,
@@ -31,6 +32,31 @@ test("partner password hashes verify and never leak on the public record", () =>
   assert.equal(published.loginId, "ravi.rider");
   assert.equal("passwordHash" in published, false);
   assert.equal("pin" in published, false);
+});
+
+test("a lab partner signs in with the mobile and password saved at registration", () => {
+  const partner = {
+    id: "P-LAB-01",
+    name: "Sample Desk",
+    kinds: ["lab"],
+    mobile: "9654222988",
+    loginId: "9654222988",
+    passwordHash: hashPartnerPassword("482915"),
+  };
+  assert.equal(partnerMatchesLoginId(partner, "9654222988"), true);
+  assert.equal(partnerMatchesLoginId(partner, " 96542 22988 "), true);
+  assert.equal(verifyPartnerPassword("482915", partner.passwordHash), true);
+  assert.equal(
+    partnerMatchesLoginId({ ...partner, approved: false }, "9654222988"),
+    false
+  );
+  assert.equal(
+    partnerMatchesLoginId(
+      { ...partner, loginId: "", mobile: "9654222988" },
+      "9654222988"
+    ),
+    true
+  );
 });
 
 test("a partner with no login yet cannot be treated as signed in", () => {

@@ -194,7 +194,6 @@ function Profile() {
           </section>
           <section className="profile-card profile-prescription-card" aria-label="Prescription">
             <h2>Prescription</h2>
-            <p>Upload or replace a prescription for this family member.</p>
             <HomePrescriptionUpload showCart={false} />
           </section>
           <ProfileReports />
@@ -252,7 +251,6 @@ function Profile() {
 
         <section className="profile-card profile-prescription-card" aria-label="Prescription">
           <h2>Prescription</h2>
-          <p>Upload or replace a prescription for your account.</p>
           <HomePrescriptionUpload showCart={false} />
         </section>
 

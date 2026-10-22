@@ -204,7 +204,6 @@ export default function ProfileReports() {
     <section className="profile-card profile-reports" aria-label="Upload reports">
       <style>{reportStyles}</style>
       <h2>Reports</h2>
-      <p>Choose the report name, upload the file, and keep the newest copy of that report on top.</p>
       <form className="profile-report-form" onSubmit={saveReport}>
         {people.length > 1 ? (
           <label>

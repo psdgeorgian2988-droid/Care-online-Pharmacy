@@ -240,11 +240,14 @@ export async function findPartnerByMobile(mobile) {
 
 export async function partnerLogin(loginId, password) {
   const list = await readPartners();
-  const partner = findByLoginId(list, loginId);
   const code = String(password || "");
-  if (!partner?.loginId || !partner.passwordHash || !verifyPartnerPassword(code, partner.passwordHash)) {
-    return null;
-  }
+  const partner = list.find(
+    (row) =>
+      partnerMatchesLoginId(row, loginId) &&
+      row.passwordHash &&
+      verifyPartnerPassword(code, row.passwordHash)
+  );
+  if (!partner) return null;
   const token = randomBytes(24).toString("hex");
   tokens.set(token, partner.id);
   persistPartnerTokens();
@@ -381,7 +384,21 @@ export async function updatePartner(id, body = {}) {
 }
 
 export function partnerIdFromToken(token) {
-  return tokens.get(String(token || "")) || "";
+  const key = String(token || "");
+  if (!key) return "";
+  const cached = tokens.get(key);
+  if (cached) return cached;
+  hydratePartnerTokens();
+  return tokens.get(key) || "";
+}
+
+/** Login ID or the mobile saved at registration. */
+export function partnerMatchesLoginId(partner, loginId) {
+  if (!partner || partner.approved === false) return false;
+  const wanted = normalizePartnerLoginId(loginId);
+  if (wanted && normalizePartnerLoginId(partner.loginId) === wanted) return true;
+  const mobile = partnerLoginIdFromMobile(loginId);
+  return Boolean(mobile && partnerRegisteredMobile(partner) === mobile);
 }
 
 export function orderKind(row) {

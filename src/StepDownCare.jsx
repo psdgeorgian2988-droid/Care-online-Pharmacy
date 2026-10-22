@@ -935,9 +935,6 @@ function StepDownCare() {
           <div>
             <p className="lab-kicker">Step-down recovery</p>
             <h1>Find A Step-Down Care Centre</h1>
-            <p className="lab-lead">
-              Post-ICU, Post-Surgery and Rehab centres across Delhi NCR.
-            </p>
           </div>
           <div className="lab-tabs" role="tablist" aria-label="Step-down care">
             <button
@@ -969,7 +966,6 @@ function StepDownCare() {
             <section className="lab-card">
               <div className="lab-card-head">
                 <h2>Search Centres</h2>
-                <p>Filter by PIN, area or recovery type.</p>
               </div>
               <label className="lab-label" htmlFor="sd-search">
                 PIN, area or centre name
@@ -1039,7 +1035,6 @@ function StepDownCare() {
             <section className="lab-card">
               <div className="lab-card-head">
                 <h2>Book Recovery Care</h2>
-                <p>We will confirm the centre slot over a call.</p>
               </div>
               <div className="sd-form-grid">
                 <BookingFlow

@@ -599,7 +599,6 @@ export default function CartCheckout() {
       <header className="cart-checkout-head">
         <p className="shop-cart-kicker">Billing</p>
         <h1>Checkout</h1>
-        <p>Pay for medicines and tests together through one payment.</p>
       </header>
 
       {!empty && !isRegisteredMember ? (

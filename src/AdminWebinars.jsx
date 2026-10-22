@@ -47,11 +47,6 @@ export default function AdminWebinars({ webinars, onChange, onError }) {
   return (
     <section className="admin-panel" aria-label="Webinar Schedule">
       <h2>Schedule A Live Webinar</h2>
-      <p>
-        Customers Can Book A Seat Only After You Set A Date And Time. They Earn
-        MediHome Points Only If They Join Within 5 Minutes Of Start And Stay
-        Until The Session Ends.
-      </p>
       <form className="admin-webinar-form" onSubmit={handleSchedule}>
         <label>
           Topic

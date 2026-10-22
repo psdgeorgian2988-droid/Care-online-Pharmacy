@@ -259,7 +259,6 @@ function LabTests() {
     rxBoot?.serviceType === "radiology" ? [] : rxBoot?.tests || []
   );
   const [labTestQuery, setLabTestQuery] = useState("");
-  const [pickNote, setPickNote] = useState("");
   const [selectedRadiologyPartnerId, setSelectedRadiologyPartnerId] = useState(
     rxBoot?.serviceType === "radiology"
       ? rxBoot?.partnerId || ""
@@ -593,7 +592,6 @@ function LabTests() {
     });
     setPendingImagingIds(new Set());
     setImagingQuery("");
-    setPickNote("Added to cart. Search again to add more, then open the cart to book and pay.");
     window.requestAnimationFrame(() => {
       document.getElementById("imagingSearch")?.focus();
     });
@@ -673,7 +671,6 @@ function LabTests() {
     });
     setPendingLabIds(new Set());
     setLabTestQuery("");
-    setPickNote("Added to cart. Search again to add more, then open the cart to book and pay.");
     window.requestAnimationFrame(() => {
       document.getElementById("labTestSearch")?.focus();
     });
@@ -1158,11 +1155,6 @@ function LabTests() {
                   ? selectedRadiologyPartner.name
                   : "Book Imaging"}
             </h1>
-            <p className="lab-lead">
-              {isLab
-                ? "Home sample collection from your selected lab."
-                : "Book imaging at your selected MediHome centre."}
-            </p>
           </div>
           {hideCatalog ? null : !labLocked && !radiologyLocked ? (
             <div className="lab-tabs" role="tablist" aria-label="Service type">
@@ -1216,11 +1208,6 @@ function LabTests() {
           <section className="lab-card">
             <div className="lab-card-head">
               <h2>{isLab ? "Select Tests" : "Select Studies"}</h2>
-              <p>
-                {isLab
-                  ? "Search, tick the tests you need, and add them to the cart. Search again to add more. Open the cart when you are ready to book and pay."
-                  : "Tick the studies you need and add them to the cart. Search again to add more. Open the cart when you are ready to book and pay."}
-              </p>
             </div>
 
             {isLab ? (
@@ -1273,10 +1260,8 @@ function LabTests() {
                       }
                       onChange={(event) => {
                         setLabTestQuery(event.target.value);
-                        if (event.target.value) setPickNote("");
                       }}
                     />
-                    {pickNote && isLab ? <p className="lab-hint">{pickNote}</p> : null}
                     {errors.test ? <small className="lab-error">{errors.test}</small> : null}
 
                     <div
@@ -1289,9 +1274,7 @@ function LabTests() {
                       ) : !labTestQuery.trim() ? (
                         <p className="lab-empty">
                           Start typing to see test names
-                          {selectedLab.tests.length
-                            ? ` (${selectedLab.tests.length} available). Tick the tests you need, add them, then search again for more.`
-                            : ""}
+                          {selectedLab.tests.length ? ` (${selectedLab.tests.length} available).` : ""}
                         </p>
                       ) : labTestOptions.length === 0 ? (
                         <p className="lab-empty">No tests match “{labTestQuery.trim()}”.</p>
@@ -1354,11 +1337,6 @@ function LabTests() {
                   </p>
                 )}
 
-                {selectedTests.length > 0 && !inBook && !labTestQuery.trim() ? (
-                  <p className="lab-hint">
-                    {selectedTests.length} in the cart. Search again to add more, or open the cart to book and pay.
-                  </p>
-                ) : null}
               </>
             ) : (
               <>
@@ -1403,10 +1381,8 @@ function LabTests() {
                       }
                       onChange={(event) => {
                         setImagingQuery(event.target.value);
-                        if (event.target.value) setPickNote("");
                       }}
                     />
-                    {pickNote && !isLab ? <p className="lab-hint">{pickNote}</p> : null}
                     {catalogErrorTests ? (
                       <small className="lab-error">{catalogErrorTests}</small>
                     ) : null}
@@ -1416,9 +1392,7 @@ function LabTests() {
                       ) : !imagingQuery.trim() ? (
                         <p className="lab-empty">
                           Start typing to see study names
-                          {catalogPartner.tests.length
-                            ? ` (${catalogPartner.tests.length} available). Tick the studies you need, add them, then search again for more.`
-                            : ""}
+                          {catalogPartner.tests.length ? ` (${catalogPartner.tests.length} available).` : ""}
                         </p>
                       ) : imagingSearchResults.length === 0 ? (
                         <p className="lab-empty">No studies match “{imagingQuery.trim()}”.</p>
@@ -1485,11 +1459,6 @@ function LabTests() {
                   </p>
                 )}
 
-                {selectedImagingTests.length > 0 && !inBook && !imagingQuery.trim() ? (
-                  <p className="lab-hint">
-                    {selectedImagingTests.length} in the cart. Search again to add more, or open the cart to book and pay.
-                  </p>
-                ) : null}
               </>
             )}
 
@@ -1517,9 +1486,6 @@ function LabTests() {
           <section className="lab-card lab-book">
             <div className="lab-card-head">
               <h2>Patient And Slot</h2>
-              <p>
-                {isLab ? "Home collection or a visit to the lab." : "Centre appointment only."}
-              </p>
             </div>
             <div className="lab-fields">
             {catalogTests.length ? (
