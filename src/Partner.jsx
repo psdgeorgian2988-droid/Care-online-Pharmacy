@@ -4,7 +4,7 @@ import RecordViewer from "./RecordViewer";
 import QRCode from "qrcode";
 import { splitPayment } from "./paymentSplit";
 import { goToHash } from "./hashRoute";
-import { groupOrdersByKind } from "./orderStatus";
+import { groupOrdersByKind, trackKey } from "./orderStatus";
 import {
   jobsForPartnerApp,
   partnerAppKind,
@@ -95,6 +95,7 @@ import { isoDateToday } from "./personFields";
 import {
   assignTechnicianFields,
   diagnosticCompleteFields,
+  DIAGNOSTIC_TRACK_STEPS,
   diagnosticKindOf,
   isDiagnosticKind,
   isLabReportUploadFile,
@@ -1528,6 +1529,38 @@ function LabReportUploadPanel({
   );
 }
 
+const LAB_PROCESS_KEYS = [
+  "sample_collected",
+  "processing",
+  "report_ready",
+  "report_uploaded",
+  "done",
+];
+
+function LabOrderProcess({ job }) {
+  const current = trackKey(job);
+  const steps = DIAGNOSTIC_TRACK_STEPS.filter((step) => LAB_PROCESS_KEYS.includes(step.key));
+  const currentIndex = steps.findIndex((step) => step.key === current);
+  return (
+    <ol className="lab-order-process" aria-label="Order process">
+      {steps.map((step, index) => {
+        const state =
+          currentIndex >= 0 && index < currentIndex
+            ? " is-done"
+            : index === currentIndex
+              ? " is-current"
+              : "";
+        return (
+          <li key={step.key} className={`lab-order-process-step${state}`}>
+            <span>{state.includes("is-done") ? "✓" : index + 1}</span>
+            <p>{step.key === "done" ? "Order Complete" : step.label}</p>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false }) {
   const action = nextDiagnosticAction(job);
   const [techName, setTechName] = useState(job.technicianName || job.partnerName || "");
@@ -1618,8 +1651,15 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false }) {
       />
     ) : null;
 
+  const processStrip = diagnosticKindOf(job) === "lab" ? <LabOrderProcess job={job} /> : null;
+
   if (promptUpload || action === "upload_report") {
-    return uploadPanel;
+    return (
+      <>
+        {processStrip}
+        {uploadPanel}
+      </>
+    );
   }
 
   if (action === "await_customer_slot") {
@@ -1641,6 +1681,7 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false }) {
 
   return (
     <div className="partner-diag-panel">
+      {processStrip}
       {action === "assign_technician" ? (
         <>
           <p className="partner-collect-title">Assign partner</p>
@@ -1684,25 +1725,37 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false }) {
       ) : null}
 
       {action === "under_process" ? (
-        <button
-          type="button"
-          className="partner-accept"
-          disabled={busy}
-          onClick={() => onAdvance(underProcessFields())}
-        >
-          Mark Under Process
-        </button>
+        <>
+          <p className="partner-tech">
+            {diagnosticKindOf(job) === "lab"
+              ? "Submit the collected sample to the lab. The customer app and admin panel then show Under Process."
+              : "Move this order to Under Process for the customer and the admin panel."}
+          </p>
+          <button
+            type="button"
+            className="partner-accept"
+            disabled={busy}
+            onClick={() => onAdvance(underProcessFields())}
+          >
+            {diagnosticKindOf(job) === "lab" ? "Submit sample to lab" : "Mark Under Process"}
+          </button>
+        </>
       ) : null}
 
       {action === "mark_report_ready" ? (
-        <button
-          type="button"
-          className="partner-accept"
-          disabled={busy}
-          onClick={() => onAdvance(markReportReadyFields())}
-        >
-          Mark Report Ready
-        </button>
+        <>
+          <p className="partner-tech">
+            Mark the report ready. The customer app and admin panel show Report Ready, then upload the file.
+          </p>
+          <button
+            type="button"
+            className="partner-accept"
+            disabled={busy}
+            onClick={() => onAdvance(markReportReadyFields())}
+          >
+            Mark Report Ready
+          </button>
+        </>
       ) : null}
 
       {action === "complete" ? (
@@ -2061,6 +2114,16 @@ function roundRemaining(payable, parts) {
 }
 
 const styles = `
+.lab-order-process{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;list-style:none;margin:0 0 12px;padding:0}
+.lab-order-process-step{margin:0;padding:8px 4px;border:1px solid #d7e2e9;border-radius:8px;background:#f7fafc;text-align:center}
+.lab-order-process-step span{display:grid;place-items:center;width:22px;height:22px;margin:0 auto 4px;border-radius:50%;background:#d7e2e9;color:#143246;font-size:11px;font-weight:800}
+.lab-order-process-step p{margin:0;font-size:11px;font-weight:800;color:#34546b;line-height:1.25}
+.lab-order-process-step.is-done{border-color:#b7e4c7;background:#e8f8ee}
+.lab-order-process-step.is-done span{background:#1c9b61;color:#fff}
+.lab-order-process-step.is-current{border-color:#1a6b7a;background:#e8f4f6}
+.lab-order-process-step.is-current span{background:#1a6b7a;color:#fff}
+@media (max-width:700px){.lab-order-process{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 ${rxShareCardStyles}
 .partner-page{width:100%;max-width:none}
 .partner-job-detail td{background:#f7fbfd;border-bottom:8px solid #eef3f6}

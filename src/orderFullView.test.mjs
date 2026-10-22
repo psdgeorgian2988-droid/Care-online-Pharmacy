@@ -96,8 +96,35 @@ test("Lab Update is replaced by the order current status", () => {
       kind: "lab",
       status: "Imaging Update",
       trackStatus: "confirmed",
+      partnerConfirmed: true,
+      partnerConfirmStatus: "accepted",
     }),
     "Partner Accepted"
+  );
+  assert.equal(
+    orderTrackLabel({
+      kind: "lab",
+      status: "Sample Collected",
+      trackStatus: "processing",
+    }),
+    "Under Process"
+  );
+  assert.equal(
+    orderTrackLabel({
+      kind: "lab",
+      status: "Under Process",
+      trackStatus: "report_ready",
+    }),
+    "Report Ready"
+  );
+  assert.equal(
+    orderTrackLabel({
+      kind: "lab",
+      status: "Report Ready",
+      trackStatus: "report_uploaded",
+      reportFileName: "CBC.pdf",
+    }),
+    "Report Uploaded"
   );
 });
 
@@ -163,6 +190,7 @@ const completedLab = {
   id: "LAB-DONE-1",
   trackStatus: "done",
   trackCompleted: true,
+  reportFileName: "CBC.pdf",
   partnerId: "pathcare",
   partner: "Pathcare",
   partnerName: "Ravi Lab",

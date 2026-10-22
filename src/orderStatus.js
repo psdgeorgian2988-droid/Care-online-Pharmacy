@@ -336,6 +336,9 @@ export function orderCurrentStatus(order) {
   if (isPharmacyOrder(order) || kind === "medicine") {
     return pharmacyStatusLabel(pharmacyTrackKey(order));
   }
+  if (isDiagnosticKind(kind)) {
+    return diagnosticStepLabel(trackKey(order), kind);
+  }
   const raw = String(order?.status || order?.trackLabel || "")
     .replace(/technician assigned/i, "Partner Assigned")
     .trim();

@@ -21,6 +21,12 @@ import {
 } from "./orderTracking";
 import { isStepdownDischarged, isStepdownOrder } from "./stepdownDesk";
 import {
+  DIAGNOSTIC_TRACK_STEPS,
+  diagnosticStepLabel,
+  isDiagnosticKind,
+  orderHasReport,
+} from "./labPipeline";
+import {
   FEATURE_CATALOG,
   DEFAULT_FEATURES,
   analysisRange,
@@ -89,6 +95,21 @@ import {
   showStaffAssignPartner,
   staffAssignPartnerPatch,
 } from "./adminAssign";
+
+function statusChoices(kind, step) {
+  if (isDiagnosticKind(kind)) {
+    return DIAGNOSTIC_TRACK_STEPS.filter(
+      (row) => row.key !== "declined" || step === "declined"
+    ).map((row) => ({
+      key: row.key,
+      label: row.key === "done" ? "Order Complete" : row.label,
+    }));
+  }
+  return TRACK_STEPS.map((row) => ({
+    key: row.key,
+    label: row.key === "done" ? doneLabel(kind) : row.label,
+  }));
+}
 
 function orderMatchesAdminId(order, id) {
   const wanted = String(id || "").trim();
@@ -309,25 +330,44 @@ function Admin() {
 
   const handleStatus = async (order, trackStatus) => {
     const id = order.id || order.bookingId || order.requestId;
+    const kind = order.kind || order.orderType;
     const done = trackStatus === "done";
     if (done && isStepdownOrder(order) && !isStepdownDischarged(order)) {
       setError("Discharge the patient from the step-down centre before this order can be completed.");
       return;
     }
-    const status =
-      TRACK_STEPS.find((step) => step.key === trackStatus)?.label ||
-      order.status;
+    if (done && isDiagnosticKind(kind) && !orderHasReport(order)) {
+      setError("Upload the report before this order can be completed.");
+      return;
+    }
+    const now = Date.now();
+    const status = isDiagnosticKind(kind)
+      ? trackStatus === "done"
+        ? "Order Complete"
+        : diagnosticStepLabel(trackStatus, kind)
+      : TRACK_STEPS.find((step) => step.key === trackStatus)?.label || order.status;
+    const stamp =
+      trackStatus === "sample_collected"
+        ? { sampleCollectedAt: order.sampleCollectedAt || now }
+        : trackStatus === "processing"
+          ? { processingAt: order.processingAt || now }
+          : trackStatus === "report_ready"
+            ? { reportReadyAt: order.reportReadyAt || now }
+            : {};
     setError("");
     try {
+      const savedStatus = done && !isDiagnosticKind(kind) ? doneLabel(kind) : status;
       await patchStaffOrder(id, {
         trackStatus,
         trackCompleted: done,
-        status: done ? doneLabel(order.kind || order.orderType) : status,
+        status: savedStatus,
+        ...stamp,
       });
       persistOrder(order, {
         trackStatus,
         trackCompleted: done,
-        status: done ? doneLabel(order.kind || order.orderType) : status,
+        status: savedStatus,
+        ...stamp,
       });
       await loadDesk();
     } catch (err) {
@@ -698,9 +738,9 @@ function Admin() {
                           value={step}
                           onChange={(event) => handleStatus(order, event.target.value)}
                         >
-                          {TRACK_STEPS.map((row) => (
+                          {statusChoices(kind, step).map((row) => (
                             <option key={row.key} value={row.key}>
-                              {row.key === "done" ? doneLabel(kind) : row.label}
+                              {row.label}
                             </option>
                           ))}
                         </select>
@@ -769,9 +809,9 @@ function Admin() {
                           value={step}
                           onChange={(event) => handleStatus(order, event.target.value)}
                         >
-                          {TRACK_STEPS.map((row) => (
+                          {statusChoices(kind, step).map((row) => (
                             <option key={row.key} value={row.key}>
-                              {row.key === "done" ? doneLabel(kind) : row.label}
+                              {row.label}
                             </option>
                           ))}
                         </select>
