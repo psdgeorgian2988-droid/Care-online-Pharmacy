@@ -253,6 +253,8 @@ function LabTests() {
       : rxBoot?.partnerId || (boot.serviceType === "lab" ? boot.labId : "")
   );
   const [selectedTestId, setSelectedTestId] = useState(rxBoot?.tests?.[0]?.id || "");
+  const [pendingLabIds, setPendingLabIds] = useState(() => new Set());
+  const [pendingImagingIds, setPendingImagingIds] = useState(() => new Set());
   const [selectedTests, setSelectedTests] = useState(
     rxBoot?.serviceType === "radiology" ? [] : rxBoot?.tests || []
   );
@@ -334,15 +336,9 @@ function LabTests() {
     const q = imagingQuery.trim().toLowerCase();
     if (!q) return [];
     return all
-      .filter(
-        (test) =>
-          !selectedImagingTests.some((item) => item.id === test.id) &&
-          String(test.name || "")
-            .toLowerCase()
-            .includes(q)
-      )
+      .filter((test) => String(test.name || "").toLowerCase().includes(q))
       .slice(0, 40);
-  }, [selectedRadiologyPartner, imagingQuery, selectedImagingTests]);
+  }, [selectedRadiologyPartner, imagingQuery]);
   const activeTests = serviceType === "lab" ? selectedTests : selectedImagingTests;
   const activePartner = serviceType === "lab" ? selectedLab : selectedRadiologyPartner;
   const labTotal = selectedTests.reduce((sum, test) => sum + test.price, 0);
@@ -557,27 +553,46 @@ function LabTests() {
     goToHash(centreId ? labBookingHash(centreId, "radiology") : "#labs");
   };
 
-  const toggleImagingTest = (test) => {
+  const togglePendingImaging = (test) => {
     setServiceType("radiology");
     if (!selectedRadiologyPartnerId) {
       setErrors((prev) => ({ ...prev, radiologyPartner: "Please select an imaging partner." }));
       return;
     }
-    if (selectedImagingTests.some((item) => item.id === test.id)) {
-      removeTestFromCart(test.id, selectedRadiologyPartnerId);
-      setErrors((prev) => ({ ...prev, imaging: "" }));
-      return;
-    }
-    addTestToCart(test, {
-      kind: "radiology",
-      partnerId: selectedRadiologyPartnerId,
-      partnerName: selectedRadiologyPartner?.name || "",
+    if (selectedImagingTests.some((item) => item.id === test.id)) return;
+    setPendingImagingIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(test.id)) next.delete(test.id);
+      else next.add(test.id);
+      return next;
     });
     setSelectedImagingId(test.id);
     setErrors((prev) => ({ ...prev, imaging: "", radiologyPartner: "" }));
     if (test.prepType && test.prepType !== "none") {
       setPrepPopup({ test, kind: "imaging" });
     }
+  };
+
+  const addPendingImagingToCart = () => {
+    const chosen = (selectedRadiologyPartner?.tests || []).filter((test) =>
+      pendingImagingIds.has(test.id)
+    );
+    if (!chosen.length || !selectedRadiologyPartnerId) return;
+    chosen.forEach((test) => {
+      addTestToCart(
+        test,
+        {
+          kind: "radiology",
+          partnerId: selectedRadiologyPartnerId,
+          partnerName: selectedRadiologyPartner?.name || "",
+        },
+        undefined,
+        { open: false }
+      );
+    });
+    setPendingImagingIds(new Set());
+    setImagingQuery("");
+    goToHash("#checkout");
   };
 
   const clearImagingTests = () => {
@@ -604,35 +619,57 @@ function LabTests() {
     });
   };
 
-  const addLabTestFromDropdown = (testId) => {
-    if (!testId) return;
+  const togglePendingLab = (test) => {
+    if (!test?.id) return;
     setServiceType("lab");
     if (!selectedLabId) {
       setErrors((prev) => ({ ...prev, lab: "Please select a lab tab first." }));
       return;
     }
-    const index = selectedLab?.tests.findIndex((item) => item.id === testId) ?? -1;
-    const raw = index >= 0 ? selectedLab.tests[index] : null;
-    if (!raw) return;
-    const test = {
-      ...raw,
-      sr: raw.sr || index + 1,
-      code: raw.code || raw.id || "—",
-    };
-    if (selectedTests.some((item) => item.id === test.id)) {
-      setErrors((prev) => ({ ...prev, test: "" }));
-      return;
-    }
-    addTestToCart(test, {
-      kind: "lab",
-      partnerId: selectedLabId,
-      partnerName: selectedLab?.name || "",
+    if (selectedTests.some((item) => item.id === test.id)) return;
+    setPendingLabIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(test.id)) next.delete(test.id);
+      else next.add(test.id);
+      return next;
     });
     setSelectedTestId(test.id);
     setErrors((prev) => ({ ...prev, test: "", lab: "" }));
     if (test.prepType && test.prepType !== "none") {
       setPrepPopup({ test, kind: "lab" });
     }
+  };
+
+  const selectAllShownLabs = () => {
+    setPendingLabIds((prev) => {
+      const next = new Set(prev);
+      selectableLabTests.forEach((test) => next.add(test.id));
+      return next;
+    });
+  };
+
+  const addPendingLabsToCart = () => {
+    const chosen = (selectedLab?.tests || []).filter((test) => pendingLabIds.has(test.id));
+    if (!chosen.length || !selectedLabId) return;
+    chosen.forEach((raw, index) => {
+      addTestToCart(
+        {
+          ...raw,
+          sr: raw.sr || index + 1,
+          code: raw.code || raw.id || "—",
+        },
+        {
+          kind: "lab",
+          partnerId: selectedLabId,
+          partnerName: selectedLab?.name || "",
+        },
+        undefined,
+        { open: false }
+      );
+    });
+    setPendingLabIds(new Set());
+    setLabTestQuery("");
+    goToHash("#checkout");
   };
 
   const handleChange = (e) => {
@@ -1174,8 +1211,8 @@ function LabTests() {
               <h2>{isLab ? "Select Tests" : "Select Studies"}</h2>
               <p>
                 {isLab
-                  ? "Search and pick tests. They are added to the cart in the header."
-                  : "Add MRI, CT, ultrasound or X-ray studies for this centre."}
+                  ? "Search, tick every test you need, then add them to the cart and pay."
+                  : "Tick every study you need, then add them to the cart and pay."}
               </p>
             </div>
 
@@ -1242,39 +1279,62 @@ function LabTests() {
                         <p className="lab-empty">
                           Start typing to see test names
                           {selectedLab.tests.length
-                            ? ` (${selectedLab.tests.length} available)`
+                            ? ` (${selectedLab.tests.length} available). Tick every test you need, then add them to the cart together.`
                             : ""}
-                          .
                         </p>
-                      ) : selectableLabTests.length === 0 ? (
+                      ) : labTestOptions.length === 0 ? (
                         <p className="lab-empty">No tests match “{labTestQuery.trim()}”.</p>
                       ) : (
-                        selectableLabTests.map((test) => (
-                          <button
-                            key={test.id}
-                            type="button"
-                            role="option"
-                            className="lab-search-row"
-                            onClick={() => {
-                              addLabTestFromDropdown(test.id);
-                              setLabTestQuery("");
-                            }}
-                          >
-                            <span className="lab-search-name">{test.name}</span>
-                            <span className="lab-search-meta">
-                              {test.code !== "—" ? `${test.code} · ` : ""}₹{test.price}
-                            </span>
-                          </button>
-                        ))
+                        labTestOptions.map((test) => {
+                          const inCart = selectedTests.some((item) => item.id === test.id);
+                          const picked = pendingLabIds.has(test.id);
+                          return (
+                            <button
+                              key={test.id}
+                              type="button"
+                              role="option"
+                              aria-pressed={picked || inCart}
+                              className={`lab-search-row${picked || inCart ? " is-picked" : ""}`}
+                              onClick={() => togglePendingLab(test)}
+                            >
+                              <span className="lab-search-name">
+                                {picked || inCart ? "✓ " : ""}
+                                {test.name}
+                              </span>
+                              <span className="lab-search-meta">
+                                {inCart
+                                  ? "In cart"
+                                  : `${test.code !== "—" ? `${test.code} · ` : ""}₹${test.price}${picked ? " · Selected" : ""}`}
+                              </span>
+                            </button>
+                          );
+                        })
                       )}
                     </div>
                     {selectedLab &&
                     labTestQuery.trim() &&
-                    selectableLabTests.length > 0 &&
+                    labTestOptions.length > 0 &&
                     selectedLab.tests.length > labTestOptions.length ? (
                       <small className="lab-hint">
-                        Showing {selectableLabTests.length} matches — refine search for more.
+                        Showing {labTestOptions.length} matches — refine search for more.
                       </small>
+                    ) : null}
+                    {labTestQuery.trim() && labTestOptions.length > 0 ? (
+                      <div className="lab-after-pick">
+                        <button type="button" className="ghost-button" onClick={selectAllShownLabs}>
+                          Select all shown
+                        </button>
+                        <button
+                          type="button"
+                          className="service-submit"
+                          disabled={!pendingLabIds.size}
+                          onClick={addPendingLabsToCart}
+                        >
+                          {pendingLabIds.size
+                            ? `Add ${pendingLabIds.size} to cart`
+                            : "Add to cart"}
+                        </button>
+                      </div>
                     ) : null}
                   </>
                 ) : (
@@ -1283,14 +1343,10 @@ function LabTests() {
                   </p>
                 )}
 
-                {selectedTests.length > 0 && !inBook ? (
+                {selectedTests.length > 0 && !inBook && !pendingLabIds.size ? (
                   <div className="lab-after-pick">
-                    <button
-                      type="button"
-                      className="service-submit"
-                      onClick={() => setFlowStep("book")}
-                    >
-                      Continue to booking
+                    <button type="button" className="service-submit" onClick={() => goToHash("#checkout")}>
+                      Pay from cart
                     </button>
                   </div>
                 ) : null}
@@ -1348,30 +1404,67 @@ function LabTests() {
                         <p className="lab-empty">
                           Start typing to see study names
                           {catalogPartner.tests.length
-                            ? ` (${catalogPartner.tests.length} available)`
+                            ? ` (${catalogPartner.tests.length} available). Tick every study you need, then add them to the cart together.`
                             : ""}
-                          .
                         </p>
                       ) : imagingSearchResults.length === 0 ? (
                         <p className="lab-empty">No studies match “{imagingQuery.trim()}”.</p>
                       ) : (
-                        imagingSearchResults.map((test) => (
-                          <button
-                            key={test.id}
-                            type="button"
-                            role="option"
-                            className="lab-search-row"
-                            onClick={() => {
-                              toggleImagingTest(test);
-                              setImagingQuery("");
-                            }}
-                          >
-                            <span className="lab-search-name">{test.name}</span>
-                            <span className="lab-search-meta">₹{test.price}</span>
-                          </button>
-                        ))
+                        imagingSearchResults.map((test) => {
+                          const inCart = selectedImagingTests.some((item) => item.id === test.id);
+                          const picked = pendingImagingIds.has(test.id);
+                          return (
+                            <button
+                              key={test.id}
+                              type="button"
+                              role="option"
+                              aria-pressed={picked || inCart}
+                              className={`lab-search-row${picked || inCart ? " is-picked" : ""}`}
+                              onClick={() => togglePendingImaging(test)}
+                            >
+                              <span className="lab-search-name">
+                                {picked || inCart ? "✓ " : ""}
+                                {test.name}
+                              </span>
+                              <span className="lab-search-meta">
+                                {inCart ? "In cart" : `₹${test.price}${picked ? " · Selected" : ""}`}
+                              </span>
+                            </button>
+                          );
+                        })
                       )}
                     </div>
+                    {imagingQuery.trim() && imagingSearchResults.length > 0 ? (
+                      <div className="lab-after-pick">
+                        <button
+                          type="button"
+                          className="ghost-button"
+                          onClick={() =>
+                            setPendingImagingIds((prev) => {
+                              const next = new Set(prev);
+                              imagingSearchResults.forEach((test) => {
+                                if (!selectedImagingTests.some((item) => item.id === test.id)) {
+                                  next.add(test.id);
+                                }
+                              });
+                              return next;
+                            })
+                          }
+                        >
+                          Select all shown
+                        </button>
+                        <button
+                          type="button"
+                          className="service-submit"
+                          disabled={!pendingImagingIds.size}
+                          onClick={addPendingImagingToCart}
+                        >
+                          {pendingImagingIds.size
+                            ? `Add ${pendingImagingIds.size} to cart`
+                            : "Add to cart"}
+                        </button>
+                      </div>
+                    ) : null}
                   </>
                 ) : (
                   <p className="lab-hint">
@@ -1379,14 +1472,10 @@ function LabTests() {
                   </p>
                 )}
 
-                {selectedImagingTests.length > 0 && !inBook ? (
+                {selectedImagingTests.length > 0 && !inBook && !pendingImagingIds.size ? (
                   <div className="lab-after-pick">
-                    <button
-                      type="button"
-                      className="service-submit"
-                      onClick={() => setFlowStep("book")}
-                    >
-                      Continue to booking
+                    <button type="button" className="service-submit" onClick={() => goToHash("#checkout")}>
+                      Pay from cart
                     </button>
                   </div>
                 ) : null}
@@ -1679,6 +1768,7 @@ const styles = `
 .lab-search-row{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:10px 12px;border:0;border-top:1px solid #eef3f6;background:#fff;text-align:left;cursor:pointer;font:inherit;color:inherit}
 .lab-search-row:first-child{border-top:0}
 .lab-search-row:hover,.lab-search-row:focus-visible{background:#eef7f9}
+.lab-search-row.is-picked{background:#e8f4f6}
 .lab-search-name{font-size:14px;font-weight:650;color:#143246;line-height:1.35}
 .lab-search-meta{font-size:12px;font-weight:600;color:#5d7180}
 .lab-table{margin-top:14px;border:1px solid #e8eef2;border-radius:10px;overflow:hidden;background:#fff}

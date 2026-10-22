@@ -1,6 +1,7 @@
 import { SITE } from "./siteMeta.js";
 import { isAwaitingPartnerConfirm } from "./orderConfirm.js";
 import { isDiagnosticKind } from "./labPipeline.js";
+import { isStepdownDischarged, isStepdownOrder } from "./stepdownDesk.js";
 
 export const CHECKPOINT_STEPS = [
   {
@@ -424,18 +425,23 @@ export function qrScanPatch(order, now = Date.now()) {
       },
     };
   }
+  const medicineHandover = kind !== "stepdown";
   return {
     action: "deliver",
     patch: {
       checkPackAt: order?.checkPackAt || order?.qrPackedAt || now,
       checkPickupAt: order?.checkPickupAt || order?.qrPickedAt || now,
-      checkDeliverAt: now,
-      qrReceivedAt: now,
-      qrLastScan: "deliver",
+      checkDeliverAt: medicineHandover ? now : order?.checkDeliverAt,
+      qrReceivedAt: medicineHandover ? now : order?.qrReceivedAt,
+      qrLastScan: medicineHandover ? "deliver" : order?.qrLastScan || "",
       lastMismatchStage: "",
-      trackStatus: "done",
-      trackCompleted: true,
-      status: doneStatus(kind),
+      ...(medicineHandover
+        ? {
+            trackStatus: "done",
+            trackCompleted: true,
+            status: doneStatus(kind),
+          }
+        : {}),
       partnerLat: order?.destLat ?? order?.partnerLat,
       partnerLng: order?.destLng ?? order?.partnerLng,
     },
@@ -533,7 +539,10 @@ export function gatedTrackStatus(order, progressKey = "") {
   ) {
     return "declined";
   }
-  if (checks.deliver || order?.trackCompleted) return "done";
+  if (isStepdownOrder(order)) {
+    if (isStepdownDischarged(order)) return "done";
+    if (current === "done") return "confirmed";
+  } else if (checks.deliver || order?.trackCompleted) return "done";
   if (
     current === "slot_offered" ||
     String(order?.slotConfirmStatus || "").toLowerCase() === "offered" ||

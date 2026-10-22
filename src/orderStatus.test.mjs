@@ -48,7 +48,15 @@ const orders = [
     partnerConfirmStatus: "accepted",
   },
   { id: "5", kind: "medicine", trackStatus: "done", partnerId: "p4", partnerConfirmed: true, partnerConfirmStatus: "auto" },
-  { id: "6", kind: "stepdown", trackCompleted: true, partnerConfirmed: true, partnerConfirmStatus: "accepted" },
+  {
+    id: "6",
+    kind: "stepdown",
+    discharged: true,
+    trackStatus: "discharged",
+    trackCompleted: true,
+    partnerConfirmed: true,
+    partnerConfirmStatus: "accepted",
+  },
   { id: "7", kind: "radiology" },
 ];
 
@@ -148,6 +156,14 @@ test("isOpenOrder is the ongoing-vs-stop rule for live tracking", () => {
   assert.equal(isOpenOrder({ kind: "lab", trackStatus: "done", trackCompleted: true }), false);
   assert.equal(isOpenOrder({ kind: "lab", trackStatus: "declined" }), false);
   assert.equal(isOpenOrder({ kind: "stepdown", trackStatus: "cancelled" }), false);
+  assert.equal(
+    isOpenOrder({ kind: "stepdown", trackCompleted: true, trackStatus: "done", partnerConfirmed: true, partnerConfirmStatus: "accepted" }),
+    true
+  );
+  assert.equal(
+    isCompletedOrder({ kind: "stepdown", discharged: true, trackStatus: "discharged", partnerConfirmed: true, partnerConfirmStatus: "accepted" }),
+    true
+  );
   assert.equal(isOpenOrder({ kind: "medicine", trackCompleted: true }), false);
 });
 

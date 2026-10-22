@@ -81,6 +81,16 @@ test("partner pipeline advances confirm → technician → sample → report →
       trackStatus: "report_ready",
       paymentStatus: "paid",
     }),
+    "upload_report"
+  );
+  assert.equal(
+    nextDiagnosticAction({
+      kind: "lab",
+      partnerConfirmed: true,
+      trackStatus: "report_ready",
+      paymentStatus: "paid",
+      reportFileName: "CBC.pdf",
+    }),
     "complete"
   );
   assert.equal(
@@ -125,11 +135,20 @@ test("upload binds to the selected incomplete lab job, including new orders", ()
   const fresh = { id: "MH-LAB-678545", kind: "lab", trackStatus: "requested", partnerConfirmStatus: "pending" };
   const collected = { id: "MH-LAB-2", kind: "lab", trackStatus: "sample_collected" };
   const done = { id: "MH-LAB-3", kind: "lab", trackStatus: "done", trackCompleted: true };
+  const filed = {
+    id: "MH-LAB-4",
+    kind: "lab",
+    trackStatus: "done",
+    trackCompleted: true,
+    reportFileName: "CBC.pdf",
+  };
   assert.equal(labJobCanReceiveReport(fresh), true);
   assert.equal(labJobCanReceiveReport(collected), true);
-  assert.equal(labJobCanReceiveReport(done), false);
+  assert.equal(labJobCanReceiveReport(done), true);
+  assert.equal(labJobCanReceiveReport(filed), false);
   assert.equal(labReportTargetJob([done, collected, fresh], "MH-LAB-678545").id, "MH-LAB-678545");
-  assert.equal(labReportTargetJob([done, collected], "").id, "MH-LAB-2");
+  assert.equal(labReportTargetJob([done, collected], "").id, "MH-LAB-3");
+  assert.equal(labReportTargetJob([filed, collected], "").id, "MH-LAB-2");
   assert.equal(labReportTargetJob([done], "MH-LAB-3").id, "MH-LAB-3");
   assert.equal(labReportTargetJob([done], "").id, "MH-LAB-3");
 });

@@ -48,12 +48,49 @@ export const STEPDOWN_LIST_TABS = [
   { id: "discharged", label: "Discharged" },
 ];
 
+export function isStepdownOrder(order) {
+  const kind = String(order?.kind || order?.orderType || "").toLowerCase();
+  return kind === "stepdown";
+}
+
 export function isStepdownDischarged(order) {
   return (
     order?.discharged === true ||
     String(order?.trackStatus || "").toLowerCase() === "discharged" ||
-    String(order?.status || "").toLowerCase() === "discharged"
+    String(order?.status || "").toLowerCase() === "discharged" ||
+    String(order?.status || "").toLowerCase().startsWith("discharged")
   );
+}
+
+/** A step-down stay is complete only after the centre discharges the patient. */
+export function settleStepdownCompletion(existing = {}, patch = {}) {
+  const merged = { ...existing, ...patch };
+  if (!isStepdownOrder(merged) && !isStepdownOrder(existing)) return patch;
+  const status = String(patch.trackStatus || "").toLowerCase();
+  if (
+    status === "cancelled" ||
+    status === "declined" ||
+    patch.cancelled === true ||
+    isStepdownCancelled(merged)
+  ) {
+    return patch;
+  }
+  if (patch.discharged === true || isStepdownDischarged(merged)) {
+    return {
+      ...patch,
+      discharged: true,
+      trackStatus: "discharged",
+      trackCompleted: true,
+      completedAt: patch.completedAt || patch.dischargedAt || Date.now(),
+      status: patch.status || existing.status || "Discharged",
+    };
+  }
+  const next = { ...patch };
+  if (String(next.trackStatus || "").toLowerCase() === "done") delete next.trackStatus;
+  if (next.trackCompleted) delete next.trackCompleted;
+  if (String(next.status || "").toLowerCase() === "completed") delete next.status;
+  if (next.completedAt) delete next.completedAt;
+  return next;
 }
 
 export function isStepdownAdmitted(order) {
@@ -78,6 +115,8 @@ export function stepdownDischargeFields(order = {}, extras = {}, now = Date.now(
     discharged: true,
     dischargedAt: now,
     trackStatus: "discharged",
+    trackCompleted: true,
+    completedAt: now,
     status: paid ? "Discharged · Paid" : "Discharged",
     ...bill,
   };
@@ -94,7 +133,7 @@ export function stepdownListTab(order) {
 
 export function stepdownStageLabel(order) {
   const tab = stepdownListTab(order);
-  if (tab === "discharged") return "Back home";
+  if (tab === "discharged") return "Completed";
   if (tab === "admitted") return "Admitted";
   if (tab === "accepted") return "Booking Accepted";
   if (isStepdownCancelled(order)) return "Cancelled";

@@ -411,8 +411,8 @@ export function orderKindExtras(order, audience = "partner") {
         value:
           audience === "customer"
             ? paidStay
-              ? "Back home · Paid"
-              : "Back home"
+              ? "Completed · Paid"
+              : "Completed"
             : paidStay
               ? "Discharged · Paid"
               : "Discharged",

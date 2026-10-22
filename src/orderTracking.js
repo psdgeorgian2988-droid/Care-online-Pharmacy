@@ -13,6 +13,7 @@ import {
   isAwaitingPartnerConfirm,
 } from "./orderConfirm.js";
 import { diagnosticStepLabel, isDiagnosticKind } from "./labPipeline.js";
+import { isStepdownDischarged, isStepdownOrder } from "./stepdownDesk.js";
 import { isOngoingTrackOrder } from "./orderStatus.js";
 import { customerMobilesFromOrders } from "./orderSync.js";
 
@@ -97,6 +98,7 @@ export function trackHref(id, from = "") {
 
 export function isOrderCompleted(order) {
   if (!order) return false;
+  if (isStepdownOrder(order)) return isStepdownDischarged(order);
   if (order.trackCompleted || order.checkDeliverAt || order.qrReceivedAt) return true;
   const status = String(order.trackStatus || order.status || "").toLowerCase();
   return (
@@ -459,7 +461,9 @@ export function withTracking(record, kind = recordKind(record)) {
       : { lat: null, lng: null };
   const checks = checkpointState(record);
   const startedAt = Number(record.trackStartedAt) || 0;
-  const completed = Boolean(record.trackCompleted) || checks.deliver;
+  const completed = isStepdownOrder(record)
+    ? isStepdownDischarged(record)
+    : Boolean(record.trackCompleted) || checks.deliver;
   const progress = completed
     ? 1
     : checks.pickup && startedAt
@@ -513,7 +517,7 @@ export function tickTracking(record, now = Date.now()) {
     return record;
   }
   const checks = checkpointState(record);
-  if (record.trackCompleted || checks.deliver) {
+  if (!isStepdownOrder(record) && (record.trackCompleted || checks.deliver)) {
     return {
       ...record,
       partnerLat: record.destLat,

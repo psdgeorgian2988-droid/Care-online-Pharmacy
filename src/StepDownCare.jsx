@@ -653,8 +653,8 @@ function StepDownCare() {
                 <p>
                   {cancelled
                     ? "This step-down booking has been cancelled."
-                    : backHome
-                      ? "The centre has sent the patient back home."
+                      : backHome
+                      ? "The centre has discharged the patient. This order is complete."
                       : admitted
                       ? "The centre has admitted the patient."
                       : decision === "confirmed"

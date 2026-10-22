@@ -204,10 +204,14 @@ export function partnerCollectPatch(existing = {}, body = {}, now = Date.now()) 
       razorpayPaymentId: String(body.razorpayPaymentId || ""),
       paymentStatus: "paid",
       paid: true,
-      status: "Completed",
-      trackStatus: "done",
-      trackCompleted: true,
-      completedAt: now,
+      ...(String(kind).toLowerCase() === "stepdown"
+        ? {}
+        : {
+            status: "Completed",
+            trackStatus: "done",
+            trackCompleted: true,
+            completedAt: now,
+          }),
       partnerConfirmed: true,
       partnerConfirmStatus:
         existing.partnerConfirmStatus === "declined"

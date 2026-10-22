@@ -18,7 +18,6 @@ import { allocatePointsAcrossServices } from "./walletQuote";
 import {
   checkoutPaymentPersistFields,
   checkoutUsesPayCta,
-  persistUnsettledCheckoutFields,
   paymentMethodSummary,
   showCustomerPayNow,
 } from "./paymentMethods";
@@ -224,6 +223,10 @@ export default function CartCheckout() {
       alert("Please upload your prescription.");
       return;
     }
+    if (!payMethod) {
+      alert("Choose a payment option.");
+      return;
+    }
 
     setPlacing(true);
     try {
@@ -244,8 +247,18 @@ export default function CartCheckout() {
       const gps = await resolvePinLocation(booked.pinCode);
       const addr = applyResolvedPin(booked, gps);
       const pay = paymentFromQuote(payQuote, billTotal);
-      const persistPay = persistUnsettledCheckoutFields("pending");
-      const payment = persistPay;
+      const payment = await settleCheckoutPayment({
+        method: payMethod,
+        ...pay,
+        kind,
+        pin: addr.pinCode || booked.pinCode,
+        name: booked.patientName,
+        mobile: booked.mobile,
+        reference: `cart-${Date.now()}`,
+        description: "MediHome cart",
+        tests: tests.length ? tests : undefined,
+      });
+      const persistPay = checkoutPaymentPersistFields(payMethod, payment);
       const paid = persistPay.paid;
       const pointsDiscount = kind === "medicine" ? 0 : Number(pay.pointsDiscountRupees) || 0;
       const pointsUsed = kind === "medicine" ? 0 : Number(pay.pointsUsed) || 0;
@@ -791,14 +804,43 @@ export default function CartCheckout() {
               </div>
             ) : null}
 
+            <PaymentBlock
+              kind={kind}
+              amount={billTotal}
+              saleAmount={billSale}
+              tests={tests.length ? tests : undefined}
+              pin={delivery.pinCode}
+              method={payMethod}
+              onMethodChange={setPayMethod}
+              onQuoteChange={setPayQuote}
+              onReadyChange={setPayReady}
+              cashLabel={
+                medicines.length && !tests.length
+                  ? "Cash On Delivery"
+                  : "Cash On Visit / Collection"
+              }
+              guestDetails={{
+                name: fullName,
+                mobile: mobileNumber,
+                gender: whoFor.gender,
+                dob: whoFor.dob,
+                age: whoFor.age,
+                ...delivery,
+              }}
+            />
+
             <div className="cart-actions">
               <button
                 type="button"
                 className="cart-btn cart-btn-primary"
                 onClick={placeOrder}
-                disabled={placing}
+                disabled={placing || !payMethod || (checkoutUsesPayCta(payMethod) && !payReady)}
               >
-                {placing ? "Placing order…" : "Place order"}
+                {placing
+                  ? "Placing order…"
+                  : checkoutUsesPayCta(payMethod)
+                    ? `Pay ${money(payableTotal)}`
+                    : "Place order"}
               </button>
               <button
                 type="button"

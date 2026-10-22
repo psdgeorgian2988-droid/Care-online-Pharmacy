@@ -19,6 +19,7 @@ import {
   persistOrder,
   trackHref,
 } from "./orderTracking";
+import { isStepdownDischarged, isStepdownOrder } from "./stepdownDesk";
 import {
   FEATURE_CATALOG,
   DEFAULT_FEATURES,
@@ -309,6 +310,10 @@ function Admin() {
   const handleStatus = async (order, trackStatus) => {
     const id = order.id || order.bookingId || order.requestId;
     const done = trackStatus === "done";
+    if (done && isStepdownOrder(order) && !isStepdownDischarged(order)) {
+      setError("Discharge the patient from the step-down centre before this order can be completed.");
+      return;
+    }
     const status =
       TRACK_STEPS.find((step) => step.key === trackStatus)?.label ||
       order.status;

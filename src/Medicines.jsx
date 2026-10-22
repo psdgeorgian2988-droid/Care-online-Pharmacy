@@ -2911,12 +2911,14 @@ function MedicineCard({ medicine, onAdd, selected = false, onSelect }) {
       <button
         type="button"
         className="medicine-row-add"
+        aria-pressed={selected}
         onClick={(event) => {
           event.stopPropagation();
-          onAdd(medicine);
+          if (onSelect) onSelect(medicine);
+          else onAdd(medicine);
         }}
       >
-        Add to cart
+        {selected ? "Selected" : onSelect ? "Select" : "Add to cart"}
       </button>
       <span className="medicine-row-brand">{medicine.brand || "MediHome"}</span>
       <span className="medicine-row-comp">{medicine.salt || medicine.composition}</span>
@@ -3073,6 +3075,7 @@ function Medicines({ initialSearch = "" }) {
   });
   const searchInputRef = useRef(null);
   const [cart, setCartState] = useState(() => readMedicineCart());
+  const [pickedIds, setPickedIds] = useState(() => new Set());
   const setCart = (updater) => {
     setCartState((current) => {
       const next = typeof updater === "function" ? updater(current) : updater;
@@ -3294,6 +3297,49 @@ function Medicines({ initialSearch = "" }) {
     openShopCart();
     setShowCheckout(false);
     setConfirmedOrder(null);
+  };
+
+  const togglePicked = (medicine) => {
+    setPickedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(medicine.id)) next.delete(medicine.id);
+      else next.add(medicine.id);
+      return next;
+    });
+  };
+
+  const addPickedToCart = () => {
+    const chosen = filteredMedicines.filter((medicine) => pickedIds.has(medicine.id));
+    if (!chosen.length) return;
+    let next = readMedicineCart();
+    for (const medicine of chosen) {
+      const added = resolveCartAdd(medicine, catalogue, selectedBrand, {
+        searchingBrand,
+      });
+      if (!added?.selling) continue;
+      const selling = {
+        ...added.selling,
+        prescribedBrand: added.compare || null,
+      };
+      const existingItem = next.find((item) => item.id === selling.id);
+      next = existingItem
+        ? next.map((item) =>
+            item.id === selling.id
+              ? {
+                  ...item,
+                  quantity: (item.quantity || 1) + 1,
+                  prescribedBrand: selling.prescribedBrand || item.prescribedBrand,
+                }
+              : item
+          )
+        : [...next, withPickedBatch({ ...selling, quantity: 1 })];
+    }
+    writeMedicineCart(next);
+    setCartState(next);
+    setPickedIds(new Set());
+    setShowCheckout(false);
+    setConfirmedOrder(null);
+    goToHash("#checkout");
   };
 
   const resetCheckoutForm = () => {
@@ -3826,17 +3872,49 @@ function Medicines({ initialSearch = "" }) {
             ) : (
               <>
                 <div className="medicine-row medicine-row-head">
-                  <span className="medicine-row-add-label">Cart</span>
+                  <span className="medicine-row-add-label">Choose</span>
                   <span>Brand</span>
                   <span>Composition</span>
                   <span>Strength</span>
                   <span>MRP</span>
                   <span>Selling Price</span>
                 </div>
+                {pickedIds.size > 0 ? (
+                  <div className="medicine-pick-bar">
+                    <span>{pickedIds.size} selected</span>
+                    <button type="button" onClick={addPickedToCart}>
+                      Add {pickedIds.size} to cart
+                    </button>
+                    <button
+                      type="button"
+                      className="is-ghost"
+                      onClick={() =>
+                        setPickedIds(new Set(filteredMedicines.map((medicine) => medicine.id)))
+                      }
+                    >
+                      Select all shown
+                    </button>
+                  </div>
+                ) : filteredMedicines.length > 1 ? (
+                  <div className="medicine-pick-bar">
+                    <span>Select every medicine you need, then add them together.</span>
+                    <button
+                      type="button"
+                      className="is-ghost"
+                      onClick={() =>
+                        setPickedIds(new Set(filteredMedicines.map((medicine) => medicine.id)))
+                      }
+                    >
+                      Select all shown
+                    </button>
+                  </div>
+                ) : null}
                 {filteredMedicines.map((medicine) => (
                   <MedicineCard
                     key={medicine.id}
                     medicine={medicine}
+                    selected={pickedIds.has(medicine.id)}
+                    onSelect={togglePicked}
                     onAdd={addToCart}
                   />
                 ))}

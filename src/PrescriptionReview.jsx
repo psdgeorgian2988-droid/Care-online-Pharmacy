@@ -20,7 +20,7 @@ import {
 } from "./prescriptionAi";
 import { saveConfirmedDigitalRx } from "./digitalRxRecord";
 import { lookupPrescriptionMedicine } from "./Medicines";
-import { addMedicineToCart, addTestToCart, cartHasMedicine, openShopCart, writeRxLabCheckout } from "./medicineCartStore";
+import { addMedicineToCart, addTestToCart, cartHasMedicine, writeRxLabCheckout } from "./medicineCartStore";
 import {
   cheapestMatch,
   checkoutPayloadForTests,
@@ -250,9 +250,31 @@ export default function PrescriptionReview() {
   };
 
   const addAllMedicines = () => {
+    let addedAny = false;
     medOffers.forEach((row) => {
-      if (row.offer) addOffer(row);
+      if (!row.offer) return;
+      const qty = suggestedPacks(row.rx, row.offer.packSize);
+      addMedicineToCart(
+        {
+          ...row.offer,
+          prescribedBrand: row.prescribed
+            ? {
+                brand: row.prescribed.brand,
+                name: row.prescribed.name,
+                mrp: row.prescribed.mrp,
+                price: row.offer.price,
+                save: Math.max(0, Number(row.prescribed.mrp || 0) - Number(row.offer.price || 0)),
+              }
+            : null,
+        },
+        qty,
+        undefined,
+        { open: false }
+      );
+      setAdded((prev) => ({ ...prev, [row.offer.id]: true }));
+      addedAny = true;
     });
+    if (addedAny) goToHash("#checkout");
   };
 
   const pickChosenTests = () =>
@@ -299,7 +321,27 @@ export default function PrescriptionReview() {
   };
 
   const buySelectedTests = () => {
-    startTestCheckout(pickChosenTests());
+    const chosen = pickChosenTests();
+    if (!chosen.length) return;
+    chosen.forEach((row) =>
+      addTestToCart(
+        {
+          id: row.testId || row.id,
+          name: row.testName || row.name,
+          price: row.price,
+          code: row.code,
+        },
+        {
+          kind: row.kind || "lab",
+          partnerId: row.partnerId,
+          partnerName: row.partnerName || "",
+        },
+        undefined,
+        { open: false }
+      )
+    );
+    setMenu("");
+    goToHash("#checkout");
   };
 
   const availableMeds = medOffers.filter((row) => row.offer).length;
@@ -354,7 +396,7 @@ export default function PrescriptionReview() {
       )
     );
     setMenu("");
-    openShopCart();
+    goToHash("#checkout");
   };
 
   return (
@@ -827,7 +869,7 @@ export default function PrescriptionReview() {
                 )}
                 {testOffers.some((offer) => offer.matches.length) ? (
                   <button type="button" className="rx-menu-all" onClick={buySelectedTests}>
-                    Buy tests and pay
+                    Add all tests to cart
                   </button>
                 ) : null}
               </div>

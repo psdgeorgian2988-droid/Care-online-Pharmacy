@@ -1,4 +1,5 @@
 import { isHiddenMedicalRecordSource, patientIdentityFromSource } from "./reportPeople.js";
+import { settleStepdownCompletion } from "./stepdownDesk.js";
 
 /** Lab / radiology partner-driven pipeline helpers. */
 
@@ -128,6 +129,63 @@ export function namedReportFileName(source = {}, file = {}) {
   return `report.${ext}`;
 }
 
+export function orderHasReport(order) {
+  return Boolean(
+    String(order?.reportFileName || "").trim() ||
+    String(order?.reportFileData || "").trim()
+  );
+}
+
+export function mergedReportOrder(existing = {}, patch = {}) {
+  return {
+    reportFileName:
+      patch.reportFileName != null ? patch.reportFileName : existing.reportFileName,
+    reportFileData:
+      patch.reportFileData != null ? patch.reportFileData : existing.reportFileData,
+  };
+}
+
+/**
+ * Completion (done / Completed / trackCompleted) is kept only when a report
+ * file is already stored or is included in this patch. Declines and
+ * cancellations stay closed without a report.
+ */
+export function guardOrderCompletion(existing = {}, patch = {}) {
+  const kind = String(
+    existing?.kind || existing?.orderType || patch?.kind || patch?.orderType || ""
+  ).toLowerCase();
+  if (kind === "stepdown") {
+    return settleStepdownCompletion(existing, patch);
+  }
+  const status = String(patch.trackStatus || "").toLowerCase();
+  if (status === "declined" || status === "cancelled") return patch;
+  const hasReport = orderHasReport(mergedReportOrder(existing, patch));
+  const uploading = Boolean(
+    String(patch.reportFileName || "").trim() || String(patch.reportFileData || "").trim()
+  );
+  const wantsDone =
+    uploading ||
+    status === "done" ||
+    patch.trackCompleted === true ||
+    String(patch.status || "").toLowerCase() === "completed";
+  if (hasReport && wantsDone) {
+    return {
+      ...patch,
+      trackStatus: "done",
+      trackCompleted: true,
+      status: uploading ? "Completed" : patch.status || "Completed",
+      completedAt: patch.completedAt || Date.now(),
+    };
+  }
+  if (hasReport) return patch;
+  const next = { ...patch };
+  if (String(next.trackStatus || "").toLowerCase() === "done") delete next.trackStatus;
+  if (next.trackCompleted) delete next.trackCompleted;
+  if (String(next.status || "").toLowerCase() === "completed") delete next.status;
+  if (next.completedAt) delete next.completedAt;
+  return next;
+}
+
 export function reportReadyFields(report = {}, now = Date.now()) {
   const testName = String(report.testName || "").trim();
   return {
@@ -141,13 +199,17 @@ export function reportReadyFields(report = {}, now = Date.now()) {
   };
 }
 
-export function labJobCanReceiveReport(order) {
+export function orderCanReceiveReport(order) {
   if (!order) return false;
-  if (!isDiagnosticKind(diagnosticKindOf(order))) return false;
   const status = String(order.trackStatus || "").toLowerCase();
-  if (status === "done" || status === "declined") return false;
-  if (order.trackCompleted) return false;
+  if (status === "declined" || status === "cancelled") return false;
+  if (orderHasReport(order)) return false;
   return true;
+}
+
+export function labJobCanReceiveReport(order) {
+  if (!isDiagnosticKind(diagnosticKindOf(order))) return false;
+  return orderCanReceiveReport(order);
 }
 
 export function labReportTargetJob(jobs, openJobId = "") {
@@ -189,7 +251,7 @@ export function nextDiagnosticAction(order) {
   }
   if (status === "assigned") return "sample_collect";
   if (status === "sample_collected") return "upload_report";
-  if (status === "report_ready") return "complete";
+  if (status === "report_ready") return orderHasReport(order) ? "complete" : "upload_report";
   return "";
 }
 

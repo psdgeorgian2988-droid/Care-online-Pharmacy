@@ -3750,6 +3750,40 @@ footer .logo {
   white-space: nowrap;
 }
 
+#medicines .medicine-pick-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid #c5d8e0;
+  border-radius: 10px;
+  background: #f3fafb;
+  color: #143246;
+  font-size: 13px;
+  font-weight: 700;
+}
+#medicines .medicine-pick-bar button {
+  border: 0;
+  border-radius: 8px;
+  background: #1a6b7a;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  min-height: 36px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+#medicines .medicine-pick-bar button.is-ghost {
+  background: #fff;
+  color: #1a6b7a;
+  border: 1px solid #c5d8e0;
+}
+#medicines .medicine-row.is-selected {
+  background: #e8f4f6;
+}
 #medicines .medicine-row-add:hover {
   border-color: #1a6b7a;
   color: #1a6b7a;

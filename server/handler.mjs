@@ -14,6 +14,7 @@ import { listAddedLabTests, addLabTest, updateLabTestSplit } from "./labCatalog.
 import { isOnlinePayment } from "../src/paymentMethods.js";
 import { publicSplit } from "../src/payeeBank.js";
 import { partnerCollectPatch } from "../src/partnerCollect.js";
+import { settleStepdownCompletion } from "../src/stepdownDesk.js";
 import {
   customerAcceptSlotFields,
   customerDeclineOfferedSlotFields,
@@ -1058,7 +1059,10 @@ export async function handleApi(req, res) {
         });
         if (deducted?.stockDeducted) patch.stockDeducted = true;
       }
-      const updated = await patchOrder(orderId(existing), patch);
+      const updated = await patchOrder(
+        orderId(existing),
+        settleStepdownCompletion(existing, patch)
+      );
       if (
         updated &&
         (updated.partnerConfirmStatus === "slot_offered" ||
@@ -1415,7 +1419,9 @@ export async function handleApi(req, res) {
         delete leftover.partnerPercent;
         delete leftover.platformPercent;
         if (Object.keys(leftover).length) {
-          current = (await patchOrder(orderKey, leftover)) || current;
+          current =
+            (await patchOrder(orderKey, settleStepdownCompletion(current, leftover))) ||
+            current;
         }
         send(res, 200, { order: current });
         return true;
@@ -1426,7 +1432,10 @@ export async function handleApi(req, res) {
           String(row.bookingId) === orderKey ||
           String(row.requestId) === orderKey
       );
-      const updated = await patchOrder(orderKey, body);
+      const updated = await patchOrder(
+        orderKey,
+        settleStepdownCompletion(existingAdmin, body)
+      );
       if (!updated) {
         send(res, 404, { error: "Order not found." });
         return true;

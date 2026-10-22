@@ -119,6 +119,8 @@ test("discharge finalizes the complete bill and accepts cash, QR, or UPI", () =>
   const fields = stepdownDischargeFields(order, { paymentMethod: "upi", paid: true });
   assert.equal(fields.discharged, true);
   assert.equal(fields.trackStatus, "discharged");
+  assert.equal(fields.trackCompleted, true);
+  assert.ok(fields.completedAt);
   assert.equal(fields.billFinalized, true);
   assert.equal(fields.total, 7 * 4999);
   assert.equal(fields.paid, true);

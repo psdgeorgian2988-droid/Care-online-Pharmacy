@@ -1,6 +1,6 @@
 import { isAwaitingPartnerConfirm } from "./orderConfirm.js";
 import { isStepdownCancelled } from "./stepdownCancel.js";
-import { stepdownStageLabel } from "./stepdownDesk.js";
+import { isStepdownDischarged, isStepdownOrder, stepdownStageLabel } from "./stepdownDesk.js";
 import { diagnosticStepLabel, isDiagnosticKind } from "./labPipeline.js";
 import {
   isPharmacyOrder,
@@ -129,6 +129,13 @@ export function groupOrdersByKind(orders, kinds = SERVICE_ORDER_KINDS) {
 export function trackKey(order) {
   if (isStepdownCancelled(order) || String(order?.trackStatus || "").toLowerCase() === "cancelled") {
     return "declined";
+  }
+  if (isStepdownOrder(order)) {
+    if (isStepdownDischarged(order)) return "done";
+    if (isAwaitingPartnerConfirm(order)) return "requested";
+    const stayKey = String(order?.trackStatus || "confirmed").toLowerCase();
+    if (stayKey === "done" || stayKey === "discharged") return "confirmed";
+    return TRACK_STATUS_STEPS.some((step) => step.key === stayKey) ? stayKey : "confirmed";
   }
   if (isPharmacyOrder(order)) return pharmacyTrackKey(order);
   if (order?.trackCompleted && String(order?.trackStatus || "") !== "declined") {
