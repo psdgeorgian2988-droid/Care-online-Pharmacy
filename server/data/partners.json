@@ -15,10 +15,10 @@
         "123456"
       ],
       "loginId": "9654222988",
-      "passwordHash": "15bf1c6da43025f1259a204923511d8e:cecf2bdc956a0ed4996d065d9ad02eb0c89979f693f33d47bd84666cfc9e5904",
+      "passwordHash": "bf66690a84d9f9081d67081f8ec10257:e79a601abb332b794521dd6946c409940f4e4702962a93a2ff6f087cee98f41e",
       "partnerPercent": 85,
-      "passwordResetAt": 1790737729940,
-      "passwordResetBy": "admin"
+      "passwordResetAt": 0,
+      "passwordResetBy": ""
     }
   ]
 }

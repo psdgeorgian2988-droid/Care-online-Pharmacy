@@ -568,6 +568,14 @@ function LabTests() {
     });
     setSelectedImagingId(test.id);
     setErrors((prev) => ({ ...prev, imaging: "", radiologyPartner: "" }));
+    if (!pendingImagingIds.has(test.id)) {
+      setImagingQuery("");
+      if (!(test.prepType && test.prepType !== "none")) {
+        window.requestAnimationFrame(() => {
+          document.getElementById("imagingSearch")?.focus();
+        });
+      }
+    }
     if (test.prepType && test.prepType !== "none") {
       setPrepPopup({ test, kind: "imaging" });
     }
@@ -637,6 +645,14 @@ function LabTests() {
     });
     setSelectedTestId(test.id);
     setErrors((prev) => ({ ...prev, test: "", lab: "" }));
+    if (!pendingLabIds.has(test.id)) {
+      setLabTestQuery("");
+      if (!(test.prepType && test.prepType !== "none")) {
+        window.requestAnimationFrame(() => {
+          document.getElementById("labTestSearch")?.focus();
+        });
+      }
+    }
     if (test.prepType && test.prepType !== "none") {
       setPrepPopup({ test, kind: "lab" });
     }
@@ -700,9 +716,19 @@ function LabTests() {
   const cancelPrepSelection = () => {
     if (!prepPopup) return;
     if (prepPopup.kind === "lab") {
+      setPendingLabIds((prev) => {
+        const next = new Set(prev);
+        next.delete(prepPopup.test.id);
+        return next;
+      });
       if (selectedLabId) removeTestFromCart(prepPopup.test.id, selectedLabId);
       setSelectedTestId((prev) => (prev === prepPopup.test.id ? "" : prev));
     } else if (selectedRadiologyPartnerId) {
+      setPendingImagingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(prepPopup.test.id);
+        return next;
+      });
       removeTestFromCart(prepPopup.test.id, selectedRadiologyPartnerId);
       setSelectedImagingId((prev) => (prev === prepPopup.test.id ? "" : prev));
     }
@@ -1249,7 +1275,8 @@ function LabTests() {
                     </label>
                     <input
                       id="labTestSearch"
-                      type="search"
+                      type="text"
+                      enterKeyHint="search"
                       value={labTestQuery}
                       disabled={!selectedLab}
                       autoComplete="off"
@@ -1313,11 +1340,13 @@ function LabTests() {
                         Showing {labTestOptions.length} matches — refine search for more.
                       </small>
                     ) : null}
-                    {labTestQuery.trim() && labTestOptions.length > 0 ? (
+                    {labTestQuery.trim() && labTestOptions.length > 0 || pendingLabIds.size > 0 ? (
                       <div className="lab-after-pick">
+                        {labTestQuery.trim() && labTestOptions.length > 0 ? (
                         <button type="button" className="ghost-button" onClick={selectAllShownLabs}>
                           Select all shown
                         </button>
+                        ) : null}
                         <button
                           type="button"
                           className="service-submit"
@@ -1370,7 +1399,8 @@ function LabTests() {
                     </label>
                     <input
                       id="imagingSearch"
-                      type="search"
+                      type="text"
+                      enterKeyHint="search"
                       value={imagingQuery}
                       disabled={!catalogPartner}
                       autoComplete="off"
@@ -1421,8 +1451,9 @@ function LabTests() {
                         })
                       )}
                     </div>
-                    {imagingQuery.trim() && imagingSearchResults.length > 0 ? (
+                    {imagingQuery.trim() && imagingSearchResults.length > 0 || pendingImagingIds.size > 0 ? (
                       <div className="lab-after-pick">
+                        {imagingQuery.trim() && imagingSearchResults.length > 0 ? (
                         <button
                           type="button"
                           className="ghost-button"
@@ -1440,6 +1471,7 @@ function LabTests() {
                         >
                           Select all shown
                         </button>
+                        ) : null}
                         <button
                           type="button"
                           className="service-submit"
@@ -1734,11 +1766,11 @@ const styles = `
 .lab-card-head p{margin:4px 0 0;font-size:13px;color:#5d7180;line-height:1.4}
 .lab-label{display:block;margin:0 0 6px;font-size:12px;font-weight:700;color:#34546b}
 .lab-label em,.lab-field label em{color:#d84b4b;font-style:normal}
-.lab-card>input[type="search"],.lab-card>select,.lab-field input,.lab-field select,.lab-field textarea{
+.lab-card>input[type="search"],.lab-card>input[type="text"],.lab-card>select,.lab-field input,.lab-field select,.lab-field textarea{
   width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;color:#143246;outline:none;height:38px;min-height:38px;background:#fff;margin-bottom:8px
 }
 .lab-field textarea{height:auto;min-height:64px;resize:vertical;margin-bottom:0}
-.lab-card>input[type="search"]:focus,.lab-card>select:focus,.lab-field input:focus,.lab-field select:focus,.lab-field textarea:focus{border-color:#1a6b7a}
+.lab-card>input[type="search"]:focus,.lab-card>input[type="text"]:focus,.lab-card>select:focus,.lab-field input:focus,.lab-field select:focus,.lab-field textarea:focus{border-color:#1a6b7a}
 .lab-error{display:block;margin-top:6px;color:#d84b4b;font-size:12px}
 .lab-hint{display:block;margin-top:6px;color:#5d7180;font-size:12px}
 .lab-search-results{margin-top:8px;border:1px solid #e8eef2;border-radius:10px;overflow:auto;background:#fff;max-height:min(42vh,320px)}
