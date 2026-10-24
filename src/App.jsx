@@ -51,7 +51,7 @@ import {
   readOrderBackContext,
 } from "./hashRoute";
 import { peekRxLabCheckout } from "./medicineCartStore";
-import PortalsChooser, { CustomerPortal, PartnerPortal, StaffPortal } from "./RolePortals";
+import PortalsChooser, { CustomerPortal, StaffPortal } from "./RolePortals";
 import { isPartnerDeskRoute, partnerDeskKindFromRoute } from "./partnerApp";
 import CustomerHome from "./CustomerHome";
 import HomeServiceCatalog from "./HomeServiceCatalog";
@@ -105,7 +105,7 @@ function cartLivesInSection(route, service, plan) {
 }
 
 const OPS_LINKS = [
-  { href: "#partner", label: "Partner" },
+  { href: "#partner-desk", label: "Partner" },
   { href: "#admin", label: "Admin Panel" },
 ];
 
@@ -228,7 +228,7 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
       <div className="home-shell">
         <div className="home-hero-row">
           <aside className="home-account-card" aria-label="Account">
-            <a className="home-account-btn is-partner" href="#partner">
+            <a className="home-account-btn is-partner" href="#partner-desk">
               Partner
             </a>
             {hasAccountSession(user) ? (
@@ -339,9 +339,10 @@ function App() {
   } = parseAppHash(hash);
   const isAuthRoute = AUTH_ROUTES.has(route);
   const backActor = orderBackActor({ ...readOrderBackContext(), fromHash: hash });
+  const partnerEntry = route === "#partner" || isPartnerDeskRoute(route);
   const isOps =
     route === "#admin" ||
-    isPartnerDeskRoute(route) ||
+    partnerEntry ||
     (route === "#track" && (isAdminBackHash(hash) || backActor === "admin"));
   const opsDeskKind = partnerDeskKindFromRoute(route);
   const barePartnerDesk = opsDeskKind === "stepdown" || opsDeskKind === "lab";
@@ -455,7 +456,6 @@ function App() {
       case "#admin":
         return <Admin />;
       case "#partner":
-        return <PartnerPortal />;
       case "#partner-desk":
       case "#pharmacy-desk":
       case "#delivery-desk":
@@ -505,7 +505,7 @@ function App() {
               <span>Operations</span>
             </a>
             <nav className="ops-nav" aria-label="Operations">
-              {isPartnerDeskRoute(route) ? (
+              {partnerEntry ? (
                 <span className="ops-nav-stay">{opsDeskKind === "medicine" ? "Pharmacy Partner" : "Partner Desk"}</span>
               ) : (
                 <>

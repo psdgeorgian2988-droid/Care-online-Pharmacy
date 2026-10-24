@@ -72,6 +72,22 @@ export async function confirmPartnerPasswordReset({ mobile, otp, password }) {
   );
 }
 
+export async function savePartnerProfile(profile) {
+  const { token } = partnerSession();
+  const data = await parseResponse(
+    await apiFetch("/api/partner/profile", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(profile),
+    })
+  );
+  if (data.partner && token) setPartnerSession(token, data.partner);
+  return data;
+}
+
 export async function fetchPartnerStock() {
   const { token, partner } = partnerSession();
   const params = new URLSearchParams({

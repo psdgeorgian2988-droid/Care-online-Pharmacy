@@ -23,6 +23,8 @@ import {
 import { openBatchReport } from "./batchStore";
 import { isDiagnosticKind, openReportFile, reportFileForOrder } from "./labPipeline";
 import OrderFeedbackCta from "./OrderFeedbackCta";
+import PartnerProfileCard from "./PartnerProfileCard.jsx";
+import { visitingPartnerProfile } from "./partnerProfile.js";
 
 function MetaRow({ label, value, href, onOpen }) {
   if (!value && !onOpen) return null;
@@ -238,6 +240,9 @@ export default function OrderFullView({
               <MetaRow label="Mobile" value={partnerMobile} />
               <MetaRow label="Vehicle" value={partner.vehicle} />
               <MetaRow label="Unit" value={partner.unit} />
+              {audience === "customer" && visitingPartnerProfile(order) ? (
+                <PartnerProfileCard profile={visitingPartnerProfile(order)} />
+              ) : null}
             </>
           ) : (
             <p>Not assigned yet.</p>

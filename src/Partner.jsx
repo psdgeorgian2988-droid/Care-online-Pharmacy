@@ -65,6 +65,7 @@ import {
 } from "./orderQr";
 import { rxShareCardStyles } from "./RxShareCard";
 import OrderFullView from "./OrderFullView.jsx";
+import PartnerProfileForm from "./PartnerProfileForm.jsx";
 import { BillButton } from "./OrderBill.jsx";
 import OrderListTable from "./OrderListTable.jsx";
 import PharmacyReport from "./PharmacyReport.jsx";
@@ -169,6 +170,7 @@ export default function Partner({ deskKind = "" }) {
   const [inventory, setInventory] = useState(null);
   const [labReportError, setLabReportError] = useState("");
   const [recordViewer, setRecordViewer] = useState(null);
+  const [showProfile, setShowProfile] = useState(false);
   const labReportFileRef = useRef(null);
   const labUploadTargetIdRef = useRef("");
   const openGeneratedReport = useCallback(
@@ -541,7 +543,7 @@ export default function Partner({ deskKind = "" }) {
     return (
       <>
         <style>{styles}</style>
-        <div className="service-page partner-page">
+        <div className="service-page partner-page is-login">
           <section className="service-hero">
             <span className="service-kicker">{appTitle}</span>
             <h1>{appTitle} Login</h1>
@@ -620,6 +622,9 @@ export default function Partner({ deskKind = "" }) {
             <h1>{partner.name}</h1>
           </div>
           <div className="admin-hero-actions">
+            <button type="button" onClick={() => setShowProfile((open) => !open)}>
+              {showProfile ? "Hide profile" : "Profile"}
+            </button>
             <button type="button" onClick={loadJobs} disabled={loading}>
               {loading ? "Refreshing…" : "Refresh"}
             </button>
@@ -637,6 +642,13 @@ export default function Partner({ deskKind = "" }) {
           </div>
         </section>
         {error ? <p className="admin-error">{error}</p> : null}
+        {showProfile ? (
+          <PartnerProfileForm
+            key={partner?.id || "profile"}
+            partner={partner}
+            onSaved={(next) => setPartner(next)}
+          />
+        ) : null}
         {isStepDownDesk ? (
           <StepDownDesk
             orders={jobs}
@@ -2185,6 +2197,12 @@ ${rxShareCardStyles}
 .partner-tech,.partner-report-note{margin:4px 0 0;font-size:12px;color:#34546b;font-weight:700}
 .partner-scan-link{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:4px 8px;border-radius:6px;background:#1a6b7a;color:#fff;font-size:12px;font-weight:700;text-decoration:none}
 .admin-login{max-width:420px}
+.partner-page.is-login{min-height:calc(100vh - 160px);height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px;box-sizing:border-box}
+.partner-page.is-login .service-hero,.partner-page.is-login .admin-login{width:min(240px,92vw);max-width:240px;margin:0 auto}
+.partner-page.is-login .service-hero{text-align:center;padding:8px 10px}
+.partner-page.is-login .service-hero h1{font-size:16px}
+.partner-page.is-login .service-form{padding:10px;gap:8px}
+.partner-page.is-login input,.partner-page.is-login .service-submit{min-height:32px;padding:5px 8px;font-size:13px}
 .partner-forgot-btn{margin-top:4px;height:36px;border:none;background:transparent;color:#1a6b7a;font:inherit;font-size:13px;font-weight:800;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}

@@ -44,7 +44,7 @@ function PortalShell({ kicker, title, lead, bullets, actions, showBrand = true, 
         {showDeskLinks ? (
           <section className="role-portal-links" aria-label="Other desks">
             <a href="#customer">Customer</a>
-            <a href="#partner">Partner</a>
+            <a href="#partner-desk">Partner</a>
             <a href="#staff">Staff</a>
             <a href="#home">Website</a>
           </section>
@@ -136,7 +136,7 @@ export default function PortalsChooser() {
             <p>Medicines, bookings, orders, and account.</p>
             <span>Open customer page</span>
           </a>
-          <a className="home-service-card" href="#partner">
+          <a className="home-service-card" href="#partner-desk">
             <h2>Partner</h2>
             <p>Assigned jobs for delivery, lab, and visits.</p>
             <span>Open partner page</span>

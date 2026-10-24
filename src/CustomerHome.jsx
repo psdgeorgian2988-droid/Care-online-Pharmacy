@@ -8,6 +8,8 @@ import { HomeWithAboutSlides } from "./HomeAboutSlides";
 import LabsHub from "./LabsHub";
 import { homeCatalogSectionKeys } from "./hashRoute";
 import { useSyncedOrderTick } from "./useSyncedOrderTick";
+import PartnerProfileCard from "./PartnerProfileCard.jsx";
+import { visitingPartnerProfile } from "./partnerProfile.js";
 
 export default function CustomerHome({ sectionKey = "" } = {}) {
   const user = useLoginSession();
@@ -59,6 +61,9 @@ export default function CustomerHome({ sectionKey = "" } = {}) {
               Track
             </a>
           </div>
+          {visitingPartnerProfile(activeOrder) ? (
+            <PartnerProfileCard profile={visitingPartnerProfile(activeOrder)} />
+          ) : null}
         </section>
       ) : null}
 

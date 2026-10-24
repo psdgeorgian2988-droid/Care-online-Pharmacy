@@ -54,11 +54,14 @@ import {
   attachDeliveryActor,
   createPartner,
   findPartner,
+  attachAssignedPartnerProfiles,
   listPartnerJobs,
   listPartners,
   partnerCanAccessJob,
   partnerIdFromToken,
   partnerLogin,
+  publicPartner,
+  savePartnerProfile,
   setPartnerLogin,
   updatePartner,
 } from "./partners.mjs";
@@ -731,7 +734,8 @@ export async function handleApi(req, res) {
         send(res, 404, { error: "Order not found." });
         return true;
       }
-      send(res, 200, { order: found });
+      const [order] = await attachAssignedPartnerProfiles([found]);
+      send(res, 200, { order });
       return true;
     }
 
@@ -744,7 +748,33 @@ export async function handleApi(req, res) {
       const orders = (await listOrders()).filter(
         (row) => orderMobile(row) === mobile
       );
-      send(res, 200, { orders });
+      send(res, 200, { orders: await attachAssignedPartnerProfiles(orders) });
+      return true;
+    }
+
+    if (pathname === "/api/partner/profile" && (req.method === "GET" || req.method === "PATCH")) {
+      const token = readToken(req);
+      const partnerId = partnerIdFromToken(token);
+      if (!partnerId) {
+        send(res, 401, { error: "Partner login required." });
+        return true;
+      }
+      if (req.method === "GET") {
+        const partner = await findPartner(partnerId);
+        if (!partner) {
+          send(res, 401, { error: "Partner login required." });
+          return true;
+        }
+        send(res, 200, { partner: publicPartner(partner) });
+        return true;
+      }
+      const body = await readJson(req);
+      const saved = await savePartnerProfile(partnerId, body);
+      if (!saved.ok) {
+        send(res, 400, { error: saved.error || "Could not save the profile." });
+        return true;
+      }
+      send(res, 200, saved);
       return true;
     }
 

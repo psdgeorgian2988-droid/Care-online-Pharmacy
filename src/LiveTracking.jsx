@@ -18,6 +18,8 @@ import {
   TRACK_STEPS,
   trackHref,
 } from "./orderTracking";
+import PartnerProfileCard from "./PartnerProfileCard.jsx";
+import { visitingPartnerProfile } from "./partnerProfile.js";
 import { DIAGNOSTIC_TRACK_STEPS, isDiagnosticKind } from "./labPipeline";
 import { orderCurrentStatus, trackKey } from "./orderStatus";
 import { mapsUrlForPin, normalizePin, osmEmbedUrl } from "./pinLocation";
@@ -320,6 +322,10 @@ export function LiveTrackingPanel({
           </div>
         ) : null}
       </div>
+
+      {audience === "customer" && visitingPartnerProfile(live) ? (
+        <PartnerProfileCard profile={visitingPartnerProfile(live)} />
+      ) : null}
 
       <div className="live-timeline">
         {steps.map((step, index) => (

@@ -18,6 +18,11 @@ import {
 } from "../src/paymentSplit.js";
 import { partnerAppKind } from "../src/partnerApp.js";
 import {
+  customerPartnerProfile,
+  homeVisitingPartnerId,
+  partnerProfileFrom,
+} from "../src/partnerProfile.js";
+import {
   deliveryRecordIsFresh,
   isDeliveryPartner,
   isPharmacyStorePartner,
@@ -159,6 +164,8 @@ function sanitizePartner(row) {
         ? row.passwordResetBy
         : "",
     partnerPercent: normalizePartnerPercent(row.partnerPercent, kinds),
+    email: partnerProfileFrom(row).email,
+    profile: partnerProfileFrom(row),
   };
 }
 
@@ -357,6 +364,39 @@ export async function createPartner(body = {}) {
   list.push(row);
   await writePartners(list);
   return { ok: true, partner: publicPartner(row) };
+}
+
+export async function savePartnerProfile(id, body = {}) {
+  const list = await readPartners();
+  const index = list.findIndex((row) => row.id === id);
+  if (index < 0) return { ok: false, error: "Partner not found." };
+  const current = list[index];
+  const next = sanitizePartner({
+    ...current,
+    address: body.address != null ? body.address : current.address,
+    profile: {
+      ...(current.profile || {}),
+      ...(body.profile && typeof body.profile === "object" ? body.profile : {}),
+    },
+  });
+  list[index] = next;
+  await writePartners(list);
+  return { ok: true, partner: publicPartner(next) };
+}
+
+export async function attachAssignedPartnerProfiles(orders = []) {
+  const partners = await readPartners();
+  const byId = new Map(partners.map((row) => [row.id, row]));
+  return orders.map((order) => {
+    const visitorId = homeVisitingPartnerId(order);
+    const partner = visitorId ? byId.get(visitorId) : null;
+    if (!partner) {
+      if (!order?.partnerProfile) return order;
+      const { partnerProfile: _removed, ...rest } = order;
+      return rest;
+    }
+    return { ...order, partnerProfile: customerPartnerProfile(partner) };
+  });
 }
 
 export async function updatePartner(id, body = {}) {
