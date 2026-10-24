@@ -218,6 +218,12 @@ export default function CustomerWelcome({ onDone } = {}) {
             <a className="app-first-btn is-quiet" href="/?app=0#home" onClick={enterAsGuest}>
               Order as Guest
             </a>
+            <a className="app-first-btn is-quiet" href="#partner-desk">
+              Partner Login
+            </a>
+            <a className="app-first-btn is-quiet" href="#admin">
+              Admin Panel
+            </a>
           </div>
         </div>
       </div>
