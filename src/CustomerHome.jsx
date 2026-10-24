@@ -1,37 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { customerGreeting, needsCustomerWelcome, useLoginSession } from "./authSession";
-import {
-  loadAllOrders,
-  syncMyOrdersFromServer,
-  trackHref,
-} from "./orderTracking";
+import { loadAllOrders, trackHref } from "./orderTracking";
 import { orderCurrentStatus } from "./orderStatus";
 import CustomerWelcome from "./CustomerWelcome";
 import HomeServiceCatalog from "./HomeServiceCatalog";
 import { HomeWithAboutSlides } from "./HomeAboutSlides";
 import LabsHub from "./LabsHub";
 import { homeCatalogSectionKeys } from "./hashRoute";
+import { useSyncedOrderTick } from "./useSyncedOrderTick";
 
 export default function CustomerHome({ sectionKey = "" } = {}) {
   const user = useLoginSession();
   const hello = customerGreeting(user);
   const [welcomeTick, setWelcomeTick] = useState(0);
-  const [ordersTick, setOrdersTick] = useState(0);
-  const activeOrder = useMemo(() => activeOrderFromList(loadAllOrders()), [ordersTick]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const tick = async () => {
-      await syncMyOrdersFromServer(loadAllOrders());
-      if (!cancelled) setOrdersTick((n) => n + 1);
-    };
-    tick();
-    const timer = setInterval(tick, 6000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, []);
+  useSyncedOrderTick();
+  const activeOrder = activeOrderFromList(loadAllOrders());
 
   if (needsCustomerWelcome(user)) {
     return (

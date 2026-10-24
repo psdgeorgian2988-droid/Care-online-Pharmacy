@@ -65,7 +65,7 @@ import SlotOfferBanner from "./SlotOfferBanner";
 import RefundBanner from "./RefundBanner";
 import StepdownDecisionBanner from "./StepdownDecisionBanner";
 import ReportReadyBanner from "./ReportReadyBanner";
-import CustomerWelcome, { needsCustomerWelcome } from "./CustomerWelcome";
+import CustomerWelcome, { needsCustomerWelcome, openGuestHome } from "./CustomerWelcome";
 import {
   isAppShell,
   isInstalledApp,
@@ -201,11 +201,9 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
   const user = useLoginSession();
   const isPhone = useIsPhoneLayout();
 
-  const startGuestOrder = () => {
-    goToHash("#home");
-    document
-      .getElementById("home-services")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const startGuestOrder = (event) => {
+    event?.preventDefault?.();
+    openGuestHome();
   };
 
   if (sectionKey) {
@@ -248,13 +246,13 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
                 <a className="home-account-btn is-login" href="#login">
                   Login / Register
                 </a>
-                <button
-                  type="button"
+                <a
                   className="home-account-btn is-guest"
+                  href="/?app=0#home"
                   onClick={startGuestOrder}
                 >
                   Order As Guest
-                </button>
+                </a>
               </>
             )}
             <a className="home-account-btn is-admin" href="#admin">

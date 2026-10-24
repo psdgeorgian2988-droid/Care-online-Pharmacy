@@ -24,6 +24,36 @@ export {
 
 const FLASH_MS = 2200;
 
+/** Leave welcome and open the home catalog with every service section. */
+export function openGuestHome() {
+  markCustomerEntryChosen();
+  try {
+    globalThis.localStorage?.removeItem?.(APP_PREVIEW_KEY);
+  } catch {
+    /* ignore */
+  }
+  try {
+    globalThis.dispatchEvent?.(new Event("mediHomeSession"));
+  } catch {
+    /* ignore */
+  }
+
+  const loc = globalThis.location;
+  if (!loc) return;
+  const url = new URL(loc.href);
+  url.searchParams.set("app", "0");
+  url.hash = "#home";
+  const next = `${url.pathname}${url.search}${url.hash}`;
+  const current = `${loc.pathname}${loc.search}${loc.hash}`;
+  if (next !== current) {
+    loc.assign(next);
+    return;
+  }
+  globalThis.document
+    ?.getElementById?.("home-services")
+    ?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+}
+
 /** Open the customer welcome (Login / Order as Guest) from any logo click. */
 export function openWelcomePage() {
   clearCustomerEntryChosen();
@@ -96,15 +126,10 @@ export default function CustomerWelcome({ onDone } = {}) {
     goToHash("#home");
   };
 
-  const enterAsGuest = () => {
-    markCustomerEntryChosen();
+  const enterAsGuest = (event) => {
+    event?.preventDefault?.();
+    openGuestHome();
     onDone?.();
-    try {
-      window.dispatchEvent(new Event("mediHomeSession"));
-    } catch {
-      /* ignore */
-    }
-    goToHash("#home");
   };
 
   if (mode === "flash") {
@@ -190,13 +215,9 @@ export default function CustomerWelcome({ onDone } = {}) {
             <a className="app-first-btn" href="#login">
               Login / Register
             </a>
-            <button
-              type="button"
-              className="app-first-btn is-quiet"
-              onClick={enterAsGuest}
-            >
+            <a className="app-first-btn is-quiet" href="/?app=0#home" onClick={enterAsGuest}>
               Order as Guest
-            </button>
+            </a>
           </div>
         </div>
       </div>

@@ -75,29 +75,46 @@ export function customerGreeting(user) {
   return first ? `Hello, ${first}` : "";
 }
 
-export function markCustomerEntryChosen(store = sessionStore()) {
+let entryChosenMemory = false;
+
+function rememberEntry(store, value) {
   try {
-    store?.setItem?.(ENTRY_CHOSEN_KEY, "1");
+    if (value) store?.setItem?.(ENTRY_CHOSEN_KEY, "1");
+    else store?.removeItem?.(ENTRY_CHOSEN_KEY);
   } catch {
     /* ignore quota / private mode */
   }
 }
 
+export function markCustomerEntryChosen(store = sessionStore()) {
+  entryChosenMemory = true;
+  rememberEntry(store, true);
+  const local = localStore();
+  if (local && local !== store) rememberEntry(local, true);
+}
+
 export function clearCustomerEntryChosen(store = sessionStore()) {
-  try {
-    store?.removeItem?.(ENTRY_CHOSEN_KEY);
-  } catch {
-    /* ignore */
-  }
+  entryChosenMemory = false;
+  rememberEntry(store, false);
+  const local = localStore();
+  if (local && local !== store) rememberEntry(local, false);
 }
 
 export function needsCustomerWelcome(user, store = sessionStore()) {
   if (user) return false;
+  if (entryChosenMemory && store === sessionStore()) return false;
   try {
-    return store?.getItem?.(ENTRY_CHOSEN_KEY) !== "1";
+    if (store?.getItem?.(ENTRY_CHOSEN_KEY) === "1") return false;
   } catch {
     return true;
   }
+  if (store !== sessionStore()) return true;
+  try {
+    if (localStore()?.getItem?.(ENTRY_CHOSEN_KEY) === "1") return false;
+  } catch {
+    /* ignore */
+  }
+  return true;
 }
 
 export function readAccountActor() {
