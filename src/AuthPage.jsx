@@ -612,7 +612,15 @@ function ForgotPinPage() {
 const styles = `
 .auth-page{min-height:auto;padding:22px 4% 36px;background:transparent;color:#17324d;box-sizing:border-box}
 .auth-card{max-width:860px;margin:0 auto;padding:20px 22px 22px;background:#fff;border-radius:16px;box-shadow:0 3px 14px rgba(30,100,140,.07)}
-.auth-page.is-login .auth-card{max-width:420px}
+.auth-page.is-login{min-height:calc(100vh - 160px);display:flex;align-items:center;justify-content:center;padding:12px}
+.auth-page.is-login .auth-card{width:min(240px,92vw);max-width:240px;margin:0 auto;padding:10px;text-align:center}
+.auth-page.is-login .auth-card h1{font-size:16px;margin:0 0 8px}
+.auth-page.is-login .auth-form{gap:8px}
+.auth-page.is-login .auth-form label{font-size:12px}
+.auth-page.is-login .auth-form input:not([type=radio]):not([type=checkbox]){height:32px;min-height:32px;padding:5px 8px;font-size:13px}
+.auth-page.is-login .auth-login-actions{gap:8px}
+.auth-page.is-login .auth-login-actions button[type=submit],.auth-page.is-login .auth-login-actions .auth-register-btn{height:32px;min-height:32px;font-size:13px}
+.auth-page.is-login .auth-forgot-btn{height:28px;font-size:12px}
 .auth-card h1{margin:0 0 16px;font-size:24px;color:#123b59}
 .auth-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 14px;align-items:start}
 .auth-form-login{grid-template-columns:1fr}
