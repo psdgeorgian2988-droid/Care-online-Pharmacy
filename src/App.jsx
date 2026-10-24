@@ -65,7 +65,7 @@ import SlotOfferBanner from "./SlotOfferBanner";
 import RefundBanner from "./RefundBanner";
 import StepdownDecisionBanner from "./StepdownDecisionBanner";
 import ReportReadyBanner from "./ReportReadyBanner";
-import CustomerWelcome, { needsCustomerWelcome, openGuestHome } from "./CustomerWelcome";
+import CustomerWelcome, { needsCustomerWelcome } from "./CustomerWelcome";
 import {
   isAppShell,
   isInstalledApp,
@@ -201,11 +201,6 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
   const user = useLoginSession();
   const isPhone = useIsPhoneLayout();
 
-  const startGuestOrder = (event) => {
-    event?.preventDefault?.();
-    openGuestHome();
-  };
-
   if (sectionKey) {
     const keys = homeCatalogSectionKeys(sectionKey);
     return (
@@ -226,40 +221,19 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
     <div className="home-content home-landing">
       <HomeWithAboutSlides>
       <div className="home-shell">
-        <div className="home-hero-row">
-          <aside className="home-account-card" aria-label="Account">
-            <a className="home-account-btn is-partner" href="#partner-desk">
-              Partner
-            </a>
-            {hasAccountSession(user) ? (
-              <>
-                <a className="home-account-btn is-primary" href="#profile">
-                  Profile
-                </a>
-                <a className="home-account-btn is-edit" href="#register">
-                  Edit Account
-                </a>
-                <CustomerLogOut className="home-account-btn is-logout" />
-              </>
-            ) : (
-              <>
-                <a className="home-account-btn is-login" href="#login">
-                  Login / Register
-                </a>
-                <a
-                  className="home-account-btn is-guest"
-                  href="/?app=0#home"
-                  onClick={startGuestOrder}
-                >
-                  Order As Guest
-                </a>
-              </>
-            )}
-            <a className="home-account-btn is-admin" href="#admin">
-              Admin Panel
-            </a>
-          </aside>
-        </div>
+        {hasAccountSession(user) ? (
+          <div className="home-hero-row">
+            <aside className="home-account-card" aria-label="Account">
+              <a className="home-account-btn is-primary" href="#profile">
+                Profile
+              </a>
+              <a className="home-account-btn is-edit" href="#register">
+                Edit Account
+              </a>
+              <CustomerLogOut className="home-account-btn is-logout" />
+            </aside>
+          </div>
+        ) : null}
 
         <div className="home-services-catalog" id="home-services">
           <HomeServiceCatalog
