@@ -13,6 +13,10 @@ if (typeof document !== "undefined") {
   document.documentElement.style.colorScheme = "light";
 }
 
+if (typeof globalThis.resetCustomerDataThroughToday !== "function") {
+  globalThis.resetCustomerDataThroughToday = function resetCustomerDataThroughToday() {};
+}
+
 bootLayoutMode();
 bootAppPreview();
 registerPwa();
