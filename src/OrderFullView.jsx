@@ -21,7 +21,7 @@ import {
   showOrderPartnerBlock,
 } from "./orderFullFields";
 import { openBatchReport } from "./batchStore";
-import { openReportFile, reportFileForOrder } from "./labPipeline";
+import { isDiagnosticKind, openReportFile, reportFileForOrder } from "./labPipeline";
 import OrderFeedbackCta from "./OrderFeedbackCta";
 
 function MetaRow({ label, value, href, onOpen }) {
@@ -102,7 +102,13 @@ export default function OrderFullView({
           <MetaRow label="Date" value={order.date || order.bookedAt || order.requestedAt} />
           <MetaRow
             label="Status"
-            value={completedCustomer ? "Completed" : order.status || orderTrackLabel(order)}
+            value={
+              completedCustomer
+                ? "Completed"
+                : isDiagnosticKind(kind)
+                  ? orderTrackLabel(order)
+                  : order.status || orderTrackLabel(order)
+            }
           />
           {audience === "customer" ? null : (
             <MetaRow label="Tracking" value={orderTrackLabel(order)} />

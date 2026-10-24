@@ -10720,6 +10720,11 @@ html:has(.app:not(.app-customer):not(.app-ops)) #root {
   flex-direction: column !important;
 }
 
+.app:not(.app-ops):not(.app-customer).is-welcome-gate > main > .app-first.is-guest {
+  overflow: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
 .app:not(.app-ops):not(.app-customer).is-welcome-gate .app-first.is-home.is-login-screen .app-first-stage {
   flex: 1 1 auto !important;
   min-height: 0 !important;

@@ -9,6 +9,25 @@ import { PROFILE_KEY } from "./authSession.js";
 import { GUEST_REGISTER_BENEFITS } from "./guestOrder.js";
 
 export const GUEST_CHECKOUT_KEY = "mediHomeGuestCheckout";
+export const OPEN_GUEST_FORM_KEY = "mediHomeOpenGuestForm";
+
+export function requestGuestOrderPage(store = globalThis.sessionStorage) {
+  try {
+    store?.setItem?.(OPEN_GUEST_FORM_KEY, "1");
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+export function takeGuestOrderPage(store = globalThis.sessionStorage) {
+  try {
+    if (store?.getItem?.(OPEN_GUEST_FORM_KEY) !== "1") return false;
+    store.removeItem(OPEN_GUEST_FORM_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export function emptyGuestCheckout() {
   return {

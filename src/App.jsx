@@ -33,14 +33,17 @@ import ComingSoon from "./ComingSoon";
 import ErrorBoundary from "./ErrorBoundary";
 import AuthPage from "./AuthPage";
 import {
+  clearCustomerEntryChosen,
   hasAccountSession,
   rememberReturnHash,
   useLoginSession,
 } from "./authSession";
+import { guestHasCheckout, requestGuestOrderPage } from "./guestCheckout";
 import { useFeatures } from "./featureFlags";
 import { featureEnabled, pausedServiceMessage, pausedServiceTitle, routeEnabled } from "./salesReport";
 import {
   goToHash,
+  subscribeHashChange,
   homeCatalogSectionKeys,
   isAdminBackHash,
   isHomeSectionKey,
@@ -210,6 +213,17 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
         : "#home-services";
 
   const startGuestOrder = () => {
+    if (!guestHasCheckout()) {
+      requestGuestOrderPage();
+      clearCustomerEntryChosen();
+      try {
+        window.dispatchEvent(new Event("mediHomeSession"));
+      } catch {
+        /* ignore */
+      }
+      goToHash("#home");
+      return;
+    }
     if (guestStartHref.startsWith("#") && guestStartHref !== "#home-services") {
       goToHash(guestStartHref);
       return;
@@ -331,8 +345,10 @@ function App() {
 
     window.addEventListener("hashchange", handleHashChange);
     window.addEventListener("popstate", handleHashChange);
+    const unsubscribe = subscribeHashChange(handleHashChange);
 
     return () => {
+      unsubscribe();
       window.removeEventListener("hashchange", handleHashChange);
       window.removeEventListener("popstate", handleHashChange);
     };

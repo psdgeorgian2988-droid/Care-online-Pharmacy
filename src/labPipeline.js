@@ -17,7 +17,7 @@ export function diagnosticKindOf(order) {
 export const DIAGNOSTIC_TRACK_STEPS = [
   { key: "requested", label: "Awaiting Partner Confirmation" },
   { key: "slot_offered", label: "Awaiting Customer Slot Confirmation" },
-  { key: "confirmed", label: "Partner Accepted" },
+  { key: "confirmed", label: "Approved" },
   { key: "assigned", label: "Partner Assigned" },
   { key: "sample_collected", label: "Sample Collected" },
   { key: "processing", label: "Under Process" },
@@ -32,7 +32,7 @@ export function diagnosticStepLabel(key, kind = "lab") {
   if (hit) return hit.label;
   if (key === "done") return "Completed";
   if (key === "packed" || key === "on_the_way" || key === "arriving") {
-    return "Partner Accepted";
+    return "Approved";
   }
   return "In progress";
 }

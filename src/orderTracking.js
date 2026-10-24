@@ -535,6 +535,9 @@ export function tickTracking(record, now = Date.now()) {
     };
   }
   const next = withTracking({ ...record, trackCompleted: false }, kind);
+  if (isDiagnosticKind(kind)) {
+    return { ...next, trackLastAt: now };
+  }
   if (!checks.pickup) {
     return {
       ...next,

@@ -2,11 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { customerGreeting, needsCustomerWelcome, useLoginSession } from "./authSession";
 import {
   loadAllOrders,
-  refreshOrderFromServer,
+  syncMyOrdersFromServer,
   trackHref,
 } from "./orderTracking";
 import { orderCurrentStatus } from "./orderStatus";
-import { isAwaitingPartnerConfirm } from "./orderConfirm";
 import CustomerWelcome from "./CustomerWelcome";
 import HomeServiceCatalog from "./HomeServiceCatalog";
 import { HomeWithAboutSlides } from "./HomeAboutSlides";
@@ -23,14 +22,7 @@ export default function CustomerHome({ sectionKey = "" } = {}) {
   useEffect(() => {
     let cancelled = false;
     const tick = async () => {
-      const rows = loadAllOrders();
-      const pending = rows.filter((order) => {
-        const kind = String(order?.kind || order?.orderType || "").toLowerCase();
-        return kind === "stepdown" || isAwaitingPartnerConfirm(order);
-      });
-      for (const order of pending) {
-        await refreshOrderFromServer(order.bookingId || order.id);
-      }
+      await syncMyOrdersFromServer(loadAllOrders());
       if (!cancelled) setOrdersTick((n) => n + 1);
     };
     tick();
@@ -96,11 +88,15 @@ export default function CustomerHome({ sectionKey = "" } = {}) {
 }
 
 function activeOrderFromList(orders) {
-  return (
-    orders.find(
-      (order) =>
-        !order.trackCompleted &&
-        String(order.trackStatus || order.status || "").toLowerCase() !== "done"
-    ) || null
+  const open = (Array.isArray(orders) ? orders : []).filter(
+    (order) =>
+      !order.trackCompleted &&
+      String(order.trackStatus || order.status || "").toLowerCase() !== "done"
   );
+  open.sort(
+    (a, b) =>
+      (Number(b.updatedAt || b.sortKey || 0) || 0) -
+      (Number(a.updatedAt || a.sortKey || 0) || 0)
+  );
+  return open[0] || null;
 }

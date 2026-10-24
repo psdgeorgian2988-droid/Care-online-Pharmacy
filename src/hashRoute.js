@@ -433,12 +433,35 @@ function hashUrl(hash) {
   return `${window.location.pathname}${window.location.search}${normalizeAppHash(hash)}`;
 }
 
+const hashListeners = new Set();
+
+/** Fires even when the browser refuses to construct a HashChangeEvent. */
+export function subscribeHashChange(listener) {
+  hashListeners.add(listener);
+  return () => hashListeners.delete(listener);
+}
+
 function notifyHashChange() {
-  if (typeof HashChangeEvent === "function") {
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
-    return;
+  try {
+    if (typeof HashChangeEvent === "function") {
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    } else {
+      window.dispatchEvent(new Event("hashchange"));
+    }
+  } catch {
+    try {
+      window.dispatchEvent(new Event("hashchange"));
+    } catch {
+      /* some browsers cannot construct hashchange */
+    }
   }
-  window.dispatchEvent(new Event("hashchange"));
+  hashListeners.forEach((listener) => {
+    try {
+      listener();
+    } catch {
+      /* one listener must not block the route change */
+    }
+  });
 }
 
 export function goToHash(nextHash) {

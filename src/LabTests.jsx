@@ -14,7 +14,9 @@ import {
   diagnosticPartnerRouteFields,
   diagnosticRequestFields,
   isAwaitingCustomerSlotConfirm,
+  isAwaitingPartnerConfirm,
 } from "./orderConfirm";
+import { orderCurrentStatus } from "./orderStatus";
 import { goHomeAfterPaidCheckout } from "./checkoutComplete";
 import SlotOfferCard from "./SlotOfferCard";
 import PaymentBlock from "./PaymentBlock";
@@ -401,7 +403,14 @@ function LabTests() {
     let cancelled = false;
     const timer = setInterval(async () => {
       const latest = await refreshOrderFromServer(id);
-      if (!cancelled && latest) setBooking(latest);
+      if (!cancelled && latest) {
+        setBooking(latest);
+        try {
+          localStorage.setItem("mediHomeLabBooking", JSON.stringify(latest));
+        } catch {
+          /* keep the on-screen booking if storage is blocked */
+        }
+      }
     }, 6000);
     return () => {
       cancelled = true;
@@ -926,6 +935,8 @@ function LabTests() {
     const tests = booking.tests || [];
     const partnerName = diagnosticBrandLabel(booking);
     const isLabBooking = (booking.serviceType || booking.kind) !== "radiology";
+    const currentStatus = orderCurrentStatus(booking);
+    const awaitingPartner = isAwaitingPartnerConfirm(booking);
     return (
       <>
         <style>{styles}</style>
@@ -937,22 +948,26 @@ function LabTests() {
                 <div className="success-icon">✓</div>
                 <h1>
                   {isLabBooking
-                    ? "Request sent"
+                    ? awaitingPartner
+                      ? "Request sent"
+                      : currentStatus
                     : booking.partnerConfirmed
-                      ? "Scan booking confirmed"
+                      ? currentStatus
                       : isAwaitingCustomerSlotConfirm(booking)
                         ? "New time slot offered"
                         : "Scan request sent"}
                 </h1>
-                <p>
-                  {isLabBooking
-                    ? "Your request has been sent to the lab. Track sample collection below."
-                    : booking.partnerConfirmed
-                      ? "The imaging centre confirmed your slot. Track your appointment below."
+                {isLabBooking ? (
+                  awaitingPartner ? <p>Your request has been sent to the lab.</p> : null
+                ) : (
+                  <p>
+                    {booking.partnerConfirmed
+                      ? currentStatus
                       : isAwaitingCustomerSlotConfirm(booking)
                         ? "Your requested slot was not available. Accept the centre’s offered slot to confirm the booking."
                         : "Your request has been sent to the imaging centre. The booking is confirmed after they accept your slot, or after you accept a new slot they offer."}
-                </p>
+                  </p>
+                )}
               </>
             ) : null}
             {flowStep === "pay" ? (
@@ -974,6 +989,10 @@ function LabTests() {
               <div className="confirm-head">
                 <h2>Booking Details</h2>
                 <span>{booking.bookingId}</span>
+              </div>
+              <div className="confirm-row">
+                <span>Current status</span>
+                <strong>{currentStatus}</strong>
               </div>
               <div className="confirm-row">
                 <span>{isLabBooking ? "Lab partner" : "Imaging partner"}</span>

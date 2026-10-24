@@ -99,7 +99,7 @@ test("Lab Update is replaced by the order current status", () => {
       partnerConfirmed: true,
       partnerConfirmStatus: "accepted",
     }),
-    "Partner Accepted"
+    "Approved"
   );
   assert.equal(
     orderTrackLabel({

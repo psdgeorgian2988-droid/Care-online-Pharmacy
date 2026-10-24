@@ -7,6 +7,7 @@ import {
   goBackHash,
   goToChildHash,
   goToHash,
+  subscribeHashChange,
   hashesMatch,
   homeCatalogSectionKeys,
   isHomeSectionKey,
@@ -404,6 +405,27 @@ test("goToChildHash from the parent section only pushes the child", () => {
       "#education?service=guides",
     ]);
   } finally {
+    session.restore();
+  }
+});
+
+test("goToHash still opens the next page when HashChangeEvent cannot be constructed", () => {
+  const session = installHashWindow("#home");
+  const previous = globalThis.HashChangeEvent;
+  globalThis.HashChangeEvent = function HashChangeEvent() {
+    throw new Error("not constructable");
+  };
+  let heard = 0;
+  const stop = subscribeHashChange(() => {
+    heard += 1;
+  });
+  try {
+    goToHash("#labs");
+    assert.equal(session.hash(), "#labs");
+    assert.equal(heard, 1);
+  } finally {
+    stop();
+    globalThis.HashChangeEvent = previous;
     session.restore();
   }
 });
