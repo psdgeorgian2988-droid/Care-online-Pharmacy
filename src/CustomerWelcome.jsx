@@ -5,8 +5,6 @@ import { goToHash } from "./hashRoute";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import {
   emptyGuestCheckout,
-  guestHasCheckout,
-  takeGuestOrderPage,
   validateGuestCheckout,
   writeGuestCheckout,
 } from "./guestCheckout";
@@ -66,7 +64,7 @@ export function openWelcomePage() {
 }
 
 export default function CustomerWelcome({ onDone } = {}) {
-  const [mode, setMode] = useState(() => (takeGuestOrderPage() ? "guest" : "flash")); // flash | choose | guest
+  const [mode, setMode] = useState("flash"); // flash | choose | guest
   const [form, setForm] = useState(() => emptyGuestCheckout());
   const [errors, setErrors] = useState({});
 
@@ -107,14 +105,6 @@ export default function CustomerWelcome({ onDone } = {}) {
       /* ignore */
     }
     goToHash("#home");
-  };
-
-  const openGuestOrder = () => {
-    if (guestHasCheckout()) {
-      enterAsGuest();
-      return;
-    }
-    setMode("guest");
   };
 
   if (mode === "flash") {
@@ -203,7 +193,7 @@ export default function CustomerWelcome({ onDone } = {}) {
             <button
               type="button"
               className="app-first-btn is-quiet"
-              onClick={openGuestOrder}
+              onClick={enterAsGuest}
             >
               Order as Guest
             </button>

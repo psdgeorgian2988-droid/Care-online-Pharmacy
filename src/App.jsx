@@ -33,14 +33,12 @@ import ComingSoon from "./ComingSoon";
 import ErrorBoundary from "./ErrorBoundary";
 import AuthPage from "./AuthPage";
 import {
-  clearCustomerEntryChosen,
   hasAccountSession,
   rememberReturnHash,
   useLoginSession,
 } from "./authSession";
-import { guestHasCheckout, requestGuestOrderPage } from "./guestCheckout";
 import { useFeatures } from "./featureFlags";
-import { featureEnabled, pausedServiceMessage, pausedServiceTitle, routeEnabled } from "./salesReport";
+import { pausedServiceMessage, pausedServiceTitle, routeEnabled } from "./salesReport";
 import {
   goToHash,
   subscribeHashChange,
@@ -200,34 +198,11 @@ function HomeReviewsTeaser() {
 }
 
 function WebsiteHomePage({ sectionKey = "" } = {}) {
-  const features = useFeatures();
   const user = useLoginSession();
   const isPhone = useIsPhoneLayout();
 
-  const guestStartHref = featureEnabled(features, "lab") || featureEnabled(features, "radiology")
-    ? "#labs"
-    : featureEnabled(features, "medicine")
-      ? "#medicine-search"
-      : featureEnabled(features, "homecare")
-        ? "#homecare"
-        : "#home-services";
-
   const startGuestOrder = () => {
-    if (!guestHasCheckout()) {
-      requestGuestOrderPage();
-      clearCustomerEntryChosen();
-      try {
-        window.dispatchEvent(new Event("mediHomeSession"));
-      } catch {
-        /* ignore */
-      }
-      goToHash("#home");
-      return;
-    }
-    if (guestStartHref.startsWith("#") && guestStartHref !== "#home-services") {
-      goToHash(guestStartHref);
-      return;
-    }
+    goToHash("#home");
     document
       .getElementById("home-services")
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
