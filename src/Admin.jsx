@@ -58,6 +58,7 @@ import {
   yoySnapshot,
 } from "./salesReport";
 import AdminPartnerLogins from "./AdminPartnerLogins";
+import AdminTeamApprovals from "./AdminTeamApprovals";
 import AdminLabTests from "./AdminLabTests";
 import {
   BarList,
@@ -516,7 +517,7 @@ function Admin() {
     return (
       <>
         <style>{styles}</style>
-        <div className="service-page admin-page">
+        <div className="service-page admin-page is-login">
           <section className="service-hero">
             <span className="service-kicker">Operations</span>
             <h1>Admin Panel</h1>
@@ -891,6 +892,8 @@ function Admin() {
           onError={setError}
         />
 
+        <AdminTeamApprovals partners={partners} onChange={setPartners} />
+
         <AdminPartnerLogins partners={partners} onChange={setPartners} />
         <AdminLabTests />
 
@@ -1141,6 +1144,12 @@ const styles = `
 .admin-hero-actions{display:flex;flex-wrap:wrap;gap:6px}
 .admin-hero-actions button,.admin-report-controls button,.admin-scan-link{border:1px solid #d7e2e9;border-radius:6px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
 .admin-login{max-width:420px}
+.admin-page.is-login{min-height:calc(100vh - 160px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px;box-sizing:border-box}
+.admin-page.is-login .service-hero,.admin-page.is-login .admin-login{width:min(240px,92vw);max-width:240px;margin:0 auto}
+.admin-page.is-login .service-hero{text-align:center;padding:8px 10px}
+.admin-page.is-login .service-hero h1{font-size:16px}
+.admin-page.is-login .service-form{padding:10px;gap:8px}
+.admin-page.is-login input,.admin-page.is-login .service-submit{min-height:32px;height:32px;padding:5px 8px;font-size:13px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}
 .admin-retention-note{margin:0 0 12px;width:100%;max-width:none;font-size:12px;line-height:1.45;color:#34546b}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}

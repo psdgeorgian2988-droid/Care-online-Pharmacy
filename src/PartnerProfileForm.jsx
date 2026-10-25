@@ -2,14 +2,18 @@ import { useState } from "react";
 import { savePartnerProfile } from "./partnerApi";
 import { partnerProfileFrom } from "./partnerProfile";
 
-function readPickedFile(file) {
+const PHOTO_SIZE = 512;
+const PHOTO_MAX_BYTES = 3 * 1024 * 1024;
+
+function readPickedFile(file, maxBytes) {
   return new Promise((resolve, reject) => {
     if (!file) {
       resolve(null);
       return;
     }
-    if (file.size > 700000) {
-      reject(new Error("Each file must be under 700 KB."));
+    if (file.size > maxBytes) {
+      const mb = Math.round(maxBytes / (1024 * 1024));
+      reject(new Error(`That file must be ${mb} MB or smaller.`));
       return;
     }
     const ok = /^image\//.test(file.type) || file.type === "application/pdf";
@@ -29,6 +33,60 @@ function readPickedFile(file) {
   });
 }
 
+function isJpegOrPng(file) {
+  const type = String(file?.type || "").toLowerCase();
+  const name = String(file?.name || "").toLowerCase();
+  return (
+    type === "image/jpeg" ||
+    type === "image/jpg" ||
+    type === "image/png" ||
+    /\.jpe?g$/.test(name) ||
+    name.endsWith(".png")
+  );
+}
+
+function readProfilePhoto(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      resolve(null);
+      return;
+    }
+    if (!isJpegOrPng(file)) {
+      reject(new Error("Profile photo must be a JPG or PNG."));
+      return;
+    }
+    if (file.size > PHOTO_MAX_BYTES) {
+      reject(new Error("Profile photo must be 3 MB or smaller."));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = PHOTO_SIZE;
+        canvas.height = PHOTO_SIZE;
+        const ctx = canvas.getContext("2d");
+        const scale = Math.max(PHOTO_SIZE / image.width, PHOTO_SIZE / image.height);
+        const width = image.width * scale;
+        const height = image.height * scale;
+        ctx.drawImage(image, (PHOTO_SIZE - width) / 2, (PHOTO_SIZE - height) / 2, width, height);
+        const png = String(file.type || "").toLowerCase() === "image/png" || String(file.name || "").toLowerCase().endsWith(".png");
+        const fileType = png ? "image/png" : "image/jpeg";
+        resolve({
+          fileName: file.name,
+          fileType,
+          fileData: canvas.toDataURL(fileType, 0.92),
+        });
+      };
+      image.onerror = () => reject(new Error("Could not read that photo."));
+      image.src = String(reader.result || "");
+    };
+    reader.onerror = () => reject(new Error("Could not read that photo."));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function PartnerProfileForm({ partner, onSaved }) {
   const [draft, setDraft] = useState(() => partnerProfileFrom(partner));
   const [address, setAddress] = useState(partner?.address || "");
@@ -36,10 +94,28 @@ export default function PartnerProfileForm({ partner, onSaved }) {
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
 
-  const onFile = async (event, apply) => {
+  const onPhoto = async (event) => {
     setError("");
     try {
-      const file = await readPickedFile(event.target.files?.[0]);
+      const file = await readProfilePhoto(event.target.files?.[0]);
+      if (file) {
+        setDraft((current) => ({
+          ...current,
+          photoName: file.fileName,
+          photoType: file.fileType,
+          photoData: file.fileData,
+        }));
+      }
+    } catch (err) {
+      setError(err.message || "Could not read that photo.");
+    }
+    event.target.value = "";
+  };
+
+  const onFile = async (event, apply, maxBytes) => {
+    setError("");
+    try {
+      const file = await readPickedFile(event.target.files?.[0], maxBytes);
       if (file) apply(file);
     } catch (err) {
       setError(err.message || "Could not read that file.");
@@ -71,20 +147,8 @@ export default function PartnerProfileForm({ partner, onSaved }) {
       </p>
       <label>
         Photo
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(event) =>
-            onFile(event, (file) =>
-              setDraft((current) => ({
-                ...current,
-                photoName: file.fileName,
-                photoType: file.fileType,
-                photoData: file.fileData,
-              }))
-            )
-          }
-        />
+        <span className="admin-hint">JPG or PNG, saved as 512×512 pixels, maximum 3 MB.</span>
+        <input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" onChange={onPhoto} />
       </label>
       {draft.photoData ? <img className="partner-profile-photo" src={draft.photoData} alt="" /> : null}
       <label>
@@ -136,7 +200,7 @@ export default function PartnerProfileForm({ partner, onSaved }) {
         />
       </label>
       <label>
-        Aadhaar card
+        Aadhaar card (max 5 MB)
         <input
           type="file"
           accept="image/*,.pdf"
@@ -148,13 +212,13 @@ export default function PartnerProfileForm({ partner, onSaved }) {
                 aadhaarFileType: file.fileType,
                 aadhaarFileData: file.fileData,
               }))
-            )
+            , 5 * 1024 * 1024)
           }
         />
       </label>
       {draft.aadhaarFileName ? <p className="admin-hint">{draft.aadhaarFileName}</p> : null}
       <label>
-        Police verification
+        Police verification (max 10 MB)
         <input
           type="file"
           accept="image/*,.pdf"
@@ -166,13 +230,13 @@ export default function PartnerProfileForm({ partner, onSaved }) {
                 policeFileType: file.fileType,
                 policeFileData: file.fileData,
               }))
-            )
+            , 10 * 1024 * 1024)
           }
         />
       </label>
       {draft.policeFileName ? <p className="admin-hint">{draft.policeFileName}</p> : null}
       <label>
-        Certificate
+        Certificate (max 10 MB)
         <input
           type="file"
           accept="image/*,.pdf"
@@ -185,7 +249,7 @@ export default function PartnerProfileForm({ partner, onSaved }) {
                   { name: file.fileName.replace(/\.[^.]+$/, ""), ...file },
                 ].slice(0, 6),
               }))
-            )
+            , 10 * 1024 * 1024)
           }
         />
       </label>

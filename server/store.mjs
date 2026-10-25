@@ -41,6 +41,7 @@ const KEEP_IF_EMPTY = [
   "technicianName",
   "technicianMobile",
   "technicianAssignedAt",
+  "teamMemberId",
   "sampleCollectedAt",
   "reportFileName",
   "reportFileData",

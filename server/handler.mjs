@@ -52,6 +52,7 @@ import {
   assignPartnerToOrder,
   attachConcernedPharmacy,
   attachDeliveryActor,
+  addPartnerTeamMember,
   createPartner,
   findPartner,
   attachAssignedPartnerProfiles,
@@ -61,10 +62,14 @@ import {
   partnerIdFromToken,
   partnerLogin,
   publicPartner,
+  removePartnerTeamMember,
+  reviewPartnerTeamMember,
   savePartnerProfile,
   setPartnerLogin,
   updatePartner,
+  updatePartnerTeamMember,
 } from "./partners.mjs";
+import { approvedTeamMember } from "../src/partnerTeam.js";
 import {
   confirmAdminPartnerReset,
   confirmPartnerForgotPassword,
@@ -778,6 +783,61 @@ export async function handleApi(req, res) {
       return true;
     }
 
+    if (pathname === "/api/partner/team" && req.method === "POST") {
+      const token = readToken(req);
+      const partnerId = partnerIdFromToken(token);
+      if (!partnerId) {
+        send(res, 401, { error: "Partner login required." });
+        return true;
+      }
+      const body = await readJson(req);
+      const saved = await addPartnerTeamMember(partnerId, body);
+      if (!saved.ok) {
+        send(res, 400, { error: saved.error || "Could not add the team member." });
+        return true;
+      }
+      send(res, 200, saved);
+      return true;
+    }
+
+    const partnerTeamMatch = pathname.match(/^\/api\/partner\/team\/([^/]+)$/);
+    if (partnerTeamMatch && (req.method === "PATCH" || req.method === "DELETE")) {
+      const token = readToken(req);
+      const partnerId = partnerIdFromToken(token);
+      if (!partnerId) {
+        send(res, 401, { error: "Partner login required." });
+        return true;
+      }
+      const memberId = decodeURIComponent(partnerTeamMatch[1]);
+      const saved =
+        req.method === "DELETE"
+          ? await removePartnerTeamMember(partnerId, memberId)
+          : await updatePartnerTeamMember(partnerId, memberId, await readJson(req));
+      if (!saved.ok) {
+        send(res, 400, { error: saved.error || "Could not update the team member." });
+        return true;
+      }
+      send(res, 200, saved);
+      return true;
+    }
+
+    const adminTeamMatch = pathname.match(/^\/api\/admin\/partners\/([^/]+)\/team\/([^/]+)$/);
+    if (adminTeamMatch && req.method === "PATCH") {
+      if (!requireStaff(req, res)) return true;
+      const body = await readJson(req);
+      const saved = await reviewPartnerTeamMember(
+        decodeURIComponent(adminTeamMatch[1]),
+        decodeURIComponent(adminTeamMatch[2]),
+        body
+      );
+      if (!saved.ok) {
+        send(res, 400, { error: saved.error || "Could not review the team profile." });
+        return true;
+      }
+      send(res, 200, { partner: saved.partner, partners: await listPartners() });
+      return true;
+    }
+
     const partnerJobMatch = pathname.match(/^\/api\/partner\/jobs\/([^/]+)$/);
     if (partnerJobMatch && req.method === "PATCH") {
       const token = readToken(req);
@@ -1108,6 +1168,20 @@ export async function handleApi(req, res) {
           outletId: partner.outletId || existing.outletId,
         });
         if (deducted?.stockDeducted) patch.stockDeducted = true;
+      }
+      if (
+        body.trackStatus === "assigned" &&
+        String(existing.kind || existing.orderType || "").toLowerCase() === "lab"
+      ) {
+        const member = approvedTeamMember(partner, body.teamMemberId);
+        if (!member) {
+          send(res, 400, { error: "Assign an approved team member." });
+          return true;
+        }
+        patch.teamMemberId = member.id;
+        patch.technicianName = member.name;
+        patch.technicianMobile = member.mobile;
+        patch.technicianAssignedAt = Number(body.technicianAssignedAt) || Date.now();
       }
       const updated = await patchOrder(
         orderId(existing),

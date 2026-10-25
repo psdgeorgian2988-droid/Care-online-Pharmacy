@@ -9613,6 +9613,8 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
 }
 
 .app-first-actions.is-entry {
+  position: relative;
+  z-index: 30;
   display: flex;
   justify-content: center;
   width: 100%;
@@ -11737,6 +11739,68 @@ body > .record-viewer,
     margin-left: 0 !important;
     margin-right: 0 !important;
   }
+}
+
+.app.app-ops > main:has(> .is-login) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.app.app-ops > main > .partner-page.is-login,
+.app.app-ops > main > .admin-page.is-login {
+  width: min(240px, 92vw) !important;
+  max-width: 240px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  box-sizing: border-box !important;
+}
+
+.app.app-ops .partner-page.is-login .service-hero,
+.app.app-ops .partner-page.is-login .admin-login,
+.app.app-ops .admin-page.is-login .service-hero,
+.app.app-ops .admin-page.is-login .admin-login {
+  width: 100% !important;
+  max-width: 240px !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+}
+
+.app.app-ops .partner-page.is-login .service-hero,
+.app.app-ops .admin-page.is-login .service-hero {
+  text-align: center !important;
+  padding: 8px 10px !important;
+}
+
+.app.app-ops .partner-page.is-login .service-hero h1,
+.app.app-ops .admin-page.is-login .service-hero h1 {
+  font-size: 16px !important;
+  margin: 0 !important;
+}
+
+.app.app-ops .partner-page.is-login .service-form,
+.app.app-ops .admin-page.is-login .service-form {
+  padding: 10px !important;
+  gap: 8px !important;
+}
+
+.app.app-ops .partner-page.is-login input,
+.app.app-ops .partner-page.is-login .service-submit,
+.app.app-ops .admin-page.is-login input,
+.app.app-ops .admin-page.is-login .service-submit {
+  width: 100% !important;
+  min-height: 32px !important;
+  height: 32px !important;
+  padding: 5px 8px !important;
+  font-size: 13px !important;
+  box-sizing: border-box !important;
 }
 
 

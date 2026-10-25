@@ -355,7 +355,14 @@ function App() {
   }, [route]);
 
   useEffect(() => {
-    if (isOps || appRole === "staff" || appRole === "partner" || backActor !== "customer") {
+    if (
+      isOps ||
+      route === "#admin" ||
+      isPartnerDeskRoute(route) ||
+      appRole === "staff" ||
+      appRole === "partner" ||
+      backActor !== "customer"
+    ) {
       return undefined;
     }
     if (AUTH_ROUTES.has(route)) return undefined;
@@ -521,6 +528,8 @@ function App() {
 
   const welcomeGate =
     !isOps &&
+    route !== "#admin" &&
+    !isPartnerDeskRoute(route) &&
     appRole !== "staff" &&
     appRole !== "partner" &&
     !isAuthRoute &&

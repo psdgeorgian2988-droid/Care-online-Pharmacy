@@ -49,12 +49,14 @@ import {
 import { fileToPrescriptionDraft } from "./prescriptionDraft";
 import {
   fetchPartnerJobs,
+  fetchPartnerProfile,
   fetchPartnerStock,
   partnerLogin,
   partnerLogout,
   partnerSession,
   patchPartnerJob,
 } from "./partnerApi";
+import { approvedTeam } from "./partnerTeam.js";
 import PartnerForgotPassword from "./PartnerForgotPassword";
 import { stockOnHandForItem } from "./stockReport";
 import OrderQr from "./OrderQr.jsx";
@@ -66,6 +68,7 @@ import {
 import { rxShareCardStyles } from "./RxShareCard";
 import OrderFullView from "./OrderFullView.jsx";
 import PartnerProfileForm from "./PartnerProfileForm.jsx";
+import PartnerTeamPanel from "./PartnerTeamPanel.jsx";
 import { BillButton } from "./OrderBill.jsx";
 import OrderListTable from "./OrderListTable.jsx";
 import PharmacyReport from "./PharmacyReport.jsx";
@@ -97,7 +100,6 @@ import { isoDateToday } from "./personFields";
 import {
   assignTechnicianFields,
   diagnosticCompleteFields,
-  DIAGNOSTIC_TRACK_STEPS,
   diagnosticKindOf,
   isDiagnosticKind,
   isLabReportUploadFile,
@@ -171,6 +173,7 @@ export default function Partner({ deskKind = "" }) {
   const [labReportError, setLabReportError] = useState("");
   const [recordViewer, setRecordViewer] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [showTeam, setShowTeam] = useState(false);
   const labReportFileRef = useRef(null);
   const labUploadTargetIdRef = useRef("");
   const openGeneratedReport = useCallback(
@@ -223,6 +226,19 @@ export default function Partner({ deskKind = "" }) {
   useEffect(() => {
     if (token) loadJobs();
   }, [token]);
+
+  useEffect(() => {
+    if (!token || deskKind !== "lab") return;
+    let cancelled = false;
+    fetchPartnerProfile()
+      .then((data) => {
+        if (!cancelled && data?.partner) setPartner(data.partner);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [token, deskKind]);
 
   useEffect(() => {
     if (labTab !== "upload") return;
@@ -622,9 +638,26 @@ export default function Partner({ deskKind = "" }) {
             <h1>{partner.name}</h1>
           </div>
           <div className="admin-hero-actions">
-            <button type="button" onClick={() => setShowProfile((open) => !open)}>
+            <button
+              type="button"
+              onClick={() => {
+                setShowTeam(false);
+                setShowProfile((open) => !open);
+              }}
+            >
               {showProfile ? "Hide profile" : "Profile"}
             </button>
+            {deskKind === "lab" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowProfile(false);
+                  setShowTeam((open) => !open);
+                }}
+              >
+                {showTeam ? "Hide team" : "Team"}
+              </button>
+            ) : null}
             <button type="button" onClick={loadJobs} disabled={loading}>
               {loading ? "Refreshing…" : "Refresh"}
             </button>
@@ -645,6 +678,12 @@ export default function Partner({ deskKind = "" }) {
         {showProfile ? (
           <PartnerProfileForm
             key={partner?.id || "profile"}
+            partner={partner}
+            onSaved={(next) => setPartner(next)}
+          />
+        ) : null}
+        {showTeam && deskKind === "lab" ? (
+          <PartnerTeamPanel
             partner={partner}
             onSaved={(next) => setPartner(next)}
           />
@@ -750,11 +789,7 @@ export default function Partner({ deskKind = "" }) {
                 paid={paid}
                 paidElsewhere={paidElsewhere}
                 promptUpload={false}
-                hideDiagPanel={
-                  (isLabStore && labTab === "upload") ||
-                  (isDiagnosticStore && labTab === "done") ||
-                  partnerJobClosed(job)
-                }
+                hideDiagPanel={isLabStore && labTab === "upload"}
                 needsCollect={needsCollect}
                 method={method}
                 preview={preview}
@@ -1141,6 +1176,7 @@ function JobDetail({
         busy={collecting}
         onAdvance={onAdvance}
         promptUpload={promptUpload}
+        team={kind === "lab" ? approvedTeam(partner?.team) : []}
       />
     ) : null;
 
@@ -1549,31 +1585,39 @@ function LabReportUploadPanel({
   );
 }
 
-const LAB_PROCESS_KEYS = [
-  "sample_collected",
-  "processing",
-  "report_ready",
-  "report_uploaded",
-  "done",
+const LAB_PROCESS_STEPS = [
+  { key: "sample_collected", label: "Sample collected", action: "sample_collect", fields: sampleCollectedFields },
+  { key: "processing", label: "Submitted to lab", action: "under_process", fields: underProcessFields },
+  { key: "report_ready", label: "Report ready", action: "mark_report_ready", fields: markReportReadyFields },
+  { key: "report_uploaded", label: "Report uploaded", action: "upload_report" },
+  { key: "done", label: "Order complete", action: "complete", fields: diagnosticCompleteFields },
 ];
 
-function LabOrderProcess({ job }) {
+function LabOrderProcess({ job, busy = false, onAdvance }) {
   const current = trackKey(job);
-  const steps = DIAGNOSTIC_TRACK_STEPS.filter((step) => LAB_PROCESS_KEYS.includes(step.key));
+  const action = nextDiagnosticAction(job);
+  const steps = LAB_PROCESS_STEPS;
   const currentIndex = steps.findIndex((step) => step.key === current);
+  const finished = current === "done";
   return (
     <ol className="lab-order-process" aria-label="Order process">
       {steps.map((step, index) => {
-        const state =
-          currentIndex >= 0 && index < currentIndex
-            ? " is-done"
-            : index === currentIndex
-              ? " is-current"
-              : "";
+        const state = finished || (currentIndex >= 0 && index < currentIndex)
+          ? " is-done"
+          : index === currentIndex
+            ? " is-current"
+            : "";
+        const canUpdate = step.action === action && typeof step.fields === "function";
         return (
           <li key={step.key} className={`lab-order-process-step${state}`}>
             <span>{state.includes("is-done") ? "✓" : index + 1}</span>
-            <p>{step.key === "done" ? "Order Complete" : step.label}</p>
+            {canUpdate ? (
+              <button type="button" disabled={busy} onClick={() => onAdvance(step.fields())}>
+                {step.label}
+              </button>
+            ) : (
+              <p>{step.label}</p>
+            )}
           </li>
         );
       })}
@@ -1581,16 +1625,22 @@ function LabOrderProcess({ job }) {
   );
 }
 
-function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false }) {
+function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false, team = [] }) {
   const action = nextDiagnosticAction(job);
+  const labAssign = diagnosticKindOf(job) === "lab";
   const [techName, setTechName] = useState(job.technicianName || job.partnerName || "");
   const [techMobile, setTechMobile] = useState(job.technicianMobile || job.partnerMobile || "");
+  const [teamMemberId, setTeamMemberId] = useState(job.teamMemberId || "");
   const [reportName, setReportName] = useState("");
   const [reportNotes, setReportNotes] = useState("");
   const [reportFile, setReportFile] = useState(null);
   const [localError, setLocalError] = useState("");
   const reportFileRef = useRef(null);
-  if (partnerJobClosed(job)) return null;
+  if (partnerJobClosed(job)) {
+    return diagnosticKindOf(job) === "lab" ? (
+      <LabOrderProcess job={job} busy={busy} onAdvance={onAdvance} />
+    ) : null;
+  }
   const canUpload = labJobCanReceiveReport(job);
   const showUpload =
     action === "upload_report" ||
@@ -1671,7 +1721,10 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false }) {
       />
     ) : null;
 
-  const processStrip = diagnosticKindOf(job) === "lab" ? <LabOrderProcess job={job} /> : null;
+  const processStrip =
+    diagnosticKindOf(job) === "lab" ? (
+      <LabOrderProcess job={job} busy={busy} onAdvance={onAdvance} />
+    ) : null;
 
   if (promptUpload || action === "upload_report") {
     return (
@@ -1703,34 +1756,77 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false }) {
     <div className="partner-diag-panel">
       {processStrip}
       {action === "assign_technician" ? (
-        <>
-          <p className="partner-collect-title">Assign partner</p>
-          <input
-            value={techName}
-            onChange={(event) => setTechName(event.target.value)}
-            placeholder="Partner name"
-            aria-label="Partner name"
-            disabled={busy}
-          />
-          <input
-            value={techMobile}
-            onChange={(event) => setTechMobile(event.target.value.replace(/\D/g, "").slice(0, 10))}
-            placeholder="Mobile"
-            aria-label="Partner mobile"
-            inputMode="numeric"
-            disabled={busy}
-          />
-          <button
-            type="button"
-            className="partner-accept"
-            disabled={busy || techName.trim().length < 2}
-            onClick={() =>
-              onAdvance(assignTechnicianFields({ name: techName, mobile: techMobile }))
-            }
-          >
-            Assign Partner
-          </button>
-        </>
+        labAssign ? (
+          <>
+            <p className="partner-collect-title">Assign team member</p>
+            {team.length ? (
+              <select
+                value={teamMemberId}
+                aria-label="Team member"
+                disabled={busy}
+                onChange={(event) => setTeamMemberId(event.target.value)}
+              >
+                <option value="">Select a team member</option>
+                {team.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name} · {member.mobile}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="partner-tech">
+                No approved team member yet. Open Team, add the person, and wait for admin to approve the profile.
+              </p>
+            )}
+            <button
+              type="button"
+              className="partner-accept"
+              disabled={busy || !team.some((member) => member.id === teamMemberId)}
+              onClick={() => {
+                const member = team.find((row) => row.id === teamMemberId);
+                if (!member) return;
+                onAdvance(
+                  assignTechnicianFields({
+                    name: member.name,
+                    mobile: member.mobile,
+                    teamMemberId: member.id,
+                  })
+                );
+              }}
+            >
+              Assign Partner
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="partner-collect-title">Assign partner</p>
+            <input
+              value={techName}
+              onChange={(event) => setTechName(event.target.value)}
+              placeholder="Partner name"
+              aria-label="Partner name"
+              disabled={busy}
+            />
+            <input
+              value={techMobile}
+              onChange={(event) => setTechMobile(event.target.value.replace(/\D/g, "").slice(0, 10))}
+              placeholder="Mobile"
+              aria-label="Partner mobile"
+              inputMode="numeric"
+              disabled={busy}
+            />
+            <button
+              type="button"
+              className="partner-accept"
+              disabled={busy || techName.trim().length < 2}
+              onClick={() =>
+                onAdvance(assignTechnicianFields({ name: techName, mobile: techMobile }))
+              }
+            >
+              Assign Partner
+            </button>
+          </>
+        )
       ) : null}
 
       {action === "sample_collect" ? (
@@ -2138,6 +2234,8 @@ const styles = `
 .lab-order-process-step{margin:0;padding:8px 4px;border:1px solid #d7e2e9;border-radius:8px;background:#f7fafc;text-align:center}
 .lab-order-process-step span{display:grid;place-items:center;width:22px;height:22px;margin:0 auto 4px;border-radius:50%;background:#d7e2e9;color:#143246;font-size:11px;font-weight:800}
 .lab-order-process-step p{margin:0;font-size:11px;font-weight:800;color:#34546b;line-height:1.25}
+.lab-order-process-step button{width:100%;margin:0;padding:4px 2px;border:0;border-radius:6px;background:#0b6b5a;color:#fff;font:inherit;font-size:11px;font-weight:800;line-height:1.25;cursor:pointer}
+.lab-order-process-step button:disabled{opacity:.6;cursor:default}
 .lab-order-process-step.is-done{border-color:#b7e4c7;background:#e8f8ee}
 .lab-order-process-step.is-done span{background:#1c9b61;color:#fff}
 .lab-order-process-step.is-current{border-color:#1a6b7a;background:#e8f4f6}
@@ -2202,7 +2300,7 @@ ${rxShareCardStyles}
 .partner-page.is-login .service-hero{text-align:center;padding:8px 10px}
 .partner-page.is-login .service-hero h1{font-size:16px}
 .partner-page.is-login .service-form{padding:10px;gap:8px}
-.partner-page.is-login input,.partner-page.is-login .service-submit{min-height:32px;padding:5px 8px;font-size:13px}
+.partner-page.is-login input,.partner-page.is-login .service-submit{min-height:32px;height:32px;padding:5px 8px;font-size:13px}
 .partner-forgot-btn{margin-top:4px;height:36px;border:none;background:transparent;color:#1a6b7a;font:inherit;font-size:13px;font-weight:800;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}

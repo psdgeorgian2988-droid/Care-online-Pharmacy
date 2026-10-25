@@ -45,7 +45,23 @@ test("customer view includes the assigned partner contact and documents", () => 
   assert.equal(view.policeFileName, "police.pdf");
 });
 
-test("partner profile drops files that are not a photo or pdf", () => {
+test("profile photo keeps only jpg and png", () => {
+  const png = partnerProfileFrom({
+    profile: { photoData: "data:image/png;base64,YQ==", photoName: "a.png", photoType: "image/png" },
+  });
+  assert.equal(png.photoType, "image/png");
+  const jpg = partnerProfileFrom({
+    profile: { photoData: "data:image/jpeg;base64,YQ==", photoName: "a.jpg", photoType: "image/jpeg" },
+  });
+  assert.equal(jpg.photoName, "a.jpg");
+  assert.equal(jpg.photoType, "image/jpeg");
+  const gif = partnerProfileFrom({
+    profile: { photoData: "data:image/gif;base64,YQ==", photoName: "a.gif" },
+  });
+  assert.equal(gif.photoData, "");
+});
+
+test("profile drops a file that is not a photo or pdf", () => {
   const profile = partnerProfileFrom({
     profile: { photoData: "data:text/html;base64,YQ==", aadhaarNumber: "12ab" },
   });
@@ -88,5 +104,13 @@ test("customer sees only the partner visiting the home", () => {
   assert.equal(
     visitingPartnerProfile({ ...order, partnerProfile: { id: "P-1", name: "Kulkdeep" } }).name,
     "Kulkdeep"
+  );
+  assert.equal(
+    visitingPartnerProfile({
+      ...order,
+      teamMemberId: "T-9",
+      partnerProfile: { id: "T-9", name: "Ravi Kumar" },
+    }).name,
+    "Ravi Kumar"
   );
 });

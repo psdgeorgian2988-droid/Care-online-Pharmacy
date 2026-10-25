@@ -472,6 +472,16 @@ export function goToHash(nextHash) {
   notifyHashChange();
 }
 
+/** Move to a hash and always tell the app, even if the browser drops hashchange. */
+export function commitHash(nextHash) {
+  const hash = normalizeAppHash(nextHash);
+  if (typeof window === "undefined") return;
+  if (!hashesMatch(window.location.hash || "#home", hash)) {
+    window.history.pushState(null, "", hashUrl(hash));
+  }
+  notifyHashChange();
+}
+
 export function goToChildHash(childHash, parentHash = "") {
   const child = normalizeAppHash(childHash);
   const parent = parentHash ? normalizeAppHash(parentHash) : parentHashFor(child);

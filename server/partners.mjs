@@ -22,6 +22,7 @@ import {
   homeVisitingPartnerId,
   partnerProfileFrom,
 } from "../src/partnerProfile.js";
+import { newTeamMember, reviewedTeamMember, teamFrom } from "../src/partnerTeam.js";
 import {
   deliveryRecordIsFresh,
   isDeliveryPartner,
@@ -166,6 +167,7 @@ function sanitizePartner(row) {
     partnerPercent: normalizePartnerPercent(row.partnerPercent, kinds),
     email: partnerProfileFrom(row).email,
     profile: partnerProfileFrom(row),
+    team: teamFrom(row.team),
   };
 }
 
@@ -395,8 +397,125 @@ export async function attachAssignedPartnerProfiles(orders = []) {
       const { partnerProfile: _removed, ...rest } = order;
       return rest;
     }
-    return { ...order, partnerProfile: customerPartnerProfile(partner) };
+    const memberId = String(order.teamMemberId || "").trim();
+    const member = memberId
+      ? teamFrom(partner.team).find((row) => row.id === memberId && row.status === "approved")
+      : null;
+    const shown = member
+      ? customerPartnerProfile({
+          id: member.id,
+          name: member.name,
+          role: member.role,
+          mobile: member.mobile,
+          address: partner.address,
+          pins: partner.pins,
+          profile: member.profile,
+        })
+      : customerPartnerProfile(partner);
+    return { ...order, partnerProfile: shown };
   });
+}
+
+function newTeamId() {
+  return `T-${Date.now().toString(36).toUpperCase()}-${randomBytes(2).toString("hex").toUpperCase()}`;
+}
+
+function labPartnerOrError(current) {
+  if (!current) return { ok: false, error: "Partner not found." };
+  if (!normalizeKinds(current.kinds).includes("lab")) {
+    return { ok: false, error: "Team members are added from the lab partner app." };
+  }
+  return null;
+}
+
+export async function addPartnerTeamMember(partnerId, body = {}) {
+  const list = await readPartners();
+  const index = list.findIndex((row) => row.id === partnerId);
+  if (index < 0) return { ok: false, error: "Partner not found." };
+  const blocked = labPartnerOrError(list[index]);
+  if (blocked) return blocked;
+  const member = newTeamMember(body, newTeamId());
+  if (!member) return { ok: false, error: "Enter the team member's name." };
+  if (member.mobile.length !== 10) return { ok: false, error: "Enter a 10-digit mobile number." };
+  const team = teamFrom(list[index].team);
+  if (team.length >= 30) return { ok: false, error: "This lab team already has 30 members." };
+  if (team.some((row) => row.mobile === member.mobile)) {
+    return { ok: false, error: "That mobile number is already on this team." };
+  }
+  const next = sanitizePartner({ ...list[index], team: [...team, member] });
+  list[index] = next;
+  await writePartners(list);
+  return { ok: true, partner: publicPartner(next), member };
+}
+
+export async function updatePartnerTeamMember(partnerId, memberId, body = {}) {
+  const list = await readPartners();
+  const index = list.findIndex((row) => row.id === partnerId);
+  if (index < 0) return { ok: false, error: "Partner not found." };
+  const blocked = labPartnerOrError(list[index]);
+  if (blocked) return blocked;
+  const team = teamFrom(list[index].team);
+  const current = team.find((row) => row.id === memberId);
+  if (!current) return { ok: false, error: "Team member not found." };
+  const member = newTeamMember(
+    {
+      name: body.name != null ? body.name : current.name,
+      mobile: body.mobile != null ? body.mobile : current.mobile,
+      role: body.role != null ? body.role : current.role,
+      profile: body.profile != null ? body.profile : current.profile,
+    },
+    current.id,
+    current.createdAt || Date.now()
+  );
+  if (!member) return { ok: false, error: "Enter the team member's name." };
+  if (member.mobile.length !== 10) return { ok: false, error: "Enter a 10-digit mobile number." };
+  if (team.some((row) => row.id !== current.id && row.mobile === member.mobile)) {
+    return { ok: false, error: "That mobile number is already on this team." };
+  }
+  const next = sanitizePartner({
+    ...list[index],
+    team: team.map((row) => (row.id === current.id ? member : row)),
+  });
+  list[index] = next;
+  await writePartners(list);
+  return { ok: true, partner: publicPartner(next), member };
+}
+
+export async function removePartnerTeamMember(partnerId, memberId) {
+  const list = await readPartners();
+  const index = list.findIndex((row) => row.id === partnerId);
+  if (index < 0) return { ok: false, error: "Partner not found." };
+  const team = teamFrom(list[index].team);
+  const current = team.find((row) => row.id === memberId);
+  if (!current) return { ok: false, error: "Team member not found." };
+  if (current.status === "approved") {
+    return { ok: false, error: "Approved team members stay on the list." };
+  }
+  const next = sanitizePartner({
+    ...list[index],
+    team: team.filter((row) => row.id !== memberId),
+  });
+  list[index] = next;
+  await writePartners(list);
+  return { ok: true, partner: publicPartner(next) };
+}
+
+export async function reviewPartnerTeamMember(partnerId, memberId, body = {}) {
+  const list = await readPartners();
+  const index = list.findIndex((row) => row.id === partnerId);
+  if (index < 0) return { ok: false, error: "Partner not found." };
+  const team = teamFrom(list[index].team);
+  const current = team.find((row) => row.id === memberId);
+  if (!current) return { ok: false, error: "Team member not found." };
+  const member = reviewedTeamMember(current, body.status, body.reviewNote);
+  if (!member) return { ok: false, error: "Choose approve or reject." };
+  const next = sanitizePartner({
+    ...list[index],
+    team: team.map((row) => (row.id === current.id ? member : row)),
+  });
+  list[index] = next;
+  await writePartners(list);
+  return { ok: true, partner: publicPartner(next), member };
 }
 
 export async function updatePartner(id, body = {}) {

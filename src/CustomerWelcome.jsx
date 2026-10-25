@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import AddressFields from "./AddressFields.jsx";
 import AutofillTrap from "./AutofillTrap";
-import { goToHash } from "./hashRoute";
+import { commitHash, goToHash } from "./hashRoute";
 import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import {
   emptyGuestCheckout,
@@ -132,6 +132,12 @@ export default function CustomerWelcome({ onDone } = {}) {
     onDone?.();
   };
 
+  const openOpsPage = (event, hash) => {
+    event.preventDefault();
+    commitHash(hash);
+    onDone?.();
+  };
+
   if (mode === "flash") {
     return (
       <div className="app-first is-flash" role="status" aria-live="polite">
@@ -218,10 +224,10 @@ export default function CustomerWelcome({ onDone } = {}) {
             <a className="app-first-btn is-quiet" href="/?app=0#home" onClick={enterAsGuest}>
               Order as Guest
             </a>
-            <a className="app-first-btn is-quiet" href="#partner-desk">
+            <a className="app-first-btn is-quiet" href="#partner-desk" onClick={(event) => openOpsPage(event, "#partner-desk")}>
               Partner Login
             </a>
-            <a className="app-first-btn is-quiet" href="#admin">
+            <a className="app-first-btn is-quiet" href="#admin" onClick={(event) => openOpsPage(event, "#admin")}>
               Admin Panel
             </a>
           </div>

@@ -37,7 +37,7 @@ export function diagnosticStepLabel(key, kind = "lab") {
   return "In progress";
 }
 
-export function assignTechnicianFields({ name, mobile } = {}, now = Date.now()) {
+export function assignTechnicianFields({ name, mobile, teamMemberId } = {}, now = Date.now()) {
   const technicianName = String(name || "").trim();
   const technicianMobile = String(mobile || "").replace(/\D/g, "").slice(0, 10);
   return {
@@ -46,6 +46,7 @@ export function assignTechnicianFields({ name, mobile } = {}, now = Date.now()) 
     technicianName,
     technicianMobile,
     technicianAssignedAt: now,
+    teamMemberId: String(teamMemberId || "").trim().slice(0, 40),
   };
 }
 

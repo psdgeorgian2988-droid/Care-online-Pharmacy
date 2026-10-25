@@ -1,4 +1,5 @@
 const FILE_LIMIT = 900000;
+const PHOTO_DATA_LIMIT = 4500000;
 
 export function emptyPartnerProfile() {
   return {
@@ -22,14 +23,35 @@ function clip(value, max = 160) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
 }
 
-function acceptedFile(value) {
+function acceptedPhoto(value) {
+  const fileData = String(value?.fileData || "");
+  const fileType = clip(value?.fileType, 80).toLowerCase();
+  const allowed =
+    /^data:image\/(?:jpeg|jpg|png);base64,/i.test(fileData) && fileData.length <= PHOTO_DATA_LIMIT;
+  if (!allowed) return { fileName: "", fileType: "", fileData: "" };
+  const normalizedType = /^data:image\/png;base64,/i.test(fileData) ? "image/png" : "image/jpeg";
+  return {
+    fileName: clip(value?.fileName, 120),
+    fileType: normalizedType || fileType,
+    fileData,
+  };
+}
+
+const AADHAAR_MAX_BYTES = 5 * 1024 * 1024;
+const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+
+function dataUrlLimit(maxBytes) {
+  return Math.ceil((maxBytes * 4) / 3) + 128;
+}
+
+function acceptedFile(value, maxBytes = DOCUMENT_MAX_BYTES) {
   const fileData = String(value?.fileData || "");
   const fileType = clip(value?.fileType, 80).toLowerCase();
   const allowed =
     !fileData ||
     /^data:image\/[a-z0-9.+-]+;base64,/i.test(fileData) ||
     /^data:application\/pdf;base64,/i.test(fileData);
-  if (!allowed || fileData.length > FILE_LIMIT) {
+  if (!allowed || fileData.length > dataUrlLimit(maxBytes)) {
     return { fileName: "", fileType: "", fileData: "" };
   }
   return {
@@ -41,16 +63,19 @@ function acceptedFile(value) {
 
 export function partnerProfileFrom(partner = {}) {
   const raw = partner?.profile && typeof partner.profile === "object" ? partner.profile : {};
-  const photo = acceptedFile({
+  const photo = acceptedPhoto({
     fileName: raw.photoName,
     fileType: raw.photoType,
     fileData: raw.photoData,
   });
-  const aadhaar = acceptedFile({
-    fileName: raw.aadhaarFileName,
-    fileType: raw.aadhaarFileType,
-    fileData: raw.aadhaarFileData,
-  });
+  const aadhaar = acceptedFile(
+    {
+      fileName: raw.aadhaarFileName,
+      fileType: raw.aadhaarFileType,
+      fileData: raw.aadhaarFileData,
+    },
+    AADHAAR_MAX_BYTES
+  );
   const police = acceptedFile({
     fileName: raw.policeFileName,
     fileType: raw.policeFileType,
@@ -109,8 +134,11 @@ export function homeVisitingPartnerId(order = {}) {
 export function visitingPartnerProfile(order = {}) {
   const id = homeVisitingPartnerId(order);
   const profile = order?.partnerProfile;
-  if (!id || !profile || String(profile.id || "") !== id) return null;
-  return profile;
+  if (!id || !profile) return null;
+  const profileId = String(profile.id || "");
+  if (profileId === id) return profile;
+  if (profileId && profileId === String(order.teamMemberId || "").trim()) return profile;
+  return null;
 }
 
 /** Details a customer can see for the partner assigned to their order. */

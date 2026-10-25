@@ -88,6 +88,59 @@ export async function savePartnerProfile(profile) {
   return data;
 }
 
+export async function fetchPartnerProfile() {
+  const { token } = partnerSession();
+  return parseResponse(
+    await apiFetch("/api/partner/profile", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  );
+}
+
+export async function addPartnerTeamMember(body) {
+  const { token } = partnerSession();
+  const data = await parseResponse(
+    await apiFetch("/api/partner/team", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    })
+  );
+  if (data.partner && token) setPartnerSession(token, data.partner);
+  return data;
+}
+
+export async function updatePartnerTeamMember(id, body) {
+  const { token } = partnerSession();
+  const data = await parseResponse(
+    await apiFetch(`/api/partner/team/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    })
+  );
+  if (data.partner && token) setPartnerSession(token, data.partner);
+  return data;
+}
+
+export async function removePartnerTeamMember(id) {
+  const { token } = partnerSession();
+  const data = await parseResponse(
+    await apiFetch(`/api/partner/team/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  );
+  if (data.partner && token) setPartnerSession(token, data.partner);
+  return data;
+}
+
 export async function fetchPartnerStock() {
   const { token, partner } = partnerSession();
   const params = new URLSearchParams({
