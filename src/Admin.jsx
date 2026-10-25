@@ -134,6 +134,26 @@ function downloadCsv(filename, text) {
   URL.revokeObjectURL(url);
 }
 
+function AdminFold({ title, children, className = "", id }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section
+      id={id}
+      className={`admin-panel admin-fold${open ? " is-open" : ""}${className ? ` ${className}` : ""}`}
+    >
+      <button
+        type="button"
+        className="admin-fold-head"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {title}
+      </button>
+      {open ? <div className="admin-fold-body">{children}</div> : null}
+    </section>
+  );
+}
+
 function Admin() {
   const [token, setToken] = useState(() => staffToken());
   const [user, setUser] = useState("");
@@ -579,12 +599,7 @@ function Admin() {
 
         {error ? <p className="admin-error">{error}</p> : null}
 
-        <section className="admin-panel admin-feature-panel" aria-label="Feature Switches">
-          <div className="admin-feature-head">
-            <div>
-              <h2>Turn Services On Or Off</h2>
-            </div>
-          </div>
+        <AdminFold title="Turn Services On Or Off" className="admin-feature-panel">
           {featuresDirty ? (
             <p className="admin-feature-note" role="status">
               Unsaved changes — website and app still use the last saved
@@ -626,18 +641,9 @@ function Admin() {
             })}
           </div>
           {renderFeatureActions()}
-        </section>
+        </AdminFold>
 
-        <section
-          className="admin-panel admin-feature-panel admin-orders-box"
-          id="staff-orders"
-          aria-label="Order status"
-        >
-          <div className="admin-feature-head">
-            <div>
-              <h2>Order status</h2>
-            </div>
-          </div>
+        <AdminFold title="Order status" className="admin-feature-panel admin-orders-box" id="staff-orders">
           <div
             className="admin-switches admin-order-service-tiles"
             role="tablist"
@@ -828,8 +834,13 @@ function Admin() {
           </section>
         ))}
           </div>
-        </section>
+        </AdminFold>
 
+        <AdminFold title="Partners">
+          <AdminPartnerLogins partners={partners} onChange={setPartners} />
+        </AdminFold>
+
+        <AdminFold title="Sales figures">
         <section className="admin-kpis" aria-label="Sales Figures">
           <article>
             <span>Today</span>
@@ -885,20 +896,26 @@ function Admin() {
           {storeUp ? `Store Growth: ${storeUp.label} (${formatPct(storeUp.pct)}).` : ""}{" "}
           {storeDown ? `Store Drop: ${storeDown.label} (${formatPct(storeDown.pct)}).` : ""}
         </p>
+        </AdminFold>
 
+        <AdminFold title="Webinars">
         <AdminWebinars
           webinars={webinars}
           onChange={saveWebinars}
           onError={setError}
         />
+        </AdminFold>
 
+        <AdminFold title="Team members">
         <AdminTeamApprovals partners={partners} onChange={setPartners} />
+        </AdminFold>
 
-        <AdminPartnerLogins partners={partners} onChange={setPartners} />
+        <AdminFold title="Lab tests">
         <AdminLabTests />
+        </AdminFold>
 
+        <AdminFold title="Growth And Degrowth Charts">
         <section className="admin-panel" aria-label="Chart Period">
-          <h2>Growth And Degrowth Charts</h2>
           <p>
             Compare The Selected Period With The Equal-Length Stretch Before It.
             Month Grids Always Show The Last 12 Months In IST.
@@ -1022,9 +1039,9 @@ function Admin() {
             rows={storeCompare}
           />
         </div>
+        </AdminFold>
 
-        <section className="admin-panel" aria-label="Detailed Reports">
-          <h2>Generate A Detailed Report</h2>
+        <AdminFold title="Generate A Detailed Report">
           <div className="admin-report-controls">
             <label>
               Period
@@ -1131,7 +1148,7 @@ function Admin() {
               </p>
             </div>
           ) : null}
-        </section>
+        </AdminFold>
       </div>
     </>
   );
@@ -1181,6 +1198,14 @@ const styles = `
 .admin-kpis small{color:#5d7180}
 .admin-growth-note{margin:0 0 14px;font-size:13px;color:#34546b}
 .admin-panel{background:#fff;border:1px solid #e4ecef;border-radius:12px;padding:14px;margin-bottom:14px}
+.admin-fold{padding:0;overflow:hidden}
+.admin-fold-head{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;border:0;background:#f7fafc;color:#123b5d;font:inherit;font-size:16px;font-weight:800;text-align:left;padding:14px 16px;cursor:pointer}
+.admin-fold-head::after{content:"+";font-size:20px;line-height:1;color:#1a6b7a}
+.admin-fold.is-open .admin-fold-head{background:#e7f1f6}
+.admin-fold.is-open .admin-fold-head::after{content:"–"}
+.admin-fold-body{padding:14px}
+.admin-fold-body > .admin-panel{border:0;box-shadow:none;margin:0;padding:0;background:transparent}
+.admin-fold-body > .admin-panel > h2,.admin-fold-body > .admin-panel > .admin-feature-head,.admin-fold-body > .admin-team > h2:first-of-type{display:none}
 .admin-panel h2{margin:0 0 6px;font-size:16px}
 .admin-panel p{margin:0 0 10px;color:#5d7180;font-size:13px}
 .admin-feature-panel{border-color:#b7d0dc;box-shadow:0 1px 0 rgba(26,107,122,.06)}
@@ -1256,7 +1281,17 @@ const styles = `
 .admin-partner-reset{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0}
 .admin-partner-reset .admin-hint{flex:1 1 100%;margin:0}
 .admin-partner-reset input{max-width:200px;min-height:34px;padding:6px 8px;border:1px solid #d7e2e9;border-radius:6px;font:inherit}
-.admin-partners-box .admin-table td button+button{margin-left:6px}
+.admin-partner-sheet{display:flex;flex-direction:column;gap:6px;margin-top:12px;overflow-x:auto}
+.admin-partner-line{display:grid;grid-template-columns:minmax(150px,1.5fr) minmax(110px,.9fr) minmax(128px,1fr) minmax(118px,.9fr) 76px 76px 82px;gap:8px;align-items:center;min-width:920px;padding:8px 10px;border:1px solid #e4ecef;border-radius:10px;background:#fff}
+.admin-partner-line.is-head{border:0;background:transparent;padding:2px 10px 0;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
+.admin-partner-line strong{font-size:14px;color:#143246;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-partner-line input{width:100%;min-width:0;min-height:34px;padding:6px 8px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:13px;box-sizing:border-box}
+.admin-partner-line button{min-height:34px;border-radius:8px;border:1px solid #c5d4de;background:#fff;color:#143246;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.admin-partner-line button.is-save{background:#1a6b7a;border-color:#1a6b7a;color:#fff}
+.admin-partner-line button.is-delete{color:#9b2c2c;border-color:#e7c7c7;background:#fff}
+.admin-partner-line button:disabled{opacity:.6;cursor:default}
+.admin-partner-extra{min-width:920px;padding:0 10px 8px}
+.admin-partner-team{margin:0;font-size:12px;color:#5d7180}
 .admin-order-toggle{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;border:0;background:transparent;padding:0;font:inherit;font-weight:800;color:#1a6b7a;cursor:pointer}
 .admin-order-toggle span{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
 .admin-order-toggle.is-on span{color:#1a6b7a}

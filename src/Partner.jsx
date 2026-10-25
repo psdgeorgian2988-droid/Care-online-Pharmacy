@@ -506,7 +506,7 @@ export default function Partner({ deskKind = "" }) {
   const homeTabs = [
     { id: "home", label: "Home" },
     { id: "orders", label: "Orders" },
-    ...(appKind === "lab" ? [{ id: "team", label: "Team members" }] : []),
+    { id: "team", label: "Team members" },
   ];
   const foreignSession = Boolean(
     partner && deskKind && !partnerServesDesk(partner, deskKind)
@@ -514,7 +514,7 @@ export default function Partner({ deskKind = "" }) {
   const sharedStayRef = useRef(new Set());
 
   useEffect(() => {
-    if (homeTab === "profile" || (homeTab === "team" && appKind !== "lab")) setHomeTab("home");
+    if (homeTab === "profile") setHomeTab("home");
   }, [homeTab, appKind]);
 
   useEffect(() => {
@@ -686,7 +686,7 @@ export default function Partner({ deskKind = "" }) {
             onOpen={setHomeTab}
           />
         ) : null}
-        {homeTab === "team" && appKind === "lab" ? (
+        {homeTab === "team" ? (
           <PartnerTeamPanel
             partner={partner}
             onSaved={(next) => setPartner(next)}
@@ -1056,8 +1056,7 @@ export default function Partner({ deskKind = "" }) {
 }
 
 function PartnerHome({ partner, jobs, kind, onOpen }) {
-  const showTeam = kind === "lab";
-  const team = showTeam ? teamFrom(partner?.team) : [];
+  const team = teamFrom(partner?.team);
   const approved = team.filter((row) => row.status === "approved").length;
   const pending = team.filter((row) => row.status === "pending").length;
   const openOrders = (jobs || []).filter((job) => {
@@ -1079,15 +1078,13 @@ function PartnerHome({ partner, jobs, kind, onOpen }) {
             {newOrders} new · {(jobs || []).length} total
           </p>
         </button>
-        {showTeam ? (
-          <button type="button" className="partner-home-card" onClick={() => onOpen("team")}>
+        <button type="button" className="partner-home-card" onClick={() => onOpen("team")}>
             <span>Team members</span>
             <strong>{team.length}</strong>
             <p>
               {approved} approved · {pending} waiting for admin
             </p>
           </button>
-        ) : null}
       </div>
     </section>
   );

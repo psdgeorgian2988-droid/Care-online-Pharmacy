@@ -57,6 +57,7 @@ import {
   findPartner,
   attachAssignedPartnerProfiles,
   listPartnerJobs,
+  deletePartner,
   listPartners,
   partnerCanAccessJob,
   partnerIdFromToken,
@@ -605,6 +606,17 @@ export async function handleApi(req, res) {
     }
 
     const partnerUpdateMatch = pathname.match(/^\/api\/admin\/partners\/([^/]+)$/);
+    if (partnerUpdateMatch && req.method === "DELETE") {
+      if (!requireStaff(req, res)) return true;
+      const removed = await deletePartner(decodeURIComponent(partnerUpdateMatch[1]));
+      if (!removed.ok) {
+        send(res, 400, { error: removed.error });
+        return true;
+      }
+      send(res, 200, { partners: await listPartners() });
+      return true;
+    }
+
     if (partnerUpdateMatch && req.method === "PATCH") {
       if (!requireStaff(req, res)) return true;
       const body = await readJson(req);
@@ -822,19 +834,30 @@ export async function handleApi(req, res) {
     }
 
     const adminTeamMatch = pathname.match(/^\/api\/admin\/partners\/([^/]+)\/team\/([^/]+)$/);
-    if (adminTeamMatch && req.method === "PATCH") {
+    if (adminTeamMatch && (req.method === "PATCH" || req.method === "DELETE")) {
       if (!requireStaff(req, res)) return true;
-      const body = await readJson(req);
-      const saved = await reviewPartnerTeamMember(
-        decodeURIComponent(adminTeamMatch[1]),
-        decodeURIComponent(adminTeamMatch[2]),
-        body
-      );
-      if (!saved.ok) {
-        send(res, 400, { error: saved.error || "Could not review the team profile." });
+      const partnerId = decodeURIComponent(adminTeamMatch[1]);
+      const memberId = decodeURIComponent(adminTeamMatch[2]);
+      if (req.method === "DELETE") {
+        const saved = await removePartnerTeamMember(partnerId, memberId);
+        if (!saved.ok) {
+          send(res, 400, { error: saved.error || "Could not remove the team member." });
+          return true;
+        }
+        send(res, 200, { partner: saved.partner, partners: await listPartners() });
         return true;
       }
-      send(res, 200, { partner: saved.partner, partners: await listPartners() });
+      const body = await readJson(req);
+      const editing =
+        body.name != null || body.mobile != null || body.role != null || body.profile != null;
+      const saved = editing
+        ? await updatePartnerTeamMember(partnerId, memberId, body, { keepStatus: true })
+        : await reviewPartnerTeamMember(partnerId, memberId, body);
+      if (!saved.ok) {
+        send(res, 400, { error: saved.error || "Could not update the team member." });
+        return true;
+      }
+      send(res, 200, { partner: saved.partner, member: saved.member, partners: await listPartners() });
       return true;
     }
 

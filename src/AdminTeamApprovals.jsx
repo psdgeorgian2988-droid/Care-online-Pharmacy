@@ -1,16 +1,93 @@
 import { useState } from "react";
-import { reviewStaffTeamMember } from "./adminApi";
+import { deleteStaffTeamMember, reviewStaffTeamMember, updateStaffTeamMember } from "./adminApi";
+import { emptyPartnerProfile } from "./partnerProfile.js";
+import { kindLabel } from "./orderTracking";
 import { teamFrom, teamStatusLabel } from "./partnerTeam.js";
+
+function readDataFile(file, maxBytes) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      reject(new Error("Choose a file."));
+      return;
+    }
+    if (file.size > maxBytes) {
+      const mb = Math.round(maxBytes / (1024 * 1024));
+      reject(new Error(`That file must be ${mb} MB or smaller.`));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () =>
+      resolve({
+        fileName: file.name,
+        fileType: file.type || "",
+        fileData: String(reader.result || ""),
+      });
+    reader.onerror = () => reject(new Error("Could not read that file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Could not read that photo."));
+    image.src = src;
+  });
+}
+
+async function readTeamPhoto(file) {
+  const type = String(file?.type || "").toLowerCase();
+  const name = String(file?.name || "");
+  const jpeg = type === "image/jpeg" || /\.jpe?g$/i.test(name);
+  const png = type === "image/png" || /\.png$/i.test(name);
+  if (!jpeg && !png) throw new Error("Profile photo must be JPG or PNG.");
+  if (file.size > 3 * 1024 * 1024) throw new Error("Profile photo must be 3 MB or smaller.");
+  const raw = await readDataFile(file, 3 * 1024 * 1024);
+  const image = await loadImage(raw.fileData);
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+  const scale = Math.max(512 / image.width, 512 / image.height);
+  const width = image.width * scale;
+  const height = image.height * scale;
+  ctx.drawImage(image, (512 - width) / 2, (512 - height) / 2, width, height);
+  const fileType = png ? "image/png" : "image/jpeg";
+  return {
+    fileName: name || (png ? "photo.png" : "photo.jpg"),
+    fileType,
+    fileData: canvas.toDataURL(fileType, 0.92),
+  };
+}
+
+const emptyDraft = () => ({
+  name: "",
+  mobile: "",
+  role: "",
+  profile: emptyPartnerProfile(),
+});
 
 export default function AdminTeamApprovals({ partners = [], onChange }) {
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
-  const rows = partners.flatMap((partner) =>
-    teamFrom(partner.team).map((member) => ({ partner, member }))
-  );
-  const pending = rows.filter((row) => row.member.status === "pending");
-  const reviewed = rows.filter((row) => row.member.status !== "pending");
+  const [editingId, setEditingId] = useState("");
+  const [draft, setDraft] = useState(emptyDraft);
+  const portfolios = [...partners]
+    .map((partner) => ({
+      partner,
+      members: [...teamFrom(partner.team)].sort((a, b) => {
+        if (a.status === "pending" && b.status !== "pending") return -1;
+        if (b.status === "pending" && a.status !== "pending") return 1;
+        return String(a.name).localeCompare(String(b.name));
+      }),
+    }))
+    .filter((row) => row.members.length)
+    .sort((a, b) => String(a.partner.name).localeCompare(String(b.partner.name)));
+
+  const setProfile = (patch) =>
+    setDraft((current) => ({ ...current, profile: { ...current.profile, ...patch } }));
 
   const review = async (partner, member, status) => {
     setBusyId(member.id);
@@ -27,30 +104,138 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
     }
   };
 
+  const startEdit = (member) => {
+    setEditingId(member.id);
+    setDraft({
+      name: member.name,
+      mobile: member.mobile,
+      role: member.role,
+      profile: { ...emptyPartnerProfile(), ...member.profile },
+    });
+    setError("");
+    setNote("");
+  };
+
+  const onPhoto = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setError("");
+    try {
+      const photo = await readTeamPhoto(file);
+      setProfile({ photoName: photo.fileName, photoType: photo.fileType, photoData: photo.fileData });
+    } catch (err) {
+      setError(err.message || "Could not add that photo.");
+    }
+  };
+
+  const onDocument = async (event, key, maxBytes) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setError("");
+    try {
+      const saved = await readDataFile(file, maxBytes);
+      if (key === "certificate") {
+        setProfile({
+          certificates: [
+            ...(draft.profile.certificates || []).slice(0, 5),
+            {
+              name: saved.fileName,
+              fileName: saved.fileName,
+              fileType: saved.fileType,
+              fileData: saved.fileData,
+            },
+          ],
+        });
+        return;
+      }
+      setProfile({
+        [`${key}FileName`]: saved.fileName,
+        [`${key}FileType`]: saved.fileType,
+        [`${key}FileData`]: saved.fileData,
+      });
+    } catch (err) {
+      setError(err.message || "Could not add that document.");
+    }
+  };
+
+  const saveEdit = async (partner, member) => {
+    setBusyId(`save-${member.id}`);
+    setError("");
+    setNote("");
+    try {
+      const data = await updateStaffTeamMember(partner.id, member.id, {
+        name: draft.name,
+        mobile: draft.mobile,
+        role: draft.role,
+        profile: draft.profile,
+      });
+      onChange?.(data.partners || []);
+      setEditingId("");
+      setDraft(emptyDraft());
+      setNote(`Details saved for ${draft.name || member.name}.`);
+    } catch (err) {
+      setError(err.message || "Could not save the team member.");
+    } finally {
+      setBusyId("");
+    }
+  };
+
+  const remove = async (partner, member) => {
+    const ok = window.confirm(`Remove ${member.name} from ${partner.name}'s team?`);
+    if (!ok) return;
+    setBusyId(`remove-${member.id}`);
+    setError("");
+    setNote("");
+    try {
+      const data = await deleteStaffTeamMember(partner.id, member.id);
+      onChange?.(data.partners || []);
+      if (editingId === member.id) setEditingId("");
+      setNote(`${member.name} removed.`);
+    } catch (err) {
+      setError(err.message || "Could not remove the team member.");
+    } finally {
+      setBusyId("");
+    }
+  };
+
   const card = ({ partner, member }) => {
     const profile = member.profile || {};
+    const editing = editingId === member.id;
+    const detail = [
+      profile.qualification,
+      profile.email,
+      profile.aadhaarNumber ? `Aadhaar ${profile.aadhaarNumber}` : "",
+      profile.photoData ? "Photo added" : "",
+      profile.aadhaarFileData ? "Aadhaar file" : "",
+      profile.policeFileData ? "Police verification" : "",
+      profile.certificates?.length ? `${profile.certificates.length} certificate(s)` : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
     return (
       <article key={`${partner.id}-${member.id}`} className="admin-team-card">
-        <div>
+        <div className="admin-team-line">
           <strong>{member.name}</strong>
-          <p>
-            {member.role} · {member.mobile}
-          </p>
-          <p>
-            Lab partner: {partner.name}
-            {profile.qualification ? ` · ${profile.qualification}` : ""}
-            {profile.email ? ` · ${profile.email}` : ""}
-          </p>
-          <p>
-            {profile.aadhaarNumber ? `Aadhaar ${profile.aadhaarNumber}` : "Aadhaar number not added"}
-            {profile.photoData ? " · Photo added" : ""}
-            {profile.aadhaarFileData ? " · Aadhaar file added" : ""}
-            {profile.policeFileData ? " · Police verification added" : ""}
-            {profile.certificates?.length ? ` · ${profile.certificates.length} certificate(s)` : ""}
-          </p>
-          <p className={`partner-team-status is-${member.status}`}>{teamStatusLabel(member.status)}</p>
-        </div>
-        <div className="admin-team-actions">
+          <span>{member.role}</span>
+          <span>{member.mobile}</span>
+          <span className={`partner-team-status is-${member.status}`}>{teamStatusLabel(member.status)}</span>
+          <button
+            type="button"
+            disabled={busyId === member.id}
+            onClick={() => (editing ? setEditingId("") : startEdit(member))}
+          >
+            {editing ? "Close" : "Edit"}
+          </button>
+          <button
+            type="button"
+            className="is-delete"
+            disabled={busyId === `remove-${member.id}`}
+            onClick={() => remove(partner, member)}
+          >
+            {busyId === `remove-${member.id}` ? "…" : "Delete"}
+          </button>
           <button
             type="button"
             disabled={busyId === member.id || member.status === "approved"}
@@ -66,6 +251,116 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
             Reject
           </button>
         </div>
+        {detail ? <p className="admin-team-detail">{detail}</p> : null}
+          {editing ? (
+            <form
+              className="admin-team-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                saveEdit(partner, member);
+              }}
+            >
+              <h3>Edit details</h3>
+              <label>
+                Name
+                <input
+                  value={draft.name}
+                  onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+                  required
+                  minLength={2}
+                />
+              </label>
+              <label>
+                Mobile
+                <input
+                  value={draft.mobile}
+                  inputMode="numeric"
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      mobile: event.target.value.replace(/\D/g, "").slice(0, 10),
+                    }))
+                  }
+                  required
+                  pattern="\d{10}"
+                />
+              </label>
+              <label>
+                Role
+                <input
+                  value={draft.role}
+                  onChange={(event) => setDraft((current) => ({ ...current, role: event.target.value }))}
+                />
+              </label>
+              <label>
+                Qualification
+                <input
+                  value={draft.profile.qualification}
+                  onChange={(event) => setProfile({ qualification: event.target.value })}
+                />
+              </label>
+              <label>
+                Email
+                <input
+                  type="email"
+                  value={draft.profile.email}
+                  onChange={(event) => setProfile({ email: event.target.value })}
+                />
+              </label>
+              <label>
+                Aadhaar number
+                <input
+                  value={draft.profile.aadhaarNumber}
+                  inputMode="numeric"
+                  onChange={(event) =>
+                    setProfile({ aadhaarNumber: event.target.value.replace(/\D/g, "").slice(0, 12) })
+                  }
+                />
+              </label>
+              <label>
+                Profile photo (JPG or PNG, 512×512, max 3 MB)
+                <input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" onChange={onPhoto} />
+                {draft.profile.photoName ? <span>{draft.profile.photoName}</span> : null}
+              </label>
+              <label>
+                Aadhaar card (max 5 MB)
+                <input
+                  type="file"
+                  accept="image/*,.pdf,application/pdf"
+                  onChange={(event) => onDocument(event, "aadhaar", 5 * 1024 * 1024)}
+                />
+                {draft.profile.aadhaarFileName ? <span>{draft.profile.aadhaarFileName}</span> : null}
+              </label>
+              <label>
+                Police verification (max 10 MB)
+                <input
+                  type="file"
+                  accept="image/*,.pdf,application/pdf"
+                  onChange={(event) => onDocument(event, "police", 10 * 1024 * 1024)}
+                />
+                {draft.profile.policeFileName ? <span>{draft.profile.policeFileName}</span> : null}
+              </label>
+              <label>
+                Certificate (max 10 MB)
+                <input
+                  type="file"
+                  accept="image/*,.pdf,application/pdf"
+                  onChange={(event) => onDocument(event, "certificate", 10 * 1024 * 1024)}
+                />
+                {draft.profile.certificates?.length ? (
+                  <span>{draft.profile.certificates.map((row) => row.name).filter(Boolean).join(", ")}</span>
+                ) : null}
+              </label>
+              <div className="admin-team-actions">
+                <button type="submit" disabled={busyId === `save-${member.id}`}>
+                  {busyId === `save-${member.id}` ? "Saving…" : "Save details"}
+                </button>
+                <button type="button" onClick={() => setEditingId("")}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : null}
       </article>
     );
   };
@@ -74,27 +369,64 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
     <section className="admin-team">
       <style>{`
         .admin-team{display:flex;flex-direction:column;gap:10px;margin:16px 0}
-        .admin-team h2{margin:0;font-size:18px}
+        .admin-team-portfolio{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #d7e2e9;border-radius:12px;background:#f4f8fb;overflow-x:auto}
+        .admin-team h2,.admin-team h3{margin:0;font-size:18px}
+        .admin-team h3{font-size:14px}
         .admin-team p{margin:0;font-size:13px;line-height:1.4}
-        .admin-team-card{border:1px solid #d7e2e9;border-radius:10px;padding:12px;background:#fff;display:flex;justify-content:space-between;gap:12px;align-items:center}
-        .admin-team-actions{display:flex;gap:8px}
-        .admin-team-actions button{min-height:32px;padding:6px 10px;border-radius:6px;border:1px solid #c5d4de;background:#fff}
+        .admin-team-head,.admin-team-line{display:grid;grid-template-columns:minmax(140px,1.4fr) minmax(120px,1fr) 110px 150px 72px 76px 88px 76px;gap:8px;align-items:center;min-width:860px}
+        .admin-team-head{padding:0 10px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
+        .admin-team-card{border:1px solid #d7e2e9;border-radius:10px;padding:8px 10px;background:#fff}
+        .admin-team-line strong{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .admin-team-line button{min-height:32px;padding:6px 8px;border-radius:8px;border:1px solid #c5d4de;background:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+        .admin-team-line button.is-delete{color:#9b2c2c;border-color:#e7c7c7}
+        .admin-team-detail{margin-top:6px;color:#5d7180}
+        .admin-team-actions{display:flex;flex-wrap:wrap;gap:8px}
+        .admin-team-actions button{min-height:32px;padding:6px 10px;border-radius:6px;border:1px solid #c5d4de;background:#fff;font:inherit}
+        .admin-team-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px}
+        .admin-team-form h3,.admin-team-form .admin-team-actions{grid-column:1 / -1}
+        .admin-team-form label{display:flex;flex-direction:column;gap:4px;font-size:12px}
+        .admin-team-form input{min-height:34px;padding:6px 8px;border:1px solid #d7e2e9;border-radius:6px;font:inherit}
         .partner-team-status{font-size:12px;font-weight:700}
         .partner-team-status.is-approved{color:#0b6b5a}
         .partner-team-status.is-rejected{color:#9b2c2c}
         .partner-team-status.is-pending{color:#8a5a00}
       `}</style>
-      <h2>Lab team profiles</h2>
-      <p>Profiles added by a lab partner. Approve a profile before that person can be assigned to an order.</p>
+      <h2>Team members</h2>
+      <p>
+        Each partner&apos;s team stays in that partner&apos;s portfolio. Approve a profile before
+        that person can be assigned to an order.
+      </p>
       {error ? <p className="admin-error">{error}</p> : null}
       {note ? <p>{note}</p> : null}
-      {pending.length ? pending.map(card) : <p>No team profiles are waiting for approval.</p>}
-      {reviewed.length ? (
-        <>
-          <h2>Reviewed</h2>
-          {reviewed.map(card)}
-        </>
-      ) : null}
+      {portfolios.length ? (
+        portfolios.map(({ partner, members }) => (
+          <section
+            key={partner.id}
+            className="admin-team-portfolio"
+            aria-label={`${partner.name} team`}
+          >
+            <h2>{partner.name}</h2>
+            <p>
+              {(partner.kinds || []).map((kind) => kindLabel(kind)).join(", ") || "Partner"}
+              {partner.mobile ? ` · ${partner.mobile}` : ""}
+              {` · ${members.length} team member${members.length === 1 ? "" : "s"}`}
+            </p>
+            <div className="admin-team-head">
+              <span>Name</span>
+              <span>Role</span>
+              <span>Mobile</span>
+              <span>Status</span>
+              <span>Edit</span>
+              <span>Delete</span>
+              <span>Approve</span>
+              <span>Reject</span>
+            </div>
+            {members.map((member) => card({ partner, member }))}
+          </section>
+        ))
+      ) : (
+        <p>No team members yet.</p>
+      )}
     </section>
   );
 }

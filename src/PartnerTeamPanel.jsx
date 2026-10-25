@@ -7,10 +7,10 @@ import {
   updatePartnerTeamMember,
 } from "./partnerApi.js";
 
-const emptyDraft = () => ({
+const emptyDraft = (role = "Team member") => ({
   name: "",
   mobile: "",
-  role: "Sample collection executive",
+  role,
   profile: emptyPartnerProfile(),
 });
 
@@ -73,7 +73,7 @@ async function readTeamPhoto(file) {
 
 export default function PartnerTeamPanel({ partner, onSaved }) {
   const team = teamFrom(partner?.team);
-  const [draft, setDraft] = useState(emptyDraft);
+  const [draft, setDraft] = useState(() => emptyDraft(partner?.role || "Team member"));
   const [editingId, setEditingId] = useState("");
   const [mode, setMode] = useState("list");
   const [busy, setBusy] = useState(false);
@@ -85,13 +85,13 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
 
   const showList = () => {
     setEditingId("");
-    setDraft(emptyDraft());
+    setDraft(emptyDraft(partner?.role || "Team member"));
     setMode("list");
   };
 
   const openAdd = () => {
     setEditingId("");
-    setDraft(emptyDraft());
+    setDraft(emptyDraft(partner?.role || "Team member"));
     setError("");
     setNote("");
     setMode("form");
@@ -166,7 +166,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
         : await addPartnerTeamMember(body);
       onSaved?.(data.partner);
       setEditingId("");
-      setDraft(emptyDraft());
+      setDraft(emptyDraft(partner?.role || "Team member"));
       setMode("list");
       setNote(
         wasEditing
@@ -181,6 +181,8 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
   };
 
   const remove = async (member) => {
+    const ok = window.confirm(`Remove ${member.name} from the team?`);
+    if (!ok) return;
     setBusy(true);
     setError("");
     setNote("");
@@ -256,13 +258,11 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
                 </div>
                 <div className="partner-team-actions">
                   <button type="button" disabled={busy} onClick={() => startEdit(member)}>
-                    Edit profile
+                    Edit details
                   </button>
-                  {member.status === "approved" ? null : (
-                    <button type="button" disabled={busy} onClick={() => remove(member)}>
-                      Remove
-                    </button>
-                  )}
+                  <button type="button" disabled={busy} onClick={() => remove(member)}>
+                    Remove
+                  </button>
                 </div>
               </article>
             ))
@@ -278,7 +278,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
           save();
         }}
       >
-        <h2>{editingId ? "Edit team member" : "Add team member"}</h2>
+        <h2>{editingId ? "Edit details" : "Add team member"}</h2>
         <label>
           Name
           <input
@@ -373,7 +373,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
         {note ? <p>{note}</p> : null}
         <div className="partner-team-actions">
           <button type="submit" className="partner-accept" disabled={busy}>
-            {busy ? "Saving…" : editingId ? "Save profile" : "Add to team"}
+            {busy ? "Saving…" : editingId ? "Save details" : "Add to team"}
           </button>
           <button type="button" disabled={busy} onClick={showList}>
             Cancel

@@ -20,6 +20,7 @@ export default function AdminWebinars({ webinars, onChange, onError }) {
   const [date, setDate] = useState("");
   const [time, setTime] = useState(WEBINAR_TIME_SLOTS[1]);
   const [busy, setBusy] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   const save = async (next) => {
     setBusy(true);
@@ -42,11 +43,33 @@ export default function AdminWebinars({ webinars, onChange, onError }) {
     }
     await save([made.webinar, ...webinars.filter((row) => row.id !== made.webinar.id)]);
     setDate("");
+    setAdding(false);
   };
 
   return (
     <section className="admin-panel" aria-label="Webinar Schedule">
-      <h2>Schedule A Live Webinar</h2>
+      <h2>Webinars</h2>
+      <div className="lab-tabs" role="tablist" aria-label="Webinars">
+        <button
+          type="button"
+          role="tab"
+          className={adding ? "" : "is-on"}
+          aria-selected={!adding}
+          onClick={() => setAdding(false)}
+        >
+          Scheduled
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className={adding ? "is-on" : ""}
+          aria-selected={adding}
+          onClick={() => setAdding(true)}
+        >
+          Schedule webinar
+        </button>
+      </div>
+      {adding ? (
       <form className="admin-webinar-form" onSubmit={handleSchedule}>
         <label>
           Topic
@@ -82,7 +105,11 @@ export default function AdminWebinars({ webinars, onChange, onError }) {
         <button type="submit" disabled={busy}>
           {busy ? "Saving…" : "Schedule Webinar"}
         </button>
+        <button type="button" onClick={() => setAdding(false)}>
+          Cancel
+        </button>
       </form>
+      ) : (
       <div className="admin-table-wrap">
         <table className="admin-table">
           <thead>
@@ -144,6 +171,7 @@ export default function AdminWebinars({ webinars, onChange, onError }) {
           </tbody>
         </table>
       </div>
+      )}
       <style>{styles}</style>
     </section>
   );

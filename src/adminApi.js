@@ -153,6 +153,36 @@ export async function reviewStaffTeamMember(partnerId, memberId, status) {
   );
 }
 
+export async function updateStaffTeamMember(partnerId, memberId, body) {
+  return parseResponse(
+    await apiFetch(
+      `/api/admin/partners/${encodeURIComponent(partnerId)}/team/${encodeURIComponent(memberId)}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${staffToken()}`,
+        },
+        body: JSON.stringify(body),
+      }
+    )
+  );
+}
+
+export async function deleteStaffTeamMember(partnerId, memberId) {
+  return parseResponse(
+    await apiFetch(
+      `/api/admin/partners/${encodeURIComponent(partnerId)}/team/${encodeURIComponent(memberId)}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${staffToken()}`,
+        },
+      }
+    )
+  );
+}
+
 export async function setStaffPartnerLogin(id, body) {
   return parseResponse(
     await apiFetch(`/api/admin/partners/${encodeURIComponent(id)}/login`, {
@@ -175,6 +205,17 @@ export async function patchStaffPartner(id, body) {
         Authorization: `Bearer ${staffToken()}`,
       },
       body: JSON.stringify(body),
+    })
+  );
+}
+
+export async function deleteStaffPartner(id) {
+  return parseResponse(
+    await apiFetch(`/api/admin/partners/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${staffToken()}`,
+      },
     })
   );
 }

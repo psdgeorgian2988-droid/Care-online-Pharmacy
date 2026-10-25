@@ -3,17 +3,22 @@ import {
   confirmStaffPartnerReset,
   confirmStaffPartnerSplit,
   createStaffPartner,
+  deleteStaffPartner,
+  patchStaffPartner,
   requestStaffPartnerReset,
   requestStaffPartnerSplit,
   setStaffPartnerLogin,
 } from "./adminApi";
 import { kindLabel, partnerRole } from "./orderTracking";
+import { teamFrom, teamStatusLabel } from "./partnerTeam.js";
 import { defaultPartnerPercentFor } from "./paymentSplit";
 import {
   PARTNER_CATEGORY_TABS,
   countPartnersInCategory,
   partnerCategoryLabel,
   partnerCreateLocation,
+  partnerPrimaryKind,
+  partnerServicePins,
   partnerUpdateShowsSplit,
   partnersInCategory,
 } from "./partnerAdmin";
@@ -32,6 +37,8 @@ const emptyCreate = (kind = "medicine") => ({
 export default function AdminPartnerLogins({ partners, onChange }) {
   const [category, setCategory] = useState("");
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState("");
+  const [edit, setEdit] = useState(() => emptyCreate("medicine"));
   const [drafts, setDrafts] = useState({});
   const [create, setCreate] = useState(() => emptyCreate("medicine"));
   const [busyId, setBusyId] = useState("");
@@ -224,9 +231,93 @@ export default function AdminPartnerLogins({ partners, onChange }) {
 
   const openAdd = () => {
     setAdding(true);
+    setEditingId("");
     setCreate(emptyCreate(category || "medicine"));
     setError("");
     setNote("");
+  };
+
+  const openEdit = (partner) => {
+    const kind = partnerPrimaryKind(partner);
+    setAdding(false);
+    setResetFor("");
+    setSplitFor("");
+    setEditingId(partner.id);
+    setEdit({
+      name: partner.name || "",
+      role: partner.role || partnerRole(kind),
+      kinds: [kind],
+      mobile: partner.mobile || partner.loginId || "",
+      address: partner.address || "",
+      pin: partnerServicePins(partner)[0] || "",
+      password: "",
+    });
+    setError("");
+    setNote("");
+  };
+
+  const saveEdit = async (event) => {
+    event.preventDefault();
+    const partner = listed.find((row) => row.id === editingId);
+    if (!partner) return;
+    const kind = edit.kinds[0] || partnerPrimaryKind(partner);
+    const location = partnerCreateLocation(edit);
+    if (!location.ok) {
+      setError(location.error);
+      return;
+    }
+    if (!/^\d{10}$/.test(edit.mobile)) {
+      setError("Login ID is the 10-digit mobile number.");
+      return;
+    }
+    setBusyId(`edit-${partner.id}`);
+    setError("");
+    setNote("");
+    try {
+      const data = await patchStaffPartner(partner.id, {
+        name: edit.name,
+        role: edit.role || partnerRole(kind),
+        kinds: [kind],
+        mobile: edit.mobile,
+        address: location.address,
+        pin: location.pin,
+        pins: location.pins,
+      });
+      onChange?.(data.partners || []);
+      setDrafts((current) => ({
+        ...current,
+        [partner.id]: {
+          loginId: data.partner?.loginId || edit.mobile,
+          password: "",
+        },
+      }));
+      setEditingId("");
+      setNote(`Details saved for ${data.partner?.name || partner.name}.`);
+    } catch (err) {
+      setError(err.message || "Could not save partner details.");
+    } finally {
+      setBusyId("");
+    }
+  };
+
+  const removePartner = async (partner) => {
+    const ok = window.confirm(
+      `Remove ${partner.name}? They will no longer be able to sign in.`
+    );
+    if (!ok) return;
+    setBusyId(`remove-${partner.id}`);
+    setError("");
+    setNote("");
+    try {
+      const data = await deleteStaffPartner(partner.id);
+      onChange?.(data.partners || []);
+      if (editingId === partner.id) setEditingId("");
+      setNote(`${partner.name} removed.`);
+    } catch (err) {
+      setError(err.message || "Could not remove the partner.");
+    } finally {
+      setBusyId("");
+    }
   };
 
   const addPartner = async (event) => {
@@ -262,7 +353,7 @@ export default function AdminPartnerLogins({ partners, onChange }) {
       const data = await createStaffPartner(payload);
       onChange?.(data.partners || []);
       setCategory(kind);
-      setAdding(true);
+      setAdding(false);
       setCreate(emptyCreate(kind));
       setNote(
         `Partner Saved. Share the mobile number (login ID) and 6-digit password with ${data.partner?.name || "the partner"}.`
@@ -280,10 +371,29 @@ export default function AdminPartnerLogins({ partners, onChange }) {
         <div>
           <h2>Partners</h2>
         </div>
-        <button type="button" className="admin-feature-save" onClick={openAdd}>
+      </div>
+      {adding ? null : (
+      <div className="lab-tabs" role="tablist" aria-label="Partners">
+        <button
+          type="button"
+          role="tab"
+          className="is-on"
+          aria-selected={true}
+          onClick={() => setAdding(false)}
+        >
+          Partners
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={false}
+          onClick={openAdd}
+        >
           Add partner
         </button>
       </div>
+      )}
+      {adding ? null : (
       <div
         className="admin-switches admin-order-service-tiles"
         role="tablist"
@@ -301,6 +411,7 @@ export default function AdminPartnerLogins({ partners, onChange }) {
               onClick={() => {
                 setCategory(tab.value);
                 setAdding(false);
+                setEditingId("");
               }}
             >
               <span>{tab.label}</span>
@@ -309,6 +420,7 @@ export default function AdminPartnerLogins({ partners, onChange }) {
           );
         })}
       </div>
+      )}
       {error ? <p className="admin-error">{error}</p> : null}
       {note ? <p className="admin-hint">{note}</p> : null}
 
@@ -433,55 +545,34 @@ export default function AdminPartnerLogins({ partners, onChange }) {
           </div>
         </form>
       ) : !category ? null : (
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Partner</th>
-                <th>Category</th>
-                <th>Login ID</th>
-                <th>Password</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
+        <div className="admin-partner-sheet">
+          <div className="admin-partner-line is-head">
+            <span>Partner name</span>
+            <span>Category</span>
+            <span>Login ID</span>
+            <span>Password</span>
+            <span>Save</span>
+            <span>Edit</span>
+            <span>Delete</span>
+          </div>
               {listed.length === 0 ? (
-                <tr>
-                  <td colSpan={6}>
-                    No {partnerCategoryLabel(category)} partners yet.
-                  </td>
-                </tr>
+                <p className="admin-hint">No {partnerCategoryLabel(category)} partners yet.</p>
               ) : (
                 listed.map((partner) => {
                   const draft = draftFor(partner);
                   const resetLabel = partnerPasswordResetLabel(partner);
                   const resetOpen = resetFor === partner.id;
                   const splitOpen = splitFor === partner.id;
-                  const columnCount = 6;
+                  const editOpen = editingId === partner.id;
+                  const teamLine = teamFrom(partner.team);
                   return (
                     <Fragment key={partner.id}>
-                    <tr>
-                      <td>
-                        {partner.name}
-                        {partner.mobile ? (
-                          <>
-                            <br />
-                            <span className="admin-outlet-area">{partner.mobile}</span>
-                          </>
-                        ) : null}
-                        {partner.role ? (
-                          <>
-                            <br />
-                            <span className="admin-outlet-area">{partner.role}</span>
-                          </>
-                        ) : null}
-                      </td>
-                      <td>
+                    <div className="admin-partner-line">
+                      <strong title={partner.role || partner.name}>{partner.name}</strong>
+                      <span>
                         {(partner.kinds || []).map((kind) => kindLabel(kind)).join(", ") ||
                           partnerCategoryLabel(category)}
-                      </td>
-                      <td>
+                      </span>
                         <input
                           aria-label={`Login ID for ${partner.name}`}
                           inputMode="numeric"
@@ -498,8 +589,6 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                           }
                           placeholder="10-digit mobile"
                         />
-                      </td>
-                      <td>
                         <input
                           type="password"
                           inputMode="numeric"
@@ -518,46 +607,169 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                           placeholder="6-digit password"
                           autoComplete="new-password"
                         />
-                      </td>
-                      <td>
-                        {partner.hasLogin ? "Login Set" : "Needs First Login"}
-                        {resetLabel ? (
-                          <>
-                            <br />
-                            <span className="admin-outlet-area">{resetLabel}</span>
-                          </>
-                        ) : null}
-                      </td>
-                      <td>
                         <button
                           type="button"
+                          className="is-save"
                           disabled={busyId === partner.id}
                           onClick={() => saveLogin(partner)}
                         >
-                          {busyId === partner.id ? "Saving…" : "Save Login"}
+                          {busyId === partner.id ? "Saving…" : "Save"}
                         </button>
                         <button
                           type="button"
-                          disabled={busyId === `reset-${partner.id}`}
-                          onClick={() => (resetOpen ? setResetFor("") : openReset(partner))}
+                          disabled={busyId === `edit-${partner.id}`}
+                          onClick={() => (editOpen ? setEditingId("") : openEdit(partner))}
                         >
-                          {resetOpen ? "Cancel" : "Reset password"}
+                          {editOpen ? "Close" : "Edit"}
                         </button>
-                        {partnerUpdateShowsSplit(category) ? (
-                          <button
-                            type="button"
-                            disabled={busyId === `split-${partner.id}`}
-                            onClick={() => (splitOpen ? setSplitFor("") : openSplit(partner))}
-                          >
-                            {splitOpen ? "Cancel" : "Update split"}
-                          </button>
-                        ) : null}
-                      </td>
-                    </tr>
+                        <button
+                          type="button"
+                          className="is-delete"
+                          disabled={busyId === `remove-${partner.id}`}
+                          onClick={() => removePartner(partner)}
+                        >
+                          {busyId === `remove-${partner.id}` ? "…" : "Delete"}
+                        </button>
+                    </div>
+                    {teamLine.length ? (
+                      <p className="admin-partner-team">
+                        Team:{" "}
+                        {teamLine
+                          .map((member) => `${member.name} (${teamStatusLabel(member.status)})`)
+                          .join(", ")}
+                      </p>
+                    ) : null}
+                    {editOpen ? (
+                          <form className="admin-partner-create" onSubmit={saveEdit}>
+                            <h3>Edit details</h3>
+                            <div className="admin-partner-grid">
+                              <label>
+                                Partner category
+                                <select
+                                  value={edit.kinds[0] || category}
+                                  onChange={(event) =>
+                                    setEdit((current) => {
+                                      const kind = event.target.value;
+                                      const keepRole =
+                                        current.role && current.role !== partnerRole(current.kinds[0]);
+                                      return {
+                                        ...current,
+                                        kinds: [kind],
+                                        role: keepRole ? current.role : partnerRole(kind),
+                                      };
+                                    })
+                                  }
+                                  required
+                                >
+                                  {PARTNER_CATEGORY_TABS.map((tab) => (
+                                    <option key={tab.value} value={tab.value}>
+                                      {tab.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label>
+                                Name
+                                <input
+                                  value={edit.name}
+                                  onChange={(event) =>
+                                    setEdit((current) => ({ ...current, name: event.target.value }))
+                                  }
+                                  required
+                                />
+                              </label>
+                              <label>
+                                Role
+                                <input
+                                  value={edit.role}
+                                  onChange={(event) =>
+                                    setEdit((current) => ({ ...current, role: event.target.value }))
+                                  }
+                                />
+                              </label>
+                              <label>
+                                Mobile
+                                <input
+                                  inputMode="numeric"
+                                  autoComplete="tel"
+                                  value={edit.mobile}
+                                  onChange={(event) =>
+                                    setEdit((current) => ({
+                                      ...current,
+                                      mobile: event.target.value.replace(/\D/g, "").slice(0, 10),
+                                    }))
+                                  }
+                                  required
+                                  minLength={10}
+                                  maxLength={10}
+                                  pattern="\d{10}"
+                                />
+                              </label>
+                              <label>
+                                Address
+                                <input
+                                  value={edit.address}
+                                  onChange={(event) =>
+                                    setEdit((current) => ({ ...current, address: event.target.value }))
+                                  }
+                                  required
+                                />
+                              </label>
+                              <label>
+                                PIN
+                                <input
+                                  inputMode="numeric"
+                                  value={edit.pin}
+                                  onChange={(event) =>
+                                    setEdit((current) => ({
+                                      ...current,
+                                      pin: event.target.value.replace(/\D/g, "").slice(0, 6),
+                                    }))
+                                  }
+                                  required
+                                  minLength={6}
+                                  maxLength={6}
+                                  pattern="\d{6}"
+                                />
+                              </label>
+                            </div>
+                            <div className="admin-feature-actions">
+                              <button
+                                type="submit"
+                                className="admin-feature-save"
+                                disabled={busyId === `edit-${partner.id}`}
+                              >
+                                {busyId === `edit-${partner.id}` ? "Saving…" : "Save details"}
+                              </button>
+                              <button
+                                type="button"
+                                className="admin-feature-reset"
+                                onClick={() => setEditingId("")}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                className="admin-feature-reset"
+                                onClick={() => (resetOpen ? setResetFor("") : openReset(partner))}
+                              >
+                                {resetOpen ? "Close reset" : "Reset password"}
+                              </button>
+                              {partnerUpdateShowsSplit(category) ? (
+                                <button
+                                  type="button"
+                                  className="admin-feature-reset"
+                                  onClick={() => (splitOpen ? setSplitFor("") : openSplit(partner))}
+                                >
+                                  {splitOpen ? "Close split" : "Update split"}
+                                </button>
+                              ) : null}
+                            </div>
+                          </form>
+                    ) : null}
                     {resetOpen ? (
-                      <tr>
-                        <td colSpan={columnCount}>
                           <div className="admin-partner-reset">
+                            {resetLabel ? <p className="admin-hint">{resetLabel}</p> : null}
                             <p className="admin-hint">
                               Enter the new 6-digit password. An OTP is texted to the partner&apos;s
                               registered mobile when an SMS gateway is configured. The password is saved
@@ -619,12 +831,8 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                               </>
                             ) : null}
                           </div>
-                        </td>
-                      </tr>
                     ) : null}
                     {splitOpen ? (
-                      <tr>
-                        <td colSpan={columnCount}>
                           <div className="admin-partner-reset">
                             <p className="admin-hint">
                               Update split texts an OTP to the partner&apos;s registered mobile when an
@@ -691,15 +899,11 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                               </>
                             ) : null}
                           </div>
-                        </td>
-                      </tr>
                     ) : null}
                     </Fragment>
                   );
                 })
               )}
-            </tbody>
-          </table>
         </div>
       )}
     </section>

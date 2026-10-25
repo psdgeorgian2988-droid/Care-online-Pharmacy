@@ -420,25 +420,15 @@ function newTeamId() {
   return `T-${Date.now().toString(36).toUpperCase()}-${randomBytes(2).toString("hex").toUpperCase()}`;
 }
 
-function labPartnerOrError(current) {
-  if (!current) return { ok: false, error: "Partner not found." };
-  if (!normalizeKinds(current.kinds).includes("lab")) {
-    return { ok: false, error: "Team members are added from the lab partner app." };
-  }
-  return null;
-}
-
 export async function addPartnerTeamMember(partnerId, body = {}) {
   const list = await readPartners();
   const index = list.findIndex((row) => row.id === partnerId);
   if (index < 0) return { ok: false, error: "Partner not found." };
-  const blocked = labPartnerOrError(list[index]);
-  if (blocked) return blocked;
   const member = newTeamMember(body, newTeamId());
   if (!member) return { ok: false, error: "Enter the team member's name." };
   if (member.mobile.length !== 10) return { ok: false, error: "Enter a 10-digit mobile number." };
   const team = teamFrom(list[index].team);
-  if (team.length >= 30) return { ok: false, error: "This lab team already has 30 members." };
+  if (team.length >= 30) return { ok: false, error: "This team already has 30 members." };
   if (team.some((row) => row.mobile === member.mobile)) {
     return { ok: false, error: "That mobile number is already on this team." };
   }
@@ -448,12 +438,10 @@ export async function addPartnerTeamMember(partnerId, body = {}) {
   return { ok: true, partner: publicPartner(next), member };
 }
 
-export async function updatePartnerTeamMember(partnerId, memberId, body = {}) {
+export async function updatePartnerTeamMember(partnerId, memberId, body = {}, options = {}) {
   const list = await readPartners();
   const index = list.findIndex((row) => row.id === partnerId);
   if (index < 0) return { ok: false, error: "Partner not found." };
-  const blocked = labPartnerOrError(list[index]);
-  if (blocked) return blocked;
   const team = teamFrom(list[index].team);
   const current = team.find((row) => row.id === memberId);
   if (!current) return { ok: false, error: "Team member not found." };
@@ -472,13 +460,21 @@ export async function updatePartnerTeamMember(partnerId, memberId, body = {}) {
   if (team.some((row) => row.id !== current.id && row.mobile === member.mobile)) {
     return { ok: false, error: "That mobile number is already on this team." };
   }
+  const savedMember = options.keepStatus
+    ? {
+        ...member,
+        status: current.status,
+        reviewedAt: current.reviewedAt,
+        reviewNote: current.reviewNote,
+      }
+    : member;
   const next = sanitizePartner({
     ...list[index],
-    team: team.map((row) => (row.id === current.id ? member : row)),
+    team: team.map((row) => (row.id === current.id ? savedMember : row)),
   });
   list[index] = next;
   await writePartners(list);
-  return { ok: true, partner: publicPartner(next), member };
+  return { ok: true, partner: publicPartner(next), member: savedMember };
 }
 
 export async function removePartnerTeamMember(partnerId, memberId) {
@@ -488,9 +484,6 @@ export async function removePartnerTeamMember(partnerId, memberId) {
   const team = teamFrom(list[index].team);
   const current = team.find((row) => row.id === memberId);
   if (!current) return { ok: false, error: "Team member not found." };
-  if (current.status === "approved") {
-    return { ok: false, error: "Approved team members stay on the list." };
-  }
   const next = sanitizePartner({
     ...list[index],
     team: team.filter((row) => row.id !== memberId),
@@ -523,23 +516,74 @@ export async function updatePartner(id, body = {}) {
   const index = list.findIndex((row) => row.id === id);
   if (index < 0) return { ok: false, error: "Partner not found." };
   const current = list[index];
+  const name = body.name != null ? clipText(body.name, 80) : current.name;
+  if (!name) return { ok: false, error: "Partner name is required." };
+  const mobile =
+    body.mobile != null
+      ? String(body.mobile).replace(/\D/g, "").slice(0, 10)
+      : current.mobile;
+  if (body.mobile != null && mobile.length !== 10) {
+    return { ok: false, error: "Enter a 10-digit mobile number." };
+  }
+  const address = body.address != null ? clipText(body.address, 160) : current.address;
+  if (body.address != null && !address) return { ok: false, error: "Address is required." };
+  const pins =
+    body.pins != null || body.pin != null || body.pinCode != null
+      ? normalizeStorePins(
+          body.pins != null ? body.pins : body.pin || body.pinCode || ""
+        )
+      : current.pins;
+  if (
+    (body.pins != null || body.pin != null || body.pinCode != null) &&
+    String(pins[0] || "").length !== 6
+  ) {
+    return { ok: false, error: "A 6-digit PIN is required." };
+  }
+  let loginId = current.loginId;
+  const currentLogin = partnerLoginIdFromMobile(current.loginId);
+  const currentMobile = partnerLoginIdFromMobile(current.mobile);
+  if (body.mobile != null && (!currentLogin || currentLogin === currentMobile)) {
+    loginId = mobile;
+  }
+  if (
+    loginId &&
+    list.some(
+      (row) =>
+        row.id !== current.id &&
+        normalizePartnerLoginId(row.loginId) === normalizePartnerLoginId(loginId)
+    )
+  ) {
+    return { ok: false, error: "That mobile number is already used by another partner." };
+  }
   const next = sanitizePartner({
     ...current,
-    name: body.name != null ? body.name : current.name,
+    name,
     role: body.role != null ? body.role : current.role,
     kinds: body.kinds != null ? body.kinds : current.kinds,
-    mobile: body.mobile != null ? body.mobile : current.mobile,
+    mobile,
+    address,
     outletId: body.outletId != null ? body.outletId : current.outletId,
-    pins: body.pins != null ? body.pins : current.pins,
+    pins,
     partnerPercent:
       body.partnerPercent != null ? body.partnerPercent : current.partnerPercent,
     id: current.id,
-    loginId: current.loginId,
+    loginId,
     passwordHash: current.passwordHash,
   });
   list[index] = next;
   await writePartners(list);
   return { ok: true, partner: publicPartner(next) };
+}
+
+export async function deletePartner(id) {
+  const list = await readPartners();
+  const index = list.findIndex((row) => row.id === id);
+  if (index < 0) return { ok: false, error: "Partner not found." };
+  const removed = list[index];
+  list.splice(index, 1);
+  await writePartners(list);
+  revokePartnerSessions(removed.id);
+  return { ok: true };
 }
 
 export function partnerIdFromToken(token) {

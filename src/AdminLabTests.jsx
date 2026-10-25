@@ -6,6 +6,7 @@ const emptyTest = () => ({ name: "", price: "", partnerPercent: "" });
 export default function AdminLabTests() {
   const [tests, setTests] = useState([]);
   const [draft, setDraft] = useState(emptyTest);
+  const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [editPercent, setEditPercent] = useState("");
   const [busy, setBusy] = useState(false);
@@ -38,6 +39,7 @@ export default function AdminLabTests() {
       });
       setTests(data.tests || []);
       setDraft(emptyTest());
+      setAdding(false);
       setNote(`${data.test?.name || "Test"} saved with partner split ${data.test?.partnerPercent}%.`);
     } catch (err) {
       setError(err.message || "Could not save the lab test.");
@@ -77,8 +79,33 @@ export default function AdminLabTests() {
           </p>
         </div>
       </div>
+      <div className="lab-tabs" role="tablist" aria-label="Lab tests">
+        <button
+          type="button"
+          role="tab"
+          className={adding ? "" : "is-on"}
+          aria-selected={!adding}
+          onClick={() => setAdding(false)}
+        >
+          Lab tests
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className={adding ? "is-on" : ""}
+          aria-selected={adding}
+          onClick={() => {
+            setAdding(true);
+            setEditingId("");
+            setError("");
+          }}
+        >
+          Add lab test
+        </button>
+      </div>
       {error ? <p className="admin-error">{error}</p> : null}
       {note ? <p className="admin-hint">{note}</p> : null}
+      {adding ? (
       <form className="admin-partner-create" onSubmit={save}>
         <h3>Add lab test</h3>
         <div className="admin-partner-grid">
@@ -122,9 +149,12 @@ export default function AdminLabTests() {
           <button type="submit" className="admin-feature-save" disabled={busy}>
             {busy ? "Saving…" : "Save test"}
           </button>
+          <button type="button" className="admin-feature-reset" onClick={() => setAdding(false)}>
+            Cancel
+          </button>
         </div>
       </form>
-      {tests.length ? (
+      ) : tests.length ? (
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
