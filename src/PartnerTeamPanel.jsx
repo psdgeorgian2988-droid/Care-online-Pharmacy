@@ -75,12 +75,27 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
   const team = teamFrom(partner?.team);
   const [draft, setDraft] = useState(emptyDraft);
   const [editingId, setEditingId] = useState("");
+  const [mode, setMode] = useState("list");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
 
   const setProfile = (patch) =>
     setDraft((current) => ({ ...current, profile: { ...current.profile, ...patch } }));
+
+  const showList = () => {
+    setEditingId("");
+    setDraft(emptyDraft());
+    setMode("list");
+  };
+
+  const openAdd = () => {
+    setEditingId("");
+    setDraft(emptyDraft());
+    setError("");
+    setNote("");
+    setMode("form");
+  };
 
   const startEdit = (member) => {
     setEditingId(member.id);
@@ -92,11 +107,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
     });
     setError("");
     setNote("");
-  };
-
-  const resetForm = () => {
-    setEditingId("");
-    setDraft(emptyDraft());
+    setMode("form");
   };
 
   const onPhoto = async (event) => {
@@ -154,7 +165,9 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
         ? await updatePartnerTeamMember(editingId, body)
         : await addPartnerTeamMember(body);
       onSaved?.(data.partner);
-      resetForm();
+      setEditingId("");
+      setDraft(emptyDraft());
+      setMode("list");
       setNote(
         wasEditing
           ? "Profile updated. Admin approval is required again before this person can be assigned."
@@ -174,7 +187,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
     try {
       const data = await removePartnerTeamMember(member.id);
       onSaved?.(data.partner);
-      if (editingId === member.id) resetForm();
+      if (editingId === member.id) showList();
     } catch (err) {
       setError(err.message || "Could not remove the team member.");
     } finally {
@@ -200,35 +213,64 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
         .partner-team-status.is-approved{color:#0b6b5a}
         .partner-team-status.is-rejected{color:#9b2c2c}
         .partner-team-status.is-pending{color:#8a5a00}
+        .partner-team-tabs{display:inline-flex;flex-wrap:wrap;padding:4px;border-radius:10px;background:#e8f1f6;gap:4px;width:fit-content}
+        .partner-team-tabs button{border:0;background:transparent;color:#3d5a6c;font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer;min-height:0}
+        .partner-team-tabs button.is-on{background:#fff;color:#1a6b7a;box-shadow:0 1px 3px rgba(20,50,70,.08)}
       `}</style>
       <h2>Team</h2>
-      {team.length ? (
-        team.map((member) => (
-          <article key={member.id} className="partner-team-card">
-            <div>
-              <strong>{member.name}</strong>
-              <p>
-                {member.role} · {member.mobile}
-                {member.profile?.qualification ? ` · ${member.profile.qualification}` : ""}
-              </p>
-              <p className={`partner-team-status is-${member.status}`}>{teamStatusLabel(member.status)}</p>
-              {member.reviewNote ? <p>{member.reviewNote}</p> : null}
-            </div>
-            <div className="partner-team-actions">
-              <button type="button" disabled={busy} onClick={() => startEdit(member)}>
-                Edit profile
-              </button>
-              {member.status === "approved" ? null : (
-                <button type="button" disabled={busy} onClick={() => remove(member)}>
-                  Remove
-                </button>
-              )}
-            </div>
-          </article>
-        ))
+      <div className="partner-team-tabs" role="tablist" aria-label="Team">
+        <button
+          type="button"
+          role="tab"
+          className={mode === "list" ? "is-on" : ""}
+          aria-selected={mode === "list"}
+          onClick={showList}
+        >
+          Team members
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className={mode === "form" && !editingId ? "is-on" : ""}
+          aria-selected={mode === "form" && !editingId}
+          onClick={openAdd}
+        >
+          Add team member
+        </button>
+      </div>
+      {mode === "list" ? (
+        <>
+          {note ? <p>{note}</p> : null}
+          {error ? <p className="admin-error">{error}</p> : null}
+          {team.length ? (
+            team.map((member) => (
+              <article key={member.id} className="partner-team-card">
+                <div>
+                  <strong>{member.name}</strong>
+                  <p>
+                    {member.role} · {member.mobile}
+                    {member.profile?.qualification ? ` · ${member.profile.qualification}` : ""}
+                  </p>
+                  <p className={`partner-team-status is-${member.status}`}>{teamStatusLabel(member.status)}</p>
+                  {member.reviewNote ? <p>{member.reviewNote}</p> : null}
+                </div>
+                <div className="partner-team-actions">
+                  <button type="button" disabled={busy} onClick={() => startEdit(member)}>
+                    Edit profile
+                  </button>
+                  {member.status === "approved" ? null : (
+                    <button type="button" disabled={busy} onClick={() => remove(member)}>
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))
+          ) : (
+            <p>No team members yet.</p>
+          )}
+        </>
       ) : (
-        <p>No team members yet.</p>
-      )}
       <form
         className="partner-team-form"
         onSubmit={(event) => {
@@ -333,13 +375,12 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
           <button type="submit" className="partner-accept" disabled={busy}>
             {busy ? "Saving…" : editingId ? "Save profile" : "Add to team"}
           </button>
-          {editingId ? (
-            <button type="button" disabled={busy} onClick={resetForm}>
-              Cancel
-            </button>
-          ) : null}
+          <button type="button" disabled={busy} onClick={showList}>
+            Cancel
+          </button>
         </div>
       </form>
+      )}
     </section>
   );
 }

@@ -10651,6 +10651,22 @@ html:has(.app-customer) .app-bottom-nav {
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;
   touch-action: pan-y !important;
+  padding-bottom: calc(var(--app-nav-h, 64px) + 8px) !important;
+}
+
+.app:not(.app-ops):not(.app-customer) .app-bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--shell-footer-h, 44px);
+  z-index: 45;
+  width: 100%;
+  max-width: none;
+  transform: none;
+}
+
+.app:not(.app-ops):not(.app-customer) .site-floating-help {
+  bottom: calc(var(--shell-footer-h, 44px) + var(--app-nav-h, 64px) + 8px);
 }
 
 .app:not(.app-ops):not(.app-customer) > main > * {

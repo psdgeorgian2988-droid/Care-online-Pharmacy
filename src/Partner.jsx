@@ -23,6 +23,7 @@ import {
 import {
   jobsForPartnerDeskTab,
   partnerDeskNeedsPaymentCollect,
+  partnerDeskTab,
   partnerDeskTabsFor,
   usesPartnerServiceDesk,
 } from "./partnerDeskTabs";
@@ -56,7 +57,7 @@ import {
   partnerSession,
   patchPartnerJob,
 } from "./partnerApi";
-import { approvedTeam } from "./partnerTeam.js";
+import { approvedTeam, teamFrom } from "./partnerTeam.js";
 import PartnerForgotPassword from "./PartnerForgotPassword";
 import { stockOnHandForItem } from "./stockReport";
 import OrderQr from "./OrderQr.jsx";
@@ -67,7 +68,6 @@ import {
 } from "./orderQr";
 import { rxShareCardStyles } from "./RxShareCard";
 import OrderFullView from "./OrderFullView.jsx";
-import PartnerProfileForm from "./PartnerProfileForm.jsx";
 import PartnerTeamPanel from "./PartnerTeamPanel.jsx";
 import { BillButton } from "./OrderBill.jsx";
 import OrderListTable from "./OrderListTable.jsx";
@@ -172,8 +172,7 @@ export default function Partner({ deskKind = "" }) {
   const [inventory, setInventory] = useState(null);
   const [labReportError, setLabReportError] = useState("");
   const [recordViewer, setRecordViewer] = useState(null);
-  const [showProfile, setShowProfile] = useState(false);
-  const [showTeam, setShowTeam] = useState(false);
+  const [homeTab, setHomeTab] = useState("home");
   const labReportFileRef = useRef(null);
   const labUploadTargetIdRef = useRef("");
   const openGeneratedReport = useCallback(
@@ -228,7 +227,7 @@ export default function Partner({ deskKind = "" }) {
   }, [token]);
 
   useEffect(() => {
-    if (!token || deskKind !== "lab") return;
+    if (!token) return undefined;
     let cancelled = false;
     fetchPartnerProfile()
       .then((data) => {
@@ -238,7 +237,7 @@ export default function Partner({ deskKind = "" }) {
     return () => {
       cancelled = true;
     };
-  }, [token, deskKind]);
+  }, [token]);
 
   useEffect(() => {
     if (labTab !== "upload") return;
@@ -504,10 +503,19 @@ export default function Partner({ deskKind = "" }) {
   const appTitle = partnerAppTitle(appKind, partner, deskHash);
   const deliveryDesk = isDeliveryPartner(partner) || deskHash === "#delivery-desk";
   const isStepDownDesk = appKind === "stepdown" || deskHash === "#stepdown-desk";
+  const homeTabs = [
+    { id: "home", label: "Home" },
+    { id: "orders", label: "Orders" },
+    ...(appKind === "lab" ? [{ id: "team", label: "Team members" }] : []),
+  ];
   const foreignSession = Boolean(
     partner && deskKind && !partnerServesDesk(partner, deskKind)
   );
   const sharedStayRef = useRef(new Set());
+
+  useEffect(() => {
+    if (homeTab === "profile" || (homeTab === "team" && appKind !== "lab")) setHomeTab("home");
+  }, [homeTab, appKind]);
 
   useEffect(() => {
     const tabs = partnerDeskTabsFor(appKind);
@@ -638,26 +646,6 @@ export default function Partner({ deskKind = "" }) {
             <h1>{partner.name}</h1>
           </div>
           <div className="admin-hero-actions">
-            <button
-              type="button"
-              onClick={() => {
-                setShowTeam(false);
-                setShowProfile((open) => !open);
-              }}
-            >
-              {showProfile ? "Hide profile" : "Profile"}
-            </button>
-            {deskKind === "lab" ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setShowProfile(false);
-                  setShowTeam((open) => !open);
-                }}
-              >
-                {showTeam ? "Hide team" : "Team"}
-              </button>
-            ) : null}
             <button type="button" onClick={loadJobs} disabled={loading}>
               {loading ? "Refreshing…" : "Refresh"}
             </button>
@@ -668,6 +656,7 @@ export default function Partner({ deskKind = "" }) {
                 setToken("");
                 setPartner(null);
                 setJobs([]);
+                setHomeTab("home");
               }}
             >
               Sign Out
@@ -675,20 +664,35 @@ export default function Partner({ deskKind = "" }) {
           </div>
         </section>
         {error ? <p className="admin-error">{error}</p> : null}
-        {showProfile ? (
-          <PartnerProfileForm
-            key={partner?.id || "profile"}
+        <div className="partner-home-tabs" role="tablist" aria-label="Partner home">
+          {homeTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={homeTab === tab.id}
+              className={homeTab === tab.id ? "is-on" : ""}
+              onClick={() => setHomeTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        {homeTab === "home" ? (
+          <PartnerHome
             partner={partner}
-            onSaved={(next) => setPartner(next)}
+            jobs={jobs}
+            kind={appKind}
+            onOpen={setHomeTab}
           />
         ) : null}
-        {showTeam && deskKind === "lab" ? (
+        {homeTab === "team" && appKind === "lab" ? (
           <PartnerTeamPanel
             partner={partner}
             onSaved={(next) => setPartner(next)}
           />
         ) : null}
-        {isStepDownDesk ? (
+        {homeTab === "orders" && isStepDownDesk ? (
           <StepDownDesk
             orders={jobs}
             loading={loading}
@@ -736,7 +740,7 @@ export default function Partner({ deskKind = "" }) {
             }}
           />
         ) : null}
-        {isStepDownDesk
+        {homeTab !== "orders" || isStepDownDesk
           ? null
           : groupOrdersByKind(jobs, [appKind]).map((group) => {
           const isMedicineDesk = group.kind === "medicine";
@@ -1048,6 +1052,44 @@ export default function Partner({ deskKind = "" }) {
         <RecordViewer record={recordViewer} onClose={() => setRecordViewer(null)} />
       ) : null}
     </>
+  );
+}
+
+function PartnerHome({ partner, jobs, kind, onOpen }) {
+  const showTeam = kind === "lab";
+  const team = showTeam ? teamFrom(partner?.team) : [];
+  const approved = team.filter((row) => row.status === "approved").length;
+  const pending = team.filter((row) => row.status === "pending").length;
+  const openOrders = (jobs || []).filter((job) => {
+    const tab = partnerDeskTab(job, kind);
+    return tab !== "done" && tab !== "delivered";
+  }).length;
+  const newOrders = (jobs || []).filter((job) => partnerDeskTab(job, kind) === "new").length;
+
+  return (
+    <section className="partner-home" aria-label="Partner home">
+      <p className="partner-home-lead">
+        {[partner?.role, partner?.mobile, partner?.address].filter(Boolean).join(" · ")}
+      </p>
+      <div className="partner-home-grid">
+        <button type="button" className="partner-home-card" onClick={() => onOpen("orders")}>
+          <span>Orders</span>
+          <strong>{openOrders}</strong>
+          <p>
+            {newOrders} new · {(jobs || []).length} total
+          </p>
+        </button>
+        {showTeam ? (
+          <button type="button" className="partner-home-card" onClick={() => onOpen("team")}>
+            <span>Team members</span>
+            <strong>{team.length}</strong>
+            <p>
+              {approved} approved · {pending} waiting for admin
+            </p>
+          </button>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
@@ -2244,6 +2286,15 @@ const styles = `
 
 ${rxShareCardStyles}
 .partner-page{width:100%;max-width:none}
+.partner-home-tabs{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 14px;padding:4px;border-radius:10px;background:#e8f1f6}
+.partner-home-tabs button{border:0;background:transparent;color:#3d5a6c;font:inherit;font-size:13px;font-weight:800;padding:8px 14px;border-radius:8px;cursor:pointer}
+.partner-home-tabs button.is-on{background:#fff;color:#1a6b7a;box-shadow:0 1px 3px rgba(20,50,70,.08)}
+.partner-home-lead{margin:0 0 12px;font-size:13px;line-height:1.4;color:#34546b}
+.partner-home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.partner-home-card{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px;border:1px solid #d7e2e9;border-radius:12px;background:#fff;text-align:left;cursor:pointer;font:inherit;color:#143246}
+.partner-home-card span{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#1a6b7a}
+.partner-home-card strong{font-size:22px}
+.partner-home-card p{margin:0;font-size:12px;line-height:1.4;color:#5d7180}
 .partner-job-detail td{background:#f7fbfd;border-bottom:8px solid #eef3f6}
 .admin-hero{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
 .admin-hero-actions{display:flex;flex-wrap:wrap;gap:6px}

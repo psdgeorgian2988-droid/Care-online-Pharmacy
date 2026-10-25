@@ -610,6 +610,9 @@ function App() {
             )}
           </Suspense>
         </ErrorBoundary>
+        {welcomeGate || isAuthRoute ? null : (
+          <AppBottomNav route={route} service={hashService} />
+        )}
       </main>
 
       <SiteFooter showOpsLinks={route !== "#home"} />
