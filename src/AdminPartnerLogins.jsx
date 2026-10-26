@@ -1,4 +1,5 @@
 import { Fragment, useState } from "react";
+import { AdminSectionGuard } from "./adminLeave";
 import {
   confirmStaffPartnerReset,
   confirmStaffPartnerSplit,
@@ -10,7 +11,7 @@ import {
   setStaffPartnerLogin,
 } from "./adminApi";
 import { kindLabel, partnerRole } from "./orderTracking";
-import { teamFrom, teamStatusLabel } from "./partnerTeam.js";
+import { teamDocumentSummary, teamFrom, teamStatusLabel } from "./partnerTeam.js";
 import { defaultPartnerPercentFor } from "./paymentSplit";
 import {
   PARTNER_CATEGORY_TABS,
@@ -73,11 +74,11 @@ export default function AdminPartnerLogins({ partners, onChange }) {
     const password = String(draft.password || "").replace(/\D/g, "").slice(0, 6);
     if (!/^\d{10}$/.test(loginId)) {
       setError("Login ID is the 10-digit mobile number.");
-      return;
+      return false;
     }
     if (password ? !/^\d{6}$/.test(password) : !partner.hasLogin) {
       setError("Password must be exactly 6 digits.");
-      return;
+      return false;
     }
     setBusyId(partner.id);
     setError("");
@@ -96,8 +97,10 @@ export default function AdminPartnerLogins({ partners, onChange }) {
         },
       }));
       setNote(`Login Saved For ${partner.name}.`);
+      return true;
     } catch (err) {
       setError(err.message || "Could Not Save Partner Login.");
+      return false;
     } finally {
       setBusyId("");
     }
@@ -122,7 +125,7 @@ export default function AdminPartnerLogins({ partners, onChange }) {
     const partnerPercent = Number(splitDraft.partnerPercent);
     if (!Number.isFinite(partnerPercent) || partnerPercent < 0 || partnerPercent > 100) {
       setError("Partner split must be between 0 and 100.");
-      return;
+      return false;
     }
     setBusyId(`split-${partner.id}`);
     setError("");
@@ -146,7 +149,7 @@ export default function AdminPartnerLogins({ partners, onChange }) {
     const otp = String(splitDraft.otp || "").replace(/\D/g, "").slice(0, 6);
     if (!/^\d{6}$/.test(otp)) {
       setError("Enter the 6-digit OTP.");
-      return;
+      return false;
     }
     setBusyId(`split-${partner.id}`);
     setError("");
@@ -157,8 +160,10 @@ export default function AdminPartnerLogins({ partners, onChange }) {
       setSplitFor("");
       setSplitDraft({ partnerPercent: "", otp: "", phase: "", info: "" });
       setNote(`Split updated for ${partner.name}: partner ${data.partner?.partnerPercent}%.`);
+      return true;
     } catch (err) {
       setError(err.message || "Could not update the partner split.");
+      return false;
     } finally {
       setBusyId("");
     }
@@ -200,7 +205,7 @@ export default function AdminPartnerLogins({ partners, onChange }) {
     const otp = String(resetDraft.otp || "").replace(/\D/g, "").slice(0, 6);
     if (!/^\d{6}$/.test(otp)) {
       setError("Enter the 6-digit OTP.");
-      return;
+      return false;
     }
     setBusyId(`reset-${partner.id}`);
     setError("");
@@ -211,8 +216,10 @@ export default function AdminPartnerLogins({ partners, onChange }) {
       setResetFor("");
       setResetDraft({ password: "", otp: "", phase: "", info: "" });
       setNote(`Password reset for ${partner.name}. They sign in with the new 6-digit password.`);
+      return true;
     } catch (err) {
       setError(err.message || "Could not reset the password.");
+      return false;
     } finally {
       setBusyId("");
     }
@@ -257,18 +264,18 @@ export default function AdminPartnerLogins({ partners, onChange }) {
   };
 
   const saveEdit = async (event) => {
-    event.preventDefault();
+    event?.preventDefault?.();
     const partner = listed.find((row) => row.id === editingId);
-    if (!partner) return;
+    if (!partner) return false;
     const kind = edit.kinds[0] || partnerPrimaryKind(partner);
     const location = partnerCreateLocation(edit);
     if (!location.ok) {
       setError(location.error);
-      return;
+      return false;
     }
     if (!/^\d{10}$/.test(edit.mobile)) {
       setError("Login ID is the 10-digit mobile number.");
-      return;
+      return false;
     }
     setBusyId(`edit-${partner.id}`);
     setError("");
@@ -293,8 +300,10 @@ export default function AdminPartnerLogins({ partners, onChange }) {
       }));
       setEditingId("");
       setNote(`Details saved for ${data.partner?.name || partner.name}.`);
+      return true;
     } catch (err) {
       setError(err.message || "Could not save partner details.");
+      return false;
     } finally {
       setBusyId("");
     }
@@ -321,20 +330,20 @@ export default function AdminPartnerLogins({ partners, onChange }) {
   };
 
   const addPartner = async (event) => {
-    event.preventDefault();
+    event?.preventDefault?.();
     const kind = create.kinds[0] || category;
     const location = partnerCreateLocation(create);
     if (!location.ok) {
       setError(location.error);
-      return;
+      return false;
     }
     if (!/^\d{10}$/.test(create.mobile)) {
       setError("Login ID is the 10-digit mobile number.");
-      return;
+      return false;
     }
     if (!/^\d{6}$/.test(create.password)) {
       setError("Password must be exactly 6 digits.");
-      return;
+      return false;
     }
     setBusyId("new");
     setError("");
@@ -358,15 +367,48 @@ export default function AdminPartnerLogins({ partners, onChange }) {
       setNote(
         `Partner Saved. Share the mobile number (login ID) and 6-digit password with ${data.partner?.name || "the partner"}.`
       );
+      return true;
     } catch (err) {
       setError(err.message || "Could Not Create Partner.");
+      return false;
     } finally {
       setBusyId("");
     }
   };
 
+  const loginChanged = (partner) => {
+    const draft = drafts[partner.id];
+    if (!draft) return false;
+    const saved = String(partner.loginId || partner.mobile || "");
+    return String(draft.loginId || "") !== saved || Boolean(draft.password);
+  };
+
+  const detailsDirty =
+    adding || Boolean(editingId) || Boolean(resetFor) || Boolean(splitFor) || partners.some(loginChanged);
+
+  const savePending = async () => {
+    if (adding) return addPartner();
+    if (editingId) return saveEdit();
+    const changed = partners.find(loginChanged);
+    if (changed) return saveLogin(changed);
+    if (resetFor) {
+      const partner = partners.find((row) => row.id === resetFor);
+      if (partner && resetDraft.phase === "otp") return confirmReset(partner);
+      setError("Finish the password reset before closing this section.");
+      return false;
+    }
+    if (splitFor) {
+      const partner = partners.find((row) => row.id === splitFor);
+      if (partner && splitDraft.phase === "otp") return confirmSplit(partner);
+      setError("Finish the split update before closing this section.");
+      return false;
+    }
+    return true;
+  };
+
   return (
     <section className="admin-panel admin-feature-panel admin-partners-box" aria-label="Partners">
+      <AdminSectionGuard dirty={detailsDirty} save={savePending} />
       <div className="admin-feature-head">
         <div>
           <h2>Partners</h2>
@@ -632,12 +674,35 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                         </button>
                     </div>
                     {teamLine.length ? (
-                      <p className="admin-partner-team">
-                        Team:{" "}
-                        {teamLine
-                          .map((member) => `${member.name} (${teamStatusLabel(member.status)})`)
-                          .join(", ")}
-                      </p>
+                      <div className="admin-partner-team-sheet">
+                        <div className="admin-partner-team-line is-head">
+                          <span>Name</span>
+                          <span>Category</span>
+                          <span>Login ID</span>
+                          <span>Qualification</span>
+                          <span>Email</span>
+                          <span>Aadhaar</span>
+                          <span>Documents</span>
+                          <span>Status</span>
+                        </div>
+                        {teamLine.map((member) => {
+                          const profile = member.profile || {};
+                          return (
+                            <div key={member.id} className="admin-partner-team-line">
+                              <strong>{member.name}</strong>
+                              <span>{member.role || "—"}</span>
+                              <span>{member.mobile || "—"}</span>
+                              <span>{profile.qualification || "—"}</span>
+                              <span>{profile.email || "—"}</span>
+                              <span>{profile.aadhaarNumber || "—"}</span>
+                              <span>{teamDocumentSummary(profile) || "—"}</span>
+                              <span className={`partner-team-status is-${member.status}`}>
+                                {teamStatusLabel(member.status)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     ) : null}
                     {editOpen ? (
                           <form className="admin-partner-create" onSubmit={saveEdit}>

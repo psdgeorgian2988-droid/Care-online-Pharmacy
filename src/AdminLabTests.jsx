@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AdminSectionGuard } from "./adminLeave";
 import { createStaffLabTest, fetchAddedLabTests, patchStaffLabTest } from "./adminApi";
 
 const emptyTest = () => ({ name: "", price: "", partnerPercent: "" });
@@ -26,7 +27,7 @@ export default function AdminLabTests() {
   }, []);
 
   const save = async (event) => {
-    event.preventDefault();
+    event?.preventDefault?.();
     setBusy(true);
     setError("");
     setNote("");
@@ -41,8 +42,10 @@ export default function AdminLabTests() {
       setDraft(emptyTest());
       setAdding(false);
       setNote(`${data.test?.name || "Test"} saved with partner split ${data.test?.partnerPercent}%.`);
+      return true;
     } catch (err) {
       setError(err.message || "Could not save the lab test.");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -52,7 +55,7 @@ export default function AdminLabTests() {
     const partnerPercent = Number(editPercent);
     if (!Number.isFinite(partnerPercent) || partnerPercent < 0 || partnerPercent > 100) {
       setError("Partner split must be between 0 and 100.");
-      return;
+      return false;
     }
     setBusy(true);
     setError("");
@@ -62,15 +65,24 @@ export default function AdminLabTests() {
       setTests(data.tests || []);
       setEditingId("");
       setNote(`${data.test?.name || test.name} split updated to ${data.test?.partnerPercent}%.`);
+      return true;
     } catch (err) {
       setError(err.message || "Could not update the lab test split.");
+      return false;
     } finally {
       setBusy(false);
     }
   };
 
+  const savePending = () => {
+    if (adding) return save();
+    const test = tests.find((row) => row.id === editingId);
+    return saveSplit(test);
+  };
+
   return (
     <section className="admin-panel admin-feature-panel" aria-label="Lab tests">
+      <AdminSectionGuard dirty={adding || Boolean(editingId)} save={savePending} />
       <div className="admin-feature-head">
         <div>
           <h2>Lab tests</h2>

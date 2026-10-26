@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { AdminSectionGuard } from "./adminLeave";
 import { deleteStaffTeamMember, reviewStaffTeamMember, updateStaffTeamMember } from "./adminApi";
 import { emptyPartnerProfile } from "./partnerProfile.js";
 import { kindLabel } from "./orderTracking";
-import { teamFrom, teamStatusLabel } from "./partnerTeam.js";
+import { teamDocumentSummary, teamFrom, teamStatusLabel } from "./partnerTeam.js";
 
 function readDataFile(file, maxBytes) {
   return new Promise((resolve, reject) => {
@@ -161,6 +162,7 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
   };
 
   const saveEdit = async (partner, member) => {
+    if (!partner || !member) return false;
     setBusyId(`save-${member.id}`);
     setError("");
     setNote("");
@@ -175,8 +177,10 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
       setEditingId("");
       setDraft(emptyDraft());
       setNote(`Details saved for ${draft.name || member.name}.`);
+      return true;
     } catch (err) {
       setError(err.message || "Could not save the team member.");
+      return false;
     } finally {
       setBusyId("");
     }
@@ -203,23 +207,16 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
   const card = ({ partner, member }) => {
     const profile = member.profile || {};
     const editing = editingId === member.id;
-    const detail = [
-      profile.qualification,
-      profile.email,
-      profile.aadhaarNumber ? `Aadhaar ${profile.aadhaarNumber}` : "",
-      profile.photoData ? "Photo added" : "",
-      profile.aadhaarFileData ? "Aadhaar file" : "",
-      profile.policeFileData ? "Police verification" : "",
-      profile.certificates?.length ? `${profile.certificates.length} certificate(s)` : "",
-    ]
-      .filter(Boolean)
-      .join(" · ");
     return (
       <article key={`${partner.id}-${member.id}`} className="admin-team-card">
         <div className="admin-team-line">
           <strong>{member.name}</strong>
-          <span>{member.role}</span>
-          <span>{member.mobile}</span>
+          <span>{member.role || "—"}</span>
+          <span>{member.mobile || "—"}</span>
+          <span>{profile.qualification || "—"}</span>
+          <span>{profile.email || "—"}</span>
+          <span>{profile.aadhaarNumber || "—"}</span>
+          <span>{teamDocumentSummary(profile) || "—"}</span>
           <span className={`partner-team-status is-${member.status}`}>{teamStatusLabel(member.status)}</span>
           <button
             type="button"
@@ -251,7 +248,6 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
             Reject
           </button>
         </div>
-        {detail ? <p className="admin-team-detail">{detail}</p> : null}
           {editing ? (
             <form
               className="admin-team-form"
@@ -365,18 +361,27 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
     );
   };
 
+  const savePending = () => {
+    const portfolio = portfolios.find((row) => row.members.some((member) => member.id === editingId));
+    const member = portfolio?.members.find((row) => row.id === editingId);
+    return saveEdit(portfolio?.partner, member);
+  };
+
   return (
     <section className="admin-team">
+      <AdminSectionGuard dirty={Boolean(editingId)} save={savePending} />
       <style>{`
         .admin-team{display:flex;flex-direction:column;gap:10px;margin:16px 0}
         .admin-team-portfolio{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #d7e2e9;border-radius:12px;background:#f4f8fb;overflow-x:auto}
         .admin-team h2,.admin-team h3{margin:0;font-size:18px}
         .admin-team h3{font-size:14px}
         .admin-team p{margin:0;font-size:13px;line-height:1.4}
-        .admin-team-head,.admin-team-line{display:grid;grid-template-columns:minmax(140px,1.4fr) minmax(120px,1fr) 110px 150px 72px 76px 88px 76px;gap:8px;align-items:center;min-width:860px}
-        .admin-team-head{padding:0 10px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
-        .admin-team-card{border:1px solid #d7e2e9;border-radius:10px;padding:8px 10px;background:#fff}
-        .admin-team-line strong{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .admin-team-head,.admin-team-line{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(100px,.8fr) 110px minmax(110px,.8fr) minmax(140px,1fr) 120px minmax(140px,1fr) 140px 72px 76px 88px 76px;gap:8px;align-items:center;min-width:1480px}
+        .admin-team-head{padding:2px 10px 0;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
+        .admin-team-card{display:flex;flex-direction:column;gap:8px;padding:0;border:0;background:transparent}
+        .admin-team-line{padding:8px 10px;border:1px solid #d7e2e9;border-radius:10px;background:#fff}
+        .admin-team-line strong,.admin-team-line span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .admin-team-line strong{font-size:14px}
         .admin-team-line button{min-height:32px;padding:6px 8px;border-radius:8px;border:1px solid #c5d4de;background:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
         .admin-team-line button.is-delete{color:#9b2c2c;border-color:#e7c7c7}
         .admin-team-detail{margin-top:6px;color:#5d7180}
@@ -392,10 +397,6 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
         .partner-team-status.is-pending{color:#8a5a00}
       `}</style>
       <h2>Team members</h2>
-      <p>
-        Each partner&apos;s team stays in that partner&apos;s portfolio. Approve a profile before
-        that person can be assigned to an order.
-      </p>
       {error ? <p className="admin-error">{error}</p> : null}
       {note ? <p>{note}</p> : null}
       {portfolios.length ? (
@@ -413,8 +414,12 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
             </p>
             <div className="admin-team-head">
               <span>Name</span>
-              <span>Role</span>
-              <span>Mobile</span>
+              <span>Category</span>
+              <span>Login ID</span>
+              <span>Qualification</span>
+              <span>Email</span>
+              <span>Aadhaar</span>
+              <span>Documents</span>
               <span>Status</span>
               <span>Edit</span>
               <span>Delete</span>

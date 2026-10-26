@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AdminSectionGuard } from "./adminLeave";
 import DateMonthYearFields from "./DateMonthYearFields";
 import { isoDateDaysAhead, isoDateToday } from "./personFields";
 import {
@@ -27,27 +28,32 @@ export default function AdminWebinars({ webinars, onChange, onError }) {
     onError?.("");
     try {
       await onChange(next);
+      return true;
     } catch (err) {
       onError?.(err.message || "Could Not Save The Webinar.");
+      return false;
     } finally {
       setBusy(false);
     }
   };
 
   const handleSchedule = async (event) => {
-    event.preventDefault();
+    event?.preventDefault?.();
     const made = scheduleWebinar({ topicId, date, time, now: Date.now() });
     if (!made.ok) {
       onError?.(made.error);
-      return;
+      return false;
     }
-    await save([made.webinar, ...webinars.filter((row) => row.id !== made.webinar.id)]);
+    const ok = await save([made.webinar, ...webinars.filter((row) => row.id !== made.webinar.id)]);
+    if (!ok) return false;
     setDate("");
     setAdding(false);
+    return true;
   };
 
   return (
     <section className="admin-panel" aria-label="Webinar Schedule">
+      <AdminSectionGuard dirty={adding} save={handleSchedule} />
       <h2>Webinars</h2>
       <div className="lab-tabs" role="tablist" aria-label="Webinars">
         <button

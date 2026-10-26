@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { AdminLeaveContext, AdminSectionGuard } from "./adminLeave";
 import {
   fetchStaffOrders,
   fetchStaffPartners,
@@ -135,7 +136,8 @@ function downloadCsv(filename, text) {
 }
 
 function AdminFold({ title, children, className = "", id }) {
-  const [open, setOpen] = useState(false);
+  const { openSection, toggleSection } = useContext(AdminLeaveContext);
+  const open = openSection === title;
   return (
     <section
       id={id}
@@ -145,7 +147,7 @@ function AdminFold({ title, children, className = "", id }) {
         type="button"
         className="admin-fold-head"
         aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => toggleSection(title)}
       >
         {title}
       </button>
@@ -179,6 +181,24 @@ function Admin() {
   const [chartView, setChartView] = useState("");
   const [openOrderId, setOpenOrderId] = useState("");
   const [refundFilter, setRefundFilter] = useState("");
+  const [openSection, setOpenSection] = useState("");
+  const [leaveAsk, setLeaveAsk] = useState(null);
+  const [leaveBusy, setLeaveBusy] = useState(false);
+  const leaveGuard = useRef(null);
+  const openSectionRef = useRef("");
+  openSectionRef.current = openSection;
+  const setGuard = useCallback((guard) => {
+    leaveGuard.current = guard;
+  }, []);
+  const toggleSection = useCallback((title) => {
+    const current = openSectionRef.current;
+    const dirty = Boolean(current && leaveGuard.current?.dirty?.());
+    if (dirty) {
+      setLeaveAsk({ next: current === title ? "" : title });
+      return;
+    }
+    setOpenSection(current === title ? "" : title);
+  }, []);
 
   const loadDesk = async ({ quiet = false } = {}) => {
     if (!quiet) setLoading(true);
@@ -452,9 +472,11 @@ function Admin() {
       setFeatureDraft(merged);
       cacheFeatures(merged);
       setFeatureSavedNote("Saved. Customers now see these On/Off settings.");
+      return true;
     } catch (err) {
       setError(err.message || "Could Not Save Feature Switches.");
       await loadDesk();
+      return false;
     } finally {
       setFeatureSaving(false);
     }
@@ -464,6 +486,39 @@ function Admin() {
     setFeatureDraft(features);
     setFeatureSavedNote("");
   };
+
+  const finishLeave = (next) => {
+    setLeaveAsk(null);
+    setOpenSection(next);
+  };
+
+  const saveAndLeave = async () => {
+    if (!leaveAsk) return;
+    setLeaveBusy(true);
+    try {
+      const ok = await leaveGuard.current?.save?.();
+      if (!ok) {
+        setLeaveAsk(null);
+        return;
+      }
+      finishLeave(leaveAsk.next);
+    } catch {
+      setLeaveAsk(null);
+    } finally {
+      setLeaveBusy(false);
+    }
+  };
+
+  const closeWithoutSaving = () => {
+    if (!leaveAsk) return;
+    if (openSectionRef.current === "Turn Services On Or Off") resetFeatureDraft();
+    finishLeave(leaveAsk.next);
+  };
+
+  const sectionContext = useMemo(
+    () => ({ openSection, toggleSection, setGuard }),
+    [openSection, toggleSection, setGuard]
+  );
 
   const renderFeatureActions = () => (
     <div className="admin-feature-actions">
@@ -573,9 +628,33 @@ function Admin() {
   }
 
   return (
-    <>
+    <AdminLeaveContext.Provider value={sectionContext}>
       <style>{styles}</style>
       <div className="service-page admin-page">
+        {leaveAsk ? (
+          <div className="admin-leave" role="presentation">
+            <div
+              className="admin-leave-card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="admin-leave-title"
+            >
+              <h2 id="admin-leave-title">Save details before closing?</h2>
+              <p>This section has details that are not saved yet.</p>
+              <div className="admin-leave-actions">
+                <button type="button" onClick={saveAndLeave} disabled={leaveBusy}>
+                  {leaveBusy ? "Saving…" : "Save details"}
+                </button>
+                <button type="button" onClick={closeWithoutSaving} disabled={leaveBusy}>
+                  Close without saving
+                </button>
+                <button type="button" onClick={() => setLeaveAsk(null)} disabled={leaveBusy}>
+                  Stay
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <section className="service-hero admin-hero">
           <div>
             <span className="service-kicker">Operations</span>
@@ -600,6 +679,7 @@ function Admin() {
         {error ? <p className="admin-error">{error}</p> : null}
 
         <AdminFold title="Turn Services On Or Off" className="admin-feature-panel">
+          <AdminSectionGuard dirty={featuresDirty} save={saveFeatures} />
           {featuresDirty ? (
             <p className="admin-feature-note" role="status">
               Unsaved changes — website and app still use the last saved
@@ -1150,7 +1230,7 @@ function Admin() {
           ) : null}
         </AdminFold>
       </div>
-    </>
+    </AdminLeaveContext.Provider>
   );
 }
 
@@ -1198,6 +1278,14 @@ const styles = `
 .admin-kpis small{color:#5d7180}
 .admin-growth-note{margin:0 0 14px;font-size:13px;color:#34546b}
 .admin-panel{background:#fff;border:1px solid #e4ecef;border-radius:12px;padding:14px;margin-bottom:14px}
+.admin-leave{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(16,36,48,.45)}
+.admin-leave-card{width:min(420px,100%);padding:16px;border-radius:12px;background:#fff;box-shadow:0 12px 40px rgba(16,36,48,.2)}
+.admin-leave-card h2{margin:0 0 8px;font-size:18px;color:#123b5d}
+.admin-leave-card p{margin:0 0 14px;font-size:14px;line-height:1.4;color:#34546b}
+.admin-leave-actions{display:flex;flex-wrap:wrap;gap:8px}
+.admin-leave-actions button{min-height:36px;padding:8px 12px;border-radius:8px;border:1px solid #c5d4de;background:#fff;color:#143246;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.admin-leave-actions button:first-child{border-color:#1a6b7a;background:#1a6b7a;color:#fff}
+.admin-leave-actions button:disabled{opacity:.6;cursor:default}
 .admin-fold{padding:0;overflow:hidden}
 .admin-fold-head{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;border:0;background:#f7fafc;color:#123b5d;font:inherit;font-size:16px;font-weight:800;text-align:left;padding:14px 16px;cursor:pointer}
 .admin-fold-head::after{content:"+";font-size:20px;line-height:1;color:#1a6b7a}
@@ -1291,7 +1379,15 @@ const styles = `
 .admin-partner-line button.is-delete{color:#9b2c2c;border-color:#e7c7c7;background:#fff}
 .admin-partner-line button:disabled{opacity:.6;cursor:default}
 .admin-partner-extra{min-width:920px;padding:0 10px 8px}
-.admin-partner-team{margin:0;font-size:12px;color:#5d7180}
+.admin-partner-team-sheet{display:flex;flex-direction:column;gap:4px;min-width:1180px;margin:0 0 8px 12px}
+.admin-partner-team-line{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(100px,.8fr) 110px minmax(110px,.8fr) minmax(140px,1fr) 120px minmax(150px,1.1fr) 150px;gap:8px;align-items:center;padding:6px 10px;border:1px solid #e4ecef;border-radius:8px;background:#f7fafc;font-size:12px;color:#143246}
+.admin-partner-team-line.is-head{border:0;background:transparent;padding:2px 10px 0;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
+.admin-partner-team-line strong{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-partner-team-line span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.partner-team-status{font-size:12px;font-weight:700}
+.partner-team-status.is-approved{color:#0b6b5a}
+.partner-team-status.is-rejected{color:#9b2c2c}
+.partner-team-status.is-pending{color:#8a5a00}
 .admin-order-toggle{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;border:0;background:transparent;padding:0;font:inherit;font-weight:800;color:#1a6b7a;cursor:pointer}
 .admin-order-toggle span{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
 .admin-order-toggle.is-on span{color:#1a6b7a}

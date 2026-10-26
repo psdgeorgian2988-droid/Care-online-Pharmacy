@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { emptyPartnerProfile } from "./partnerProfile.js";
-import { teamFrom, teamStatusLabel } from "./partnerTeam.js";
+import { teamDocumentSummary, teamFrom, teamStatusLabel } from "./partnerTeam.js";
 import {
   addPartnerTeamMember,
   removePartnerTeamMember,
@@ -201,8 +201,12 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
     <section className="partner-team">
       <style>{`
         .partner-team{display:flex;flex-direction:column;gap:12px;margin:8px 0 16px}
-        .partner-team-card,.partner-team-form{border:1px solid #d7e2e9;border-radius:10px;padding:12px;background:#fff;display:flex;flex-direction:column;gap:8px}
-        .partner-team-card{flex-direction:row;justify-content:space-between;align-items:center;gap:10px}
+        .partner-team-form{border:1px solid #d7e2e9;border-radius:10px;padding:12px;background:#fff;display:flex;flex-direction:column;gap:8px}
+        .partner-team-sheet{display:flex;flex-direction:column;gap:4px;overflow-x:auto}
+        .partner-team-line{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(100px,.8fr) 110px minmax(110px,.8fr) minmax(140px,1fr) 120px minmax(140px,1fr) 140px 72px 76px;gap:8px;align-items:center;min-width:1280px;padding:8px 10px;border:1px solid #d7e2e9;border-radius:8px;background:#fff}
+        .partner-team-line.is-head{border:0;background:transparent;padding:2px 10px 0;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
+        .partner-team-line strong,.partner-team-line span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .partner-team-line button{min-height:32px;padding:6px 8px;border-radius:8px;border:1px solid #c5d4de;background:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
         .partner-team h2{margin:0;font-size:16px}
         .partner-team p{margin:0;font-size:13px;line-height:1.4}
         .partner-team label{display:flex;flex-direction:column;gap:4px;font-size:12px}
@@ -245,27 +249,43 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
           {note ? <p>{note}</p> : null}
           {error ? <p className="admin-error">{error}</p> : null}
           {team.length ? (
-            team.map((member) => (
-              <article key={member.id} className="partner-team-card">
-                <div>
-                  <strong>{member.name}</strong>
-                  <p>
-                    {member.role} · {member.mobile}
-                    {member.profile?.qualification ? ` · ${member.profile.qualification}` : ""}
-                  </p>
-                  <p className={`partner-team-status is-${member.status}`}>{teamStatusLabel(member.status)}</p>
-                  {member.reviewNote ? <p>{member.reviewNote}</p> : null}
-                </div>
-                <div className="partner-team-actions">
-                  <button type="button" disabled={busy} onClick={() => startEdit(member)}>
-                    Edit details
-                  </button>
-                  <button type="button" disabled={busy} onClick={() => remove(member)}>
-                    Remove
-                  </button>
-                </div>
-              </article>
-            ))
+            <div className="partner-team-sheet">
+              <div className="partner-team-line is-head">
+                <span>Name</span>
+                <span>Category</span>
+                <span>Login ID</span>
+                <span>Qualification</span>
+                <span>Email</span>
+                <span>Aadhaar</span>
+                <span>Documents</span>
+                <span>Status</span>
+                <span>Edit</span>
+                <span>Remove</span>
+              </div>
+              {team.map((member) => {
+                const profile = member.profile || {};
+                return (
+                  <div key={member.id} className="partner-team-line">
+                    <strong>{member.name}</strong>
+                    <span>{member.role || "—"}</span>
+                    <span>{member.mobile || "—"}</span>
+                    <span>{profile.qualification || "—"}</span>
+                    <span>{profile.email || "—"}</span>
+                    <span>{profile.aadhaarNumber || "—"}</span>
+                    <span>{teamDocumentSummary(profile) || "—"}</span>
+                    <span className={`partner-team-status is-${member.status}`}>
+                      {teamStatusLabel(member.status)}
+                    </span>
+                    <button type="button" disabled={busy} onClick={() => startEdit(member)}>
+                      Edit
+                    </button>
+                    <button type="button" disabled={busy} onClick={() => remove(member)}>
+                      Remove
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <p>No team members yet.</p>
           )}

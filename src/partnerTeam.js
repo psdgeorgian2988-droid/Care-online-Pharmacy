@@ -76,3 +76,20 @@ export function teamStatusLabel(status) {
   if (status === "rejected") return "Not approved";
   return "Pending admin approval";
 }
+
+export function teamDocumentSummary(profile = {}) {
+  const parts = [];
+  if (profile.photoName || profile.photoData) parts.push(profile.photoName || "Photo");
+  if (profile.aadhaarFileName || profile.aadhaarFileData) {
+    parts.push(profile.aadhaarFileName || "Aadhaar card");
+  }
+  if (profile.policeFileName || profile.policeFileData) {
+    parts.push(profile.policeFileName || "Police verification");
+  }
+  const certificates = Array.isArray(profile.certificates) ? profile.certificates : [];
+  if (certificates.length) {
+    const names = certificates.map((row) => row?.name).filter(Boolean);
+    parts.push(names.length ? names.join(", ") : `${certificates.length} certificate(s)`);
+  }
+  return parts.join(" · ");
+}
