@@ -74,6 +74,7 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
   const [editingId, setEditingId] = useState("");
+  const [openMemberId, setOpenMemberId] = useState("");
   const [draft, setDraft] = useState(emptyDraft);
   const portfolios = [...partners]
     .map((partner) => ({
@@ -204,15 +205,36 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
     }
   };
 
+  const toggleMember = (memberId) => {
+    if (openMemberId === memberId) {
+      setOpenMemberId("");
+      if (editingId === memberId) setEditingId("");
+      return;
+    }
+    setOpenMemberId(memberId);
+  };
+
   const card = ({ partner, member }) => {
     const profile = member.profile || {};
     const editing = editingId === member.id;
+    const open = openMemberId === member.id;
     return (
       <article key={`${partner.id}-${member.id}`} className="admin-team-card">
         <div className="detail-stack">
-          <div className="detail-row"><span>Name</span><strong>{member.name}</strong></div>
+          <div className="member-summary">
+            <button
+              type="button"
+              className="member-name"
+              aria-expanded={open}
+              onClick={() => toggleMember(member.id)}
+            >
+              {member.name}
+            </button>
+            <em>{member.mobile || "—"}</em>
+          </div>
+          {open ? (
+            <>
           <div className="detail-row"><span>Category</span><strong>{member.role || "—"}</strong></div>
-          <div className="detail-row"><span>Login ID</span><strong>{member.mobile || "—"}</strong></div>
           <div className="detail-row"><span>Qualification</span><strong>{profile.qualification || "—"}</strong></div>
           <div className="detail-row"><span>Email</span><strong>{profile.email || "—"}</strong></div>
           <div className="detail-row"><span>Aadhaar</span><strong>{profile.aadhaarNumber || "—"}</strong></div>
@@ -252,8 +274,10 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
             Reject
           </button>
           </div>
+            </>
+          ) : null}
         </div>
-          {editing ? (
+          {open && editing ? (
             <form
               className="admin-team-form"
               onSubmit={(event) => {

@@ -39,6 +39,7 @@ export default function AdminPartnerLogins({ partners, onChange }) {
   const [category, setCategory] = useState("");
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState("");
+  const [openMemberId, setOpenMemberId] = useState("");
   const [edit, setEdit] = useState(() => emptyCreate("medicine"));
   const [drafts, setDrafts] = useState({});
   const [create, setCreate] = useState(() => emptyCreate("medicine"));
@@ -681,19 +682,25 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                       <div className="detail-members">
                         {teamLine.map((member) => {
                           const profile = member.profile || {};
+                          const open = openMemberId === member.id;
                           return (
                             <article key={member.id} className="detail-stack is-member">
-                              <div className="detail-row">
-                                <span>Name</span>
-                                <strong>{member.name}</strong>
+                              <div className="member-summary">
+                                <button
+                                  type="button"
+                                  className="member-name"
+                                  aria-expanded={open}
+                                  onClick={() => setOpenMemberId(open ? "" : member.id)}
+                                >
+                                  {member.name}
+                                </button>
+                                <em>{member.mobile || "—"}</em>
                               </div>
+                              {open ? (
+                                <>
                               <div className="detail-row">
                                 <span>Category</span>
                                 <strong>{member.role || "—"}</strong>
-                              </div>
-                              <div className="detail-row">
-                                <span>Login ID</span>
-                                <strong>{member.mobile || "—"}</strong>
                               </div>
                               <div className="detail-row">
                                 <span>Qualification</span>
@@ -717,6 +724,8 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                                   {teamStatusLabel(member.status)}
                                 </strong>
                               </div>
+                                </>
+                              ) : null}
                             </article>
                           );
                         })}

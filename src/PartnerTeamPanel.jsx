@@ -75,6 +75,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
   const team = teamFrom(partner?.team);
   const [draft, setDraft] = useState(() => emptyDraft(partner?.role || "Team member"));
   const [editingId, setEditingId] = useState("");
+  const [openMemberId, setOpenMemberId] = useState("");
   const [mode, setMode] = useState("list");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -209,6 +210,9 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
         .detail-row strong{font-size:14px;color:#143246;min-width:0;overflow-wrap:anywhere}
         .detail-actions{display:flex;flex-wrap:wrap;gap:8px}
         .detail-actions button{min-height:32px;padding:6px 10px;border-radius:8px;border:1px solid #c5d4de;background:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+        .member-summary{display:flex;align-items:center;justify-content:space-between;gap:12px}
+        .member-summary .member-name{border:0;background:transparent;padding:0;color:#1a6b7a;font:inherit;font-size:15px;font-weight:800;text-align:left;cursor:pointer;text-decoration:underline}
+        .member-summary em{font-style:normal;font-size:14px;font-weight:700;color:#143246}
         .partner-team h2{margin:0;font-size:16px}
         .partner-team p{margin:0;font-size:13px;line-height:1.4}
         .partner-team label{display:flex;flex-direction:column;gap:4px;font-size:12px}
@@ -254,29 +258,43 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
             <div className="partner-team-sheet">
               {team.map((member) => {
                 const profile = member.profile || {};
+                const open = openMemberId === member.id;
                 return (
                   <article key={member.id} className="detail-stack">
-                    <div className="detail-row"><span>Name</span><strong>{member.name}</strong></div>
-                    <div className="detail-row"><span>Category</span><strong>{member.role || "—"}</strong></div>
-                    <div className="detail-row"><span>Login ID</span><strong>{member.mobile || "—"}</strong></div>
-                    <div className="detail-row"><span>Qualification</span><strong>{profile.qualification || "—"}</strong></div>
-                    <div className="detail-row"><span>Email</span><strong>{profile.email || "—"}</strong></div>
-                    <div className="detail-row"><span>Aadhaar</span><strong>{profile.aadhaarNumber || "—"}</strong></div>
-                    <div className="detail-row"><span>Documents</span><strong>{teamDocumentSummary(profile) || "—"}</strong></div>
-                    <div className="detail-row">
-                      <span>Status</span>
-                      <strong className={`partner-team-status is-${member.status}`}>
-                        {teamStatusLabel(member.status)}
-                      </strong>
-                    </div>
-                    <div className="detail-actions">
-                      <button type="button" disabled={busy} onClick={() => startEdit(member)}>
-                        Edit
+                    <div className="member-summary">
+                      <button
+                        type="button"
+                        className="member-name"
+                        aria-expanded={open}
+                        onClick={() => setOpenMemberId(open ? "" : member.id)}
+                      >
+                        {member.name}
                       </button>
-                      <button type="button" disabled={busy} onClick={() => remove(member)}>
-                        Remove
-                      </button>
+                      <em>{member.mobile || "—"}</em>
                     </div>
+                    {open ? (
+                      <>
+                        <div className="detail-row"><span>Category</span><strong>{member.role || "—"}</strong></div>
+                        <div className="detail-row"><span>Qualification</span><strong>{profile.qualification || "—"}</strong></div>
+                        <div className="detail-row"><span>Email</span><strong>{profile.email || "—"}</strong></div>
+                        <div className="detail-row"><span>Aadhaar</span><strong>{profile.aadhaarNumber || "—"}</strong></div>
+                        <div className="detail-row"><span>Documents</span><strong>{teamDocumentSummary(profile) || "—"}</strong></div>
+                        <div className="detail-row">
+                          <span>Status</span>
+                          <strong className={`partner-team-status is-${member.status}`}>
+                            {teamStatusLabel(member.status)}
+                          </strong>
+                        </div>
+                        <div className="detail-actions">
+                          <button type="button" disabled={busy} onClick={() => startEdit(member)}>
+                            Edit
+                          </button>
+                          <button type="button" disabled={busy} onClick={() => remove(member)}>
+                            Remove
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
                   </article>
                 );
               })}

@@ -1383,6 +1383,9 @@ const styles = `
 .detail-actions button.is-save{background:#1a6b7a;border-color:#1a6b7a;color:#fff}
 .detail-actions button.is-delete{color:#9b2c2c;border-color:#e7c7c7}
 .detail-actions button:disabled{opacity:.6;cursor:default}
+.member-summary{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.member-summary .member-name{border:0;background:transparent;padding:0;color:#1a6b7a;font:inherit;font-size:15px;font-weight:800;text-align:left;cursor:pointer;text-decoration:underline}
+.member-summary em{font-style:normal;font-size:14px;font-weight:700;color:#143246}
 .partner-team-status{font-size:12px;font-weight:700}
 .partner-team-status.is-approved{color:#0b6b5a}
 .partner-team-status.is-rejected{color:#9b2c2c}
