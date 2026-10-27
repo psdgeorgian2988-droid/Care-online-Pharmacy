@@ -68,7 +68,7 @@ const emptyDraft = () => ({
   profile: emptyPartnerProfile(),
 });
 
-export default function AdminTeamApprovals({ partners = [], onChange }) {
+export default function AdminTeamApprovals({ partners = [], onChange, embedded = false }) {
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
@@ -405,7 +405,7 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
         .partner-team-status.is-rejected{color:#9b2c2c}
         .partner-team-status.is-pending{color:#8a5a00}
       `}</style>
-      <h2>Team members</h2>
+      <h2>{embedded ? "Team" : "Team members"}</h2>
       {error ? <p className="admin-error">{error}</p> : null}
       {note ? <p>{note}</p> : null}
       {portfolios.length ? (
@@ -415,7 +415,7 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
             className="admin-team-portfolio"
             aria-label={`${partner.name} team`}
           >
-            <h2>{partner.name}</h2>
+            {embedded ? null : <h2>{partner.name}</h2>}
             <div className="member-tabs" role="tablist" aria-label={`${partner.name} team`}>
               {members.map((member) => {
                 const open = openMemberId === member.id;

@@ -1,5 +1,6 @@
 import { Fragment, useState } from "react";
 import { AdminSectionGuard } from "./adminLeave";
+import AdminTeamApprovals from "./AdminTeamApprovals";
 import {
   confirmStaffPartnerReset,
   confirmStaffPartnerSplit,
@@ -11,7 +12,6 @@ import {
   setStaffPartnerLogin,
 } from "./adminApi";
 import { kindLabel, partnerRole } from "./orderTracking";
-import { teamDocumentSummary, teamFrom, teamStatusLabel } from "./partnerTeam.js";
 import { defaultPartnerPercentFor } from "./paymentSplit";
 import {
   PARTNER_CATEGORY_TABS,
@@ -39,7 +39,6 @@ export default function AdminPartnerLogins({ partners, onChange }) {
   const [category, setCategory] = useState("");
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState("");
-  const [openMemberId, setOpenMemberId] = useState("");
   const [edit, setEdit] = useState(() => emptyCreate("medicine"));
   const [drafts, setDrafts] = useState({});
   const [create, setCreate] = useState(() => emptyCreate("medicine"));
@@ -598,7 +597,6 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                   const resetOpen = resetFor === partner.id;
                   const splitOpen = splitFor === partner.id;
                   const editOpen = editingId === partner.id;
-                  const teamLine = teamFrom(partner.team);
                   const categoryLabel =
                     (partner.kinds || []).map((kind) => kindLabel(kind)).join(", ") ||
                     partnerCategoryLabel(category);
@@ -678,72 +676,11 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                           {busyId === `remove-${partner.id}` ? "…" : "Delete"}
                         </button>
                       </div>
-                    {teamLine.length ? (
-                      <div className="detail-members">
-                        <div className="member-tabs" role="tablist" aria-label={`${partner.name} team`}>
-                          {teamLine.map((member) => {
-                            const open = openMemberId === member.id;
-                            return (
-                              <button
-                                key={member.id}
-                                type="button"
-                                role="tab"
-                                className={open ? "is-on" : ""}
-                                aria-selected={open}
-                                onClick={() => setOpenMemberId(member.id)}
-                              >
-                                {member.name}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {teamLine
-                          .filter((member) => member.id === openMemberId)
-                          .map((member) => {
-                            const profile = member.profile || {};
-                            return (
-                              <article key={member.id} className="detail-stack is-member">
-                                <div className="member-open-head">
-                                  <strong>{member.name}</strong>
-                                  <button type="button" onClick={() => setOpenMemberId("")}>
-                                    Close
-                                  </button>
-                                </div>
-                                <div className="detail-row">
-                                  <span>Mobile</span>
-                                  <strong>{member.mobile || "—"}</strong>
-                                </div>
-                                <div className="detail-row">
-                                  <span>Category</span>
-                                  <strong>{member.role || "—"}</strong>
-                                </div>
-                                <div className="detail-row">
-                                  <span>Qualification</span>
-                                  <strong>{profile.qualification || "—"}</strong>
-                                </div>
-                                <div className="detail-row">
-                                  <span>Email</span>
-                                  <strong>{profile.email || "—"}</strong>
-                                </div>
-                                <div className="detail-row">
-                                  <span>Aadhaar</span>
-                                  <strong>{profile.aadhaarNumber || "—"}</strong>
-                                </div>
-                                <div className="detail-row">
-                                  <span>Documents</span>
-                                  <strong>{teamDocumentSummary(profile) || "—"}</strong>
-                                </div>
-                                <div className="detail-row">
-                                  <span>Status</span>
-                                  <strong className={`partner-team-status is-${member.status}`}>
-                                    {teamStatusLabel(member.status)}
-                                  </strong>
-                                </div>
-                              </article>
-                            );
-                          })}
-                      </div>
-                    ) : null}
+                    <AdminTeamApprovals
+                      partners={[partner]}
+                      onChange={onChange}
+                      embedded
+                    />
                     </article>
                     {editOpen ? (
                           <form className="admin-partner-create" onSubmit={saveEdit}>

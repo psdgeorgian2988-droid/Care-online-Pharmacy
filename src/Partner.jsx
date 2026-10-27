@@ -58,7 +58,7 @@ import {
   partnerSession,
   patchPartnerJob,
 } from "./partnerApi";
-import { approvedTeam, teamFrom } from "./partnerTeam.js";
+import { approvedTeam } from "./partnerTeam.js";
 import ReportSearch from "./ReportSearch";
 import { openPartnerReport, searchPartnerReports } from "./reportApi";
 import PartnerForgotPassword from "./PartnerForgotPassword";
@@ -509,7 +509,7 @@ export default function Partner({ deskKind = "" }) {
   const homeTabs = [
     { id: "home", label: "Home" },
     { id: "orders", label: "Orders" },
-    { id: "team", label: "Team members" },
+    { id: "reports", label: "Search reports" },
   ];
   const foreignSession = Boolean(
     partner && deskKind && !partnerServesDesk(partner, deskKind)
@@ -517,7 +517,7 @@ export default function Partner({ deskKind = "" }) {
   const sharedStayRef = useRef(new Set());
 
   useEffect(() => {
-    if (homeTab === "profile") setHomeTab("home");
+    if (homeTab === "profile" || homeTab === "team") setHomeTab("home");
   }, [homeTab, appKind]);
 
   useEffect(() => {
@@ -666,11 +666,6 @@ export default function Partner({ deskKind = "" }) {
           </div>
         </section>
         {error ? <p className="admin-error">{error}</p> : null}
-        <ReportSearch
-          title="Search reports"
-          onSearch={searchPartnerReports}
-          onOpen={openPartnerReport}
-        />
         <div className="partner-home-tabs" role="tablist" aria-label="Partner home">
           {homeTabs.map((tab) => (
             <button
@@ -691,12 +686,19 @@ export default function Partner({ deskKind = "" }) {
             jobs={jobs}
             kind={appKind}
             onOpen={setHomeTab}
+            teamPanel={
+              <PartnerTeamPanel
+                partner={partner}
+                onSaved={(next) => setPartner(next)}
+              />
+            }
           />
         ) : null}
-        {homeTab === "team" ? (
-          <PartnerTeamPanel
-            partner={partner}
-            onSaved={(next) => setPartner(next)}
+        {homeTab === "reports" ? (
+          <ReportSearch
+            title="Search reports"
+            onSearch={searchPartnerReports}
+            onOpen={openPartnerReport}
           />
         ) : null}
         {homeTab === "orders" && isStepDownDesk ? (
@@ -1062,10 +1064,7 @@ export default function Partner({ deskKind = "" }) {
   );
 }
 
-function PartnerHome({ partner, jobs, kind, onOpen }) {
-  const team = teamFrom(partner?.team);
-  const approved = team.filter((row) => row.status === "approved").length;
-  const pending = team.filter((row) => row.status === "pending").length;
+function PartnerHome({ partner, jobs, kind, onOpen, teamPanel = null }) {
   const openOrders = (jobs || []).filter((job) => {
     const tab = partnerDeskTab(job, kind);
     return tab !== "done" && tab !== "delivered";
@@ -1085,14 +1084,8 @@ function PartnerHome({ partner, jobs, kind, onOpen }) {
             {newOrders} new · {(jobs || []).length} total
           </p>
         </button>
-        <button type="button" className="partner-home-card" onClick={() => onOpen("team")}>
-            <span>Team members</span>
-            <strong>{team.length}</strong>
-            <p>
-              {approved} approved · {pending} waiting for admin
-            </p>
-          </button>
       </div>
+      {teamPanel}
     </section>
   );
 }
@@ -1821,7 +1814,7 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false, team =
               </select>
             ) : (
               <p className="partner-tech">
-                No approved team member yet. Open Team, add the person, and wait for admin to approve the profile.
+                No approved team member yet. Add the person on Home, then wait for admin to approve the profile.
               </p>
             )}
             <button
@@ -2290,7 +2283,7 @@ const styles = `
 
 ${rxShareCardStyles}
 .partner-page{width:100%;max-width:none}
-.partner-home-tabs{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 14px;padding:4px;border-radius:10px;background:#e8f1f6}
+.partner-home-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0 0 14px;padding:4px;border-radius:10px;background:#e8f1f6}
 .partner-home-tabs button{border:0;background:transparent;color:#3d5a6c;font:inherit;font-size:13px;font-weight:800;padding:8px 14px;border-radius:8px;cursor:pointer}
 .partner-home-tabs button.is-on{background:#fff;color:#1a6b7a;box-shadow:0 1px 3px rgba(20,50,70,.08)}
 .partner-home-lead{margin:0 0 12px;font-size:13px;line-height:1.4;color:#34546b}

@@ -62,7 +62,6 @@ import {
 import AdminPartnerLogins from "./AdminPartnerLogins";
 import ReportSearch from "./ReportSearch";
 import { openStaffReport, searchStaffReports } from "./reportApi";
-import AdminTeamApprovals from "./AdminTeamApprovals";
 import AdminLabTests from "./AdminLabTests";
 import {
   BarList,
@@ -680,7 +679,13 @@ function Admin() {
 
         {error ? <p className="admin-error">{error}</p> : null}
 
-        <ReportSearch onSearch={searchStaffReports} onOpen={openStaffReport} title="Search reports" />
+        <AdminFold title="Search reports">
+          <ReportSearch
+            title=""
+            onSearch={searchStaffReports}
+            onOpen={openStaffReport}
+          />
+        </AdminFold>
 
         <AdminFold title="Turn Services On Or Off" className="admin-feature-panel">
           <AdminSectionGuard dirty={featuresDirty} save={saveFeatures} />
@@ -988,10 +993,6 @@ function Admin() {
           onChange={saveWebinars}
           onError={setError}
         />
-        </AdminFold>
-
-        <AdminFold title="Team members">
-        <AdminTeamApprovals partners={partners} onChange={setPartners} />
         </AdminFold>
 
         <AdminFold title="Lab tests">
