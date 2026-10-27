@@ -59,6 +59,8 @@ import {
   yoySnapshot,
 } from "./salesReport";
 import AdminPartnerLogins from "./AdminPartnerLogins";
+import ReportSearch from "./ReportSearch";
+import { openStaffReport, searchStaffReports } from "./reportApi";
 import AdminTeamApprovals from "./AdminTeamApprovals";
 import AdminLabTests from "./AdminLabTests";
 import {
@@ -916,6 +918,10 @@ function Admin() {
           </div>
         </AdminFold>
 
+        <AdminFold title="Search reports">
+          <ReportSearch title="" onSearch={searchStaffReports} onOpen={openStaffReport} />
+        </AdminFold>
+
         <AdminFold title="Partners">
           <AdminPartnerLogins partners={partners} onChange={setPartners} />
         </AdminFold>
@@ -1383,9 +1389,12 @@ const styles = `
 .detail-actions button.is-save{background:#1a6b7a;border-color:#1a6b7a;color:#fff}
 .detail-actions button.is-delete{color:#9b2c2c;border-color:#e7c7c7}
 .detail-actions button:disabled{opacity:.6;cursor:default}
-.member-summary{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.member-summary .member-name{border:0;background:transparent;padding:0;color:#1a6b7a;font:inherit;font-size:15px;font-weight:800;text-align:left;cursor:pointer;text-decoration:underline}
-.member-summary em{font-style:normal;font-size:14px;font-weight:700;color:#143246}
+.member-tabs{display:flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:10px;background:#e8f1f6;width:fit-content;max-width:100%}
+.member-tabs button{border:0;background:transparent;color:#3d5a6c;font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer}
+.member-tabs button.is-on{background:#fff;color:#1a6b7a;box-shadow:0 1px 3px rgba(20,50,70,.08)}
+.member-open-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.member-open-head strong{font-size:15px;color:#143246}
+.member-open-head button{min-height:32px;padding:6px 10px;border-radius:8px;border:1px solid #c5d4de;background:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
 .partner-team-status{font-size:12px;font-weight:700}
 .partner-team-status.is-approved{color:#0b6b5a}
 .partner-team-status.is-rejected{color:#9b2c2c}

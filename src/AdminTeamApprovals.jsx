@@ -2,7 +2,6 @@ import { useState } from "react";
 import { AdminSectionGuard } from "./adminLeave";
 import { deleteStaffTeamMember, reviewStaffTeamMember, updateStaffTeamMember } from "./adminApi";
 import { emptyPartnerProfile } from "./partnerProfile.js";
-import { kindLabel } from "./orderTracking";
 import { teamDocumentSummary, teamFrom, teamStatusLabel } from "./partnerTeam.js";
 
 function readDataFile(file, maxBytes) {
@@ -205,35 +204,24 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
     }
   };
 
-  const toggleMember = (memberId) => {
-    if (openMemberId === memberId) {
-      setOpenMemberId("");
-      if (editingId === memberId) setEditingId("");
-      return;
-    }
-    setOpenMemberId(memberId);
+  const closeMember = (memberId) => {
+    setOpenMemberId("");
+    if (editingId === memberId) setEditingId("");
   };
 
   const card = ({ partner, member }) => {
     const profile = member.profile || {};
     const editing = editingId === member.id;
-    const open = openMemberId === member.id;
     return (
       <article key={`${partner.id}-${member.id}`} className="admin-team-card">
         <div className="detail-stack">
-          <div className="member-summary">
-            <button
-              type="button"
-              className="member-name"
-              aria-expanded={open}
-              onClick={() => toggleMember(member.id)}
-            >
-              {member.name}
+          <div className="member-open-head">
+            <strong>{member.name}</strong>
+            <button type="button" onClick={() => closeMember(member.id)}>
+              Close
             </button>
-            <em>{member.mobile || "—"}</em>
           </div>
-          {open ? (
-            <>
+          <div className="detail-row"><span>Mobile</span><strong>{member.mobile || "—"}</strong></div>
           <div className="detail-row"><span>Category</span><strong>{member.role || "—"}</strong></div>
           <div className="detail-row"><span>Qualification</span><strong>{profile.qualification || "—"}</strong></div>
           <div className="detail-row"><span>Email</span><strong>{profile.email || "—"}</strong></div>
@@ -249,7 +237,7 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
             disabled={busyId === member.id}
             onClick={() => (editing ? setEditingId("") : startEdit(member))}
           >
-            {editing ? "Close" : "Edit"}
+            {editing ? "Cancel" : "Edit"}
           </button>
           <button
             type="button"
@@ -274,10 +262,8 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
             Reject
           </button>
           </div>
-            </>
-          ) : null}
         </div>
-          {open && editing ? (
+          {editing ? (
             <form
               className="admin-team-form"
               onSubmit={(event) => {
@@ -430,12 +416,26 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
             aria-label={`${partner.name} team`}
           >
             <h2>{partner.name}</h2>
-            <p>
-              {(partner.kinds || []).map((kind) => kindLabel(kind)).join(", ") || "Partner"}
-              {partner.mobile ? ` · ${partner.mobile}` : ""}
-              {` · ${members.length} team member${members.length === 1 ? "" : "s"}`}
-            </p>
-            {members.map((member) => card({ partner, member }))}
+            <div className="member-tabs" role="tablist" aria-label={`${partner.name} team`}>
+              {members.map((member) => {
+                const open = openMemberId === member.id;
+                return (
+                  <button
+                    key={member.id}
+                    type="button"
+                    role="tab"
+                    className={open ? "is-on" : ""}
+                    aria-selected={open}
+                    onClick={() => setOpenMemberId(member.id)}
+                  >
+                    {member.name}
+                  </button>
+                );
+              })}
+            </div>
+            {members
+              .filter((member) => member.id === openMemberId)
+              .map((member) => card({ partner, member }))}
           </section>
         ))
       ) : (

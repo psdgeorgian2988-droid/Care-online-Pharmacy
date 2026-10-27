@@ -680,55 +680,68 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                       </div>
                     {teamLine.length ? (
                       <div className="detail-members">
-                        {teamLine.map((member) => {
-                          const profile = member.profile || {};
-                          const open = openMemberId === member.id;
-                          return (
-                            <article key={member.id} className="detail-stack is-member">
-                              <div className="member-summary">
-                                <button
-                                  type="button"
-                                  className="member-name"
-                                  aria-expanded={open}
-                                  onClick={() => setOpenMemberId(open ? "" : member.id)}
-                                >
-                                  {member.name}
-                                </button>
-                                <em>{member.mobile || "—"}</em>
-                              </div>
-                              {open ? (
-                                <>
-                              <div className="detail-row">
-                                <span>Category</span>
-                                <strong>{member.role || "—"}</strong>
-                              </div>
-                              <div className="detail-row">
-                                <span>Qualification</span>
-                                <strong>{profile.qualification || "—"}</strong>
-                              </div>
-                              <div className="detail-row">
-                                <span>Email</span>
-                                <strong>{profile.email || "—"}</strong>
-                              </div>
-                              <div className="detail-row">
-                                <span>Aadhaar</span>
-                                <strong>{profile.aadhaarNumber || "—"}</strong>
-                              </div>
-                              <div className="detail-row">
-                                <span>Documents</span>
-                                <strong>{teamDocumentSummary(profile) || "—"}</strong>
-                              </div>
-                              <div className="detail-row">
-                                <span>Status</span>
-                                <strong className={`partner-team-status is-${member.status}`}>
-                                  {teamStatusLabel(member.status)}
-                                </strong>
-                              </div>
-                                </>
-                              ) : null}
-                            </article>
-                          );
-                        })}
+                        <div className="member-tabs" role="tablist" aria-label={`${partner.name} team`}>
+                          {teamLine.map((member) => {
+                            const open = openMemberId === member.id;
+                            return (
+                              <button
+                                key={member.id}
+                                type="button"
+                                role="tab"
+                                className={open ? "is-on" : ""}
+                                aria-selected={open}
+                                onClick={() => setOpenMemberId(member.id)}
+                              >
+                                {member.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {teamLine
+                          .filter((member) => member.id === openMemberId)
+                          .map((member) => {
+                            const profile = member.profile || {};
+                            return (
+                              <article key={member.id} className="detail-stack is-member">
+                                <div className="member-open-head">
+                                  <strong>{member.name}</strong>
+                                  <button type="button" onClick={() => setOpenMemberId("")}>
+                                    Close
+                                  </button>
+                                </div>
+                                <div className="detail-row">
+                                  <span>Mobile</span>
+                                  <strong>{member.mobile || "—"}</strong>
+                                </div>
+                                <div className="detail-row">
+                                  <span>Category</span>
+                                  <strong>{member.role || "—"}</strong>
+                                </div>
+                                <div className="detail-row">
+                                  <span>Qualification</span>
+                                  <strong>{profile.qualification || "—"}</strong>
+                                </div>
+                                <div className="detail-row">
+                                  <span>Email</span>
+                                  <strong>{profile.email || "—"}</strong>
+                                </div>
+                                <div className="detail-row">
+                                  <span>Aadhaar</span>
+                                  <strong>{profile.aadhaarNumber || "—"}</strong>
+                                </div>
+                                <div className="detail-row">
+                                  <span>Documents</span>
+                                  <strong>{teamDocumentSummary(profile) || "—"}</strong>
+                                </div>
+                                <div className="detail-row">
+                                  <span>Status</span>
+                                  <strong className={`partner-team-status is-${member.status}`}>
+                                    {teamStatusLabel(member.status)}
+                                  </strong>
+                                </div>
+                              </article>
+                            );
+                          })}
                       </div>
                     ) : null}
                     </article>

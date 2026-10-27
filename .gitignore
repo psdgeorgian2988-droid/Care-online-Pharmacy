@@ -22,4 +22,4 @@ ios/App/App/public/
 *.dSYM.zip
 server/data/partner-tokens.json
 server/data/partner-reset-otps.json
-server/data/partner-split-otps.json
+server/data/reports.json

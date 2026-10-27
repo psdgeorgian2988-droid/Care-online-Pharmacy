@@ -210,9 +210,9 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
         .detail-row strong{font-size:14px;color:#143246;min-width:0;overflow-wrap:anywhere}
         .detail-actions{display:flex;flex-wrap:wrap;gap:8px}
         .detail-actions button{min-height:32px;padding:6px 10px;border-radius:8px;border:1px solid #c5d4de;background:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
-        .member-summary{display:flex;align-items:center;justify-content:space-between;gap:12px}
-        .member-summary .member-name{border:0;background:transparent;padding:0;color:#1a6b7a;font:inherit;font-size:15px;font-weight:800;text-align:left;cursor:pointer;text-decoration:underline}
-        .member-summary em{font-style:normal;font-size:14px;font-weight:700;color:#143246}
+        .member-open-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+        .member-open-head strong{font-size:15px;color:#143246}
+        .member-open-head button{min-height:32px;padding:6px 10px;border-radius:8px;border:1px solid #c5d4de;background:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
         .partner-team h2{margin:0;font-size:16px}
         .partner-team p{margin:0;font-size:13px;line-height:1.4}
         .partner-team label{display:flex;flex-direction:column;gap:4px;font-size:12px}
@@ -256,48 +256,58 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
           {error ? <p className="admin-error">{error}</p> : null}
           {team.length ? (
             <div className="partner-team-sheet">
-              {team.map((member) => {
-                const profile = member.profile || {};
-                const open = openMemberId === member.id;
-                return (
-                  <article key={member.id} className="detail-stack">
-                    <div className="member-summary">
-                      <button
-                        type="button"
-                        className="member-name"
-                        aria-expanded={open}
-                        onClick={() => setOpenMemberId(open ? "" : member.id)}
-                      >
-                        {member.name}
-                      </button>
-                      <em>{member.mobile || "—"}</em>
-                    </div>
-                    {open ? (
-                      <>
-                        <div className="detail-row"><span>Category</span><strong>{member.role || "—"}</strong></div>
-                        <div className="detail-row"><span>Qualification</span><strong>{profile.qualification || "—"}</strong></div>
-                        <div className="detail-row"><span>Email</span><strong>{profile.email || "—"}</strong></div>
-                        <div className="detail-row"><span>Aadhaar</span><strong>{profile.aadhaarNumber || "—"}</strong></div>
-                        <div className="detail-row"><span>Documents</span><strong>{teamDocumentSummary(profile) || "—"}</strong></div>
-                        <div className="detail-row">
-                          <span>Status</span>
-                          <strong className={`partner-team-status is-${member.status}`}>
-                            {teamStatusLabel(member.status)}
-                          </strong>
-                        </div>
-                        <div className="detail-actions">
-                          <button type="button" disabled={busy} onClick={() => startEdit(member)}>
-                            Edit
-                          </button>
-                          <button type="button" disabled={busy} onClick={() => remove(member)}>
-                            Remove
-                          </button>
-                        </div>
-                      </>
-                    ) : null}
-                  </article>
-                );
-              })}
+              <div className="partner-team-tabs" role="tablist" aria-label="Team member names">
+                {team.map((member) => {
+                  const open = openMemberId === member.id;
+                  return (
+                    <button
+                      key={member.id}
+                      type="button"
+                      role="tab"
+                      className={open ? "is-on" : ""}
+                      aria-selected={open}
+                      onClick={() => setOpenMemberId(member.id)}
+                    >
+                      {member.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {team
+                .filter((member) => member.id === openMemberId)
+                .map((member) => {
+                  const profile = member.profile || {};
+                  return (
+                    <article key={member.id} className="detail-stack">
+                      <div className="member-open-head">
+                        <strong>{member.name}</strong>
+                        <button type="button" onClick={() => setOpenMemberId("")}>
+                          Close
+                        </button>
+                      </div>
+                      <div className="detail-row"><span>Mobile</span><strong>{member.mobile || "—"}</strong></div>
+                      <div className="detail-row"><span>Category</span><strong>{member.role || "—"}</strong></div>
+                      <div className="detail-row"><span>Qualification</span><strong>{profile.qualification || "—"}</strong></div>
+                      <div className="detail-row"><span>Email</span><strong>{profile.email || "—"}</strong></div>
+                      <div className="detail-row"><span>Aadhaar</span><strong>{profile.aadhaarNumber || "—"}</strong></div>
+                      <div className="detail-row"><span>Documents</span><strong>{teamDocumentSummary(profile) || "—"}</strong></div>
+                      <div className="detail-row">
+                        <span>Status</span>
+                        <strong className={`partner-team-status is-${member.status}`}>
+                          {teamStatusLabel(member.status)}
+                        </strong>
+                      </div>
+                      <div className="detail-actions">
+                        <button type="button" disabled={busy} onClick={() => startEdit(member)}>
+                          Edit
+                        </button>
+                        <button type="button" disabled={busy} onClick={() => remove(member)}>
+                          Remove
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
             </div>
           ) : (
             <p>No team members yet.</p>

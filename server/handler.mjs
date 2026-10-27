@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { listOrders, patchOrder, upsertOrder } from "./store.mjs";
+import { readReport, saveReportFromOrder, searchReports } from "./reports.mjs";
 import { applyPartnerMedicineCorrection } from "../src/rxPartnerShare.js";
 import {
   attachSettlement,
@@ -458,6 +459,61 @@ export async function handleApi(req, res) {
         return true;
       }
       send(res, 200, { jobs });
+      return true;
+    }
+
+    if (pathname === "/api/partner/reports" && req.method === "GET") {
+      const token = readToken(req);
+      const partnerId = partnerIdFromToken(token);
+      if (!partnerId) {
+        send(res, 401, { error: "Partner login required." });
+        return true;
+      }
+      const reports = await searchReports({
+        partnerId,
+        mobile: url.searchParams.get("mobile") || "",
+        email: url.searchParams.get("email") || "",
+      });
+      send(res, 200, { reports });
+      return true;
+    }
+
+    const partnerReportMatch = pathname.match(/^\/api\/partner\/reports\/([^/]+)$/);
+    if (partnerReportMatch && req.method === "GET") {
+      const token = readToken(req);
+      const partnerId = partnerIdFromToken(token);
+      if (!partnerId) {
+        send(res, 401, { error: "Partner login required." });
+        return true;
+      }
+      const report = await readReport(decodeURIComponent(partnerReportMatch[1]), { partnerId });
+      if (!report) {
+        send(res, 404, { error: "Report not found." });
+        return true;
+      }
+      send(res, 200, { report });
+      return true;
+    }
+
+    if (pathname === "/api/admin/reports" && req.method === "GET") {
+      if (!requireStaff(req, res)) return true;
+      const reports = await searchReports({
+        mobile: url.searchParams.get("mobile") || "",
+        email: url.searchParams.get("email") || "",
+      });
+      send(res, 200, { reports });
+      return true;
+    }
+
+    const adminReportMatch = pathname.match(/^\/api\/admin\/reports\/([^/]+)$/);
+    if (adminReportMatch && req.method === "GET") {
+      if (!requireStaff(req, res)) return true;
+      const report = await readReport(decodeURIComponent(adminReportMatch[1]));
+      if (!report) {
+        send(res, 404, { error: "Report not found." });
+        return true;
+      }
+      send(res, 200, { report });
       return true;
     }
 
@@ -1297,6 +1353,13 @@ export async function handleApi(req, res) {
           await notifyCustomerReportReady(updated);
         } catch {
           /* keep the report even if the notice store fails */
+        }
+      }
+      if (updated && (updated.reportFileData || updated.reportFileName)) {
+        try {
+          await saveReportFromOrder(updated);
+        } catch {
+          /* keep the order even if the report store fails */
         }
       }
       send(res, 200, { order: updated });
