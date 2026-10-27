@@ -209,15 +209,19 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
     const editing = editingId === member.id;
     return (
       <article key={`${partner.id}-${member.id}`} className="admin-team-card">
-        <div className="admin-team-line">
-          <strong>{member.name}</strong>
-          <span>{member.role || "—"}</span>
-          <span>{member.mobile || "—"}</span>
-          <span>{profile.qualification || "—"}</span>
-          <span>{profile.email || "—"}</span>
-          <span>{profile.aadhaarNumber || "—"}</span>
-          <span>{teamDocumentSummary(profile) || "—"}</span>
-          <span className={`partner-team-status is-${member.status}`}>{teamStatusLabel(member.status)}</span>
+        <div className="detail-stack">
+          <div className="detail-row"><span>Name</span><strong>{member.name}</strong></div>
+          <div className="detail-row"><span>Category</span><strong>{member.role || "—"}</strong></div>
+          <div className="detail-row"><span>Login ID</span><strong>{member.mobile || "—"}</strong></div>
+          <div className="detail-row"><span>Qualification</span><strong>{profile.qualification || "—"}</strong></div>
+          <div className="detail-row"><span>Email</span><strong>{profile.email || "—"}</strong></div>
+          <div className="detail-row"><span>Aadhaar</span><strong>{profile.aadhaarNumber || "—"}</strong></div>
+          <div className="detail-row"><span>Documents</span><strong>{teamDocumentSummary(profile) || "—"}</strong></div>
+          <div className="detail-row">
+            <span>Status</span>
+            <strong className={`partner-team-status is-${member.status}`}>{teamStatusLabel(member.status)}</strong>
+          </div>
+          <div className="detail-actions">
           <button
             type="button"
             disabled={busyId === member.id}
@@ -247,6 +251,7 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
           >
             Reject
           </button>
+          </div>
         </div>
           {editing ? (
             <form
@@ -372,18 +377,12 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
       <AdminSectionGuard dirty={Boolean(editingId)} save={savePending} />
       <style>{`
         .admin-team{display:flex;flex-direction:column;gap:10px;margin:16px 0}
-        .admin-team-portfolio{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #d7e2e9;border-radius:12px;background:#f4f8fb;overflow-x:auto}
+        .admin-team-portfolio{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #d7e2e9;border-radius:12px;background:#f4f8fb}
         .admin-team h2,.admin-team h3{margin:0;font-size:18px}
         .admin-team h3{font-size:14px}
         .admin-team p{margin:0;font-size:13px;line-height:1.4}
-        .admin-team-head,.admin-team-line{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(100px,.8fr) 110px minmax(110px,.8fr) minmax(140px,1fr) 120px minmax(140px,1fr) 140px 72px 76px 88px 76px;gap:8px;align-items:center;min-width:1480px}
-        .admin-team-head{padding:2px 10px 0;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5d7180}
-        .admin-team-card{display:flex;flex-direction:column;gap:8px;padding:0;border:0;background:transparent}
-        .admin-team-line{padding:8px 10px;border:1px solid #d7e2e9;border-radius:10px;background:#fff}
-        .admin-team-line strong,.admin-team-line span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .admin-team-line strong{font-size:14px}
-        .admin-team-line button{min-height:32px;padding:6px 8px;border-radius:8px;border:1px solid #c5d4de;background:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
-        .admin-team-line button.is-delete{color:#9b2c2c;border-color:#e7c7c7}
+        .admin-team-card{display:flex;flex-direction:column;gap:8px}
+        .detail-actions button.is-delete{color:#9b2c2c;border-color:#e7c7c7}
         .admin-team-detail{margin-top:6px;color:#5d7180}
         .admin-team-actions{display:flex;flex-wrap:wrap;gap:8px}
         .admin-team-actions button{min-height:32px;padding:6px 10px;border-radius:6px;border:1px solid #c5d4de;background:#fff;font:inherit}
@@ -412,20 +411,6 @@ export default function AdminTeamApprovals({ partners = [], onChange }) {
               {partner.mobile ? ` · ${partner.mobile}` : ""}
               {` · ${members.length} team member${members.length === 1 ? "" : "s"}`}
             </p>
-            <div className="admin-team-head">
-              <span>Name</span>
-              <span>Category</span>
-              <span>Login ID</span>
-              <span>Qualification</span>
-              <span>Email</span>
-              <span>Aadhaar</span>
-              <span>Documents</span>
-              <span>Status</span>
-              <span>Edit</span>
-              <span>Delete</span>
-              <span>Approve</span>
-              <span>Reject</span>
-            </div>
             {members.map((member) => card({ partner, member }))}
           </section>
         ))

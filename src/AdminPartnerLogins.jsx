@@ -588,15 +588,6 @@ export default function AdminPartnerLogins({ partners, onChange }) {
         </form>
       ) : !category ? null : (
         <div className="admin-partner-sheet">
-          <div className="admin-partner-line is-head">
-            <span>Partner name</span>
-            <span>Category</span>
-            <span>Login ID</span>
-            <span>Password</span>
-            <span>Save</span>
-            <span>Edit</span>
-            <span>Delete</span>
-          </div>
               {listed.length === 0 ? (
                 <p className="admin-hint">No {partnerCategoryLabel(category)} partners yet.</p>
               ) : (
@@ -607,14 +598,22 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                   const splitOpen = splitFor === partner.id;
                   const editOpen = editingId === partner.id;
                   const teamLine = teamFrom(partner.team);
+                  const categoryLabel =
+                    (partner.kinds || []).map((kind) => kindLabel(kind)).join(", ") ||
+                    partnerCategoryLabel(category);
                   return (
                     <Fragment key={partner.id}>
-                    <div className="admin-partner-line">
-                      <strong title={partner.role || partner.name}>{partner.name}</strong>
-                      <span>
-                        {(partner.kinds || []).map((kind) => kindLabel(kind)).join(", ") ||
-                          partnerCategoryLabel(category)}
-                      </span>
+                    <article className="detail-stack">
+                      <div className="detail-row">
+                        <span>Partner name</span>
+                        <strong title={partner.role || partner.name}>{partner.name}</strong>
+                      </div>
+                      <div className="detail-row">
+                        <span>Category</span>
+                        <strong>{categoryLabel}</strong>
+                      </div>
+                      <label className="detail-row">
+                        <span>Login ID</span>
                         <input
                           aria-label={`Login ID for ${partner.name}`}
                           inputMode="numeric"
@@ -631,6 +630,9 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                           }
                           placeholder="10-digit mobile"
                         />
+                      </label>
+                      <label className="detail-row">
+                        <span>Password</span>
                         <input
                           type="password"
                           inputMode="numeric"
@@ -649,6 +651,8 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                           placeholder="6-digit password"
                           autoComplete="new-password"
                         />
+                      </label>
+                      <div className="detail-actions">
                         <button
                           type="button"
                           className="is-save"
@@ -672,38 +676,53 @@ export default function AdminPartnerLogins({ partners, onChange }) {
                         >
                           {busyId === `remove-${partner.id}` ? "…" : "Delete"}
                         </button>
-                    </div>
+                      </div>
                     {teamLine.length ? (
-                      <div className="admin-partner-team-sheet">
-                        <div className="admin-partner-team-line is-head">
-                          <span>Name</span>
-                          <span>Category</span>
-                          <span>Login ID</span>
-                          <span>Qualification</span>
-                          <span>Email</span>
-                          <span>Aadhaar</span>
-                          <span>Documents</span>
-                          <span>Status</span>
-                        </div>
+                      <div className="detail-members">
                         {teamLine.map((member) => {
                           const profile = member.profile || {};
                           return (
-                            <div key={member.id} className="admin-partner-team-line">
-                              <strong>{member.name}</strong>
-                              <span>{member.role || "—"}</span>
-                              <span>{member.mobile || "—"}</span>
-                              <span>{profile.qualification || "—"}</span>
-                              <span>{profile.email || "—"}</span>
-                              <span>{profile.aadhaarNumber || "—"}</span>
-                              <span>{teamDocumentSummary(profile) || "—"}</span>
-                              <span className={`partner-team-status is-${member.status}`}>
-                                {teamStatusLabel(member.status)}
-                              </span>
-                            </div>
+                            <article key={member.id} className="detail-stack is-member">
+                              <div className="detail-row">
+                                <span>Name</span>
+                                <strong>{member.name}</strong>
+                              </div>
+                              <div className="detail-row">
+                                <span>Category</span>
+                                <strong>{member.role || "—"}</strong>
+                              </div>
+                              <div className="detail-row">
+                                <span>Login ID</span>
+                                <strong>{member.mobile || "—"}</strong>
+                              </div>
+                              <div className="detail-row">
+                                <span>Qualification</span>
+                                <strong>{profile.qualification || "—"}</strong>
+                              </div>
+                              <div className="detail-row">
+                                <span>Email</span>
+                                <strong>{profile.email || "—"}</strong>
+                              </div>
+                              <div className="detail-row">
+                                <span>Aadhaar</span>
+                                <strong>{profile.aadhaarNumber || "—"}</strong>
+                              </div>
+                              <div className="detail-row">
+                                <span>Documents</span>
+                                <strong>{teamDocumentSummary(profile) || "—"}</strong>
+                              </div>
+                              <div className="detail-row">
+                                <span>Status</span>
+                                <strong className={`partner-team-status is-${member.status}`}>
+                                  {teamStatusLabel(member.status)}
+                                </strong>
+                              </div>
+                            </article>
                           );
                         })}
                       </div>
                     ) : null}
+                    </article>
                     {editOpen ? (
                           <form className="admin-partner-create" onSubmit={saveEdit}>
                             <h3>Edit details</h3>
