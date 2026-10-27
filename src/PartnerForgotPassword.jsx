@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { confirmPartnerPasswordReset, requestPartnerPasswordReset } from "./partnerApi";
+import SeePasswordInput from "./SeePasswordInput";
 import { partnerResetDeliveryMessage } from "./partnerResetCopy";
 
 export default function PartnerForgotPassword({ initialMobile = "", onCancel, onDone }) {
@@ -97,9 +98,8 @@ export default function PartnerForgotPassword({ initialMobile = "", onCancel, on
           </div>
           <div className="field">
             <label htmlFor="partner-forgot-password">New password</label>
-            <input
+            <SeePasswordInput
               id="partner-forgot-password"
-              type="password"
               inputMode="numeric"
               autoComplete="new-password"
               placeholder="6-digit password"
@@ -110,9 +110,8 @@ export default function PartnerForgotPassword({ initialMobile = "", onCancel, on
           </div>
           <div className="field">
             <label htmlFor="partner-forgot-confirm">Confirm password</label>
-            <input
+            <SeePasswordInput
               id="partner-forgot-confirm"
-              type="password"
               inputMode="numeric"
               autoComplete="new-password"
               placeholder="Repeat 6-digit password"

@@ -11819,4 +11819,9 @@ body > .record-viewer,
   box-sizing: border-box !important;
 }
 
+.app.app-ops .partner-page.is-login .see-password input,
+.app.app-ops .admin-page.is-login .see-password input {
+  padding-right: 52px !important;
+}
+
 

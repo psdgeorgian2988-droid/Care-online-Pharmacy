@@ -11,6 +11,7 @@ import {
   staffToken,
 } from "./adminApi";
 import { cacheFeatures } from "./featureFlags";
+import SeePasswordInput from "./SeePasswordInput";
 import AdminWebinars from "./AdminWebinars";
 import { cacheWebinars } from "./webinars";
 import {
@@ -611,9 +612,8 @@ function Admin() {
             </div>
             <div className="field">
               <label htmlFor="staff-pass">Password</label>
-              <input
+              <SeePasswordInput
                 id="staff-pass"
-                type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 autoComplete="current-password"
@@ -679,6 +679,8 @@ function Admin() {
         </section>
 
         {error ? <p className="admin-error">{error}</p> : null}
+
+        <ReportSearch onSearch={searchStaffReports} onOpen={openStaffReport} title="Search reports" />
 
         <AdminFold title="Turn Services On Or Off" className="admin-feature-panel">
           <AdminSectionGuard dirty={featuresDirty} save={saveFeatures} />
@@ -916,10 +918,6 @@ function Admin() {
           </section>
         ))}
           </div>
-        </AdminFold>
-
-        <AdminFold title="Search reports">
-          <ReportSearch title="" onSearch={searchStaffReports} onOpen={openStaffReport} />
         </AdminFold>
 
         <AdminFold title="Partners">

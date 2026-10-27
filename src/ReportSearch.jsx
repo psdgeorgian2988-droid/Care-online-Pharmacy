@@ -56,10 +56,10 @@ export default function ReportSearch({ title = "Search reports", onSearch, onOpe
       <style>{`
         .report-search{display:flex;flex-direction:column;gap:10px}
         .report-search h2{margin:0;font-size:16px}
-        .report-search form{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
-        .report-search label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:#34546b;min-width:160px;flex:1}
-        .report-search input{min-height:36px;padding:6px 8px;border:1px solid #d7e2e9;border-radius:8px;font:inherit}
-        .report-search button{min-height:36px;padding:8px 12px;border-radius:8px;border:1px solid #1a6b7a;background:#1a6b7a;color:#fff;font:inherit;font-weight:800;cursor:pointer}
+        .report-search form{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+        .report-search label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:#34546b;width:100%;min-width:0}
+        .report-search input{min-height:36px;padding:6px 8px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;width:100%;box-sizing:border-box}
+        .report-search button{min-height:36px;width:100%;max-width:220px;padding:8px 12px;border-radius:8px;border:1px solid #1a6b7a;background:#1a6b7a;color:#fff;font:inherit;font-weight:800;cursor:pointer}
         .report-search button.is-open{border-color:#c5d4de;background:#fff;color:#1a6b7a}
         .report-search p{margin:0;font-size:13px;color:#5d7180}
         .report-search .is-error{color:#9b2c2c}

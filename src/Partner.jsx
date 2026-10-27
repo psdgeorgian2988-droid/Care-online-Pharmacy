@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import SeePasswordInput from "./SeePasswordInput";
 import RecordViewer from "./RecordViewer";
 import QRCode from "qrcode";
 import { splitPayment } from "./paymentSplit";
@@ -509,7 +510,6 @@ export default function Partner({ deskKind = "" }) {
     { id: "home", label: "Home" },
     { id: "orders", label: "Orders" },
     { id: "team", label: "Team members" },
-    { id: "reports", label: "Search reports" },
   ];
   const foreignSession = Boolean(
     partner && deskKind && !partnerServesDesk(partner, deskKind)
@@ -605,9 +605,8 @@ export default function Partner({ deskKind = "" }) {
             </div>
             <div className="field">
               <label htmlFor="partner-password">Password</label>
-              <input
+              <SeePasswordInput
                 id="partner-password"
-                type="password"
                 autoComplete="current-password"
                 inputMode="numeric"
                 placeholder="6-digit password"
@@ -667,6 +666,11 @@ export default function Partner({ deskKind = "" }) {
           </div>
         </section>
         {error ? <p className="admin-error">{error}</p> : null}
+        <ReportSearch
+          title="Search reports"
+          onSearch={searchPartnerReports}
+          onOpen={openPartnerReport}
+        />
         <div className="partner-home-tabs" role="tablist" aria-label="Partner home">
           {homeTabs.map((tab) => (
             <button
@@ -693,13 +697,6 @@ export default function Partner({ deskKind = "" }) {
           <PartnerTeamPanel
             partner={partner}
             onSaved={(next) => setPartner(next)}
-          />
-        ) : null}
-        {homeTab === "reports" ? (
-          <ReportSearch
-            title="Search reports"
-            onSearch={searchPartnerReports}
-            onOpen={openPartnerReport}
           />
         ) : null}
         {homeTab === "orders" && isStepDownDesk ? (
@@ -1095,11 +1092,6 @@ function PartnerHome({ partner, jobs, kind, onOpen }) {
               {approved} approved · {pending} waiting for admin
             </p>
           </button>
-        <button type="button" className="partner-home-card" onClick={() => onOpen("reports")}>
-          <span>Search reports</span>
-          <strong>Find</strong>
-          <p>Mobile number or mail ID</p>
-        </button>
       </div>
     </section>
   );

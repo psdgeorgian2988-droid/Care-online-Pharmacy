@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AddressFields from "./AddressFields.jsx";
 import PersonFields from "./PersonFields.jsx";
+import SeePasswordInput from "./SeePasswordInput";
 import {
   emptyAddress,
   pickAddress,
@@ -293,10 +294,9 @@ function LoginRegisterPage({ mode }) {
                 <label htmlFor="auth-login-pin">
                   Password <span>*</span>
                 </label>
-                <input
+                <SeePasswordInput
                   id="auth-login-pin"
                   name="pinCode"
-                  type="password"
                   inputMode="numeric"
                   maxLength="6"
                   placeholder="6-digit password"
@@ -545,9 +545,8 @@ function ForgotPinPage() {
                 <label htmlFor="auth-forgot-pin">
                   New PIN <span>*</span>
                 </label>
-                <input
+                <SeePasswordInput
                   id="auth-forgot-pin"
-                  type="password"
                   inputMode="numeric"
                   maxLength="6"
                   placeholder="6-digit PIN"
@@ -564,9 +563,8 @@ function ForgotPinPage() {
                 <label htmlFor="auth-forgot-pin-confirm">
                   Confirm PIN <span>*</span>
                 </label>
-                <input
+                <SeePasswordInput
                   id="auth-forgot-pin-confirm"
-                  type="password"
                   inputMode="numeric"
                   maxLength="6"
                   placeholder="Re-enter PIN"
@@ -618,6 +616,7 @@ const styles = `
 .auth-page.is-login .auth-form{gap:8px}
 .auth-page.is-login .auth-form label{font-size:12px}
 .auth-page.is-login .auth-form input:not([type=radio]):not([type=checkbox]){height:32px;min-height:32px;padding:5px 8px;font-size:13px}
+.auth-page.is-login .see-password input{padding-right:52px}
 .auth-page.is-login .auth-login-actions{gap:8px}
 .auth-page.is-login .auth-login-actions button[type=submit],.auth-page.is-login .auth-login-actions .auth-register-btn{height:32px;min-height:32px;font-size:13px}
 .auth-page.is-login .auth-forgot-btn{height:28px;font-size:12px}
