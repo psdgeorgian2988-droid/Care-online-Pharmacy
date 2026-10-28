@@ -8,7 +8,7 @@ export const SITE = {
   locale: "en_IN",
   phoneDisplay: "+91 72920 94000",
   phoneTel: "+917292094000",
-  email: "care@medihome.in",
+  email: "care@medihome.co.in",
   whatsapp: "917292094000",
   hours: "8:00 AM – 10:00 PM IST",
   area: "Delhi NCR",

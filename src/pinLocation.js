@@ -267,7 +267,7 @@ async function fetchJson(url, timeoutMs = 2200, headers = {}) {
 
 const OSM_HEADERS = {
   Accept: "application/json",
-  "User-Agent": "MediHome/1.0 (https://medihome.co.in; care@medihome.in)",
+  "User-Agent": "MediHome/1.0 (https://medihome.co.in; care@medihome.co.in)",
 };
 
 async function fetchPostalLocality(pin) {

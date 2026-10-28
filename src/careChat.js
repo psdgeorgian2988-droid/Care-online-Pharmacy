@@ -1,6 +1,6 @@
 export const CARE_PHONE_DISPLAY = "+91 72920 94000";
 export const CARE_PHONE_TEL = "+917292094000";
-export const CARE_EMAIL = "care@medihome.in";
+export const CARE_EMAIL = "care@medihome.co.in";
 export const CARE_WHATSAPP = "917292094000";
 export const CARE_HOURS = "8:00 AM – 10:00 PM IST, all days";
 export const MEDIBOT_NAME = "MediBot";
