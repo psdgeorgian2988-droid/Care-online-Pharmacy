@@ -80,7 +80,7 @@ import {
 } from "./partnerReset.mjs";
 import { confirmAdminPartnerSplit, requestAdminPartnerSplit } from "./partnerSplitOtp.mjs";
 import { deductOrderStock, listPartnerInventory } from "./stock.mjs";
-import { findBatch, publicCatalog, readCatalog } from "./catalog.mjs";
+import { addMedicine, findBatch, publicCatalog, readCatalog, readMedicinePhoto, readStoredReport } from "./catalog.mjs";
 import {
   isDeliveryPartner,
   isPharmacyStorePartner,
@@ -121,6 +121,13 @@ function readToken(req) {
   const header = String(req.headers.authorization || "");
   const match = header.match(/^Bearer\s+(.+)$/i);
   return match ? match[1].trim() : "";
+}
+
+function staffMedicines(store) {
+  return (store?.medicines || []).map((row) => {
+    const { photoData, ...rest } = row;
+    return { ...rest, hasPhoto: Boolean((row.photos || []).length || photoData) };
+  });
 }
 
 function requireStaff(req, res) {
@@ -237,6 +244,23 @@ export async function handleApi(req, res) {
       return true;
     }
 
+    const medicinePhotoMatch = pathname.match(/^\/api\/catalog\/medicines\/([^/]+)\/photos\/([^/]+)$/);
+    if (medicinePhotoMatch && req.method === "GET") {
+      const file = await readMedicinePhoto(
+        decodeURIComponent(medicinePhotoMatch[1]),
+        decodeURIComponent(medicinePhotoMatch[2])
+      );
+      if (!file) {
+        send(res, 404, { error: "Photo not found." });
+        return true;
+      }
+      res.statusCode = 200;
+      res.setHeader("Content-Type", file.fileType);
+      res.setHeader("Cache-Control", "private, max-age=3600");
+      res.end(file.buffer);
+      return true;
+    }
+
     if (pathname === "/api/lab-tests" && req.method === "GET") {
       send(res, 200, { tests: await listAddedLabTests() });
       return true;
@@ -249,6 +273,9 @@ export async function handleApi(req, res) {
         send(res, 404, { error: "Batch report not found." });
         return true;
       }
+      const fileData = batch.fileData || (batch.reportFileId
+        ? await readStoredReport(batch.productId, batch.reportFileId, batch.fileType)
+        : "");
       send(res, 200, {
         id: batch.id,
         productName: batch.productName,
@@ -258,7 +285,7 @@ export async function handleApi(req, res) {
         notes: batch.notes,
         fileName: batch.fileName,
         fileType: batch.fileType,
-        fileData: batch.fileData || "",
+        fileData,
       });
       return true;
     }
@@ -552,6 +579,25 @@ export async function handleApi(req, res) {
         return true;
       }
       send(res, 200, { partner: created.partner, partners: await listPartners() });
+      return true;
+    }
+
+    if (pathname === "/api/admin/medicines" && req.method === "GET") {
+      if (!requireStaff(req, res)) return true;
+      const store = await readCatalog();
+      send(res, 200, { medicines: staffMedicines(store) });
+      return true;
+    }
+
+    if (pathname === "/api/admin/medicines" && req.method === "POST") {
+      if (!requireStaff(req, res)) return true;
+      const body = await readJson(req);
+      try {
+        const store = await addMedicine(body);
+        send(res, 200, { medicine: staffMedicines(store)[0], medicines: staffMedicines(store) });
+      } catch (err) {
+        send(res, 400, { error: err.message || "Could not save the medicine." });
+      }
       return true;
     }
 

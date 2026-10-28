@@ -215,9 +215,11 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
         .member-open-head button{min-height:32px;padding:6px 10px;border-radius:8px;border:1px solid #c5d4de;background:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
         .partner-team-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
         .partner-team-head button{min-height:32px;padding:6px 10px;border-radius:8px;border:1px solid #c5d4de;background:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
-        .partner-team-names{display:flex;flex-wrap:wrap;gap:8px}
-        .partner-team-names button{min-height:32px;padding:6px 10px;border-radius:8px;border:1px solid #c5d4de;background:#fff;color:#143246;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+        .partner-team-names{display:flex;flex-direction:column;gap:8px;width:100%}
+        .partner-team-names button{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;min-height:44px;padding:10px 12px;border-radius:8px;border:1px solid #c5d4de;background:#fff;color:#143246;font:inherit;font-size:15px;font-weight:800;cursor:pointer;text-align:left}
+        .partner-team-names button .member-mobile{font-size:15px;font-weight:800;color:#143246;letter-spacing:.02em}
         .partner-team-names button.is-on{border-color:#1a6b7a;background:#e7f1f6;color:#1a6b7a}
+        .partner-team-names button.is-on .member-mobile{color:#1a6b7a}
         .partner-team h2{margin:0;font-size:16px}
         .partner-team p{margin:0;font-size:13px;line-height:1.4}
         .partner-team label{display:flex;flex-direction:column;gap:4px;font-size:12px}
@@ -256,7 +258,8 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
                       aria-pressed={open}
                       onClick={() => setOpenMemberId(open ? "" : member.id)}
                     >
-                      {member.name}
+                      <span>{member.name}</span>
+                      <span className="member-mobile">{member.mobile || "No mobile"}</span>
                     </button>
                   );
                 })}

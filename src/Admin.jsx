@@ -63,6 +63,7 @@ import AdminPartnerLogins from "./AdminPartnerLogins";
 import ReportSearch from "./ReportSearch";
 import { openStaffReport, searchStaffReports } from "./reportApi";
 import AdminLabTests from "./AdminLabTests";
+import AdminMedicines from "./AdminMedicines";
 import {
   BarList,
   CompareBars,
@@ -995,8 +996,12 @@ function Admin() {
         />
         </AdminFold>
 
-        <AdminFold title="Lab tests">
+        <AdminFold title="Add lab test">
         <AdminLabTests />
+        </AdminFold>
+
+        <AdminFold title="Add medicine">
+        <AdminMedicines />
         </AdminFold>
 
         <AdminFold title="Growth And Degrowth Charts">
@@ -1365,7 +1370,7 @@ const styles = `
 .admin-partner-create{margin-top:14px;padding:12px;border:1px solid #e4ecef;border-radius:12px;background:#fff}
 .admin-partner-create h3{margin:0 0 10px;font-size:14px}
 .admin-partner-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:10px}
-.admin-partner-grid select{min-height:36px;border:1px solid #d7e2e9;border-radius:8px;padding:6px 8px;font:inherit}
+.admin-partner-grid select{width:100%;box-sizing:border-box;min-height:36px;border:1px solid #d7e2e9;border-radius:8px;padding:6px 8px;font:inherit;background:#fff}
 .admin-partner-grid label,.admin-partner-grid fieldset{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;color:#34546b;border:0;margin:0;padding:0}
 .admin-partner-grid legend{font-size:12px;font-weight:700;color:#34546b}
 .admin-partner-kinds{display:flex;flex-wrap:wrap;gap:8px;font-weight:600}
@@ -1388,9 +1393,11 @@ const styles = `
 .detail-actions button.is-save{background:#1a6b7a;border-color:#1a6b7a;color:#fff}
 .detail-actions button.is-delete{color:#9b2c2c;border-color:#e7c7c7}
 .detail-actions button:disabled{opacity:.6;cursor:default}
-.member-tabs{display:flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:10px;background:#e8f1f6;width:fit-content;max-width:100%}
-.member-tabs button{border:0;background:transparent;color:#3d5a6c;font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer}
-.member-tabs button.is-on{background:#fff;color:#1a6b7a;box-shadow:0 1px 3px rgba(20,50,70,.08)}
+.member-tabs{display:flex;flex-direction:column;gap:6px;width:100%}
+.member-tabs button{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;border:1px solid transparent;background:#fff;color:#143246;font:inherit;font-size:15px;font-weight:800;padding:10px 12px;border-radius:8px;cursor:pointer;text-align:left}
+.member-tabs button .member-mobile{font-size:15px;font-weight:800;color:#143246;letter-spacing:.02em}
+.member-tabs button.is-on{border-color:#1a6b7a;background:#e7f1f6;color:#1a6b7a}
+.member-tabs button.is-on .member-mobile{color:#1a6b7a}
 .member-open-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .member-open-head strong{font-size:15px;color:#143246}
 .member-open-head button{min-height:32px;padding:6px 10px;border-radius:8px;border:1px solid #c5d4de;background:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}

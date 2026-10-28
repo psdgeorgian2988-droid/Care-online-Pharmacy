@@ -103,14 +103,115 @@ function normalizeMedicine(body, existing = {}) {
     price: money(body?.price ?? existing.price ?? body?.mrp ?? existing.mrp),
     prescription: Boolean(body?.prescription ?? existing.prescription ?? true),
     brand,
+    manufacturer: clipText(body?.manufacturer || existing.manufacturer, 80),
+    mfgDate: clipText(body?.mfgDate || existing.mfgDate, 20),
+    expiryDate: clipText(body?.expiryDate || existing.expiryDate, 20),
+    batchNo: clipText(body?.batchNo || existing.batchNo, 40).toUpperCase(),
+    batchReport: existing.batchReport || null,
     isMediHome:
       body?.isMediHome ??
       existing.isMediHome ??
       String(brand).toLowerCase() === "medihome",
     aliases,
+    photos: [],
     source: "admin",
     updatedAt: Date.now(),
   };
+}
+
+const PHOTO_LIMIT = 45;
+const PHOTO_BYTES = 3 * 1024 * 1024;
+
+function decodePhoto(photo) {
+  const data = String(photo?.fileData || photo?.photoData || "");
+  const match = data.match(/^data:(image\/(?:jpeg|png));base64,([A-Za-z0-9+/=\r\n]+)$/);
+  if (!match) return null;
+  return {
+    type: match[1],
+    buffer: Buffer.from(match[2].replace(/\s/g, ""), "base64"),
+    fileName: clipText(photo.fileName || photo.photoName, 120),
+  };
+}
+
+async function saveMedicinePhotos(medicineId, photos) {
+  const list = Array.isArray(photos) ? photos : [];
+  if (list.length > PHOTO_LIMIT) throw new Error("A medicine can have up to 45 photos.");
+  const dir = path.join(root, "data", "medicine-photos", medicineId);
+  if (list.length) await mkdir(dir, { recursive: true });
+  const saved = [];
+  for (const photo of list) {
+    const decoded = decodePhoto(photo);
+    if (!decoded) throw new Error("Each photo must be a JPG or PNG.");
+    if (decoded.buffer.length > PHOTO_BYTES) {
+      throw new Error("Each photo must be 3 MB or smaller.");
+    }
+    const id = newId("photo");
+    const ext = decoded.type === "image/png" ? "png" : "jpg";
+    await writeFile(path.join(dir, `${id}.${ext}`), decoded.buffer);
+    saved.push({
+      id,
+      fileName: decoded.fileName || `${id}.${ext}`,
+      fileType: decoded.type,
+    });
+  }
+  return saved;
+}
+
+const REPORT_BYTES = 10 * 1024 * 1024;
+
+async function saveBatchReport(medicineId, report) {
+  const data = String(report?.fileData || "");
+  if (!data) return null;
+  const match = data.match(/^data:([^;,]+);base64,([A-Za-z0-9+/=\r\n]+)$/);
+  if (!match) throw new Error("Batch report must be a PDF, JPG, or PNG.");
+  const type = match[1].toLowerCase();
+  if (!["application/pdf", "image/jpeg", "image/png"].includes(type)) {
+    throw new Error("Batch report must be a PDF, JPG, or PNG.");
+  }
+  const buffer = Buffer.from(match[2].replace(/\s/g, ""), "base64");
+  if (!buffer.length || buffer.length > REPORT_BYTES) {
+    throw new Error("Batch report must be 10 MB or smaller.");
+  }
+  const ext = type === "application/pdf" ? "pdf" : type === "image/png" ? "png" : "jpg";
+  const id = newId("report");
+  const dir = path.join(root, "data", "medicine-photos", medicineId);
+  await mkdir(dir, { recursive: true });
+  await writeFile(path.join(dir, `${id}.${ext}`), buffer);
+  return {
+    id,
+    fileName: clipText(report.fileName, 120) || `batch-report.${ext}`,
+    fileType: type,
+  };
+}
+
+export async function readStoredReport(medicineId, reportId, fileType) {
+  const mid = String(medicineId || "");
+  const rid = String(reportId || "");
+  if (!/^[\w-]+$/.test(mid) || !/^[\w-]+$/.test(rid)) return "";
+  const ext = fileType === "application/pdf" ? "pdf" : fileType === "image/png" ? "png" : "jpg";
+  try {
+    const buffer = await readFile(path.join(root, "data", "medicine-photos", mid, `${rid}.${ext}`));
+    return `data:${fileType || "application/pdf"};base64,${buffer.toString("base64")}`;
+  } catch {
+    return "";
+  }
+}
+
+export async function readMedicinePhoto(medicineId, photoId) {
+  const mid = String(medicineId || "");
+  const pid = String(photoId || "");
+  if (!/^[\w-]+$/.test(mid) || !/^[\w-]+$/.test(pid)) return null;
+  const store = await readStore();
+  const medicine = store.medicines.find((row) => String(row.id) === mid);
+  const photo = (medicine?.photos || []).find((row) => row.id === pid);
+  if (!photo) return null;
+  const ext = photo.fileType === "image/png" ? "png" : "jpg";
+  try {
+    const buffer = await readFile(path.join(root, "data", "medicine-photos", mid, `${pid}.${ext}`));
+    return { buffer, fileType: photo.fileType || "image/jpeg" };
+  } catch {
+    return null;
+  }
 }
 
 function normalizeService(body, existing = {}) {
@@ -328,6 +429,35 @@ export async function addMedicine(body) {
   const store = await readStore();
   const row = normalizeMedicine(body);
   if (!row) throw new Error("Medicine name is required.");
+  if (row.mfgDate && row.expiryDate && row.mfgDate > row.expiryDate) {
+    throw new Error("Expiry date must be after the manufacturing date.");
+  }
+  row.photos = await saveMedicinePhotos(row.id, body?.photos);
+  if (row.photos[0]) {
+    row.image = `/api/catalog/medicines/${encodeURIComponent(row.id)}/photos/${encodeURIComponent(row.photos[0].id)}`;
+  }
+  row.batchReport = await saveBatchReport(row.id, body?.batchReport);
+  if (row.batchReport || row.batchNo || row.mfgDate || row.expiryDate) {
+    const batch = normalizeBatch({
+      productId: row.id,
+      productName: row.name,
+      composition: row.salt,
+      strength: row.strength,
+      batchNo: row.batchNo || `MH-${String(row.id).slice(-12)}`,
+      mfgDate: row.mfgDate,
+      expiryDate: row.expiryDate,
+      fileName: row.batchReport?.fileName || "",
+      fileType: row.batchReport?.fileType || "",
+      notes: "Uploaded from Add medicine.",
+    });
+    if (batch) {
+      batch.fileData = "";
+      batch.reportFileId = row.batchReport?.id || "";
+      row.batchId = batch.id;
+      row.batchNo = batch.batchNo;
+      store.batches = [batch, ...store.batches];
+    }
+  }
   store.medicines = [row, ...store.medicines.filter((item) => String(item.id) !== String(row.id))];
   store.hiddenMedicineIds = store.hiddenMedicineIds.filter((id) => id !== String(row.id));
   return writeStore(store);

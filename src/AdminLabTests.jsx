@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { AdminSectionGuard } from "./adminLeave";
 import { createStaffLabTest, fetchAddedLabTests, patchStaffLabTest } from "./adminApi";
+import { DIAGNOSTIC_LABS } from "./diagnosticPartners";
 
-const emptyTest = () => ({ name: "", price: "", partnerPercent: "" });
+const emptyTest = () => ({ name: "", labId: "", price: "", partnerPercent: "" });
+
+function labName(labId) {
+  return DIAGNOSTIC_LABS.find((lab) => lab.id === labId)?.name || labId || "—";
+}
 
 export default function AdminLabTests() {
   const [tests, setTests] = useState([]);
   const [draft, setDraft] = useState(emptyTest);
-  const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [editPercent, setEditPercent] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,15 +36,18 @@ export default function AdminLabTests() {
     setError("");
     setNote("");
     try {
+      if (!draft.labId) {
+        setError("Choose a lab.");
+        return false;
+      }
       const data = await createStaffLabTest({
         name: draft.name,
         price: Number(draft.price),
         partnerPercent: Number(draft.partnerPercent),
-        labId: "others",
+        labId: draft.labId,
       });
       setTests(data.tests || []);
       setDraft(emptyTest());
-      setAdding(false);
       setNote(`${data.test?.name || "Test"} saved with partner split ${data.test?.partnerPercent}%.`);
       return true;
     } catch (err) {
@@ -74,53 +81,44 @@ export default function AdminLabTests() {
     }
   };
 
+  const formDirty = Boolean(
+    String(draft.name || "").trim() ||
+      String(draft.labId || "").trim() ||
+      String(draft.price || "").trim() ||
+      String(draft.partnerPercent || "").trim()
+  );
   const savePending = () => {
-    if (adding) return save();
-    const test = tests.find((row) => row.id === editingId);
-    return saveSplit(test);
+    if (editingId) {
+      const test = tests.find((row) => row.id === editingId);
+      return saveSplit(test);
+    }
+    if (formDirty) return save();
+    return true;
   };
 
   return (
-    <section className="admin-panel admin-feature-panel" aria-label="Lab tests">
-      <AdminSectionGuard dirty={adding || Boolean(editingId)} save={savePending} />
-      <div className="admin-feature-head">
-        <div>
-          <h2>Lab tests</h2>
-          <p className="admin-hint">
-            Partner split is set on the test, because it differs from test to test.
-          </p>
-        </div>
-      </div>
-      <div className="lab-tabs" role="tablist" aria-label="Lab tests">
-        <button
-          type="button"
-          role="tab"
-          className={adding ? "" : "is-on"}
-          aria-selected={!adding}
-          onClick={() => setAdding(false)}
-        >
-          Lab tests
-        </button>
-        <button
-          type="button"
-          role="tab"
-          className={adding ? "is-on" : ""}
-          aria-selected={adding}
-          onClick={() => {
-            setAdding(true);
-            setEditingId("");
-            setError("");
-          }}
-        >
-          Add lab test
-        </button>
-      </div>
+    <section className="admin-panel admin-feature-panel" aria-label="Add lab test">
+      <AdminSectionGuard dirty={formDirty || Boolean(editingId)} save={savePending} />
       {error ? <p className="admin-error">{error}</p> : null}
       {note ? <p className="admin-hint">{note}</p> : null}
-      {adding ? (
       <form className="admin-partner-create" onSubmit={save}>
         <h3>Add lab test</h3>
         <div className="admin-partner-grid">
+          <label>
+            Lab name
+            <select
+              value={draft.labId}
+              onChange={(event) => setDraft((current) => ({ ...current, labId: event.target.value }))}
+              required
+            >
+              <option value="">Select a lab</option>
+              {DIAGNOSTIC_LABS.map((lab) => (
+                <option key={lab.id} value={lab.id}>
+                  {lab.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             Test name
             <input
@@ -161,16 +159,24 @@ export default function AdminLabTests() {
           <button type="submit" className="admin-feature-save" disabled={busy}>
             {busy ? "Saving…" : "Save test"}
           </button>
-          <button type="button" className="admin-feature-reset" onClick={() => setAdding(false)}>
-            Cancel
+          <button
+            type="button"
+            className="admin-feature-reset"
+            onClick={() => {
+              setDraft(emptyTest());
+              setError("");
+            }}
+          >
+            Clear
           </button>
         </div>
       </form>
-      ) : tests.length ? (
+      {tests.length ? (
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
               <tr>
+                <th>Lab</th>
                 <th>Test</th>
                 <th>Price</th>
                 <th></th>
@@ -181,6 +187,7 @@ export default function AdminLabTests() {
                 const editing = editingId === test.id;
                 return (
                   <tr key={test.id}>
+                    <td>{labName(test.labId)}</td>
                     <td>{test.name}</td>
                     <td>₹{test.price}</td>
                     <td>

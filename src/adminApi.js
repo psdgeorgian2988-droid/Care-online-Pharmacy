@@ -224,6 +224,27 @@ export async function fetchAddedLabTests() {
   return parseResponse(await apiFetch("/api/lab-tests"));
 }
 
+export async function fetchStaffMedicines() {
+  return parseResponse(
+    await apiFetch("/api/admin/medicines", {
+      headers: { Authorization: `Bearer ${staffToken()}` },
+    })
+  );
+}
+
+export async function createStaffMedicine(body) {
+  return parseResponse(
+    await apiFetch("/api/admin/medicines", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${staffToken()}`,
+      },
+      body: JSON.stringify(body),
+    })
+  );
+}
+
 export async function createStaffLabTest(body) {
   return parseResponse(
     await apiFetch("/api/admin/lab-tests", {

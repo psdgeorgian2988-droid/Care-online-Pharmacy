@@ -428,7 +428,8 @@ export default function AdminTeamApprovals({ partners = [], onChange, embedded =
                     aria-selected={open}
                     onClick={() => setOpenMemberId(member.id)}
                   >
-                    {member.name}
+                    <span>{member.name}</span>
+                    <span className="member-mobile">{member.mobile || "No mobile"}</span>
                   </button>
                 );
               })}
