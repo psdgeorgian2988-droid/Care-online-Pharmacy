@@ -122,7 +122,7 @@ const CENTRES = [
     address: "Plot 18, Sector 12, Dwarka, New Delhi",
     focus: ["post-icu", "assisted"],
     beds: 24,
-    phone: "+91 72920 94000",
+    phone: "+91 96542 22988",
   },
   {
     id: "noida-rehab",
@@ -133,7 +133,7 @@ const CENTRES = [
     address: "A-42, Sector 62, Noida",
     focus: ["rehab", "post-surgery"],
     beds: 18,
-    phone: "+91 72920 94000",
+    phone: "+91 96542 22988",
   },
   {
     id: "gurugram-cardiac",
@@ -144,7 +144,7 @@ const CENTRES = [
     address: "12, Sushant Lok-I, Gurugram",
     focus: ["post-icu", "rehab"],
     beds: 20,
-    phone: "+91 72920 94000",
+    phone: "+91 96542 22988",
   },
   {
     id: "rohini-wound",
@@ -155,7 +155,7 @@ const CENTRES = [
     address: "B-9, Sector 7, Rohini, New Delhi",
     focus: ["wound", "post-surgery"],
     beds: 12,
-    phone: "+91 72920 94000",
+    phone: "+91 96542 22988",
   },
   {
     id: "faridabad-ortho",
@@ -166,7 +166,7 @@ const CENTRES = [
     address: "SCO 21, NIT 5, Faridabad",
     focus: ["post-surgery", "rehab"],
     beds: 16,
-    phone: "+91 72920 94000",
+    phone: "+91 96542 22988",
   },
   {
     id: "ghaziabad-icu",
@@ -177,7 +177,7 @@ const CENTRES = [
     address: "Shipra Mall road, Indirapuram, Ghaziabad",
     focus: ["post-icu", "assisted"],
     beds: 22,
-    phone: "+91 72920 94000",
+    phone: "+91 96542 22988",
   },
 ];
 

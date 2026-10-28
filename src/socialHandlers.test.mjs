@@ -53,7 +53,7 @@ test("official handles map to native app URLs", () => {
   assert.equal(nativeAppUrl(youtube), "youtube://www.youtube.com/@MediHome");
   assert.equal(nativeAppUrl(linkedin), "linkedin://company/medihome");
   assert.equal(nativeAppUrl(x), "twitter://user?screen_name=medihome_in");
-  assert.match(nativeAppUrl(whatsapp), /^whatsapp:\/\/send\?phone=917292094000/);
+  assert.match(nativeAppUrl(whatsapp), /^whatsapp:\/\/send\?phone=919654222988/);
 });
 
 test("openSocial uses the https page in a browser", () => {

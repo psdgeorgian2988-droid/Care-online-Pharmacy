@@ -218,7 +218,7 @@ export function referServiceProvider({ name, mobile, serviceKind, city = "", pin
 
 export function providerReferralShareText(referral, fromName) {
   const who = fromName ? `${fromName} (MediHome customer)` : "a MediHome customer";
-  return `Hi ${referral.name}, ${who} referred you to MediHome as a ${referral.serviceLabel}. Join as a partner to take Home Care, ambulance, or psychologist jobs in Delhi NCR. Quote referral ${referral.id} when you call +91 72920 94000.`;
+  return `Hi ${referral.name}, ${who} referred you to MediHome as a ${referral.serviceLabel}. Join as a partner to take Home Care, ambulance, or psychologist jobs in Delhi NCR. Quote referral ${referral.id} when you call +91 96542 22988.`;
 }
 
 export function referralShareText(referral, fromName) {

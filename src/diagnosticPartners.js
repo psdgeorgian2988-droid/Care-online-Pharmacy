@@ -6,7 +6,7 @@ export const MEDIHOME_BILLING = {
   tradeName: "MediHome",
   area: "Connaught Place, New Delhi",
   address: "MediHome, Connaught Place, New Delhi 110001",
-  phone: "7292094000",
+  phone: "9654222988",
   gstin: "07AAMCM2608Q1Z3",
   pan: "AAMCM2608Q",
   dlNo: "",

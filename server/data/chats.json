@@ -164,15 +164,15 @@
         {
           "id": "m-mu73ywhn-h8zp",
           "from": "bot",
-          "text": "I will connect you with a MediHome care executive. Please call MediHome customer care at +91 72920 94000 (8:00 AM – 10:00 PM IST, all days), or continue on WhatsApp.",
+          "text": "I will connect you with a MediHome care executive. Please call MediHome customer care at +91 96542 22988 (8:00 AM – 10:00 PM IST, all days), or continue on WhatsApp.",
           "at": 1789745010683,
           "links": [
             {
-              "href": "tel:+917292094000",
-              "label": "Call +91 72920 94000"
+              "href": "tel:+919654222988",
+              "label": "Call +91 96542 22988"
             },
             {
-              "href": "https://wa.me/917292094000?text=Hi%20MediHome%2C%20I%20need%20help%20from%20customer%20care.",
+              "href": "https://wa.me/919654222988?text=Hi%20MediHome%2C%20I%20need%20help%20from%20customer%20care.",
               "label": "WhatsApp care"
             },
             {

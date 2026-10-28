@@ -11,9 +11,9 @@ test("care replies route medicine, track, ambulance, and human handoff", () => {
   const human = replyTo("Please connect me to a care executive");
   assert.equal(human.needsStaff, true);
   assert.match(human.text, /executive|customer care/i);
-  assert.match(human.text, /72920 94000/);
+  assert.match(human.text, /96542 22988/);
   assert.equal(
-    human.links.some((link) => link.href === "tel:+917292094000"),
+    human.links.some((link) => link.href === "tel:+919654222988"),
     true
   );
   const scanHelp = replyTo("How do I scan the QR?");
@@ -24,9 +24,9 @@ test("care replies route medicine, track, ambulance, and human handoff", () => {
   );
   const welcome = welcomeMessage();
   assert.match(welcome.text, /MediBot/);
-  assert.match(welcome.text, /72920 94000/);
-  assert.equal(welcome.links[0].href, "tel:+917292094000");
+  assert.match(welcome.text, /96542 22988/);
+  assert.equal(welcome.links[0].href, "tel:+919654222988");
   const unsolved = replyTo("my order was charged twice wrongly last Tuesday night");
   assert.equal(unsolved.needsStaff, true);
-  assert.match(unsolved.text, /72920 94000/);
+  assert.match(unsolved.text, /96542 22988/);
 });
