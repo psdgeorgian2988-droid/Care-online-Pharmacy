@@ -27,7 +27,10 @@ import {
 } from "./personFields";
 import { noContactEmailProps, noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import AutofillTrap from "./AutofillTrap";
-import { PROFILE_KEY, useLoginSession, writeLoginSession } from "./authSession";
+import { hasAccountSession, PROFILE_KEY, useLoginSession, writeLoginSession } from "./authSession";
+import { loadCustomerOrders } from "./orderTracking";
+import { orderCurrentStatus, serviceKind } from "./orderStatus";
+import { useSyncedOrderTick } from "./useSyncedOrderTick";
 import CustomerLogOut from "./CustomerLogOut.jsx";
 import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
 import ProfileReports from "./ProfileReports.jsx";
@@ -36,6 +39,43 @@ import { pickLoginPin } from "./loginPin";
 
 function readProfile() {
   return readUserProfile();
+}
+
+function profileOrderHref(order) {
+  const params = new URLSearchParams();
+  const kind = serviceKind(order);
+  if (kind) params.set("service", kind);
+  const id = order.id || order.bookingId || order.requestId;
+  if (id) params.set("id", String(id));
+  const query = params.toString();
+  return query ? `#myorders?${query}` : "#myorders";
+}
+
+function ProfileOrders() {
+  const tick = useSyncedOrderTick();
+  const session = useLoginSession();
+  if (!hasAccountSession(session)) return null;
+  const orders = loadCustomerOrders();
+  void tick;
+  return (
+    <section className="profile-card" aria-label="Orders">
+      <h2>Orders</h2>
+      {orders.length ? (
+        <ul className="profile-order-list">
+          {orders.slice(0, 8).map((order) => (
+            <li key={order.id || order.bookingId || order.requestId}>
+              <a href={profileOrderHref(order)}>
+                <span>{order.displayId || order.id || "Order"}</span>
+                <strong>{orderCurrentStatus(order)}</strong>
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="profile-order-empty">No orders yet.</p>
+      )}
+    </section>
+  );
 }
 
 function Profile() {
@@ -192,6 +232,7 @@ function Profile() {
               </div>
             </dl>
           </section>
+          <ProfileOrders />
           <section className="profile-card profile-prescription-card" aria-label="Prescription">
             <h2>Prescription</h2>
             <HomePrescriptionUpload showCart={false} />
@@ -248,6 +289,8 @@ function Profile() {
             ) : null}
           </div>
         </section>
+
+        <ProfileOrders />
 
         <section className="profile-card profile-prescription-card" aria-label="Prescription">
           <h2>Prescription</h2>
@@ -392,6 +435,11 @@ const styles = `
   .profile-refer-wrap,.profile-form{max-width:760px;margin:0 auto 14px}
   .profile-form{display:grid;gap:14px}
   .profile-card{max-width:760px;margin:0 auto 14px;padding:18px;background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.06);display:grid;gap:12px}
+  .profile-card h2{margin:0;font-size:16px;color:#143246}
+  .profile-order-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+  .profile-order-list a{display:flex;justify-content:space-between;gap:12px;color:#143246;text-decoration:none;font-size:14px}
+  .profile-order-list strong{font-weight:800}
+  .profile-order-empty{margin:0;color:#5d7180;font-size:14px}
   .profile-prescription-card h2{margin:0;color:#123b59;font-size:16px}
   .profile-prescription-card>p{margin:0;color:#607589;font-size:13px;line-height:1.4}
   .profile-field{display:flex;flex-direction:column}

@@ -15,9 +15,10 @@ import {
 import { diagnosticStepLabel, isDiagnosticKind, orderHasReport } from "./labPipeline.js";
 import { isStepdownDischarged, isStepdownOrder } from "./stepdownDesk.js";
 import { isOngoingTrackOrder } from "./orderStatus.js";
-import { customerMobilesFromOrders } from "./orderSync.js";
+import { readLoginSession } from "./authSession.js";
+import { accountMobiles, customerMobilesFromOrders, ordersForAccount } from "./orderSync.js";
 
-export { customerMobilesFromOrders };
+export { accountMobiles, customerMobilesFromOrders, ordersForAccount };
 
 export {
   completedOrders,
@@ -642,6 +643,10 @@ export function loadAllOrders() {
   );
 }
 
+export function loadCustomerOrders() {
+  return ordersForAccount(loadAllOrders(), readLoginSession());
+}
+
 export function findOrderById(id) {
   const wanted = decodeURIComponent(String(id || "")).trim();
   if (!wanted) return null;
@@ -707,17 +712,10 @@ export async function persistAndSendOrder(unified, patch = {}) {
   return saved;
 }
 
-function readProfileForOrders() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem("mediHomeUser") || "null");
-    return parsed && typeof parsed === "object" ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function syncMyOrdersFromServer(orders = loadAllOrders()) {
-  const mobiles = customerMobilesFromOrders(orders, readProfileForOrders());
+  const session = readLoginSession();
+  if (!accountMobiles(session).size) return [];
+  const mobiles = [...accountMobiles(session)];
   const seen = new Set();
   for (const mobile of mobiles) {
     try {
@@ -735,14 +733,14 @@ export async function syncMyOrdersFromServer(orders = loadAllOrders()) {
       /* keep local rows if the list endpoint is down */
     }
   }
-  for (const order of Array.isArray(orders) ? orders : []) {
+  for (const order of ordersForAccount(orders, session)) {
     const id = String(order.bookingId || order.id || order.requestId || "");
     if (!id || seen.has(id)) continue;
     if (!isOngoingTrackOrder(order) && !isAwaitingPartnerConfirm(order)) continue;
     const latest = await refreshOrderFromServer(id);
     if (latest) seen.add(String(latest.id || latest.bookingId || id));
   }
-  return loadAllOrders();
+  return loadCustomerOrders();
 }
 
 function stripViewFields(record) {

@@ -213,8 +213,9 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
         .member-open-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
         .member-open-head strong{font-size:15px;color:#143246}
         .member-open-head button{min-height:32px;padding:6px 10px;border-radius:8px;border:1px solid #c5d4de;background:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
-        .partner-team-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
-        .partner-team-head button{min-height:32px;padding:6px 10px;border-radius:8px;border:1px solid #c5d4de;background:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+        .partner-team-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:4px;border-radius:10px;background:#e8f1f6;width:fit-content;max-width:100%}
+        .partner-team-tabs button{border:0;background:transparent;color:#3d5a6c;font:inherit;font-size:13px;font-weight:800;padding:8px 14px;border-radius:8px;cursor:pointer}
+        .partner-team-tabs button.is-on{background:#fff;color:#1a6b7a;box-shadow:0 1px 3px rgba(20,50,70,.08)}
         .partner-team-names{display:flex;flex-direction:column;gap:8px;width:100%}
         .partner-team-names button{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;min-height:44px;padding:10px 12px;border-radius:8px;border:1px solid #c5d4de;background:#fff;color:#143246;font:inherit;font-size:15px;font-weight:800;cursor:pointer;text-align:left}
         .partner-team-names button .member-mobile{font-size:15px;font-weight:800;color:#143246;letter-spacing:.02em}
@@ -233,13 +234,28 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
         .partner-team-status.is-rejected{color:#9b2c2c}
         .partner-team-status.is-pending{color:#8a5a00}
       `}</style>
-      <div className="partner-team-head">
-        <h2>Team</h2>
-        {mode === "list" ? (
-          <button type="button" onClick={openAdd}>
-            Add team member
-          </button>
-        ) : null}
+      <div className="partner-team-tabs" role="tablist" aria-label="Team">
+        <button
+          type="button"
+          role="tab"
+          className={mode === "list" ? "is-on" : ""}
+          aria-selected={mode === "list"}
+          onClick={showList}
+        >
+          Team
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className={mode === "form" ? "is-on" : ""}
+          aria-selected={mode === "form"}
+          onClick={() => {
+            if (mode === "form" && !editingId) return;
+            openAdd();
+          }}
+        >
+          Add Team Member
+        </button>
       </div>
       {mode === "list" ? (
         <>
@@ -312,7 +328,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
           save();
         }}
       >
-        <h2>{editingId ? "Edit details" : "Add team member"}</h2>
+        <h2>{editingId ? "Edit details" : "Add Team Member"}</h2>
         <label>
           Name
           <input

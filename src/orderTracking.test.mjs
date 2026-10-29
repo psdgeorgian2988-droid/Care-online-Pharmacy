@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { diagnosticCompleteFields } from "./labPipeline.js";
 import { pharmacyDeliveredFields, pharmacyPickedUpFields } from "./pharmacyTrack.js";
-import { customerMobilesFromOrders } from "./orderSync.js";
+import { customerMobilesFromOrders, ordersForAccount } from "./orderSync.js";
 import { isOngoingTrackOrder, isOpenOrder, ongoingTrackOrders } from "./orderStatus.js";
 
 const liveMedicine = {
@@ -105,5 +105,22 @@ test("customer mine sync reads mobiles from orders and the signed-in profile", (
       { mobile: "9123456789" }
     ),
     ["9876543210", "9123456789"]
+  );
+});
+
+test("orders stay empty for guests and match a registered account", () => {
+  const rows = [
+    { id: "mine", mobile: "9876543210" },
+    { id: "family", mobile: "9123456780" },
+    { id: "other", mobile: "9000000001" },
+  ];
+  assert.deepEqual(ordersForAccount(rows, null), []);
+  assert.deepEqual(ordersForAccount(rows, { mobile: "9876543210", isGuest: true }), []);
+  assert.deepEqual(
+    ordersForAccount(rows, {
+      mobile: "9876543210",
+      familyMembers: [{ mobile: "9123456780" }],
+    }).map((row) => row.id),
+    ["mine", "family"]
   );
 });

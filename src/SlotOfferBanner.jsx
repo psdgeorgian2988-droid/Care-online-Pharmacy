@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { hasAccountSession } from "./authSession";
 import { readUserProfile } from "./addressFields";
 import { fetchCustomerNotifications } from "./customerNotifyApi";
 import {
   isAwaitingCustomerSlotConfirm,
 } from "./orderConfirm";
-import { loadAllOrders, refreshOrderFromServer } from "./orderTracking";
+import { loadCustomerOrders, refreshOrderFromServer } from "./orderTracking";
 import SlotOfferCard from "./SlotOfferCard";
 
 function last10(value) {
@@ -18,9 +19,13 @@ export default function SlotOfferBanner() {
   useEffect(() => {
     let cancelled = false;
     const tick = async () => {
+      if (!hasAccountSession()) {
+        if (!cancelled) setOrder(null);
+        return;
+      }
       const profile = readUserProfile();
       const mobile = last10(profile?.mobile);
-      const local = loadAllOrders().find((row) => isAwaitingCustomerSlotConfirm(row));
+      const local = loadCustomerOrders().find((row) => isAwaitingCustomerSlotConfirm(row));
       if (local && !cancelled) {
         const latest = (await refreshOrderFromServer(local.bookingId || local.id)) || local;
         if (!cancelled) setOrder(latest);

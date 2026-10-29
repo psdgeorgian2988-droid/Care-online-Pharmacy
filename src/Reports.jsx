@@ -20,7 +20,7 @@ import {
   isDiagnosticKind,
   mergeOrderReportIntoStore,
 } from "./labPipeline";
-import { loadAllOrders } from "./orderTracking";
+import { loadCustomerOrders } from "./orderTracking";
 import {
   ADD_UNLISTED_TEST,
   LABORATORY_TESTS,
@@ -204,7 +204,7 @@ function Reports({ initialTab = "" } = {}) {
   );
   const [reports, setReports] = useState(() => loadMedicalRecords());
   const [vaxStore, setVaxStore] = useState(() => loadVaccinationStore());
-  const [vaxOrders, setVaxOrders] = useState(() => loadAllOrders());
+  const [vaxOrders, setVaxOrders] = useState(() => loadCustomerOrders());
   const combinedRecords = useMemo(
     () =>
       collectMedicalRecords(reports, {
@@ -248,7 +248,7 @@ function Reports({ initialTab = "" } = {}) {
   const patientRows = people;
 
   useEffect(() => {
-    const orders = loadAllOrders();
+    const orders = loadCustomerOrders();
     setVaxOrders(orders);
     orders.forEach((order) => {
       const kind = order?.kind || order?.orderType;
@@ -264,7 +264,7 @@ function Reports({ initialTab = "" } = {}) {
     setReports(kept);
     const refresh = () => {
       setReports(loadMedicalRecords());
-      setVaxOrders(loadAllOrders());
+      setVaxOrders(loadCustomerOrders());
     };
     window.addEventListener("storage", refresh);
     window.addEventListener("focus", refresh);

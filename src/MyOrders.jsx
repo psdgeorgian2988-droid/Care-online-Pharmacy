@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { goBackHash, goToHash, parseAppHash } from "./hashRoute";
+import { hasAccountSession, useLoginSession } from "./authSession";
 import {
-  loadAllOrders,
+  loadCustomerOrders,
   refreshOrderFromServer,
   syncMyOrdersFromServer,
   trackHref,
@@ -57,7 +58,9 @@ function emptyForTab(tab) {
 }
 
 function MyOrders() {
-  const [orders, setOrders] = useState(() => loadAllOrders());
+  const session = useLoginSession();
+  const registered = hasAccountSession(session);
+  const [orders, setOrders] = useState(() => loadCustomerOrders());
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [serviceTab, setServiceTab] = useState(() =>
     typeof window === "undefined" ? "" : tabFromHash(window.location.hash)
@@ -91,7 +94,11 @@ function MyOrders() {
   useEffect(() => {
     let cancelled = false;
     const tick = async () => {
-      const next = await syncMyOrdersFromServer(loadAllOrders());
+      if (!registered) {
+        if (!cancelled) setOrders([]);
+        return;
+      }
+      const next = await syncMyOrdersFromServer(loadCustomerOrders());
       if (cancelled) return;
       setOrders(next);
       setSelectedOrder((current) => {
@@ -110,7 +117,7 @@ function MyOrders() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, []);
+  }, [registered]);
 
   const handleSelectedChange = (next) => {
     setSelectedOrder(next);
@@ -145,7 +152,7 @@ function MyOrders() {
         ) : null}
       </div>
 
-      {selectedOrder ? (
+      {registered && selectedOrder ? (
         <div className="order-details-page">
           <OrderFullView order={selectedOrder} audience="customer" />
           {isOngoingTrackOrder(selectedOrder) ? (
@@ -158,6 +165,7 @@ function MyOrders() {
         </div>
       ) : (
         <>
+          {registered ? (
           <div
             className="my-orders-service-tiles"
             role="tablist"
@@ -185,8 +193,13 @@ function MyOrders() {
               );
             })}
           </div>
+          ) : null}
 
-          {!serviceTab ? (
+          {!registered ? (
+            <div className="orders-empty">
+              <p>Orders stay on a registered account. Log in to see them here.</p>
+            </div>
+          ) : !serviceTab ? (
             <div className="orders-empty">
               <p>Choose a service to see your orders.</p>
             </div>

@@ -7,7 +7,7 @@ import {
   isOngoingTrackOrder,
   isPartnerEnRoute,
   kindLabel,
-  loadAllOrders,
+  loadCustomerOrders,
   ongoingTrackOrders,
   partnerCopy,
   persistOrder,
@@ -407,7 +407,7 @@ export default function TrackPage({ trackId, from = "" }) {
       } else {
         setOrder(null);
         setMissing(Boolean(trackId));
-        setOthers(ongoingTrackOrders(loadAllOrders()));
+        setOthers(ongoingTrackOrders(loadCustomerOrders()));
       }
     })();
     return () => {
