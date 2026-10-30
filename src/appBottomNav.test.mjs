@@ -43,7 +43,6 @@ test("footer icons are Account first, then one home segment each", () => {
       "Account",
       "Medicines",
       "Labs",
-      "Orders",
       "Doctor",
       "Medical Record",
       "Home Care",
@@ -53,7 +52,7 @@ test("footer icons are Account first, then one home segment each", () => {
   assert.match(source, /href: "#profile", label: "Account"/);
   assert.match(source, /href: MEDICINE_HOME_HASH, label: "Medicines"/);
   assert.match(source, /href: LABS_HOME_HASH, label: "Labs"/);
-  assert.match(source, /href: "#myorders", label: "Orders"/);
+  assert.doesNotMatch(source, /label: "Orders"/);
   assert.match(source, /href: DOCTOR_HOME_HASH, label: "Doctor"/);
   assert.match(source, /href: MEDICAL_RECORD_HOME_HASH, label: "Medical Record"/);
   assert.match(source, /href: HOMECARE_HOME_HASH, label: "Home Care"/);
@@ -69,7 +68,7 @@ test("footer icons are Account first, then one home segment each", () => {
   assert.match(source, /icon: "account"/);
   assert.match(source, /icon: "medicine"/);
   assert.match(source, /icon: "lab"/);
-  assert.match(source, /icon: "orders"/);
+  assert.doesNotMatch(source, /icon: "orders"/);
   assert.match(source, /icon: "doctor"/);
   assert.doesNotMatch(source, /stroke="currentColor"/);
 });

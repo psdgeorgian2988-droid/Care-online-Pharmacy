@@ -16,6 +16,9 @@ export default function HomePrescriptionUpload({
   idPrefix = "home",
   detect = "",
   disabled = false,
+  label = "Upload Rx",
+  inline = false,
+  formOnly = false,
 } = {}) {
   const fileRef = useRef(null);
   const cameraRef = useRef(null);
@@ -52,8 +55,41 @@ export default function HomePrescriptionUpload({
     }
   };
 
+  if (formOnly) {
+    return (
+      <form
+        className="profile-report-form"
+        aria-label="Upload prescription"
+        onSubmit={(event) => event.preventDefault()}
+      >
+        {draft?.fileName ? (
+          <p className="profile-report-note">
+            Saved file: {draft.fileName}.{" "}
+            <button type="button" onClick={() => goToHash("#prescription")}>
+              Open prescription
+            </button>
+          </p>
+        ) : (
+          <p className="profile-report-note">Choose a photo or PDF of the prescription.</p>
+        )}
+        <label>
+          Prescription file
+          <input
+            id={`${idPrefix}RxFile`}
+            type="file"
+            accept="image/*,application/pdf,.pdf,.png,.jpg,.jpeg,.webp"
+            disabled={disabled || busy}
+            onChange={onFile}
+          />
+        </label>
+        {busy ? <p className="profile-report-note">Uploading…</p> : null}
+        {status ? <small className="profile-error">{status}</small> : null}
+      </form>
+    );
+  }
+
   return (
-    <div className={`home-rx-cart-row${disabled ? " is-disabled" : ""}`}>
+    <div className={`${inline ? "home-rx-inline" : "home-rx-cart-row"}${disabled ? " is-disabled" : ""}`}>
       <section
         className="home-rx-upload"
         aria-label={draft?.fileName ? "Uploaded prescription" : "Upload prescription"}
@@ -131,7 +167,7 @@ export default function HomePrescriptionUpload({
               fileRef.current?.click();
             }}
           >
-            {busy ? "Uploading…" : "Upload Rx"}
+            {busy ? "Uploading…" : label}
           </button>
         )}
         {status ? <small className="home-rx-error">{status}</small> : null}

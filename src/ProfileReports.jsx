@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import RecordViewer from "./RecordViewer.jsx";
+import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
 import { readUserProfile } from "./addressFields";
 import { useLoginSession } from "./authSession";
 import { LABORATORY_TESTS, RADIOLOGY_TESTS } from "./healthTestNames";
@@ -92,6 +93,7 @@ export default function ProfileReports() {
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [viewer, setViewer] = useState(null);
+  const [panel, setPanel] = useState("");
 
   useEffect(() => {
     const refresh = () => setRecords(loadMedicalRecords());
@@ -201,9 +203,30 @@ export default function ProfileReports() {
   };
 
   return (
-    <section className="profile-card profile-reports" aria-label="Upload reports">
+    <div className="profile-reports" aria-label="Upload reports">
       <style>{reportStyles}</style>
-      <h2>Reports</h2>
+      <div className="profile-upload-row">
+        <button
+          type="button"
+          className={panel === "prescription" ? "profile-upload-tab is-on" : "profile-upload-tab"}
+          aria-expanded={panel === "prescription"}
+          onClick={() => setPanel("prescription")}
+        >
+          Upload Prescription
+        </button>
+        <button
+          type="button"
+          className={panel === "report" ? "profile-upload-tab is-on" : "profile-upload-tab"}
+          aria-expanded={panel === "report"}
+          onClick={() => setPanel("report")}
+        >
+          Upload Report
+        </button>
+      </div>
+      {panel === "prescription" ? (
+        <HomePrescriptionUpload showCart={false} idPrefix="profile" formOnly />
+      ) : null}
+      {panel === "report" ? (
       <form className="profile-report-form" onSubmit={saveReport}>
         {people.length > 1 ? (
           <label>
@@ -310,6 +333,7 @@ export default function ProfileReports() {
           {busy ? "Saving report…" : "Save report"}
         </button>
       </form>
+      ) : null}
 
       {groups.length ? (
         <div className="profile-report-list">
@@ -346,21 +370,26 @@ export default function ProfileReports() {
             );
           })}
         </div>
-      ) : (
-        <p className="profile-report-note">No reports saved for this person yet.</p>
-      )}
+      ) : null}
       {viewer ? <RecordViewer record={viewer} onClose={() => setViewer(null)} /> : null}
-    </section>
+    </div>
   );
 }
 
 const reportStyles = `
-  .profile-reports h2{margin:0;color:#123b59;font-size:16px}
+  .profile-upload-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:8px}
+  .profile-reports{display:grid;gap:12px}
+  .profile-upload-row .home-rx-inline,.profile-upload-row .home-rx-cart-row{width:auto;max-width:100%;margin:0;justify-content:flex-start}
+  .profile-upload-row .home-rx-tab{height:36px;min-height:36px;max-height:36px;padding:0 14px;border:1px solid #1a6b7a;border-radius:999px;background:#fff;color:#1a6b7a}
+  .profile-upload-row .home-rx-tab.is-on{background:#fff;color:#1a6b7a;border-color:#1a6b7a}
+  .profile-upload-tab{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:36px;min-height:36px;padding:0 14px;border:1px solid #1a6b7a;border-radius:999px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:800;line-height:1;cursor:pointer;white-space:nowrap}
+  .profile-upload-tab.is-on{background:#1a6b7a;color:#fff}
   .profile-reports>p{margin:0;color:#607589;font-size:13px;line-height:1.4}
   .profile-report-form{display:grid;gap:10px}
   .profile-report-form label{display:grid;gap:4px;font-size:12px;font-weight:700;color:#34546b}
   .profile-report-form select,.profile-report-form input{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px}
   .profile-report-note{margin:0;color:#5d7180;font-size:12px;line-height:1.4}
+  .profile-report-note button{border:0;background:transparent;color:#1a6b7a;font:inherit;font-size:12px;font-weight:800;cursor:pointer;padding:0}
   .profile-report-values{display:grid;gap:8px}
   .profile-report-values>p{margin:0;color:#5d7180;font-size:12px}
   .profile-report-value{display:grid;grid-template-columns:1.4fr .8fr .7fr;gap:6px}

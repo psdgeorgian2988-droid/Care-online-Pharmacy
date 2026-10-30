@@ -32,7 +32,6 @@ import { loadCustomerOrders } from "./orderTracking";
 import { orderCurrentStatus, serviceKind } from "./orderStatus";
 import { useSyncedOrderTick } from "./useSyncedOrderTick";
 import CustomerLogOut from "./CustomerLogOut.jsx";
-import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
 import ProfileReports from "./ProfileReports.jsx";
 import { MEMBER_ROLE, holderActor } from "./familyAccount";
 import { pickLoginPin } from "./loginPin";
@@ -76,6 +75,20 @@ function ProfileOrders() {
       )}
     </section>
   );
+}
+
+function ProfileUploads() {
+  return (
+    <section className="profile-card" aria-label="Uploads">
+      <h2>Uploads</h2>
+      <ProfileReports />
+    </section>
+  );
+}
+
+function hasFamilyTree(profile) {
+  if (String(profile?.name || "").trim()) return true;
+  return (profile?.familyMembers || []).some((member) => String(member?.name || "").trim());
 }
 
 function Profile() {
@@ -209,6 +222,7 @@ function Profile() {
             </div>
           </section>
           <section className="profile-card" aria-label="Your details">
+            <h2>Your details</h2>
             <dl className="profile-member-details">
               <div>
                 <dt>Name</dt>
@@ -233,11 +247,7 @@ function Profile() {
             </dl>
           </section>
           <ProfileOrders />
-          <section className="profile-card profile-prescription-card" aria-label="Prescription">
-            <h2>Prescription</h2>
-            <HomePrescriptionUpload showCart={false} />
-          </section>
-          <ProfileReports />
+          <ProfileUploads />
           <div className="profile-actions">
             <CustomerLogOut className="profile-logout-btn" />
           </div>
@@ -253,12 +263,13 @@ function Profile() {
         <section className="profile-hero">
           <div className="profile-hero-copy">
             <span className="profile-label">MEDIHOME ACCOUNT</span>
-            <h1>{form.name || "Your Family"}</h1>
+            <h1>{form.name || "Your account"}</h1>
+            <p>{maskMobile(accountCreatorMobile(form)) || "Add your name and family below."}</p>
           </div>
           <div className="profile-points-wrap" ref={pointsWrapRef}>
             <button
               type="button"
-              className="profile-points-tab"
+              className="profile-points"
               aria-label="Your MediHome points"
               aria-expanded={pointsOpen}
               aria-haspopup="dialog"
@@ -274,10 +285,8 @@ function Profile() {
                 goToHash("#profile?service=points");
               }}
             >
-              <span className="profile-points-tab-label">MediHome points</span>
-              <strong className="profile-points-tab-value">
-                {pointsPanel.balance.toLocaleString("en-IN")}
-              </strong>
+              <strong>{pointsPanel.balance.toLocaleString("en-IN")}</strong>
+              <span>Points</span>
             </button>
             {pointsOpen && pointsPanel.canRedeem ? (
               <div className="profile-points-pop" role="dialog" aria-label="Redeem points">
@@ -291,21 +300,13 @@ function Profile() {
         </section>
 
         <ProfileOrders />
-
-        <section className="profile-card profile-prescription-card" aria-label="Prescription">
-          <h2>Prescription</h2>
-          <HomePrescriptionUpload showCart={false} />
-        </section>
-
-        <ProfileReports />
-
-        <section className="profile-card" aria-label="Family tree">
-          <FamilyTree profile={form} />
-        </section>
+        <ProfileUploads />
 
         <form className="profile-form" onSubmit={handleSave} autoComplete="off">
           <AutofillTrap />
-          <section className="profile-card" aria-label="Add family members">
+          <section className="profile-card profile-family" aria-label="Family">
+            <h2>Family</h2>
+            {hasFamilyTree(form) ? <FamilyTree profile={form} /> : null}
             <FamilyMembersFields
               idPrefix="profile-family"
               members={form.familyMembers}
@@ -317,8 +318,10 @@ function Profile() {
             />
           </section>
 
-          {editDetails ? (
-            <section className="profile-card">
+          <section className="profile-card" aria-label="Account">
+            <h2>Account</h2>
+            {editDetails ? (
+              <>
               <div className="profile-field">
                 <label htmlFor="profile-account-name">
                   Full Name <span>*</span>
@@ -381,29 +384,43 @@ function Profile() {
                 errors={errors}
                 onChange={handleChange}
               />
-            </section>
-          ) : null}
-
-          {saved ? (
-            <p className="profile-success">
-              {typeof saved === "string"
-                ? saved
-                : "Profile saved. These details will auto-fill medicine checkout and laboratory/radiology bookings for yourself."}
-            </p>
-          ) : null}
-
-          <div className="profile-actions">
-            <button
-              type="button"
-              className="profile-edit-btn"
-              onClick={() => setEditDetails((on) => !on)}
-            >
-              {editDetails ? "Hide Account Details" : "Edit Account Details"}
-            </button>
-            <button type="submit" className="profile-save-btn">
-              Save Profile
-            </button>
-          </div>
+              </>
+            ) : (
+              <dl className="profile-summary">
+                <div>
+                  <dt>Name</dt>
+                  <dd>{form.name || "Not added"}</dd>
+                </div>
+                <div>
+                  <dt>Mobile</dt>
+                  <dd>{maskMobile(accountCreatorMobile(form)) || "Not added"}</dd>
+                </div>
+                <div>
+                  <dt>Mail ID</dt>
+                  <dd>{form.email || "Not added"}</dd>
+                </div>
+              </dl>
+            )}
+            {saved ? (
+              <p className="profile-success">
+                {typeof saved === "string"
+                  ? saved
+                  : "Profile saved. These details will auto-fill medicine checkout and laboratory/radiology bookings for yourself."}
+              </p>
+            ) : null}
+            <div className="profile-actions">
+              <button
+                type="button"
+                className="profile-edit-btn"
+                onClick={() => setEditDetails((on) => !on)}
+              >
+                {editDetails ? "Hide Account Details" : "Edit Account Details"}
+              </button>
+              <button type="submit" className="profile-save-btn">
+                Save Profile
+              </button>
+            </div>
+          </section>
         </form>
 
         <div className="profile-refer-wrap">
@@ -418,30 +435,34 @@ function Profile() {
 }
 
 const styles = `
-  .profile-page{min-height:auto;padding:28px 4% 40px;background:transparent;color:#17324d;box-sizing:border-box}
-  .profile-hero{max-width:760px;margin:0 auto 14px;padding:16px 22px;border-radius:14px;background:linear-gradient(135deg,#eaf7ff,#f4fbf8);display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:nowrap;box-shadow:0 3px 12px rgba(30,100,140,.07)}
+  .profile-page{display:grid;gap:12px;max-width:760px;margin:0 auto;padding:16px 0 32px;background:transparent;color:#17324d;box-sizing:border-box}
+  .profile-hero{margin:0;padding:16px 18px;border-radius:14px;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:16px;box-shadow:0 3px 12px rgba(0,0,0,.06)}
   .profile-hero-copy{min-width:0;flex:1}
   .profile-label{display:inline-block;margin-bottom:4px;font-size:10px;font-weight:800;letter-spacing:1.3px;color:#1686b8}
-  .profile-hero h1{margin:0 0 4px;font-size:25px;color:#123b59}
+  .profile-hero h1{margin:0 0 4px;font-size:24px;color:#123b59}
   .profile-hero p{margin:0;color:#607589;font-size:13px;line-height:1.4}
-  .profile-points-wrap{position:relative;flex:0 0 auto;align-self:flex-start}
-  .profile-points-tab{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:132px;padding:0;border:0;background:transparent;color:#123b59;cursor:pointer;font:inherit;text-align:right}
-  .profile-points-tab-label{display:inline-block;padding:6px 12px;border-radius:8px 8px 0 0;background:#1a6b7a;color:#fff;font-size:11px;font-weight:800;letter-spacing:.03em;line-height:1.2;white-space:nowrap}
-  .profile-points-tab-value{display:block;margin:0;padding:0 2px;font-size:28px;font-weight:700;line-height:1.1;letter-spacing:-.02em;color:#123b59;font-variant-numeric:tabular-nums}
+  .profile-points-wrap{position:relative;flex:0 0 auto}
+  .profile-points{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:76px;padding:8px 12px;border:0;border-radius:12px;background:#eef7f8;color:#123b59;cursor:pointer;font:inherit}
+  .profile-points strong{font-size:22px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+  .profile-points span{font-size:11px;font-weight:800;color:#1a6b7a}
   .profile-points-pop{position:absolute;top:calc(100% + 8px);right:0;z-index:4;width:min(240px,74vw);padding:12px;border-radius:12px;background:#fff;color:#143246;box-shadow:0 8px 24px rgba(20,50,70,.16);text-align:left}
   .profile-points-pop p{margin:0;color:#34546b;font-size:12px;line-height:1.4}
   .profile-points-pop-title{margin:0 0 6px !important;font-size:13px !important;font-weight:800;color:#123b59}
   .profile-redeem-btn{display:block;width:100%;margin-top:10px;border:0;border-radius:8px;padding:8px 10px;background:#1a6b7a;color:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
-  .profile-refer-wrap,.profile-form{max-width:760px;margin:0 auto 14px}
-  .profile-form{display:grid;gap:14px}
-  .profile-card{max-width:760px;margin:0 auto 14px;padding:18px;background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.06);display:grid;gap:12px}
-  .profile-card h2{margin:0;font-size:16px;color:#143246}
+  .profile-refer-wrap{margin:0}
+  .profile-refer-wrap .points-refer-card{box-shadow:0 3px 12px rgba(0,0,0,.06)}
+  .profile-form{display:grid;gap:12px;margin:0;max-width:none}
+  .profile-card{margin:0;padding:16px 18px;background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.06);display:grid;gap:12px}
+  .profile-card h2{margin:0;font-size:16px;color:#123b59}
+  .profile-family .family-tree{border:0;background:#f7fbfc}
+  .profile-summary,.profile-member-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:0}
+  .profile-summary div,.profile-member-details div{display:grid;gap:2px;padding:10px 12px;border-radius:10px;background:#f4fafb}
+  .profile-summary dt,.profile-member-details dt{font-size:11px;font-weight:800;color:#5d7180}
+  .profile-summary dd,.profile-member-details dd{margin:0;font-size:15px;font-weight:700;color:#143246}
   .profile-order-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
-  .profile-order-list a{display:flex;justify-content:space-between;gap:12px;color:#143246;text-decoration:none;font-size:14px}
-  .profile-order-list strong{font-weight:800}
+  .profile-order-list a{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:10px;background:#f4fafb;color:#143246;text-decoration:none;font-size:14px}
+  .profile-order-list strong{font-weight:800;color:#1a6b7a}
   .profile-order-empty{margin:0;color:#5d7180;font-size:14px}
-  .profile-prescription-card h2{margin:0;color:#123b59;font-size:16px}
-  .profile-prescription-card>p{margin:0;color:#607589;font-size:13px;line-height:1.4}
   .profile-field{display:flex;flex-direction:column}
   .profile-field label{margin-bottom:5px;font-size:12px;font-weight:700;color:#34546b}
   .profile-field label span{color:#e34d4d}
@@ -452,17 +473,13 @@ const styles = `
   .profile-error{margin-top:4px;color:#d84b4b;font-size:11px}
   .profile-hint{margin-top:4px;color:#5d7180;font-size:11px}
   .profile-success{margin:0;padding:10px 12px;border-radius:8px;background:#e5f8ee;color:#1c9b61;font-size:13px;font-weight:600}
-  .profile-actions{display:flex;flex-wrap:wrap;gap:8px;max-width:760px;margin:0 auto 14px}
+  .profile-actions{display:flex;flex-wrap:wrap;gap:8px;margin:0}
   .profile-save-btn,.profile-edit-btn,.profile-logout-btn{border:none;border-radius:8px;padding:11px 16px;font-size:14px;font-weight:800;cursor:pointer}
   .profile-save-btn{background:#1a6b7a;color:#fff}
   .profile-edit-btn{background:#fff;color:#1a6b7a;border:1px solid #d7e2e9}
   .profile-logout-btn{background:#fff;color:#9b3d3d;border:1px solid #e4c4c4}
-  .profile-member-details{display:grid;gap:10px;margin:0}
-  .profile-member-details div{display:grid;gap:2px}
-  .profile-member-details dt{font-size:11px;font-weight:800;color:#5d7180}
-  .profile-member-details dd{margin:0;font-size:15px;font-weight:700;color:#143246}
-  @media (max-width:520px){.profile-hero{flex-wrap:wrap}.profile-points-wrap{margin-left:auto}}
-  @media (max-width:800px){.profile-page{padding:14px 10px}.profile-hero{padding:14px}}
+  @media (max-width:520px){.profile-hero{align-items:flex-start}}
+  @media (max-width:800px){.profile-page{padding:12px 0 28px}.profile-hero,.profile-card{padding:14px}}
 `;
 
 export default Profile;

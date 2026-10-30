@@ -7472,6 +7472,24 @@ html.is-customer-app .app-chrome-header,
   pointer-events: none;
 }
 
+.home-rx-inline {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: auto;
+  max-width: 100%;
+  min-height: 32px;
+  margin: 0;
+}
+
+.home-rx-inline.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 .home-rx-upload {
   display: flex;
   flex-wrap: nowrap;

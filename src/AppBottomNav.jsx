@@ -19,7 +19,6 @@ export const TABS = [
   { href: "#profile", label: "Account", icon: "account" },
   { href: MEDICINE_HOME_HASH, label: "Medicines", icon: "medicine" },
   { href: LABS_HOME_HASH, label: "Labs", icon: "lab" },
-  { href: "#myorders", label: "Orders", icon: "orders" },
   { href: DOCTOR_HOME_HASH, label: "Doctor", icon: "doctor" },
   { href: MEDICAL_RECORD_HOME_HASH, label: "Medical Record", icon: "record" },
   { href: HOMECARE_HOME_HASH, label: "Home Care", icon: "homecare" },
@@ -43,7 +42,6 @@ export function tabActive(href, route, service = "") {
   }
   if (href === MEDICINE_HOME_HASH) return isMedicineNavActive(route, service);
   if (href === LABS_HOME_HASH) return isLabsNavActive(route, service);
-  if (href === "#myorders") return route === "#myorders" || route === "#track";
   if (href === DOCTOR_HOME_HASH) return isDoctorNavActive(route, service);
   if (href === MEDICAL_RECORD_HOME_HASH) return isMedicalRecordNavActive(route, service);
   if (href === HOMECARE_HOME_HASH) return isHomecareNavActive(route, service);
