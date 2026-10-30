@@ -8,13 +8,9 @@ import { goToHash } from "./hashRoute";
 import { groupOrdersByKind, trackKey } from "./orderStatus";
 import {
   jobsForPartnerApp,
-  PARTNER_LOGIN_OPTIONS,
   partnerAppKind,
   partnerAppTitle,
   partnerDeskHash,
-  partnerLoginOptionActive,
-  partnerLoginTitle,
-  partnerServesDesk,
 } from "./partnerApp";
 import { isDeliveryPartner } from "./partnerRetention";
 import {
@@ -158,7 +154,7 @@ function previewPartnerSplit(job, paymentMethod) {
   });
 }
 
-export default function Partner({ deskKind = "", route = "", service = "" }) {
+export default function Partner() {
   const session = partnerSession();
   const [token, setToken] = useState(session.token);
   const [partner, setPartner] = useState(session.partner);
@@ -192,8 +188,8 @@ export default function Partner({ deskKind = "", route = "", service = "" }) {
     try {
       const data = await fetchPartnerJobs();
       const sessionPartner = partner || partnerSession().partner;
-      setJobs(jobsForPartnerApp(data.jobs, sessionPartner, deskKind));
-      if (deskKind === "medicine" || partnerAppKind(sessionPartner) === "medicine") {
+      setJobs(jobsForPartnerApp(data.jobs, sessionPartner));
+      if (partnerAppKind(sessionPartner) === "medicine") {
         try {
           setInventory(await fetchPartnerStock());
         } catch {
@@ -214,19 +210,11 @@ export default function Partner({ deskKind = "", route = "", service = "" }) {
 
   useEffect(() => {
     if (!partner) return undefined;
-    if (deskKind && !partnerServesDesk(partner, deskKind)) {
-      partnerLogout();
-      setToken("");
-      setPartner(null);
-      return undefined;
-    }
-    if (deskKind) return undefined;
-    const ownKind = partnerAppKind(partner);
-    const ownDesk = partnerDeskHash(ownKind, partner);
+    const ownDesk = partnerDeskHash(partnerAppKind(partner), partner);
     const current = String(window.location.hash || "").split("?")[0];
     if (ownDesk && current !== ownDesk) goToHash(ownDesk);
     return undefined;
-  }, [partner, deskKind]);
+  }, [partner]);
 
   useEffect(() => {
     if (token) loadJobs();
@@ -477,21 +465,11 @@ export default function Partner({ deskKind = "", route = "", service = "" }) {
     setLoginNote("");
     try {
       const data = await partnerLogin(loginId, password);
-      const appKind = partnerAppKind(data.partner);
-      if (deskKind && !partnerServesDesk(data.partner, deskKind)) {
-        partnerLogout();
-        setToken("");
-        setPartner(null);
-        setError(
-          `This login belongs to the ${partnerAppTitle(appKind, data.partner)} app. Open that app to continue.`
-        );
-        return;
-      }
+      const signedKind = partnerAppKind(data.partner);
       setToken(data.token);
       setPartner(data.partner);
       setPassword("");
-      const openedDesk = deskKind && partnerServesDesk(data.partner, deskKind);
-      const nextDesk = openedDesk ? "" : partnerDeskHash(appKind, data.partner);
+      const nextDesk = partnerDeskHash(signedKind, data.partner);
       if (nextDesk && window.location.hash.split("?")[0] !== nextDesk) {
         goToHash(nextDesk);
       }
@@ -501,24 +479,17 @@ export default function Partner({ deskKind = "", route = "", service = "" }) {
   };
 
   const showScanCol = isDeliveryPartner(partner);
-  const appKind = deskKind || (partner ? partnerAppKind(partner) : "");
-  const deskHash =
-    typeof window !== "undefined"
-      ? String(window.location.hash || "").split("?")[0]
-      : "";
+  const appKind = partner ? partnerAppKind(partner) : "";
   const appTitle = partner
-    ? partnerAppTitle(appKind, partner, deskHash)
-    : partnerLoginTitle(deskKind, { service, route: route || deskHash });
-  const deliveryDesk = isDeliveryPartner(partner) || deskHash === "#delivery-desk";
-  const isStepDownDesk = appKind === "stepdown" || deskHash === "#stepdown-desk";
+    ? partnerAppTitle(appKind, partner, partnerDeskHash(appKind, partner))
+    : "Partner";
+  const deliveryDesk = isDeliveryPartner(partner);
+  const isStepDownDesk = appKind === "stepdown";
   const homeTabs = [
     { id: "home", label: "Home" },
     { id: "orders", label: "Orders" },
     { id: "reports", label: "Search reports" },
   ];
-  const foreignSession = Boolean(
-    partner && deskKind && !partnerServesDesk(partner, deskKind)
-  );
   const sharedStayRef = useRef(new Set());
 
   useEffect(() => {
@@ -571,7 +542,7 @@ export default function Partner({ deskKind = "", route = "", service = "" }) {
     };
   }, [token, partner, isStepDownDesk, jobs]);
 
-  if (!token || !partner || foreignSession) {
+  if (!token || !partner) {
     return (
       <>
         <style>{styles}</style>
@@ -595,31 +566,6 @@ export default function Partner({ deskKind = "", route = "", service = "" }) {
             />
           ) : (
           <form className="service-form admin-login" onSubmit={handleLogin}>
-            <div className="field">
-              <label htmlFor="partner-kind">Partner type</label>
-              <select
-                id="partner-kind"
-                value={
-                  PARTNER_LOGIN_OPTIONS.find((option) =>
-                    partnerLoginOptionActive(option, {
-                      route: route || deskHash,
-                      service,
-                    })
-                  )?.id || ""
-                }
-                onChange={(event) => {
-                  const option = PARTNER_LOGIN_OPTIONS.find((row) => row.id === event.target.value);
-                  goToHash(option?.hash || "#partner-desk");
-                }}
-              >
-                <option value="">Select partner type</option>
-                {PARTNER_LOGIN_OPTIONS.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
             <div className="field">
               <label htmlFor="partner-login-id">Login ID</label>
               <input
