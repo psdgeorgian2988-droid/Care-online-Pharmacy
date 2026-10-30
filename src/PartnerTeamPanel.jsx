@@ -1,5 +1,8 @@
 import { useState } from "react";
+import DoctorCredentialFields from "./DoctorCredentialFields.jsx";
+import { doctorProfileMissing, experienceLabel, specialtyLabel } from "./doctorCredentials.js";
 import { emptyPartnerProfile } from "./partnerProfile.js";
+import { partnerAppKind } from "./partnerApp.js";
 import { teamDocumentSummary, teamFrom, teamStatusLabel } from "./partnerTeam.js";
 import {
   addPartnerTeamMember,
@@ -80,6 +83,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
+  const isDoctor = partnerAppKind(partner) === "doctor";
 
   const setProfile = (patch) =>
     setDraft((current) => ({ ...current, profile: { ...current.profile, ...patch } }));
@@ -151,6 +155,13 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
   };
 
   const save = async () => {
+    if (isDoctor) {
+      const missing = doctorProfileMissing(draft);
+      if (missing) {
+        setError(missing);
+        return;
+      }
+    }
     setBusy(true);
     setError("");
     setNote("");
@@ -224,8 +235,11 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
         .partner-team h2{margin:0;font-size:16px}
         .partner-team p{margin:0;font-size:13px;line-height:1.4}
         .partner-team label{display:flex;flex-direction:column;gap:4px;font-size:12px}
-        .partner-team input,.partner-team button{font:inherit}
-        .partner-team input{min-height:34px;padding:6px 8px;border:1px solid #d7e2e9;border-radius:6px}
+        .partner-team input,.partner-team select,.partner-team button{font:inherit}
+        .partner-team input,.partner-team select{min-height:34px;padding:6px 8px;border:1px solid #d7e2e9;border-radius:6px;background:#fff}
+        .doctor-cert-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+        .doctor-cert-list li{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:13px}
+        .doctor-cert-list button{border:0;background:transparent;color:#9b3d3d;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
         .partner-team-actions{display:flex;gap:8px;flex-wrap:wrap}
         .partner-team-actions button{min-height:32px;padding:6px 10px;border-radius:6px;border:1px solid #c5d4de;background:#fff}
         .partner-team .partner-accept{border:0;background:#0b6b5a;color:#fff}
@@ -294,6 +308,14 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
                       </div>
                       <div className="detail-row"><span>Mobile</span><strong>{member.mobile || "—"}</strong></div>
                       <div className="detail-row"><span>Category</span><strong>{member.role || "—"}</strong></div>
+                      {isDoctor ? (
+                        <>
+                          <div className="detail-row"><span>Specialty</span><strong>{specialtyLabel(profile.specialty) || "—"}</strong></div>
+                          <div className="detail-row"><span>Experience</span><strong>{experienceLabel(profile.experienceYears) || "—"}</strong></div>
+                          <div className="detail-row"><span>Registration</span><strong>{profile.registrationNumber || "—"}</strong></div>
+                          <div className="detail-row"><span>Council</span><strong>{profile.registrationCouncil || "—"}</strong></div>
+                        </>
+                      ) : null}
                       <div className="detail-row"><span>Qualification</span><strong>{profile.qualification || "—"}</strong></div>
                       <div className="detail-row"><span>Email</span><strong>{profile.email || "—"}</strong></div>
                       <div className="detail-row"><span>Aadhaar</span><strong>{profile.aadhaarNumber || "—"}</strong></div>
@@ -329,6 +351,9 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
         }}
       >
         <h2>{editingId ? "Edit details" : "Add Team Member"}</h2>
+        {isDoctor ? (
+          <p>Every field is required, including a profile photo and at least one certificate.</p>
+        ) : null}
         <label>
           Name
           <input
@@ -358,21 +383,38 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
           <input
             value={draft.role}
             onChange={(event) => setDraft((current) => ({ ...current, role: event.target.value }))}
+            required={isDoctor}
+            minLength={isDoctor ? 2 : undefined}
           />
         </label>
-        <label>
-          Qualification
-          <input
-            value={draft.profile.qualification}
-            onChange={(event) => setProfile({ qualification: event.target.value })}
+        {isDoctor ? (
+          <DoctorCredentialFields
+            profile={draft.profile}
+            onChange={setProfile}
+            onPhoto={onPhoto}
+            onCertificate={(event) => onDocument(event, "certificate", 10 * 1024 * 1024)}
+            onRemoveCertificate={(index) =>
+              setProfile({
+                certificates: (draft.profile.certificates || []).filter((_, item) => item !== index),
+              })
+            }
           />
-        </label>
+        ) : (
+          <label>
+            Qualification
+            <input
+              value={draft.profile.qualification}
+              onChange={(event) => setProfile({ qualification: event.target.value })}
+            />
+          </label>
+        )}
         <label>
           Email
           <input
             type="email"
             value={draft.profile.email}
             onChange={(event) => setProfile({ email: event.target.value })}
+            required={isDoctor}
           />
         </label>
         <label>
@@ -383,13 +425,17 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
             onChange={(event) =>
               setProfile({ aadhaarNumber: event.target.value.replace(/\D/g, "").slice(0, 12) })
             }
+            required={isDoctor}
+            pattern={isDoctor ? "\\d{12}" : undefined}
           />
         </label>
-        <label>
-          Profile photo (JPG or PNG, 512×512, max 3 MB)
-          <input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" onChange={onPhoto} />
-          {draft.profile.photoName ? <span>{draft.profile.photoName}</span> : null}
-        </label>
+        {isDoctor ? null : (
+          <label>
+            Profile photo (JPG or PNG, 512×512, max 3 MB)
+            <input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" onChange={onPhoto} />
+            {draft.profile.photoName ? <span>{draft.profile.photoName}</span> : null}
+          </label>
+        )}
         <label>
           Aadhaar card (max 5 MB)
           <input
@@ -408,17 +454,19 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
           />
           {draft.profile.policeFileName ? <span>{draft.profile.policeFileName}</span> : null}
         </label>
-        <label>
-          Certificate (max 10 MB)
-          <input
-            type="file"
-            accept="image/*,.pdf,application/pdf"
-            onChange={(event) => onDocument(event, "certificate", 10 * 1024 * 1024)}
-          />
-          {draft.profile.certificates?.length ? (
-            <span>{draft.profile.certificates.map((row) => row.name).filter(Boolean).join(", ")}</span>
-          ) : null}
-        </label>
+        {isDoctor ? null : (
+          <label>
+            Certificate (max 10 MB)
+            <input
+              type="file"
+              accept="image/*,.pdf,application/pdf"
+              onChange={(event) => onDocument(event, "certificate", 10 * 1024 * 1024)}
+            />
+            {draft.profile.certificates?.length ? (
+              <span>{draft.profile.certificates.map((row) => row.name).filter(Boolean).join(", ")}</span>
+            ) : null}
+          </label>
+        )}
         {error ? <p className="admin-error">{error}</p> : null}
         {note ? <p>{note}</p> : null}
         <div className="partner-team-actions">

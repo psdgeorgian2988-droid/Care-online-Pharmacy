@@ -12,6 +12,8 @@ test("partner profile keeps qualification, contact, and documents", () => {
     email: "lab@medihome.in",
     profile: {
       qualification: "DMLT",
+      specialty: "cardiologist",
+      experienceYears: "8",
       email: "",
       aadhaarNumber: "1234 5678 9012",
       certificates: [{ name: "Lab licence", fileName: "lic.pdf", fileType: "application/pdf", fileData: "data:application/pdf;base64,YQ==" }],
@@ -21,6 +23,8 @@ test("partner profile keeps qualification, contact, and documents", () => {
     },
   });
   assert.equal(profile.qualification, "DMLT");
+  assert.equal(profile.specialty, "cardiologist");
+  assert.equal(profile.experienceYears, "8");
   assert.equal(profile.email, "lab@medihome.in");
   assert.equal(profile.aadhaarNumber, "123456789012");
   assert.equal(profile.certificates.length, 1);

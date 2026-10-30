@@ -66,6 +66,43 @@ export function isPartnerDeskRoute(route) {
   return hash === "#partner-desk" || Boolean(KIND_BY_DESK[hash]);
 }
 
+/** Shown on the partner login page. Nursing, caregiver, and physiotherapy share the home-care desk. */
+export const PARTNER_LOGIN_OPTIONS = [
+  { id: "lab", label: "Lab", hash: "#lab-desk", kind: "lab" },
+  { id: "doctor", label: "Doctor", hash: "#doctor-desk", kind: "doctor" },
+  { id: "ambulance", label: "Ambulance", hash: "#ambulance-desk", kind: "ambulance" },
+  { id: "nursing", label: "Nursing", hash: "#homecare-desk?service=nurse", kind: "homecare", service: "nurse" },
+  { id: "caregiver", label: "Caregiver", hash: "#homecare-desk?service=caregiver", kind: "homecare", service: "caregiver" },
+  { id: "physiotherapy", label: "Physiotherapy", hash: "#homecare-desk?service=physiotherapy", kind: "homecare", service: "physiotherapy" },
+  { id: "pharmacy", label: "Pharmacy", hash: "#pharmacy-desk", kind: "medicine" },
+  { id: "delivery", label: "Delivery", hash: "#delivery-desk", kind: "medicine" },
+  { id: "radiology", label: "Radiology", hash: "#radiology-desk", kind: "radiology" },
+  { id: "vaccination", label: "Vaccination", hash: "#vaccination-desk", kind: "vaccination" },
+  { id: "psychologist", label: "Psychologist", hash: "#psychologist-desk", kind: "psychologist" },
+  { id: "stepdown", label: "Step-down", hash: "#stepdown-desk", kind: "stepdown" },
+];
+
+export function partnerLoginTitle(kind, { service = "", route = "" } = {}) {
+  const key = String(service || "").toLowerCase();
+  if (String(kind || "") === "homecare" || String(route || "") === "#homecare-desk") {
+    if (key === "nurse") return "Nursing Partner";
+    if (key === "caregiver") return "Caregiver Partner";
+    if (key === "physiotherapy") return "Physiotherapy Partner";
+  }
+  if (!kind && String(route || "") !== "#delivery-desk") return "Partner";
+  return partnerAppTitle(kind, null, route);
+}
+
+export function partnerLoginOptionActive(option, { route = "", service = "" } = {}) {
+  const current = String(route || "");
+  if (option?.service) {
+    return current === "#homecare-desk" && String(service || "") === option.service;
+  }
+  if (option?.id === "delivery") return current === "#delivery-desk";
+  if (option?.id === "pharmacy") return current === "#pharmacy-desk";
+  return current === String(option?.hash || "").split("?")[0];
+}
+
 export function partnerAppTitle(kind, partner, route) {
   if (isDeliveryPartner(partner) || String(route || "") === "#delivery-desk" || String(kind || "") === "delivery") {
     return "Delivery Partner";

@@ -448,7 +448,13 @@ function App() {
       case "#doctor-desk":
       case "#ambulance-desk":
       case "#stepdown-desk":
-        return <Partner deskKind={partnerDeskKindFromRoute(route)} />;
+        return (
+          <Partner
+            deskKind={partnerDeskKindFromRoute(route)}
+            route={route}
+            service={hashService}
+          />
+        );
       case "#customer":
         return <CustomerPortal />;
       case "#staff":

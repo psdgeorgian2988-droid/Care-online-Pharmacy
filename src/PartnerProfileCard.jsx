@@ -1,3 +1,5 @@
+import { experienceLabel, specialtyLabel } from "./doctorCredentials.js";
+
 function DocLink({ label, fileName, fileData }) {
   if (!fileData) return <p><strong>{label}:</strong> Not added</p>;
   const isImage = String(fileData).startsWith("data:image/");
@@ -40,6 +42,12 @@ export default function PartnerProfileCard({ profile, fallback = {} }) {
       <p><strong>Email:</strong> {row.email || "Not added"}</p>
       <p><strong>Address:</strong> {address || "Not added"}</p>
       <p><strong>Qualification:</strong> {row.qualification || "Not added"}</p>
+      {row.specialty ? (
+        <p><strong>Specialty:</strong> {specialtyLabel(row.specialty) || row.specialty}</p>
+      ) : null}
+      {row.experienceYears ? (
+        <p><strong>Experience:</strong> {experienceLabel(row.experienceYears) || row.experienceYears}</p>
+      ) : null}
       <p><strong>Aadhaar:</strong> {row.aadhaarNumber || "Not added"}</p>
       <DocLink label="Aadhaar card" fileName={row.aadhaarFileName} fileData={row.aadhaarFileData} />
       <DocLink label="Police verification" fileName={row.policeFileName} fileData={row.policeFileData} />

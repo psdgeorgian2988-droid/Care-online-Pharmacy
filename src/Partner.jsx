@@ -8,9 +8,12 @@ import { goToHash } from "./hashRoute";
 import { groupOrdersByKind, trackKey } from "./orderStatus";
 import {
   jobsForPartnerApp,
+  PARTNER_LOGIN_OPTIONS,
   partnerAppKind,
   partnerAppTitle,
   partnerDeskHash,
+  partnerLoginOptionActive,
+  partnerLoginTitle,
   partnerServesDesk,
 } from "./partnerApp";
 import { isDeliveryPartner } from "./partnerRetention";
@@ -155,7 +158,7 @@ function previewPartnerSplit(job, paymentMethod) {
   });
 }
 
-export default function Partner({ deskKind = "" }) {
+export default function Partner({ deskKind = "", route = "", service = "" }) {
   const session = partnerSession();
   const [token, setToken] = useState(session.token);
   const [partner, setPartner] = useState(session.partner);
@@ -503,7 +506,9 @@ export default function Partner({ deskKind = "" }) {
     typeof window !== "undefined"
       ? String(window.location.hash || "").split("?")[0]
       : "";
-  const appTitle = partnerAppTitle(appKind, partner, deskHash);
+  const appTitle = partner
+    ? partnerAppTitle(appKind, partner, deskHash)
+    : partnerLoginTitle(deskKind, { service, route: route || deskHash });
   const deliveryDesk = isDeliveryPartner(partner) || deskHash === "#delivery-desk";
   const isStepDownDesk = appKind === "stepdown" || deskHash === "#stepdown-desk";
   const homeTabs = [
@@ -572,7 +577,6 @@ export default function Partner({ deskKind = "" }) {
         <style>{styles}</style>
         <div className="service-page partner-page is-login">
           <section className="service-hero">
-            <span className="service-kicker">{appTitle}</span>
             <h1>{appTitle} Login</h1>
           </section>
           {showForgot ? (
@@ -591,6 +595,31 @@ export default function Partner({ deskKind = "" }) {
             />
           ) : (
           <form className="service-form admin-login" onSubmit={handleLogin}>
+            <div className="field">
+              <label htmlFor="partner-kind">Partner type</label>
+              <select
+                id="partner-kind"
+                value={
+                  PARTNER_LOGIN_OPTIONS.find((option) =>
+                    partnerLoginOptionActive(option, {
+                      route: route || deskHash,
+                      service,
+                    })
+                  )?.id || ""
+                }
+                onChange={(event) => {
+                  const option = PARTNER_LOGIN_OPTIONS.find((row) => row.id === event.target.value);
+                  goToHash(option?.hash || "#partner-desk");
+                }}
+              >
+                <option value="">Select partner type</option>
+                {PARTNER_LOGIN_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="field">
               <label htmlFor="partner-login-id">Login ID</label>
               <input
@@ -2343,12 +2372,12 @@ ${rxShareCardStyles}
 .partner-tech,.partner-report-note{margin:4px 0 0;font-size:12px;color:#34546b;font-weight:700}
 .partner-scan-link{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:4px 8px;border-radius:6px;background:#1a6b7a;color:#fff;font-size:12px;font-weight:700;text-decoration:none}
 .admin-login{max-width:420px}
-.partner-page.is-login{min-height:calc(100vh - 160px);height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px;box-sizing:border-box}
-.partner-page.is-login .service-hero,.partner-page.is-login .admin-login{width:min(240px,92vw);max-width:240px;margin:0 auto}
+.partner-page.is-login{min-height:calc(100vh - 160px);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;padding:20px 12px 32px;box-sizing:border-box}
+.partner-page.is-login .service-hero,.partner-page.is-login .admin-login{width:min(420px,94vw);max-width:420px;margin:0 auto}
 .partner-page.is-login .service-hero{text-align:center;padding:8px 10px}
 .partner-page.is-login .service-hero h1{font-size:16px}
 .partner-page.is-login .service-form{padding:10px;gap:8px}
-.partner-page.is-login input,.partner-page.is-login .service-submit{min-height:32px;height:32px;padding:5px 8px;font-size:13px}
+.partner-page.is-login input,.partner-page.is-login select,.partner-page.is-login .service-submit{width:100%;box-sizing:border-box;min-height:32px;height:32px;padding:5px 8px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:13px;font-weight:400}
 .partner-forgot-btn{margin-top:4px;height:36px;border:none;background:transparent;color:#1a6b7a;font:inherit;font-size:13px;font-weight:800;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .admin-hint{grid-column:1/-1;margin:0;color:#5d7180;font-size:12px}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}

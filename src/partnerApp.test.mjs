@@ -4,8 +4,11 @@ import {
   isPartnerDeskRoute,
   jobsForPartnerApp,
   partnerAppKind,
+  PARTNER_LOGIN_OPTIONS,
   partnerAppTitle,
   partnerDeskHash,
+  partnerLoginOptionActive,
+  partnerLoginTitle,
   partnerDeskKindFromRoute,
   partnerServesDesk,
 } from "./partnerApp.js";
@@ -83,4 +86,43 @@ test("each partner app has its own desk hash", () => {
   assert.equal(isPartnerDeskRoute("#lab-desk"), true);
   assert.equal(isPartnerDeskRoute("#delivery-desk"), true);
   assert.equal(isPartnerDeskRoute("#admin"), false);
+});
+
+test("partner login lists every partner type", () => {
+  const labels = PARTNER_LOGIN_OPTIONS.map((row) => row.label);
+  assert.ok(labels.includes("Lab"));
+  assert.ok(labels.includes("Doctor"));
+  assert.ok(labels.includes("Ambulance"));
+  assert.ok(labels.includes("Nursing"));
+  assert.ok(labels.includes("Caregiver"));
+  assert.ok(labels.includes("Physiotherapy"));
+  assert.ok(labels.includes("Pharmacy"));
+  assert.ok(labels.includes("Radiology"));
+  assert.ok(labels.includes("Vaccination"));
+  assert.ok(labels.includes("Psychologist"));
+  assert.ok(labels.includes("Step-down"));
+  assert.ok(labels.includes("Delivery"));
+  assert.equal(partnerLoginTitle("homecare", { service: "nurse" }), "Nursing Partner");
+  assert.equal(partnerLoginTitle("homecare", { service: "caregiver" }), "Caregiver Partner");
+  assert.equal(partnerLoginTitle("doctor"), "Doctor Partner");
+  assert.equal(
+    partnerLoginOptionActive(PARTNER_LOGIN_OPTIONS.find((row) => row.id === "lab"), {
+      route: "#lab-desk",
+    }),
+    true
+  );
+  assert.equal(
+    partnerLoginOptionActive(PARTNER_LOGIN_OPTIONS.find((row) => row.id === "nursing"), {
+      route: "#homecare-desk",
+      service: "nurse",
+    }),
+    true
+  );
+  assert.equal(
+    partnerLoginOptionActive(PARTNER_LOGIN_OPTIONS.find((row) => row.id === "caregiver"), {
+      route: "#homecare-desk",
+      service: "nurse",
+    }),
+    false
+  );
 });

@@ -2,6 +2,9 @@ import { useState } from "react";
 import { AdminSectionGuard } from "./adminLeave";
 import { deleteStaffTeamMember, reviewStaffTeamMember, updateStaffTeamMember } from "./adminApi";
 import { emptyPartnerProfile } from "./partnerProfile.js";
+import { partnerAppKind } from "./partnerApp.js";
+import DoctorCredentialFields from "./DoctorCredentialFields.jsx";
+import { doctorProfileMissing, experienceLabel, specialtyLabel } from "./doctorCredentials.js";
 import { teamDocumentSummary, teamFrom, teamStatusLabel } from "./partnerTeam.js";
 
 function readDataFile(file, maxBytes) {
@@ -163,6 +166,13 @@ export default function AdminTeamApprovals({ partners = [], onChange, embedded =
 
   const saveEdit = async (partner, member) => {
     if (!partner || !member) return false;
+    if (partnerAppKind(partner) === "doctor") {
+      const missing = doctorProfileMissing(draft);
+      if (missing) {
+        setError(missing);
+        return false;
+      }
+    }
     setBusyId(`save-${member.id}`);
     setError("");
     setNote("");
@@ -212,6 +222,7 @@ export default function AdminTeamApprovals({ partners = [], onChange, embedded =
   const card = ({ partner, member }) => {
     const profile = member.profile || {};
     const editing = editingId === member.id;
+    const isDoctor = partnerAppKind(partner) === "doctor";
     return (
       <article key={`${partner.id}-${member.id}`} className="admin-team-card">
         <div className="detail-stack">
@@ -223,6 +234,14 @@ export default function AdminTeamApprovals({ partners = [], onChange, embedded =
           </div>
           <div className="detail-row"><span>Mobile</span><strong>{member.mobile || "—"}</strong></div>
           <div className="detail-row"><span>Category</span><strong>{member.role || "—"}</strong></div>
+          {isDoctor ? (
+            <>
+              <div className="detail-row"><span>Specialty</span><strong>{specialtyLabel(profile.specialty) || "—"}</strong></div>
+              <div className="detail-row"><span>Experience</span><strong>{experienceLabel(profile.experienceYears) || "—"}</strong></div>
+              <div className="detail-row"><span>Registration</span><strong>{profile.registrationNumber || "—"}</strong></div>
+              <div className="detail-row"><span>Council</span><strong>{profile.registrationCouncil || "—"}</strong></div>
+            </>
+          ) : null}
           <div className="detail-row"><span>Qualification</span><strong>{profile.qualification || "—"}</strong></div>
           <div className="detail-row"><span>Email</span><strong>{profile.email || "—"}</strong></div>
           <div className="detail-row"><span>Aadhaar</span><strong>{profile.aadhaarNumber || "—"}</strong></div>
@@ -301,19 +320,36 @@ export default function AdminTeamApprovals({ partners = [], onChange, embedded =
                 <input
                   value={draft.role}
                   onChange={(event) => setDraft((current) => ({ ...current, role: event.target.value }))}
+                  required={isDoctor}
+                  minLength={isDoctor ? 2 : undefined}
                 />
               </label>
-              <label>
-                Qualification
-                <input
-                  value={draft.profile.qualification}
-                  onChange={(event) => setProfile({ qualification: event.target.value })}
+              {isDoctor ? (
+                <DoctorCredentialFields
+                  profile={draft.profile}
+                  onChange={setProfile}
+                  onPhoto={onPhoto}
+                  onCertificate={(event) => onDocument(event, "certificate", 10 * 1024 * 1024)}
+                  onRemoveCertificate={(index) =>
+                    setProfile({
+                      certificates: (draft.profile.certificates || []).filter((_, item) => item !== index),
+                    })
+                  }
                 />
-              </label>
+              ) : (
+                <label>
+                  Qualification
+                  <input
+                    value={draft.profile.qualification}
+                    onChange={(event) => setProfile({ qualification: event.target.value })}
+                  />
+                </label>
+              )}
               <label>
                 Email
                 <input
                   type="email"
+                  required={isDoctor}
                   value={draft.profile.email}
                   onChange={(event) => setProfile({ email: event.target.value })}
                 />
@@ -323,16 +359,20 @@ export default function AdminTeamApprovals({ partners = [], onChange, embedded =
                 <input
                   value={draft.profile.aadhaarNumber}
                   inputMode="numeric"
+                  required={isDoctor}
+                  pattern={isDoctor ? "\\d{12}" : undefined}
                   onChange={(event) =>
                     setProfile({ aadhaarNumber: event.target.value.replace(/\D/g, "").slice(0, 12) })
                   }
                 />
               </label>
-              <label>
-                Profile photo (JPG or PNG, 512×512, max 3 MB)
-                <input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" onChange={onPhoto} />
-                {draft.profile.photoName ? <span>{draft.profile.photoName}</span> : null}
-              </label>
+              {isDoctor ? null : (
+                <label>
+                  Profile photo (JPG or PNG, 512×512, max 3 MB)
+                  <input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" onChange={onPhoto} />
+                  {draft.profile.photoName ? <span>{draft.profile.photoName}</span> : null}
+                </label>
+              )}
               <label>
                 Aadhaar card (max 5 MB)
                 <input
@@ -351,17 +391,19 @@ export default function AdminTeamApprovals({ partners = [], onChange, embedded =
                 />
                 {draft.profile.policeFileName ? <span>{draft.profile.policeFileName}</span> : null}
               </label>
-              <label>
-                Certificate (max 10 MB)
-                <input
-                  type="file"
-                  accept="image/*,.pdf,application/pdf"
-                  onChange={(event) => onDocument(event, "certificate", 10 * 1024 * 1024)}
-                />
-                {draft.profile.certificates?.length ? (
-                  <span>{draft.profile.certificates.map((row) => row.name).filter(Boolean).join(", ")}</span>
-                ) : null}
-              </label>
+              {isDoctor ? null : (
+                <label>
+                  Certificate (max 10 MB)
+                  <input
+                    type="file"
+                    accept="image/*,.pdf,application/pdf"
+                    onChange={(event) => onDocument(event, "certificate", 10 * 1024 * 1024)}
+                  />
+                  {draft.profile.certificates?.length ? (
+                    <span>{draft.profile.certificates.map((row) => row.name).filter(Boolean).join(", ")}</span>
+                  ) : null}
+                </label>
+              )}
               <div className="admin-team-actions">
                 <button type="submit" disabled={busyId === `save-${member.id}`}>
                   {busyId === `save-${member.id}` ? "Saving…" : "Save details"}
@@ -399,7 +441,10 @@ export default function AdminTeamApprovals({ partners = [], onChange, embedded =
         .admin-team-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px}
         .admin-team-form h3,.admin-team-form .admin-team-actions{grid-column:1 / -1}
         .admin-team-form label{display:flex;flex-direction:column;gap:4px;font-size:12px}
-        .admin-team-form input{min-height:34px;padding:6px 8px;border:1px solid #d7e2e9;border-radius:6px;font:inherit}
+        .admin-team-form input,.admin-team-form select{min-height:34px;padding:6px 8px;border:1px solid #d7e2e9;border-radius:6px;font:inherit;background:#fff}
+        .doctor-cert-list{list-style:none;margin:0;padding:0;display:grid;gap:6px;grid-column:1 / -1}
+        .doctor-cert-list li{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:13px}
+        .doctor-cert-list button{border:0;background:transparent;color:#9b3d3d;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
         .partner-team-status{font-size:12px;font-weight:700}
         .partner-team-status.is-approved{color:#0b6b5a}
         .partner-team-status.is-rejected{color:#9b2c2c}
