@@ -44,8 +44,9 @@ export const PSYCHOLOGIST_BUILTIN = [
 ];
 
 export const AMBULANCE_BUILTIN = [
-  { id: "ambulance:emergency", kind: "ambulance", name: "Emergency ambulance", price: 3999 },
-  { id: "ambulance:non-emergency", kind: "ambulance", name: "Non-emergency ambulance", price: 2499 },
+  { id: "ambulance:emergency", kind: "ambulance", name: "Emergency", price: 3999 },
+  { id: "ambulance:life-support", kind: "ambulance", name: "Life support", price: 3999 },
+  { id: "ambulance:patient-transport", kind: "ambulance", name: "Patient transport", price: 2499 },
 ];
 
 export const STEPDOWN_BUILTIN = [

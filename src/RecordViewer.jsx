@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { LabResultTable } from "./LabTrackFacts";
 import {
   MEDICAL_RECORD_VIEWER_ACTIONS,
   downloadMedicalRecordFile,
@@ -72,6 +72,7 @@ export default function RecordViewer({ record, onClose }) {
         </div>
       </div>
       <div className="record-viewer-body">
+        <LabResultTable rows={viewed.results || viewed.reportResults || []} />
         {src ? (
           isImageRecord(viewed) ? (
             <img src={src} alt={fileName || title} />

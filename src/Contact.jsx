@@ -1,6 +1,4 @@
 import { useState } from "react";
-import SocialLinks from "./SocialLinks";
-import { shareMediHome } from "./socialHandlers";
 import {
   CARE_EMAIL,
   CARE_PHONE_DISPLAY,
@@ -25,7 +23,6 @@ function openWhatsAppUrl(url, event) {
 function Contact() {
   const [form, setForm] = useState({ name: "", mobile: "", message: "" });
   const [errors, setErrors] = useState({});
-  const [shareNote, setShareNote] = useState("");
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -99,38 +96,6 @@ function Contact() {
                   {CARE_PHONE_DISPLAY}
                 </a>
               </p>
-            </div>
-          </section>
-
-          <section className="info-panel social-panel">
-            <h2>Follow MediHome</h2>
-            <p>
-              Official handles for health tips, offers, and service updates.
-              Tap a card to open that page, or copy the handle.
-            </p>
-            <SocialLinks className="contact-social" layout="cards" />
-            <div className="social-share-row">
-              <button
-                type="button"
-                className="social-share-btn"
-                onClick={async () => {
-                  try {
-                    const result = await shareMediHome();
-                    setShareNote(
-                      result === "shared"
-                        ? "Opened the share sheet."
-                        : result === "copied"
-                          ? "Copied the MediHome link."
-                          : "Copy a handle from the cards above."
-                    );
-                  } catch {
-                    setShareNote("Copy a handle from the cards above.");
-                  }
-                }}
-              >
-                Share MediHome
-              </button>
-              {shareNote ? <small>{shareNote}</small> : null}
             </div>
           </section>
 

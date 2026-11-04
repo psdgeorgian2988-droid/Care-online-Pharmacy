@@ -49,6 +49,17 @@ const KEEP_IF_EMPTY = [
   "reportUploadedAt",
   "reportTestName",
   "reportNotes",
+  "accessionNo",
+  "barcodeValue",
+  "analyzerName",
+  "analyzerRef",
+  "collectorLat",
+  "collectorLng",
+  "collectorLive",
+  "reportResults",
+  "samples",
+  "qcPassed",
+  "sampleStatus",
 ];
 
 async function ensureFile() {

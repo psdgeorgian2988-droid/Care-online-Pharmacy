@@ -623,6 +623,110 @@ async function readNativeLocation() {
   throw new Error(locationErrorMessage(lastError));
 }
 
+export function mapsUrlForCoords(lat, lng) {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return "";
+  return `https://www.google.com/maps?q=${latitude},${longitude}`;
+}
+
+function liveGpsFix(coords) {
+  return {
+    lat: coords.lat,
+    lng: coords.lng,
+    mapsUrl: mapsUrlForCoords(coords.lat, coords.lng),
+    liveGps: true,
+  };
+}
+
+export async function captureLiveGps() {
+  const coords = await readDeviceLocation();
+  return liveGpsFix(coords);
+}
+
+/** Keep reading the device GPS and report each fix. Returns a function that stops the watch. */
+export function watchLiveGps(onFix, onError) {
+  let stopped = false;
+  let gotFix = false;
+  let browserWatch = 0;
+  let nativeWatch = "";
+
+  const emit = (position) => {
+    if (stopped) return;
+    const coords = coordsFromPosition(position);
+    if (!coords) return;
+    gotFix = true;
+    onFix?.(liveGpsFix(coords));
+  };
+
+  const fail = (error) => {
+    if (stopped || gotFix) return;
+    const code = Number(error?.code);
+    const mapped =
+      code === 1
+        ? new Error("Allow location access, then tap Share live location again.")
+        : code === 2
+          ? new Error("Location is unavailable. Turn on Location, then try again.")
+          : code === 3
+            ? new Error("Could not lock GPS in time. Move outdoors, then try again.")
+            : error;
+    const message = locationErrorMessage(mapped);
+    onError?.(message ? new Error(message) : mapped);
+  };
+
+  const startBrowser = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      fail(new Error("Location is not available on this device."));
+      return;
+    }
+    browserWatch = navigator.geolocation.watchPosition(emit, fail, {
+      enableHighAccuracy: true,
+      timeout: 20000,
+      maximumAge: 0,
+    });
+  };
+
+  const native =
+    isNativeRuntime() ||
+    Boolean(globalThis.Capacitor?.isNativePlatform?.()) ||
+    Boolean(globalThis.Capacitor?.isNative);
+  if (native) {
+    import("@capacitor/geolocation")
+      .then(async ({ Geolocation }) => {
+        if (stopped) return;
+        await ensureNativeLocationPermission(Geolocation);
+        if (stopped) return;
+        nativeWatch = await Geolocation.watchPosition(
+          {
+            enableHighAccuracy: true,
+            timeout: 20000,
+            maximumAge: 0,
+            enableLocationFallback: true,
+          },
+          (position, error) => {
+            if (position) emit(position);
+            else if (error) fail(error);
+          }
+        );
+      })
+      .catch((error) => fail(error));
+  } else {
+    startBrowser();
+  }
+
+  return () => {
+    stopped = true;
+    if (browserWatch && typeof navigator !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.clearWatch(browserWatch);
+    }
+    if (nativeWatch) {
+      import("@capacitor/geolocation")
+        .then(({ Geolocation }) => Geolocation.clearWatch({ id: nativeWatch }))
+        .catch(() => {});
+    }
+  };
+}
+
 async function readDeviceLocation() {
   // Prefer Capacitor Geolocation on Android/iOS so runtime permissions work.
   const native =

@@ -168,11 +168,12 @@ export const HOME_SERVICE_TREE = [
     key: "ambulance",
     label: "Ambulance",
     items: [
-      { id: "amb-em", label: "Emergency Ambulance", href: "#ambulance?service=emergency", cartoon: "ambulance" },
+      { id: "amb-em", label: "Emergency", href: "#ambulance?service=emergency", cartoon: "ambulance" },
+      { id: "amb-life", label: "Life support", href: "#ambulance?service=life-support", cartoon: "ambulance" },
       {
-        id: "amb-non",
-        label: "Non-Emergency Transfer",
-        href: "#ambulance?service=non-emergency",
+        id: "amb-transport",
+        label: "Patient transport",
+        href: "#ambulance?service=patient-transport",
         cartoon: "transfer",
       },
     ],

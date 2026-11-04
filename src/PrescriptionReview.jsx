@@ -19,6 +19,8 @@ import {
   PRESCRIPTION_PARSE_EVENT,
 } from "./prescriptionAi";
 import { saveConfirmedDigitalRx } from "./digitalRxRecord";
+import DigitalPrescriptionSheet, { digitalPrescriptionSheetStyles } from "./DigitalPrescriptionSheet";
+import { chartFrequency, doseText } from "./digitalRxFormat";
 import { lookupPrescriptionMedicine } from "./Medicines";
 import { addMedicineToCart, addTestToCart, cartHasMedicine, writeRxLabCheckout } from "./medicineCartStore";
 import {
@@ -28,7 +30,6 @@ import {
   splitRxTestNames,
   suggestedPacks,
 } from "./prescriptionShop";
-import { rxDoseCode } from "./rxTextParse";
 import { applyRxDetect, normalizeRxDetect } from "./rxDetect.js";
 
 function durationLabel(med) {
@@ -36,7 +37,7 @@ function durationLabel(med) {
 }
 
 function timesADayLabel(med) {
-  return rxDoseCode(med) || med?.timesPerDay || med?.frequency || "Not specified";
+  return chartFrequency(med) || "Not specified";
 }
 
 export default function PrescriptionReview() {
@@ -191,8 +192,6 @@ export default function PrescriptionReview() {
   const tests = focused?.tests || [];
   const testsOnly = detectMode === "lab" || detectMode === "radiology" || detectMode === "labs";
   const medicinesOnly = detectMode === "medicine";
-  const testHeading =
-    detectMode === "radiology" ? "Radiology tests" : detectMode === "lab" ? "Lab tests" : "Tests";
   const medOffers = useMemo(
     () => medicines.map((med) => lookupPrescriptionMedicine(med)),
     [medicines]
@@ -405,7 +404,7 @@ export default function PrescriptionReview() {
         <p className="rx-kicker">Prescription</p>
         <h1>Digital prescription</h1>
         <p className="rx-lead">
-          Upload a small Rx photo, then check the brand, dose code, and days.
+          Upload a photo or PDF. MediHome turns it into a digital prescription for confirmation. Unclear names stay off the order until you confirm them.
         </p>
       </header>
 
@@ -510,28 +509,14 @@ export default function PrescriptionReview() {
             </p>
           ) : null}
 
-          {(parsed?.patientName || parsed?.doctorName || parsed?.date) && (
-            <div className="rx-meta">
-              {parsed.patientName ? (
-                <p>
-                  <span>Patient</span>
-                  <strong>{parsed.patientName}</strong>
-                </p>
-              ) : null}
-              {parsed.doctorName ? (
-                <p>
-                  <span>Doctor</span>
-                  <strong>{parsed.doctorName}</strong>
-                </p>
-              ) : null}
-              {parsed.date ? (
-                <p>
-                  <span>Date</span>
-                  <strong>{parsed.date}</strong>
-                </p>
-              ) : null}
-            </div>
-          )}
+          {parsed ? (
+            <DigitalPrescriptionSheet
+              source={parsed}
+              extras={{ originalAttached: Boolean(draft?.fileData || draft?.fileName) }}
+              showMedicines={false}
+              showTests={false}
+            />
+          ) : null}
 
           {testsOnly ? null : (
           <div className="rx-list-block">
@@ -548,8 +533,8 @@ export default function PrescriptionReview() {
                     <div className="rx-med-title">
                       <strong>{med.name}</strong>
                       {med.strength ? <em>{med.strength}</em> : null}
-                      {rxDoseCode(med) ? (
-                        <span className="rx-dose-code">{rxDoseCode(med)}</span>
+                      {chartFrequency(med) ? (
+                        <span className="rx-dose-code">{chartFrequency(med)}</span>
                       ) : null}
                       {med.userCorrected ? (
                         <span className="rx-chip">Corrected</span>
@@ -608,7 +593,19 @@ export default function PrescriptionReview() {
                     {med.salt ? <p className="rx-salt">{med.salt}</p> : null}
                     <div className="rx-med-stats">
                       <div>
-                        <span>For how many days</span>
+                        <span>Strength</span>
+                        <strong>{med.strength || "Not on prescription"}</strong>
+                      </div>
+                      <div>
+                        <span>Dose</span>
+                        <strong>{doseText(med) || "Not on prescription"}</strong>
+                      </div>
+                      <div>
+                        <span>Frequency</span>
+                        <strong>{chartFrequency(med) || "Not on prescription"}</strong>
+                      </div>
+                      <div>
+                        <span>Duration</span>
                         <strong>{durationLabel(med)}</strong>
                       </div>
                     </div>
@@ -665,7 +662,11 @@ export default function PrescriptionReview() {
 
           {medicinesOnly ? null : (
           <div className="rx-list-block">
-            <h3>{testHeading}</h3>
+            <h3>
+              {detectMode === "radiology"
+                ? "E. Radiology investigations"
+                : "E. Laboratory investigations"}
+            </h3>
             {tests.length === 0 && !busy ? (
               <p className="rx-empty">
                 {detectMode === "radiology"
@@ -878,7 +879,7 @@ export default function PrescriptionReview() {
         </section>
       ) : null}
 
-      <style>{styles}</style>
+      <style>{`${styles}${digitalPrescriptionSheetStyles}`}</style>
     </div>
   );
 }
@@ -942,7 +943,7 @@ const styles = `
 .rx-confirm-ok{margin:10px 0 0 !important;color:#1a6b7a !important;font-weight:700}
 .rx-confirm-wait{margin:10px 0 0 !important;color:#8a5a12 !important}
 .rx-confirm-ok a{color:#1a6b7a;font-weight:800}
-.rx-med-stats{display:grid;grid-template-columns:1fr;gap:8px;margin:0 0 8px}
+.rx-med-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 8px}
 .rx-med-stats > div{padding:8px 10px;border-radius:8px;background:#f3fafb;border:1px solid #d7e8ec}
 .rx-med-stats span{display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5d7180;margin-bottom:2px}
 .rx-med-stats strong{font-size:14px;color:#143246}

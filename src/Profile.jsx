@@ -63,10 +63,8 @@ function ProfileOrders() {
         <ul className="profile-order-list">
           {orders.slice(0, 8).map((order) => (
             <li key={order.id || order.bookingId || order.requestId}>
-              <a href={profileOrderHref(order)}>
-                <span>{order.displayId || order.id || "Order"}</span>
-                <strong>{orderCurrentStatus(order)}</strong>
-              </a>
+              <a href={profileOrderHref(order)}>{order.displayId || order.id || "Order"}</a>
+              <strong>{orderCurrentStatus(order)}</strong>
             </li>
           ))}
         </ul>
@@ -460,7 +458,8 @@ const styles = `
   .profile-summary dt,.profile-member-details dt{font-size:11px;font-weight:800;color:#5d7180}
   .profile-summary dd,.profile-member-details dd{margin:0;font-size:15px;font-weight:700;color:#143246}
   .profile-order-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
-  .profile-order-list a{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:10px;background:#f4fafb;color:#143246;text-decoration:none;font-size:14px}
+  .profile-order-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#f4fafb;font-size:14px}
+  .profile-order-list a{color:#1a6b7a;font-weight:800;text-decoration:underline}
   .profile-order-list strong{font-weight:800;color:#1a6b7a}
   .profile-order-empty{margin:0;color:#5d7180;font-size:14px}
   .profile-field{display:flex;flex-direction:column}

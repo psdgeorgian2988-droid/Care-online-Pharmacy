@@ -24,6 +24,7 @@ import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import BusyWait, { useBusyOverlay } from "./BusyWait";
 import { holdForPartnerQueue } from "./partnerQueue";
 import { DIAGNOSTIC_LABS, IMAGING_CENTRES } from "./diagnosticPartners";
+import { withCommonImagingPanel, withCommonLabPanel } from "./commonLabPanel";
 import { mergeAddedLabTests, withLabPartnerSplit } from "./labTestSplit";
 import { defaultPartnerPercentFor } from "./paymentSplit";
 import {
@@ -118,6 +119,9 @@ const TEST_PREP = {
   "urine-culture": { prepType: "urine", instruction: PREP_COPY.urine },
   "urine-pregnancy": { prepType: "urine", instruction: PREP_COPY.urine },
   fbs: { prepType: "fasting", instruction: PREP_COPY.fasting },
+  "glucose-f-pp": { prepType: "fasting", instruction: PREP_COPY.fasting },
+  "lft-kft": { prepType: "fasting", instruction: PREP_COPY.fasting },
+  "swasthfit-super-2": { prepType: "fasting", instruction: PREP_COPY.fasting },
   ppbs: { prepType: "none", instruction: "" },
   insulin: { prepType: "fasting", instruction: PREP_COPY.fasting },
   vitb12: { prepType: "none", instruction: "" },
@@ -151,8 +155,20 @@ function withPrep(partners, { split = false } = {}) {
   }));
 }
 
-const LABS = withPrep(DIAGNOSTIC_LABS, { split: true });
-const RADIOLOGY_PARTNERS = withPrep(IMAGING_CENTRES);
+function LabPrice({ test }) {
+  const price = Number(test?.price) || 0;
+  const mrp = Number(test?.mrp) || 0;
+  if (!(mrp > price)) return <>₹{price}</>;
+  return (
+    <span className="lab-price">
+      <s>₹{mrp}</s>
+      <span>₹{price}</span>
+    </span>
+  );
+}
+
+const LABS = withPrep(withCommonLabPanel(DIAGNOSTIC_LABS), { split: true });
+const RADIOLOGY_PARTNERS = withPrep(withCommonImagingPanel(IMAGING_CENTRES));
 
 const PROFILE_KEYS = [
   "mediHomeUser",
@@ -352,6 +368,28 @@ function LabTests() {
     () => openAppointmentSlots(LAB_TIME_SLOTS, form.date),
     [form.date]
   );
+  const [slotLeft, setSlotLeft] = useState({});
+  useEffect(() => {
+    const labId = activePartner?.id;
+    if (!form.date || !labId) return undefined;
+    let cancelled = false;
+    apiFetch(
+      `/api/lab-slots?labId=${encodeURIComponent(labId)}&date=${encodeURIComponent(form.date)}&kind=${encodeURIComponent(serviceType)}`
+    )
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !Array.isArray(data?.slots)) return;
+        const next = {};
+        data.slots.forEach((row) => {
+          next[row.label] = row.remaining;
+        });
+        setSlotLeft(next);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [activePartner?.id, form.date, serviceType]);
   const prepSummaryTests = serviceType === "lab" ? selectedTests : selectedImagingTests;
   const fastingSelected = prepSummaryTests.filter((test) => test.prepType === "fasting");
   const imagingFastingSelected = prepSummaryTests.filter(
@@ -1005,7 +1043,9 @@ function LabTests() {
                 {tests.map((test) => (
                   <div className="confirmation-test" key={test.id}>
                     <span>{test.name}</span>
-                    <strong>₹{test.price}</strong>
+                    <strong>
+                      <LabPrice test={test} />
+                    </strong>
                   </div>
                 ))}
               </div>
@@ -1342,9 +1382,15 @@ function LabTests() {
                                 {test.name}
                               </span>
                               <span className="lab-search-meta">
-                                {inCart
-                                  ? "In cart"
-                                  : `${test.code !== "—" ? `${test.code} · ` : ""}₹${test.price}${picked ? " · Selected" : ""}`}
+                                {inCart ? (
+                                  "In cart"
+                                ) : (
+                                  <>
+                                    {test.code !== "—" ? `${test.code} · ` : ""}
+                                    <LabPrice test={test} />
+                                    {picked ? " · Selected" : ""}
+                                  </>
+                                )}
                               </span>
                             </button>
                           );
@@ -1547,7 +1593,9 @@ function LabTests() {
                     <div key={test.id} className="lab-selected-row">
                       <span className="lab-selected-main">
                         <strong>{test.name}</strong>
-                        <em>₹{test.price}</em>
+                        <em>
+                          <LabPrice test={test} />
+                        </em>
                       </span>
                     </div>
                   ))}
@@ -1592,11 +1640,15 @@ function LabTests() {
               </label>
               <select id="timeSlot" name="timeSlot" value={form.timeSlot} onChange={handleChange}>
                 <option value="">Select a slot</option>
-                {openSlots.map((slot) => (
-                  <option key={slot} value={slot}>
-                    {slot}
-                  </option>
-                ))}
+                {openSlots.map((slot) => {
+                  const left = slotLeft[slot];
+                  const full = left === 0;
+                  return (
+                    <option key={slot} value={slot} disabled={full}>
+                      {full ? `${slot} · Full` : Number.isFinite(left) ? `${slot} · ${left} left` : slot}
+                    </option>
+                  );
+                })}
               </select>
               {form.date && openSlots.length === 0 ? (
                 <small className="lab-error">
@@ -1799,6 +1851,8 @@ const styles = `
 .lab-search-row.is-picked{background:#e8f4f6}
 .lab-search-name{font-size:14px;font-weight:650;color:#143246;line-height:1.35}
 .lab-search-meta{font-size:12px;font-weight:600;color:#5d7180}
+.lab-price{display:inline-flex;align-items:baseline;gap:6px}
+.lab-price s{color:#8aa0ad;font-weight:600;text-decoration:line-through}
 .lab-table{margin-top:14px;border:1px solid #e8eef2;border-radius:10px;overflow:hidden;background:#fff}
 .lab-table-head{display:flex;justify-content:space-between;padding:8px 14px 8px 42px;background:#f7fafc;color:#5d7180;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
 .lab-empty{margin:0;padding:16px 14px;text-align:center;color:#7a8b96;font-size:13px;line-height:1.45}

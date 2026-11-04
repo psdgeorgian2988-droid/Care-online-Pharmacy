@@ -67,6 +67,15 @@ Return ONLY valid JSON (no markdown) with this shape:
   "patientName": "string or empty",
   "doctorName": "string or empty",
   "date": "string or empty",
+  "patientAge": "only if written, else empty",
+  "patientGender": "only if written, else empty",
+  "doctorQualification": "only if written, else empty",
+  "registrationNo": "only if written, else empty",
+  "clinicName": "hospital or clinic only if written, else empty",
+  "primaryDiagnosis": "only if written, else empty",
+  "secondaryDiagnosis": "only if written, else empty",
+  "clinicalNotes": "only if written, else empty",
+  "followUpDate": "only if written, else empty",
   "medicines": [
     {
       "name": "brand or salt as written, corrected only for spelling",
@@ -89,8 +98,9 @@ Return ONLY valid JSON (no markdown) with this shape:
   ],
   "notes": "general Rx notes"
 }
-Read Indian charting such as 1-0-1, 1-1-1, BD, TDS, OD, HS, SOS. Convert those into timesPerDay (once/twice/thrice a day) and keep timing as written.
+Read Indian charting such as 1-0-1, 1-1-1, BD, TDS, OD, HS, SOS. Keep the written grid (1-0-1) in timing. Put before/after food in instructions or timing. Convert those into timesPerDay (once/twice/thrice a day).
 If duration is written as x/7 or x days, put that in duration and durationDays.
+Leave every field empty when it is not written. Never invent a diagnosis, registration number, age, or medicine. Flag unclear medicine names by keeping the visible letters instead of guessing a different brand.
 ${focus}`;
 }
 
@@ -174,6 +184,15 @@ function normalizeResult(parsed, meta = {}) {
     patientName: String(parsed?.patientName || "").trim(),
     doctorName: String(parsed?.doctorName || "").trim(),
     date: String(parsed?.date || "").trim(),
+    patientAge: String(parsed?.patientAge || parsed?.age || "").trim(),
+    patientGender: String(parsed?.patientGender || parsed?.gender || "").trim(),
+    doctorQualification: String(parsed?.doctorQualification || parsed?.qualification || "").trim(),
+    registrationNo: String(parsed?.registrationNo || parsed?.registrationNumber || "").trim(),
+    clinicName: String(parsed?.clinicName || parsed?.hospital || "").trim(),
+    primaryDiagnosis: String(parsed?.primaryDiagnosis || "").trim(),
+    secondaryDiagnosis: String(parsed?.secondaryDiagnosis || "").trim(),
+    clinicalNotes: String(parsed?.clinicalNotes || "").trim(),
+    followUpDate: String(parsed?.followUpDate || "").trim(),
     medicines,
     tests,
     notes: String(parsed?.notes || "").trim(),
@@ -249,10 +268,25 @@ async function medicalAiValidate(candidate, ocrText, model, detect = "") {
   if (!parsed) {
     throw new Error("Medical validation AI returned an unreadable response.");
   }
-  return normalizeResult(parsed, {
+  const normalized = normalizeResult(parsed, {
     aiMode: "ocr+ai+validate",
     model: usedModel || model || "medical-validate",
   });
+  const keep = [
+    "patientAge",
+    "patientGender",
+    "doctorQualification",
+    "registrationNo",
+    "clinicName",
+    "primaryDiagnosis",
+    "secondaryDiagnosis",
+    "clinicalNotes",
+    "followUpDate",
+  ];
+  for (const key of keep) {
+    if (!normalized[key] && candidate?.[key]) normalized[key] = candidate[key];
+  }
+  return normalized;
 }
 
 export function aiConfigured() {

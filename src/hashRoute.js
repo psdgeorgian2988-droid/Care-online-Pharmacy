@@ -1,5 +1,6 @@
 import { staffToken } from "./adminApi.js";
 import { readAppRole } from "./appRuntime.js";
+import { hasAccountSession, readLoginSession, welcomeRequested } from "./authSession.js";
 import { isPartnerDeskRoute, partnerAppKind, partnerDeskHash } from "./partnerApp.js";
 import { partnerSession } from "./partnerApi.js";
 
@@ -343,6 +344,52 @@ function scrollStaffOrders() {
   jump();
   if (typeof requestAnimationFrame === "function") requestAnimationFrame(jump);
   if (typeof setTimeout === "function") setTimeout(jump, 80);
+}
+
+export function activityHomeHash(rawHash = "") {
+  const { route, service, plan } = parseAppHash(rawHash);
+  const key = String(service || plan || "").toLowerCase();
+  if (
+    route === "#labs" ||
+    key === "labs" ||
+    key === "lab" ||
+    key === "radiology"
+  ) {
+    return LABS_HOME_HASH;
+  }
+  if (
+    route === "#medicine-search" ||
+    route === "#checkout" ||
+    route === "#prescription" ||
+    key === "medicine"
+  ) {
+    return MEDICINE_HOME_HASH;
+  }
+  if (route === "#doctor" || key === "doctor") return DOCTOR_HOME_HASH;
+  if (key === "vaccination" || plan === "vaccination" || plan === "vaccination-child") {
+    return VACCINATION_HOME_HASH;
+  }
+  if (route === "#homecare" || key === "homecare") return HOMECARE_HOME_HASH;
+  if (route === "#vaccination") return VACCINATION_HOME_HASH;
+  if (route === "#psychologist" || key === "psychologist") return "#home?service=psychologist";
+  if (route === "#stepdown" || key === "stepdown") return "#home?service=stepdown";
+  if (route === "#ambulance" || key === "ambulance") return "#home?service=ambulance";
+  if (route === "#reports" || key === "reports") return MEDICAL_RECORD_HOME_HASH;
+  if (route === "#education" || key === "education" || key === "guides" || key === "webinars" || key === "quiz") {
+    return "#home?service=education";
+  }
+  if (route === "#profile") return "#profile";
+  if (route === "#home" && key) return `#home?service=${encodeURIComponent(key)}`;
+  return "#home";
+}
+
+/** Section home for the booking in progress. Guests stay off the account page. */
+export function customerBackHomeHash(rawHash = "", { account = false } = {}) {
+  const current = rawHash || (typeof window !== "undefined" ? window.location.hash || "#home" : "#home");
+  const dest = activityHomeHash(current);
+  if (!account && (dest === "#profile" || dest === MEDICAL_RECORD_HOME_HASH)) return "#home";
+  if (hashesMatch(current, dest)) return account ? "#profile" : "#home";
+  return dest;
 }
 
 export function goToOrderListHash(options) {

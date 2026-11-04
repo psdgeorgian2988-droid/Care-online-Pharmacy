@@ -1,5 +1,6 @@
 import { isHiddenMedicalRecordSource, patientIdentityFromSource } from "./reportPeople.js";
 import { settleStepdownCompletion } from "./stepdownDesk.js";
+import { accessionOf, buildSampleTubes } from "./labAccession.js";
 
 /** Lab / radiology partner-driven pipeline helpers. */
 
@@ -27,7 +28,16 @@ export const DIAGNOSTIC_TRACK_STEPS = [
   { key: "declined", label: "Declined" },
 ];
 
+const RADIOLOGY_STEP_LABELS = {
+  assigned: "Centre assigned",
+  sample_collected: "Scan completed",
+  processing: "Images under review",
+};
+
 export function diagnosticStepLabel(key, kind = "lab") {
+  if (String(kind || "").toLowerCase() === "radiology" && RADIOLOGY_STEP_LABELS[key]) {
+    return RADIOLOGY_STEP_LABELS[key];
+  }
   const hit = DIAGNOSTIC_TRACK_STEPS.find((step) => step.key === key);
   if (hit) return hit.label;
   if (key === "done") return "Completed";
@@ -50,22 +60,39 @@ export function assignTechnicianFields({ name, mobile, teamMemberId } = {}, now 
   };
 }
 
-export function sampleCollectedFields(now = Date.now()) {
+export function sampleCollectedFields(order = {}, now = Date.now()) {
+  const when = typeof order === "number" ? order : now;
+  const source = order && typeof order === "object" ? order : {};
+  const radiology = diagnosticKindOf(source) === "radiology";
+  const accessionNo = accessionOf(source, when);
   return {
     trackStatus: "sample_collected",
-    status: "Sample Collected",
-    sampleCollectedAt: now,
+    status: radiology ? "Scan completed" : "Sample Collected",
+    sampleCollectedAt: when,
+    accessionNo,
+    barcodeValue: accessionNo,
+    collectorLive: false,
     trackCompleted: false,
+    samples: buildSampleTubes({ ...source, accessionNo }, when),
+    qcPassed: Boolean(source.qcPassed),
   };
 }
 
-export function underProcessFields(now = Date.now()) {
-  return {
+export function underProcessFields(order = {}, now = Date.now()) {
+  const when = typeof order === "number" ? order : now;
+  const source = order && typeof order === "object" ? order : {};
+  const radiology = diagnosticKindOf(source) === "radiology";
+  const fields = {
     trackStatus: "processing",
-    status: "Under Process",
-    processingAt: now,
+    status: radiology ? "Images under review" : "Under Process",
+    processingAt: when,
     trackCompleted: false,
   };
+  const analyzerName = String(source.analyzerName || "").trim().slice(0, 80);
+  const analyzerRef = String(source.analyzerRef || "").trim().slice(0, 80);
+  if (analyzerName) fields.analyzerName = analyzerName;
+  if (analyzerRef) fields.analyzerRef = analyzerRef;
+  return fields;
 }
 
 export function markReportReadyFields(now = Date.now()) {
@@ -220,6 +247,7 @@ export function reportReadyFields(report = {}, now = Date.now()) {
     reportFileData: String(report.fileData || ""),
     reportTestName: testName,
     reportNotes: String(report.notes || "").trim(),
+    ...(Array.isArray(report.reportResults) ? { reportResults: report.reportResults } : {}),
   };
 }
 
@@ -371,6 +399,8 @@ export function reportRecordFromOrder(order, people = []) {
     fileName,
     fileType: order.reportFileType || order.fileType || "",
     fileData: order.reportFileData || order.fileData || "",
+    results: Array.isArray(order.reportResults) ? order.reportResults : order.results || [],
+    accessionNo: order.accessionNo || "",
     source: "partner",
   };
 }

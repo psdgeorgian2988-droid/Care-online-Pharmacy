@@ -54,6 +54,7 @@ import { peekRxLabCheckout } from "./medicineCartStore";
 import PortalsChooser, { CustomerPortal, StaffPortal } from "./RolePortals";
 import { isPartnerDeskRoute, partnerDeskKindFromRoute } from "./partnerApp";
 import CustomerHome from "./CustomerHome";
+import GuestOrderLookup from "./GuestOrderLookup.jsx";
 import HomeServiceCatalog from "./HomeServiceCatalog";
 import LabsHub from "./LabsHub";
 import { HomeWithAboutSlides } from "./HomeAboutSlides";
@@ -104,6 +105,11 @@ function cartLivesInSection(route, service, plan) {
   return route === "#home" && RX_SECTION_CART.has(String(service || "").toLowerCase());
 }
 
+function hideHeaderCart(route, service, plan) {
+  if (route === "#ambulance" || partnerDeskKindFromRoute(route) === "ambulance") return true;
+  return (route === "#home" && !service) || cartLivesInSection(route, service, plan);
+}
+
 const OPS_LINKS = [
   { href: "#partner-desk", label: "Partner" },
   { href: "#admin", label: "Admin Panel" },
@@ -141,7 +147,7 @@ function SiteFooter({ showOpsLinks = false }) {
     <footer className="app-footer">
       <p>© 2026 MediHome. All rights reserved.</p>
       {showOpsLinks ? <SiteOpsLinks className="footer-ops" /> : null}
-      <SocialLinks className="footer-social" />
+      <SocialLinks className="footer-social" ids={["whatsapp"]} />
     </footer>
   );
 }
@@ -243,6 +249,7 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
         </div>
 
         <HomeReviewsTeaser />
+        {hasAccountSession(user) ? null : <GuestOrderLookup />}
       </div>
       </HomeWithAboutSlides>
     </div>
@@ -549,7 +556,7 @@ function App() {
         <Seo route={route} />
         <SiteTicker />
         <div className="app-frame">
-          <AppHeader hideCart={(route === "#home" && !hashService) || cartLivesInSection(route, hashService, hashPlan)} />
+          <AppHeader hideCart={hideHeaderCart(route, hashService, hashPlan)} />
           <main id="app-scroll">
             {welcomeGate || isAuthRoute ? null : <WebinarNotice />}
             {welcomeGate || isAuthRoute ? null : <SlotOfferBanner />}
@@ -593,7 +600,7 @@ function App() {
           />
           <div className="site-topbar-end">
             <CustomerLogOut className="site-logout-btn" />
-            {(route === "#home" && !hashService) || cartLivesInSection(route, hashService, hashPlan) ? null : (
+            {hideHeaderCart(route, hashService, hashPlan) ? null : (
               <HeaderCart className="site-topbar-header-cart" />
             )}
           </div>

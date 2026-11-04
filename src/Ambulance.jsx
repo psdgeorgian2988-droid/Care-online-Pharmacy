@@ -1,22 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import PinGpsBlock from "./PinGpsBlock";
-import AssignedAgent from "./AssignedAgent";
-import { lookupPinDirectory, resolvePinLocation } from "./pinLocation";
-import AutofillTrap from "./AutofillTrap";
+import ShareAmbulanceLive from "./ShareAmbulanceLive";
+import { captureLiveGps, locationErrorMessage, mapsUrlForCoords, osmEmbedUrl, resolvePinLocation, watchLiveGps } from "./pinLocation";
+import { apiFetch } from "./apiBase.js";
 import {
-  formatHospitalDistance,
-  hospitalDestination,
-  nearestIcuHospitals,
-  persistHospitalDestination,
-  pinFromText,
-  typedHospitalDestination,
-  validateAmbulanceDrop,
-} from "./icuHospitals";
-import { noContactFieldProps } from "./noContactAutofill";
-import { persistAndSendOrder, persistOrder, trackHref, withTracking } from "./orderTracking";
+  ambulanceFee,
+  ambulanceIsUrgent,
+  AMBULANCE_TYPES,
+  ambulanceTypeLabel,
+  placedCoords,
+  urgentAmbulanceErrors,
+} from "./ambulanceBooking.js";
+import AutofillTrap from "./AutofillTrap";
+import { persistAndSendOrder, persistLocalOrder, refreshOrderFromServer, trackHref, withTracking } from "./orderTracking";
 import { goHomeAfterPaidCheckout } from "./checkoutComplete";
 import { parseAppHash } from "./hashRoute";
-import { partnerAcceptFields } from "./orderConfirm";
+import { initialOrderStatus, isAwaitingPartnerConfirm, awaitingPartnerMessage } from "./orderConfirm";
 import PaymentBlock from "./PaymentBlock";
 import { paymentFromQuote, settleCheckoutPayment } from "./paymentApi";
 import {
@@ -43,13 +42,159 @@ import {
 } from "./bookingFor";
 import { maskMobile } from "./personFields";
 
-const AMBULANCE_FEE = {
-  emergency: 3999,
-  "non-emergency": 2499,
-};
-
 function readProfile() {
   return readUserProfile();
+}
+
+function NearestAmbulanceNote({ offer, note }) {
+  if (offer) {
+    const away = Number.isFinite(Number(offer.distanceKm)) ? ` · ${offer.distanceKm} km away` : "";
+    return (
+      <p className="pin-gps-hint">
+        Nearest free {ambulanceTypeLabel(offer.ambulanceType)}: {offer.vehicleNumber}
+        {offer.driverName ? ` · ${offer.driverName}` : ""}
+        {away}
+      </p>
+    );
+  }
+  if (note) return <small>{note}</small>;
+  return null;
+}
+
+function PickupMap({ form }) {
+  if (!placedCoords(form.lat, form.lng)) return null;
+  return (
+    <>
+      <iframe
+        className="amb-location-map"
+        title="Starting point"
+        src={osmEmbedUrl(
+          Math.round(Number(form.lat) * 1000) / 1000,
+          Math.round(Number(form.lng) * 1000) / 1000
+        )}
+      />
+      <a
+        className="amb-location-link"
+        href={form.mapsUrl || `https://www.google.com/maps?q=${form.lat},${form.lng}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        {form.liveGps ? "Booking location" : form.pinCode ? `PIN ${form.pinCode}` : "Map"} · {Number(form.lat).toFixed(5)}, {Number(form.lng).toFixed(5)}
+      </a>
+    </>
+  );
+}
+
+function StartPoint({
+  form,
+  errors,
+  locationNote,
+  sharingLocation,
+  watchingLocation,
+  locatingPin,
+  onChange,
+  onShare,
+  onTrack,
+  showAddress = true,
+}) {
+  const addressMode = form.startMode === "address";
+  return (
+    <div className="field full amb-location">
+      <p className="amb-location-kicker">Starting point</p>
+      <div className="amb-start-choice" role="radiogroup" aria-label="Starting point">
+        <label>
+          <input
+            type="radio"
+            name="startMode"
+            value="here"
+            checked={!addressMode}
+            onChange={onChange}
+          />
+          Where this booking is made
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="startMode"
+            value="address"
+            checked={addressMode}
+            onChange={onChange}
+          />
+          Address and PIN
+        </label>
+      </div>
+      {addressMode ? (
+        showAddress ? (
+          <>
+            <label htmlFor="amb-pickup">
+              Pickup address <span>*</span>
+            </label>
+            <textarea
+              id="amb-pickup"
+              name="pickupAddress"
+              rows="2"
+              value={form.pickupAddress || ""}
+              onChange={onChange}
+              placeholder="House, street, or landmark"
+            />
+            {errors.pickupAddress ? <small>{errors.pickupAddress}</small> : null}
+            <div className="amb-pin-row">
+              <input
+                id="amb-track-pin"
+                name="pinCode"
+                value={form.pinCode || ""}
+                onChange={onChange}
+                placeholder="6-digit PIN"
+                inputMode="numeric"
+                maxLength={6}
+                aria-label="PIN code"
+              />
+              <button type="button" className="amb-location-btn" onClick={() => onTrack()} disabled={locatingPin}>
+                {locatingPin ? "Locating…" : "Track by PIN"}
+              </button>
+            </div>
+            <PickupMap form={form} />
+          </>
+        ) : (
+          <p className="pin-gps-hint">Enter the pickup address and PIN below.</p>
+        )
+      ) : (
+        <>
+          <p className="pin-gps-hint">The ambulance starts from the place where you are making this booking.</p>
+          <button
+            type="button"
+            className="amb-location-btn"
+            onClick={onShare}
+            disabled={sharingLocation || watchingLocation || locatingPin}
+          >
+            {sharingLocation ? "Reading location…" : watchingLocation ? "Live location on" : "Share live location"}
+          </button>
+          {form.liveGps ? <PickupMap form={form} /> : null}
+        </>
+      )}
+      {errors.location ? <small>{errors.location}</small> : null}
+      {locationNote ? <small>{locationNote}</small> : null}
+      {addressMode ? (
+        <div className="amb-share-dear">
+          <label htmlFor="amb-dear">Share the ambulance location with your dear one</label>
+          <input
+            id="amb-dear"
+            name="dearOneMobile"
+            value={form.dearOneMobile || ""}
+            onChange={onChange}
+            placeholder="Their 10-digit mobile"
+            inputMode="numeric"
+            maxLength={10}
+            aria-label="Dear one's mobile"
+          />
+          <p className="pin-gps-hint">
+            This pickup is a different place from where you are booking. After you book, send them the ambulance’s live location.
+          </p>
+          {errors.dearOneMobile ? <small>{errors.dearOneMobile}</small> : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function Ambulance() {
@@ -59,13 +204,23 @@ function Ambulance() {
     mobile: profile.mobile,
     ...pickAddress(profile),
     ...accountOwnerBooking(profile),
-    emergencyType:
-      parseAppHash(typeof window !== "undefined" ? window.location.hash : "").service ===
-      "non-emergency"
-        ? "non-emergency"
-        : "emergency",
+    emergencyType: (() => {
+      const service = parseAppHash(typeof window !== "undefined" ? window.location.hash : "").service;
+      if (service === "life-support") return "life-support";
+      if (service === "patient-transport" || service === "non-emergency" || service === "transfer") {
+        return "patient-transport";
+      }
+      return "emergency";
+    })(),
     notes: "",
-    ...hospitalDestination(null),
+    destinationAddress: "",
+    pickupAddress: "",
+    startMode: "here",
+    dearOneMobile: "",
+    lat: null,
+    lng: null,
+    mapsUrl: "",
+    liveGps: false,
   });
   const [errors, setErrors] = useState({});
   const [request, setRequest] = useState(null);
@@ -75,21 +230,29 @@ function Ambulance() {
   const [payMethod, setPayMethod] = useState("cod");
   const [payReady, setPayReady] = useState(true);
   const [payQuote, setPayQuote] = useState(null);
-  const [icuHospitals, setIcuHospitals] = useState([]);
-  const urgentRide = form.emergencyType === "emergency";
+  const [sharingLocation, setSharingLocation] = useState(false);
+  const [watchingLocation, setWatchingLocation] = useState(false);
+  const [locatingPin, setLocatingPin] = useState(false);
+  const [locationNote, setLocationNote] = useState("");
+  const [offer, setOffer] = useState(null);
+  const [offerNote, setOfferNote] = useState("");
+  const stopLiveWatch = useRef(null);
+  const pinRequest = useRef(0);
+  const urgentRide = ambulanceIsUrgent(form.emergencyType);
   const busyWait = useBusyOverlay(submitting || paying, "ambulance", urgentRide);
-  const ambFee = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
-  const pickupPin = String(form.pinCode || "").replace(/\D/g, "");
+  const ambFee = ambulanceFee(form.emergencyType);
 
   useEffect(() => {
     const applyHash = () => {
       const { service } = parseAppHash(window.location.hash);
       const next =
-        service === "non-emergency" || service === "transfer"
-          ? "non-emergency"
-          : service === "emergency"
-            ? "emergency"
-            : "";
+        service === "life-support"
+          ? "life-support"
+          : service === "patient-transport" || service === "non-emergency" || service === "transfer"
+            ? "patient-transport"
+            : service === "emergency"
+              ? "emergency"
+              : "";
       if (!next) return;
       setForm((prev) =>
         prev.emergencyType === next ? prev : { ...prev, emergencyType: next }
@@ -99,81 +262,176 @@ function Ambulance() {
     return () => window.removeEventListener("hashchange", applyHash);
   }, []);
 
+  useEffect(() => () => stopLiveWatch.current?.(), []);
+
   useEffect(() => {
-    if (!/^\d{6}$/.test(pickupPin)) {
-      setIcuHospitals([]);
+    const addressStart = form.startMode === "address";
+    const pin = addressStart ? String(form.pinCode || "").replace(/\D/g, "") : "";
+    const gpsReady = form.liveGps === true && placedCoords(form.lat, form.lng);
+    const addressReady = addressStart && (/^\d{6}$/.test(pin) || placedCoords(form.lat, form.lng));
+    if (!form.emergencyType || (!gpsReady && !addressReady)) {
+      setOffer(null);
+      setOfferNote("");
       return undefined;
     }
     let cancelled = false;
-    const applyList = (list) => {
-      if (cancelled) return;
-      setIcuHospitals(list);
-    };
-    applyList(nearestIcuHospitals({ pin: pickupPin, limit: 3 }));
-    lookupPinDirectory(pickupPin).then((row) => {
-      applyList(
-        nearestIcuHospitals({
-          lat: row?.lat,
-          lng: row?.lng,
-          pin: pickupPin,
-          limit: 3,
-        })
-      );
+    const params = new URLSearchParams({
+      type: form.emergencyType,
+      lat: placedCoords(form.lat, form.lng) ? String(form.lat) : "",
+      lng: placedCoords(form.lat, form.lng) ? String(form.lng) : "",
+      pin,
     });
+    apiFetch(`/api/ambulance/nearest?${params}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        setOffer(data?.ambulance || null);
+        setOfferNote(data?.ambulance ? "" : "No free ambulance of this type is available nearby.");
+      })
+      .catch(() => {
+        if (!cancelled) setOfferNote("");
+      });
     return () => {
       cancelled = true;
     };
-  }, [pickupPin]);
+  }, [form.emergencyType, form.lat, form.lng, form.pinCode, form.startMode, form.liveGps]);
 
-  const pickHospital = (hospital) => {
-    setForm((prev) => ({ ...prev, ...hospitalDestination(hospital) }));
-    setErrors((prev) => ({
+  useEffect(() => {
+    const id = request?.id || request?.requestId || request?.bookingId;
+    if (!id || !isAwaitingPartnerConfirm(request)) return undefined;
+    let cancelled = false;
+    const tick = async () => {
+      const latest = await refreshOrderFromServer(id);
+      if (!cancelled && latest) setRequest(latest);
+    };
+    tick();
+    const timer = window.setInterval(tick, 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [request?.id, request?.requestId, request?.bookingId, request?.partnerConfirmStatus, request?.partnerConfirmed, request?.teamMemberId]);
+
+  const applyLiveFix = (live) => {
+    setSharingLocation(false);
+    setWatchingLocation(true);
+    setLocationNote("");
+    setForm((prev) => ({
       ...prev,
-      destinationName: "",
-      destinationAddress: "",
-      destinationPin: "",
+      lat: live.lat,
+      lng: live.lng,
+      mapsUrl: live.mapsUrl,
+      liveGps: true,
     }));
+    setErrors((prev) => ({ ...prev, location: "" }));
+  };
+
+  const shareLocation = () => {
+    if (sharingLocation || watchingLocation || locatingPin) return;
+    pinRequest.current += 1;
+    setSharingLocation(true);
+    setLocationNote("");
+    stopLiveWatch.current?.();
+    stopLiveWatch.current = watchLiveGps(applyLiveFix, (error) => {
+      setSharingLocation(false);
+      setWatchingLocation(false);
+      setLocationNote(
+        locationErrorMessage(error) || "Location could not be read. Allow location and try again."
+      );
+    });
+  };
+
+  const trackByPin = async (rawPin) => {
+    const pin = String(rawPin ?? form.pinCode ?? "").replace(/\D/g, "").slice(0, 6);
+    if (!/^\d{6}$/.test(pin)) {
+      setErrors((prev) => ({ ...prev, location: "Enter a 6-digit PIN to track." }));
+      return;
+    }
+    const requestId = ++pinRequest.current;
+    setLocatingPin(true);
+    setLocationNote("");
+    stopLiveWatch.current?.();
+    stopLiveWatch.current = null;
+    setWatchingLocation(false);
+    setSharingLocation(false);
+    try {
+      const gps = await resolvePinLocation(pin);
+      if (requestId !== pinRequest.current) return;
+      if (!Number.isFinite(Number(gps.lat)) || !Number.isFinite(Number(gps.lng))) {
+        throw new Error("This PIN could not be placed on the map.");
+      }
+      setForm((prev) => ({
+        ...prev,
+        pinCode: pin,
+        lat: gps.lat,
+        lng: gps.lng,
+        mapsUrl: mapsUrlForCoords(gps.lat, gps.lng) || gps.mapsUrl,
+        liveGps: false,
+        locality: gps.locality || prev.locality || "",
+      }));
+      setErrors((prev) => ({ ...prev, location: "" }));
+    } catch (error) {
+      if (requestId !== pinRequest.current) return;
+      setLocationNote(error.message || "Could not track this PIN.");
+    } finally {
+      if (requestId === pinRequest.current) setLocatingPin(false);
+    }
   };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
+    if (name === "startMode") {
+      stopLiveWatch.current?.();
+      stopLiveWatch.current = null;
+      setWatchingLocation(false);
+      setSharingLocation(false);
+      setForm((prev) => ({
+        ...prev,
+        startMode: value === "address" ? "address" : "here",
+        lat: null,
+        lng: null,
+        mapsUrl: "",
+        liveGps: false,
+      }));
+      setErrors((prev) => ({ ...prev, location: "", pickupAddress: "" }));
+      setOffer(null);
+      setOfferNote("");
+      return;
+    }
     const next =
-      name === "mobile"
+      name === "mobile" || name === "dearOneMobile"
         ? value.replace(/\D/g, "")
-        : name === "pinCode" || name === "destinationPin"
+        : name === "pinCode"
           ? value.replace(/\D/g, "").slice(0, 6)
           : value;
-    setForm((prev) => {
-      if (
-        name === "destinationName" ||
-        name === "destinationAddress" ||
-        name === "destinationPin"
-      ) {
-        const address =
-          name === "destinationAddress" ? next : prev.destinationAddress;
-        const typedPin =
-          name === "destinationPin" ? next : prev.destinationPin;
-        return {
-          ...prev,
-          ...typedHospitalDestination({
-            name: name === "destinationName" ? next : prev.destinationName,
-            address,
-            pin: typedPin || pinFromText(address),
-          }),
-        };
-      }
-      return { ...prev, [name]: next };
-    });
-    setErrors((prev) => ({ ...prev, [name]: "" }));
+    setForm((prev) => ({ ...prev, [name]: next }));
+    setErrors((prev) => ({ ...prev, [name]: "", ...(name === "pinCode" ? { location: "" } : {}) }));
+    if (name === "pinCode" && /^\d{6}$/.test(next)) void trackByPin(next);
   };
 
   const validate = () => {
+    if (ambulanceIsUrgent(form.emergencyType)) {
+      const next = urgentAmbulanceErrors(form);
+      setErrors(next);
+      return Object.keys(next).length === 0;
+    }
     const next = {
       ...validateBookingDetails(form, profile),
-      ...validateAddress(form),
-      ...validateAmbulanceDrop(form),
+      ...(form.startMode === "address" ? validateAddress(form) : {}),
     };
     if (!form.emergencyType) next.emergencyType = "Select emergency type.";
+    if (form.startMode !== "address" && (form.liveGps !== true || !placedCoords(form.lat, form.lng))) {
+      next.location = "Share the location where you are booking.";
+    }
+    if (form.startMode === "address") {
+      const dear = String(form.dearOneMobile || "").replace(/\D/g, "");
+      if (dear && !/^[6-9]\d{9}$/.test(dear)) {
+        next.dearOneMobile = "Enter a 10-digit mobile, or leave it blank.";
+      }
+    }
+    if (String(form.destinationAddress || "").trim().length < 3) {
+      next.destinationAddress = "Enter the drop location.";
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -184,15 +442,86 @@ function Ambulance() {
 
     setSubmitting(true);
     try {
-      const booked = {
-        ...withBookingIdentity(form, profile),
-        ...pickAddress(form),
-      };
-      const urgent = form.emergencyType === "emergency";
+      const urgent = ambulanceIsUrgent(form.emergencyType);
+      const booked = urgent
+        ? { ...form, mobile: String(form.mobile || "").replace(/\D/g, ""), patientName: profile.name || "Customer" }
+        : {
+            ...withBookingIdentity(form, profile),
+            ...pickAddress(form),
+          };
       const queue = await holdForPartnerQueue("ambulance", { urgent });
-      const gps = await resolvePinLocation(booked.pinCode);
-      const addr = applyResolvedPin(booked, gps);
-      const total = AMBULANCE_FEE[form.emergencyType] || AMBULANCE_FEE.emergency;
+      let addr = booked;
+      let live = placedCoords(form.lat, form.lng) ? form : null;
+      if (urgent) {
+        const addressStart = form.startMode === "address";
+        if (!live) {
+          if (!addressStart) {
+            try {
+              live = await captureLiveGps();
+            } catch {
+              live = null;
+            }
+          }
+        }
+        if (!live) {
+          setErrors((prev) => ({
+            ...prev,
+            location: addressStart
+              ? "Enter a 6-digit PIN for this address."
+              : "Share the location where you are booking.",
+          }));
+          return;
+        }
+        const here = `${Number(live.lat).toFixed(5)}, ${Number(live.lng).toFixed(5)}`;
+        const pin = String(form.pinCode || live.pinCode || "").replace(/\D/g, "").slice(0, 6);
+        const line = String(form.pickupAddress || "").trim();
+        addr = addressStart
+          ? {
+              ...booked,
+              address: `${line}, ${pin}`,
+              pickupAddress: `${line}, ${pin}`,
+              pinCode: pin,
+              lat: live.lat,
+              lng: live.lng,
+              mapsUrl: live.mapsUrl,
+              liveGps: false,
+            }
+          : {
+              ...booked,
+              address: `Live location ${here}`,
+              pickupAddress: `Live location ${here}`,
+              lat: live.lat,
+              lng: live.lng,
+              mapsUrl: live.mapsUrl,
+              liveGps: true,
+            };
+      } else if (form.startMode !== "address") {
+        if (!live) {
+          try {
+            live = await captureLiveGps();
+          } catch {
+            live = null;
+          }
+        }
+        if (!live) {
+          setErrors((prev) => ({ ...prev, location: "Share the location where you are booking." }));
+          return;
+        }
+        const here = `${Number(live.lat).toFixed(5)}, ${Number(live.lng).toFixed(5)}`;
+        addr = {
+          ...booked,
+          address: `Live location ${here}`,
+          pickupAddress: `Live location ${here}`,
+          lat: live.lat,
+          lng: live.lng,
+          mapsUrl: live.mapsUrl,
+          liveGps: true,
+        };
+      } else {
+        const gps = await resolvePinLocation(booked.pinCode);
+        addr = applyResolvedPin(booked, gps);
+      }
+      const total = ambulanceFee(form.emergencyType);
       const pay = paymentFromQuote(payQuote, total);
 
       const requestDetails = {
@@ -200,19 +529,15 @@ function Ambulance() {
         patientName: booked.patientName,
         mobile: booked.mobile,
         ...addr,
+        ...(live
+          ? { lat: live.lat, lng: live.lng, mapsUrl: live.mapsUrl, liveGps: live.liveGps === true }
+          : { liveGps: false }),
         emergencyType: form.emergencyType,
+        destinationAddress: String(form.destinationAddress || "").trim(),
+        startMode: form.startMode === "address" ? "address" : "here",
+        dearOneMobile: String(form.dearOneMobile || "").replace(/\D/g, "").slice(0, 10),
         notes: form.notes.trim(),
-        ...(() => {
-          const picked = icuHospitals.find((row) => row.id === form.destinationId);
-          return picked
-            ? hospitalDestination(picked)
-            : persistHospitalDestination({
-                name: form.destinationName,
-                address: form.destinationAddress,
-                pin: form.destinationPin,
-              });
-        })(),
-        partner: "MediHome Ambulance",
+        partner: offer?.partnerName || "MediHome Ambulance",
         total: pay.amountRupees,
         saleRupees: pay.saleRupees,
         couponCode: pay.couponCode,
@@ -220,15 +545,31 @@ function Ambulance() {
         highTrafficWait: queue.busy || queue.waited,
         requestedAt: new Date().toLocaleString(),
         requestedAtMs: Date.now(),
-        ...partnerAcceptFields(),
-        trackStatus: "assigned",
-        status: "Partner assigned — ambulance dispatched",
+        kind: "ambulance",
+        orderType: "ambulance",
+        ...initialOrderStatus("ambulance"),
+        status: "Waiting for the ambulance to accept",
         ...persistUnsettledCheckoutFields(
-          form.emergencyType === "emergency" ? "cod" : payMethod
+          ambulanceIsUrgent(form.emergencyType) ? "cod" : payMethod
         ),
       };
 
-      const trackedRequest = persistOrder(withTracking(requestDetails, "ambulance"));
+      const res = await apiFetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestDetails),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.order) {
+        const message = data.error || "No free ambulance of this type is available nearby.";
+        setOffer(null);
+        setOfferNote(message);
+        setErrors((prev) => ({ ...prev, location: message }));
+        return;
+      }
+      const trackedRequest = persistLocalOrder(
+        withTracking({ ...requestDetails, ...data.order, kind: "ambulance" }, "ambulance")
+      );
       setRequest(trackedRequest);
       setFlowStep("placed");
     } catch (error) {
@@ -245,7 +586,7 @@ function Ambulance() {
     try {
       const amount = Number(request.total) || 0;
       const method =
-        request.emergencyType === "emergency" ? "cod" : payMethod;
+        request.emergencyType && ambulanceIsUrgent(request.emergencyType) ? "cod" : payMethod;
       const pay = paymentFromQuote(payQuote, amount);
       const payment = await settleCheckoutPayment({
         method,
@@ -281,11 +622,23 @@ function Ambulance() {
       ...accountOwnerBooking(profile),
       emergencyType: "emergency",
       notes: "",
-      ...hospitalDestination(null),
+      destinationAddress: "",
+      pickupAddress: "",
+      startMode: "here",
+      dearOneMobile: "",
+      lat: null,
+      lng: null,
+      mapsUrl: "",
+      liveGps: false,
     });
     setPayMethod("cod");
     setPayQuote(null);
-    setIcuHospitals([]);
+    setLocationNote("");
+    setSharingLocation(false);
+    setWatchingLocation(false);
+    setLocatingPin(false);
+    stopLiveWatch.current?.();
+    stopLiveWatch.current = null;
     setErrors({});
   };
 
@@ -296,11 +649,26 @@ function Ambulance() {
         {busyWait ? <BusyWait kind="ambulance" traffic={busyWait} /> : null}
         <div className="service-page">
           <section className="service-confirm">
-            {flowStep === "placed" ? (
+            {flowStep === "placed" && request.partnerConfirmed === true ? (
               <>
                 <div className="success-icon">✓</div>
                 <h1>Booking Confirmed</h1>
-                <p>Your ambulance is confirmed. Track the unit toward your pickup below.</p>
+                <p>The ambulance driver accepted. Your booking is confirmed.</p>
+              </>
+            ) : null}
+            {flowStep === "placed" &&
+            String(request.partnerConfirmStatus || "").toLowerCase() === "declined" ? (
+              <>
+                <div className="success-icon">!</div>
+                <h1>No ambulance accepted</h1>
+                <p>Every free ambulance of this type is engaged or declined the request.</p>
+              </>
+            ) : null}
+            {flowStep === "placed" && isAwaitingPartnerConfirm(request) ? (
+              <>
+                <div className="success-icon">…</div>
+                <h1>Waiting for the driver</h1>
+                <p>{awaitingPartnerMessage("ambulance")}</p>
               </>
             ) : null}
             {flowStep === "pay" ? (
@@ -329,9 +697,21 @@ function Ambulance() {
               <div className="confirm-row">
                 <span>Type</span>
                 <strong>
-                  {request.emergencyType === "emergency"
-                    ? "Emergency"
-                    : "Non-emergency"}
+                  {ambulanceTypeLabel(request.emergencyType)}
+                </strong>
+              </div>
+              <div className="confirm-row">
+                <span>Ambulance</span>
+                <strong>
+                  {[
+                    request.vehicleNumber,
+                    request.ambulanceDriver || request.technicianName,
+                    Number.isFinite(Number(request.ambulanceDistanceKm))
+                      ? `${request.ambulanceDistanceKm} km`
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "Searching"}
                 </strong>
               </div>
               <div className="confirm-row">
@@ -366,40 +746,22 @@ function Ambulance() {
                 <span>Pickup PIN</span>
                 <strong>{request.pinCode}</strong>
               </div>
-              {request.destinationName ? (
-                <>
-                  <div className="confirm-row">
-                    <span>Drop At</span>
-                    <strong>{request.destinationName}</strong>
-                  </div>
-                  {request.destinationAddress ? (
-                    <div className="confirm-row">
-                      <span>Drop Address</span>
-                      <strong>{request.destinationAddress}</strong>
-                    </div>
-                  ) : null}
-                  <div className="confirm-row">
-                    <span>Drop PIN</span>
-                    <strong>{request.destinationPin || "—"}</strong>
-                  </div>
-                  {request.destinationFacilities || request.destinationKm ? (
-                    <div className="confirm-row">
-                      <span>Reach</span>
-                      <strong>
-                        {[
-                          request.destinationFacilities,
-                          request.destinationKm !== "" &&
-                          request.destinationKm != null
-                            ? formatHospitalDistance(request.destinationKm)
-                            : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </strong>
-                    </div>
-                  ) : null}
-                </>
-              ) : null}
+              <div className="confirm-row">
+                <span>Location</span>
+                <strong>
+                  {Number.isFinite(Number(request.lat)) && Number.isFinite(Number(request.lng)) ? (
+                    <a href={request.mapsUrl || `https://www.google.com/maps?q=${request.lat},${request.lng}`} target="_blank" rel="noreferrer">
+                      {request.liveGps ? "Live location" : "Map"} · {Number(request.lat).toFixed(5)}, {Number(request.lng).toFixed(5)}
+                    </a>
+                  ) : (
+                    "Shared from the pickup PIN"
+                  )}
+                </strong>
+              </div>
+              <div className="confirm-row">
+                <span>Drop location</span>
+                <strong>{request.destinationAddress || "—"}</strong>
+              </div>
               <PinGpsBlock record={request} />
               {request.notes ? (
                 <div className="confirm-row">
@@ -408,11 +770,15 @@ function Ambulance() {
                 </div>
               ) : null}
             </div>
-            {flowStep !== "pay" ? (
+            <ShareAmbulanceLive order={request} />
+            {request.partnerConfirmed === true ? (
               <AssignedAgent
                 record={{
                   ...request,
-                  agentRole: "Ambulance unit",
+                  agentName: request.ambulanceDriver || request.technicianName,
+                  agentMobile: request.ambulanceDriverMobile || request.technicianMobile,
+                  agentVehicle: request.vehicleNumber,
+                  agentRole: "Ambulance driver",
                 }}
               />
             ) : null}
@@ -423,7 +789,7 @@ function Ambulance() {
                   amount={Number(request.total) || 0}
                   pin={request.pinCode}
                   method={
-                    request.emergencyType === "emergency" ? "cod" : payMethod
+                    ambulanceIsUrgent(request.emergencyType) ? "cod" : payMethod
                   }
                   onMethodChange={setPayMethod}
                   onQuoteChange={setPayQuote}
@@ -447,15 +813,17 @@ function Ambulance() {
             ) : null}
             {flowStep === "placed" ? (
               <div className="confirm-actions">
-                <button
-                  type="button"
-                  className="service-submit"
-                  onClick={() => {
-                    window.location.hash = trackHref(request.requestId);
-                  }}
-                >
-                  Track live
-                </button>
+                {request.partnerConfirmed === true ? (
+                  <button
+                    type="button"
+                    className="service-submit"
+                    onClick={() => {
+                      window.location.hash = trackHref(request.requestId);
+                    }}
+                  >
+                    Track live
+                  </button>
+                ) : null}
                 {showCustomerPayNow(request) ? (
                   <button
                     type="button"
@@ -473,15 +841,17 @@ function Ambulance() {
             ) : null}
             {flowStep === "paid" ? (
               <div className="confirm-actions">
-                <button
-                  type="button"
-                  className="service-submit"
-                  onClick={() => {
-                    window.location.hash = trackHref(request.requestId);
-                  }}
-                >
-                  Track live
-                </button>
+                {request.partnerConfirmed === true ? (
+                  <button
+                    type="button"
+                    className="service-submit"
+                    onClick={() => {
+                      window.location.hash = trackHref(request.requestId);
+                    }}
+                  >
+                    Track live
+                  </button>
+                ) : null}
                 <BillButton order={request} />
                 <button type="button" className="ghost-button" onClick={startNew}>
                   Request another ambulance
@@ -508,17 +878,6 @@ function Ambulance() {
 
         <form className="service-form" onSubmit={handleSubmit} autoComplete="off">
           <AutofillTrap />
-          <BookingFlow
-            idPrefix="amb"
-            profile={profile}
-            values={form}
-            errors={errors}
-            askWho={false}
-            alwaysAskAddress
-            addressTitle="Pickup Address"
-            onChange={handleChange}
-            pinHint="Select the Village / Sector / Mohalla attached to this PIN."
-          >
           <div className="field">
             <label htmlFor="amb-type">
               Emergency type <span>*</span>
@@ -530,111 +889,102 @@ function Ambulance() {
               onChange={handleChange}
             >
               <option value="">Select a service</option>
-              <option value="emergency">Emergency</option>
-              <option value="non-emergency">Non-emergency</option>
+              {AMBULANCE_TYPES.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
             </select>
             {errors.emergencyType && <small>{errors.emergencyType}</small>}
           </div>
 
+          {urgentRide ? (
+            <>
+              <div className="field">
+                <label htmlFor="amb-mobile">
+                  Mobile number <span>*</span>
+                </label>
+                <input
+                  id="amb-mobile"
+                  name="mobile"
+                  value={form.mobile}
+                  onChange={handleChange}
+                  placeholder="10-digit mobile"
+                  inputMode="numeric"
+                  maxLength={10}
+                  autoComplete="tel"
+                />
+                {errors.mobile ? <small>{errors.mobile}</small> : null}
+              </div>
+              <StartPoint
+                form={form}
+                errors={errors}
+                locationNote={locationNote}
+                sharingLocation={sharingLocation}
+                watchingLocation={watchingLocation}
+                locatingPin={locatingPin}
+                onChange={handleChange}
+                onShare={shareLocation}
+                onTrack={trackByPin}
+              />
+              <div className="field full">
+                <label htmlFor="amb-drop">
+                  Drop location <span>*</span>
+                </label>
+                <textarea
+                  id="amb-drop"
+                  name="destinationAddress"
+                  rows="2"
+                  value={form.destinationAddress}
+                  onChange={handleChange}
+                  placeholder="Hospital, home, or place to take the patient"
+                />
+                {errors.destinationAddress ? <small>{errors.destinationAddress}</small> : null}
+              </div>
+              <NearestAmbulanceNote offer={offer} note={offerNote} />
+              <p className="pin-gps-hint">Cash on arrival.</p>
+              <button type="submit" className="service-submit" disabled={submitting || Boolean(offerNote)}>
+                {submitting ? "Booking ambulance…" : "Book ambulance"}
+              </button>
+            </>
+          ) : (
+          <>
+          <StartPoint
+            form={form}
+            errors={errors}
+            locationNote={locationNote}
+            sharingLocation={sharingLocation}
+            watchingLocation={watchingLocation}
+            locatingPin={locatingPin}
+            onChange={handleChange}
+            onShare={shareLocation}
+            onTrack={trackByPin}
+            showAddress={false}
+          />
+          <BookingFlow
+            idPrefix="amb"
+            profile={profile}
+            values={form}
+            errors={errors}
+            askWho={false}
+            alwaysAskAddress={form.startMode === "address"}
+            addressTitle="Pickup Address"
+            onChange={handleChange}
+            pinHint="Select the Village / Sector / Mohalla attached to this PIN."
+          >
           <div className="field full">
-            <label htmlFor="amb-hospital-name">
-              Hospital Name <span>*</span>
+            <label htmlFor="amb-drop">
+              Drop location <span>*</span>
             </label>
             <textarea
-              id="amb-hospital-name"
-              name="destinationName"
-              rows="2"
-              value={form.destinationName}
-              onChange={handleChange}
-              placeholder="Hospital where the patient should be taken"
-              wrap="soft"
-              {...noContactFieldProps}
-            />
-            {errors.destinationName ? (
-              <small>{errors.destinationName}</small>
-            ) : null}
-          </div>
-          <div className="field full">
-            <label htmlFor="amb-hospital-address">
-              Drop Address <span>*</span>
-            </label>
-            <textarea
-              id="amb-hospital-address"
+              id="amb-drop"
               name="destinationAddress"
               rows="2"
               value={form.destinationAddress}
               onChange={handleChange}
-              placeholder="Full hospital address, area and landmark"
-              wrap="soft"
-              {...noContactFieldProps}
+              placeholder="Hospital, home, or place to take the patient"
             />
-            {errors.destinationAddress ? (
-              <small>{errors.destinationAddress}</small>
-            ) : null}
-          </div>
-          <div className="field">
-            <label htmlFor="amb-hospital-pin">
-              Drop PIN Code <span>*</span>
-            </label>
-            <input
-              id="amb-hospital-pin"
-              name="destinationPin"
-              value={form.destinationPin}
-              onChange={handleChange}
-              placeholder="6-digit PIN"
-              inputMode="numeric"
-              maxLength="6"
-              {...noContactFieldProps}
-            />
-            {errors.destinationPin ? (
-              <small>{errors.destinationPin}</small>
-            ) : null}
-          </div>
-
-          <div className="field full amb-hospitals">
-            <p className="amb-hospitals-kicker">Faster Reach Options</p>
-            {/^\d{6}$/.test(pickupPin) ? (
-              <>
-                <p className="pin-gps-hint">
-                  Hospitals with ICU and ventilator that can be reached fastest
-                  from PIN {pickupPin}. Tap one to fill the name and address, or
-                  keep the hospital you typed.
-                </p>
-                {icuHospitals.length ? (
-                  <div className="amb-hospital-list">
-                    {icuHospitals.map((hospital) => {
-                      const on = form.destinationId === hospital.id;
-                      return (
-                        <button
-                          key={hospital.id}
-                          type="button"
-                          className={on ? "is-on" : ""}
-                          onClick={() => pickHospital(hospital)}
-                        >
-                          <strong>{hospital.name}</strong>
-                          <span>
-                            {hospital.address}
-                          </span>
-                          <span className="amb-hospital-meta">
-                            ICU · Ventilator
-                            {hospital.distanceKm != null
-                              ? ` · ${formatHospitalDistance(hospital.distanceKm)}`
-                              : ""}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="pin-gps-hint">Finding faster hospitals near this PIN…</p>
-                )}
-              </>
-            ) : (
-              <p className="pin-gps-hint">
-                Enter the pickup PIN Code to see hospitals that can be reached
-                fastest.
-              </p>
-            )}
+            {errors.destinationAddress ? <small>{errors.destinationAddress}</small> : null}
           </div>
 
           <div className="field full">
@@ -649,29 +999,26 @@ function Ambulance() {
             />
           </div>
 
-          {form.emergencyType === "emergency" ? (
-            <p className="pin-gps-hint">
-              Emergency rides are cash on arrival.
-            </p>
-          ) : (
-            <div className="field full">
-              <PaymentBlock
-                kind="ambulance"
-                amount={ambFee}
-                pin={form.pinCode}
-                method={payMethod}
-                onMethodChange={setPayMethod}
-                onQuoteChange={setPayQuote}
-                onReadyChange={setPayReady}
-                guestDetails={form}
-              />
-            </div>
-          )}
+          <div className="field full">
+            <PaymentBlock
+              kind="ambulance"
+              amount={ambFee}
+              pin={form.pinCode}
+              method={payMethod}
+              onMethodChange={setPayMethod}
+              onQuoteChange={setPayQuote}
+              onReadyChange={setPayReady}
+              guestDetails={form}
+            />
+          </div>
 
-          <button type="submit" className="service-submit" disabled={submitting}>
+          <NearestAmbulanceNote offer={offer} note={offerNote} />
+          <button type="submit" className="service-submit" disabled={submitting || Boolean(offerNote)}>
             {submitting ? "Connecting PIN to map…" : "Confirm request"}
           </button>
           </BookingFlow>
+          </>
+          )}
         </form>
       </div>
     </>
@@ -694,14 +1041,21 @@ const styles = `
 .service-form input:focus,.service-form select:focus,.service-form textarea:focus{border-color:#1a6b7a}
 .service-form small{margin-top:4px;color:#d84b4b;font-size:12px}
 .service-form small.pin-gps-hint,.pin-gps-hint{color:#5d7180}
-.amb-hospitals{display:flex;flex-direction:column;gap:8px}
-.amb-hospitals-kicker{margin:0;font-size:12px;font-weight:800;color:#1a6b7a}
-.amb-hospital-list{display:grid;gap:8px}
-.amb-hospital-list button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin:0;padding:10px 12px;border:1px solid #d7e2e9;border-radius:10px;background:#fff;color:#143246;font:inherit;text-align:left;cursor:pointer}
-.amb-hospital-list button.is-on{border-color:#1a6b7a;background:#e8f4f6}
-.amb-hospital-list strong{font-size:14px}
-.amb-hospital-list span{font-size:12px;color:#5d7180;line-height:1.4}
-.amb-hospital-meta{color:#1a6b7a !important;font-weight:700}
+.amb-location{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.amb-location-kicker{margin:0;font-size:12px;font-weight:800;color:#1a6b7a}
+.amb-start-choice{display:flex;flex-wrap:wrap;gap:8px;width:100%}
+.amb-start-choice label{display:flex;align-items:center;gap:6px;margin:0;border:1px solid #d7e2e9;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:700;color:#143246}
+.amb-start-choice input{width:auto;height:auto;min-height:0}
+.amb-share-dear{width:100%;display:flex;flex-direction:column;gap:6px}
+.amb-share-dear label{margin:0}
+.amb-location-btn{border:0;border-radius:8px;background:#1a6b7a;color:#fff;font:inherit;font-size:13px;font-weight:800;min-height:38px;padding:0 14px;cursor:pointer}
+.amb-location-btn:disabled{opacity:.65;cursor:wait}
+.amb-location-link{color:#1a6b7a;font-size:13px;font-weight:800}
+.amb-pin-row{display:flex;gap:8px;width:100%;align-items:center}
+.amb-pin-row input{flex:1;min-width:0}
+.amb-pin-row .amb-location-btn{flex:0 0 auto}
+.amb-location-map{width:100%;height:180px;border:0;border-radius:10px;background:#e8eef2}
+.confirm-row a{color:#1a6b7a;font-weight:800}
 .service-submit{grid-column:1/-1;border:none;border-radius:8px;background:#1a6b7a;color:#fff;font-size:14px;font-weight:700;min-height:40px;cursor:pointer;font-family:inherit}
 .confirm-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
 .confirm-actions .service-submit,.confirm-actions .ghost-button{grid-column:auto;min-width:180px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}

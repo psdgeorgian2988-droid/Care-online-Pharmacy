@@ -118,6 +118,14 @@ import {
   underProcessFields,
 } from "./labPipeline";
 import {
+  AnalyzerLinkFields,
+  CollectorLiveShare,
+  LabPartnerCatalog,
+  SampleTubePanel,
+  ReportResultEditor,
+} from "./LabPartnerExtras";
+import { buildSampleTubes, normalizeReportResults, resultRowsFromOrder } from "./labAccession";
+import {
   medicalRecordFileCard,
   medicalRecordForViewer,
   medicalRecordPatientCard,
@@ -129,6 +137,8 @@ import {
   partnerPatientRecords,
   uniquePartnerPatients,
 } from "./reportPeople";
+import { DoctorAppointmentList, DoctorPatientChart } from "./DoctorVisitPanel.jsx";
+import AmbulanceBookingList from "./AmbulanceBookingList.jsx";
 
 function formatRupee(amount) {
   return `₹${Number(amount || 0).toLocaleString("en-IN", {
@@ -354,7 +364,8 @@ export default function Partner() {
 
   const advanceDiagnostic = async (job, fields) => {
     const id = job.id || job.bookingId || job.requestId;
-    setCollectingId(id);
+    const quiet = Boolean(fields?.collectorLive) && !fields?.trackStatus;
+    if (!quiet) setCollectingId(id);
     setError("");
     try {
       await patchPartnerJob(id, fields);
@@ -487,14 +498,18 @@ export default function Partner() {
   const isStepDownDesk = appKind === "stepdown";
   const homeTabs = [
     { id: "home", label: "Home" },
-    { id: "orders", label: "Orders" },
-    { id: "reports", label: "Search reports" },
+    {
+      id: "orders",
+      label:
+        appKind === "doctor" ? "Appointments" : appKind === "ambulance" ? "Bookings" : "Orders",
+    },
+    ...(appKind === "ambulance" ? [] : [{ id: "reports", label: "Search reports" }]),
   ];
   const sharedStayRef = useRef(new Set());
 
   useEffect(() => {
-    if (homeTab === "profile" || homeTab === "team") setHomeTab("home");
-  }, [homeTab, appKind]);
+    if (appKind === "ambulance" && homeTab === "reports") setHomeTab("home");
+  }, [appKind, homeTab]);
 
   useEffect(() => {
     const tabs = partnerDeskTabsFor(appKind);
@@ -669,7 +684,7 @@ export default function Partner() {
             }
           />
         ) : null}
-        {homeTab === "reports" ? (
+        {homeTab === "reports" && appKind !== "ambulance" ? (
           <ReportSearch
             title="Search reports"
             onSearch={searchPartnerReports}
@@ -835,6 +850,19 @@ export default function Partner() {
                     "returns"
                   )
                 }
+                onSavePrescription={async (prescription) => {
+                  setCollectingId(id);
+                  setError("");
+                  try {
+                    await patchPartnerJob(id, { doctorPrescription: prescription });
+                    await loadJobs();
+                  } catch (err) {
+                    setError(err.message || "Could not save the prescription.");
+                    throw err;
+                  } finally {
+                    setCollectingId("");
+                  }
+                }}
               />
             );
           };
@@ -1008,6 +1036,23 @@ export default function Partner() {
                       onOpen={openGeneratedReport}
                     />
                   ) : null}
+                  {group.kind === "doctor" ? (
+                    <DoctorAppointmentList
+                      jobs={tabOrders}
+                      openId={openJobId}
+                      onOpen={setOpenJobId}
+                      renderDetail={renderDetail}
+                      empty={loading ? "Loading…" : "No appointments yet."}
+                    />
+                  ) : group.kind === "ambulance" ? (
+                    <AmbulanceBookingList
+                      jobs={tabOrders}
+                      openId={openJobId}
+                      onOpen={setOpenJobId}
+                      renderDetail={renderDetail}
+                      empty={loading ? "Loading…" : "No bookings yet."}
+                    />
+                  ) : (
                   <OrderListTable
                     orders={tabOrders}
                     audience="partner"
@@ -1026,6 +1071,7 @@ export default function Partner() {
                     onOpen={setOpenJobId}
                     renderDetail={renderDetail}
                   />
+                  )}
                 </>
               )}
             </section>
@@ -1053,7 +1099,9 @@ function PartnerHome({ partner, jobs, kind, onOpen, teamPanel = null }) {
       </p>
       <div className="partner-home-grid">
         <button type="button" className="partner-home-card" onClick={() => onOpen("orders")}>
-          <span>Orders</span>
+          <span>
+            {kind === "doctor" ? "Appointments" : kind === "ambulance" ? "Bookings" : "Orders"}
+          </span>
           <strong>{openOrders}</strong>
           <p>
             {newOrders} new · {(jobs || []).length} total
@@ -1061,6 +1109,7 @@ function PartnerHome({ partner, jobs, kind, onOpen, teamPanel = null }) {
         </button>
       </div>
       {teamPanel}
+      {kind === "lab" ? <LabPartnerCatalog partner={partner} /> : null}
     </section>
   );
 }
@@ -1178,6 +1227,7 @@ function JobDetail({
   onReturnCollect,
   onReturnReceive,
   onOpenRecord,
+  onSavePrescription,
 }) {
   const closed = partnerJobClosed(job);
   const diagPanel =
@@ -1252,7 +1302,7 @@ function JobDetail({
             disabled={collecting}
             onClick={onAccept}
           >
-            {kind === "medicine" ? "Confirm order" : "Accept"}
+            {kind === "medicine" ? "Confirm order" : kind === "ambulance" ? "Accept booking" : "Accept"}
           </button>
           <button
             type="button"
@@ -1265,7 +1315,18 @@ function JobDetail({
         </div>
       ) : null}
       {!promptUpload ? diagPanel : null}
-      <PartnerPatientRecord job={job} jobs={relatedJobs} onOpenRecord={onOpenRecord} />
+      {kind === "doctor" ? (
+        <DoctorPatientChart
+          key={id}
+          job={job}
+          jobs={relatedJobs}
+          busy={collecting}
+          onSave={onSavePrescription}
+          onOpenReport={onOpenRecord}
+        />
+      ) : (
+        <PartnerPatientRecord job={job} jobs={relatedJobs} onOpenRecord={onOpenRecord} />
+      )}
       {isMedicineOrder(job) ? (
         <>
           <ReturnMedicinePanel
@@ -1610,7 +1671,13 @@ const LAB_PROCESS_STEPS = [
 function LabOrderProcess({ job, busy = false, onAdvance }) {
   const current = trackKey(job);
   const action = nextDiagnosticAction(job);
-  const steps = LAB_PROCESS_STEPS;
+  const radiology = diagnosticKindOf(job) === "radiology";
+  const steps = LAB_PROCESS_STEPS.map((step) => {
+    if (!radiology) return step;
+    if (step.key === "sample_collected") return { ...step, label: "Scan completed" };
+    if (step.key === "processing") return { ...step, label: "Images under review" };
+    return step;
+  });
   const currentIndex = steps.findIndex((step) => step.key === current);
   const finished = current === "done";
   return (
@@ -1649,6 +1716,15 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false, team =
   const [reportNotes, setReportNotes] = useState("");
   const [reportFile, setReportFile] = useState(null);
   const [localError, setLocalError] = useState("");
+  const [analyzer, setAnalyzer] = useState({
+    analyzerName: job.analyzerName || "",
+    analyzerRef: job.analyzerRef || "",
+  });
+  const [resultRows, setResultRows] = useState(() => resultRowsFromOrder(job));
+  const [samples, setSamples] = useState(() => buildSampleTubes(job));
+  const [labelled, setLabelled] = useState(false);
+  const [matched, setMatched] = useState(false);
+  const [qcReady, setQcReady] = useState(Boolean(job.qcPassed));
   const reportFileRef = useRef(null);
   if (partnerJobClosed(job)) {
     return diagnosticKindOf(job) === "lab" ? (
@@ -1711,6 +1787,7 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false, team =
           fileData: data,
           testName,
           notes: reportNotes,
+          reportResults: normalizeReportResults(resultRows),
         })
       );
     } catch (err) {
@@ -1720,7 +1797,17 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false, team =
 
   const uploadPanel =
     showUpload && canUpload ? (
-      <LabReportUploadPanel
+      <>
+        <ReportResultEditor job={job} rows={resultRows} onChange={setResultRows} />
+        <button
+          type="button"
+          className="partner-accept"
+          disabled={busy}
+          onClick={() => onAdvance({ reportResults: normalizeReportResults(resultRows) })}
+        >
+          Save test results
+        </button>
+        <LabReportUploadPanel
         job={job}
         busy={busy}
         fileInputRef={reportFileRef}
@@ -1733,6 +1820,7 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false, team =
         localError={localError}
         onSubmit={() => submitReport()}
       />
+      </>
     ) : null;
 
   const processStrip =
@@ -1844,30 +1932,83 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false, team =
       ) : null}
 
       {action === "sample_collect" ? (
-        <button
-          type="button"
-          className="partner-accept"
-          disabled={busy}
-          onClick={() => onAdvance(sampleCollectedFields())}
-        >
-          Mark Sample Collected
-        </button>
+        <>
+          <CollectorLiveShare job={job} busy={busy} onShare={(fields) => onAdvance(fields)} />
+          {diagnosticKindOf(job) === "radiology" ? null : (
+            <SampleTubePanel job={{ ...job, samples }} onChange={setSamples} />
+          )}
+          <label className="partner-report-note">
+            <input type="checkbox" checked={labelled} onChange={(event) => setLabelled(event.target.checked)} /> Tube or scan is labelled
+          </label>
+          <label className="partner-report-note">
+            <input type="checkbox" checked={matched} onChange={(event) => setMatched(event.target.checked)} /> Patient name matches the order
+          </label>
+          {job.accessionNo ? <p className="partner-report-note">Accession {job.accessionNo}</p> : null}
+          <button
+            type="button"
+            className="partner-accept"
+            disabled={busy || !labelled || !matched}
+            onClick={() => onAdvance(sampleCollectedFields({ ...job, samples, qcPassed: labelled && matched }))}
+          >
+            {diagnosticKindOf(job) === "radiology" ? "Mark scan completed" : "Mark Sample Collected"}
+          </button>
+        </>
       ) : null}
 
       {action === "under_process" ? (
         <>
+          {job.accessionNo ? <p className="partner-report-note">Accession {job.accessionNo}</p> : null}
+          {diagnosticKindOf(job) === "radiology" ? null : (
+            <>
+              <SampleTubePanel job={{ ...job, samples }} onChange={setSamples} />
+              <button
+                type="button"
+                className="partner-decline"
+                disabled={busy}
+                onClick={() => {
+                  const redraw = samples.some((row) => row.status === "redraw");
+                  onAdvance(
+                    redraw
+                      ? {
+                          samples,
+                          trackStatus: "assigned",
+                          status: "Redraw requested",
+                          sampleStatus: "redraw",
+                          collectorLive: false,
+                        }
+                      : {
+                          samples,
+                          sampleStatus: samples.some((row) => row.status === "rejected") ? "rejected" : "collected",
+                        }
+                  );
+                }}
+              >
+                Save sample status
+              </button>
+            </>
+          )}
+          <AnalyzerLinkFields job={job} onChange={setAnalyzer} />
+          <label className="partner-report-note">
+            <input type="checkbox" checked={qcReady} onChange={(event) => setQcReady(event.target.checked)} /> Quality check passed
+          </label>
           <p className="partner-tech">
             {diagnosticKindOf(job) === "lab"
               ? "Submit the collected sample to the lab. The customer app and admin panel then show Under Process."
-              : "Move this order to Under Process for the customer and the admin panel."}
+              : "Send the scan to review. The customer app then shows Images under review."}
           </p>
           <button
             type="button"
             className="partner-accept"
-            disabled={busy}
-            onClick={() => onAdvance(underProcessFields())}
+            disabled={busy || !qcReady || samples.some((row) => row.status === "rejected")}
+            onClick={() =>
+              onAdvance({
+                ...underProcessFields({ ...job, ...analyzer }),
+                samples,
+                qcPassed: true,
+              })
+            }
           >
-            {diagnosticKindOf(job) === "lab" ? "Submit sample to lab" : "Mark Under Process"}
+            {diagnosticKindOf(job) === "lab" ? "Submit sample to lab" : "Send images for review"}
           </button>
         </>
       ) : null}
@@ -2329,6 +2470,24 @@ ${rxShareCardStyles}
 .admin-error{grid-column:1/-1;color:#d84b4b;font-size:13px}
 .order-category{margin:0 0 16px}
 .order-category h2{margin:0 0 8px;font-size:15px;color:#143246}
+.doctor-visit-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.doctor-visit-card,.ambulance-booking-card{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:12px;border:1px solid #d7e2e9;border-radius:12px;background:#fff;text-align:left;font:inherit;color:#143246}
+.doctor-visit-card .order-list-job,.ambulance-booking-card .order-list-job{border:0;background:none;padding:0;color:#1a6b7a;font:inherit;font-size:15px;font-weight:800;cursor:pointer;text-decoration:underline}
+.doctor-visit-card .order-list-job.is-on,.ambulance-booking-card .order-list-job.is-on{color:#143246}
+.doctor-visit-card.is-on,.ambulance-booking-card.is-on{border-color:#1a6b7a;background:#f7fbfd}
+.doctor-visit-card strong,.ambulance-booking-card strong{font-size:15px}
+.doctor-visit-card span,.doctor-visit-card em,.ambulance-booking-card span{font-style:normal;font-size:13px;color:#34546b}
+.ambulance-booking-card a{color:#1a6b7a;font-weight:800}
+.doctor-visit-detail{margin-top:8px}
+.doctor-patient-chart{margin-top:10px;padding:12px;border:1px solid #d2e8ef;border-radius:12px;background:#f7fbfd;display:grid;gap:8px}
+.doctor-patient-chart h3{margin:0;font-size:14px;color:#143246}
+.doctor-patient-chart p,.doctor-visit-history span{margin:0;font-size:13px;color:#34546b}
+.doctor-visit-history,.doctor-report-list ul,.doctor-symptom-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.doctor-visit-history li,.doctor-symptom-list li{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px;border:1px solid #e4ecef;border-radius:8px;background:#fff}
+.doctor-rx-form{display:grid;gap:8px}
+.doctor-rx-form label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:#34546b}
+.doctor-rx-form select,.doctor-rx-form input,.doctor-rx-form textarea{width:100%;box-sizing:border-box;min-height:32px;padding:6px 8px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:13px;font-weight:400}
+.doctor-rx-form button,.doctor-symptom-list button,.doctor-report-list button{justify-self:start;border:1px solid #1a6b7a;border-radius:999px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:800;min-height:32px;padding:4px 10px;cursor:pointer}
 .partner-order-tabs{display:flex;flex-wrap:wrap;margin:0 0 12px;padding:4px;border-radius:10px;background:#e8f1f6;gap:4px}
 .partner-order-tabs button{border:0;background:transparent;color:#3d5a6c;font:inherit;font-size:13px;font-weight:700;padding:8px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
 .partner-order-tabs button.is-on{background:#fff;color:#1a6b7a;box-shadow:0 1px 3px rgba(20,50,70,.08)}

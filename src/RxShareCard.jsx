@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { hasPartnerRxShare } from "./rxPartnerShare";
-import { rxDoseCode } from "./rxTextParse";
+import DigitalPrescriptionSheet, { digitalPrescriptionSheetStyles } from "./DigitalPrescriptionSheet";
+import { chartFrequency } from "./digitalRxFormat";
 
 function durationLabel(med) {
   return med?.durationDays || med?.duration || "Not specified";
@@ -69,21 +70,14 @@ export default function RxShareCard({
             <p>No digital prescription generated.</p>
           ) : (
             <>
-              {digital.patientName ? (
-                <p>
-                  <span>Patient</span> {digital.patientName}
-                </p>
-              ) : null}
-              {digital.doctorName ? (
-                <p>
-                  <span>Doctor</span> {digital.doctorName}
-                </p>
-              ) : null}
-              {digital.date ? (
-                <p>
-                  <span>Date</span> {digital.date}
-                </p>
-              ) : null}
+              <DigitalPrescriptionSheet
+                source={digital}
+                extras={{
+                  originalAttached: Boolean(original || fileName),
+                  mobile: record.mobile || "",
+                  patientId: record.memberId || "",
+                }}
+              />
               {digital.medicinesConfirmed ? (
                 <p className="rx-share-ok">Patient confirmed medicine names</p>
               ) : null}
@@ -98,8 +92,8 @@ export default function RxShareCard({
                         <div className="rx-share-brand">
                           <strong>{med.name}</strong>
                           {med.strength ? <em>{med.strength}</em> : null}
-                          {rxDoseCode(med) ? (
-                            <span className="rx-share-dose">{rxDoseCode(med)}</span>
+                          {chartFrequency(med) ? (
+                            <span className="rx-share-dose">{chartFrequency(med)}</span>
                           ) : null}
                         </div>
                         {med.partnerCorrected ? (
@@ -217,4 +211,5 @@ export const rxShareCardStyles = `
 @media (max-width:720px){
   .rx-share-split{grid-template-columns:1fr}
 }
+${digitalPrescriptionSheetStyles}
 `;

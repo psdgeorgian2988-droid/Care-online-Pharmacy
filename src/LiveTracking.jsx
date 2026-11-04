@@ -21,8 +21,11 @@ import {
 import PartnerProfileCard from "./PartnerProfileCard.jsx";
 import { visitingPartnerProfile } from "./partnerProfile.js";
 import { DIAGNOSTIC_TRACK_STEPS, isDiagnosticKind } from "./labPipeline";
+import LabBookingChange from "./LabBookingChange.jsx";
 import { orderCurrentStatus, trackKey } from "./orderStatus";
 import { mapsUrlForPin, normalizePin, osmEmbedUrl } from "./pinLocation";
+import ShareAmbulanceLive from "./ShareAmbulanceLive";
+import LabTrackFacts from "./LabTrackFacts";
 import AssignedAgent from "./AssignedAgent";
 import ScanActions from "./ScanActions";
 import OrderFeedbackCta from "./OrderFeedbackCta";
@@ -287,7 +290,7 @@ export function LiveTrackingPanel({
       : TRACK_STEPS
   ).map((step) => ({
     ...step,
-    label: step.key === "done" ? stepLabel(live.kind, "done") : step.label,
+    label: step.key === "done" ? stepLabel(live.kind, "done") : stepLabel(live.kind, step.key),
   }));
   const currentIndex = Math.max(
     0,
@@ -322,6 +325,8 @@ export function LiveTrackingPanel({
           </div>
         ) : null}
       </div>
+
+      {isDiagnosticKind(live.kind) ? <LabTrackFacts order={live} /> : null}
 
       {audience === "customer" && visitingPartnerProfile(live) ? (
         <PartnerProfileCard profile={visitingPartnerProfile(live)} />
@@ -432,6 +437,10 @@ export default function TrackPage({ trackId, from = "" }) {
             onOrderChange={setOrder}
             audience={fromAdmin ? "staff" : "customer"}
           />
+          {String(order.kind || order.orderType || "").toLowerCase() === "ambulance" ? (
+            <ShareAmbulanceLive order={order} />
+          ) : null}
+          <LabBookingChange order={order} onChanged={setOrder} />
         </div>
       ) : (
         <div className="orders-empty">

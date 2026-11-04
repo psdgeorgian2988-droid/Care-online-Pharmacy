@@ -66,9 +66,13 @@ export default function SocialLinks({
   className = "",
   showHandles = false,
   layout = "icons",
+  ids = null,
 }) {
   const isCards = layout === "cards";
   const [copiedId, setCopiedId] = useState("");
+  const items = ids?.length
+    ? SOCIAL.filter((item) => ids.includes(item.id))
+    : SOCIAL;
 
   const handleOpen = (event, item) => {
     if (!shouldUseHandler(event)) return;
@@ -88,8 +92,15 @@ export default function SocialLinks({
   };
 
   return (
-    <nav className={`social-links ${className}`.trim()} aria-label="MediHome on social media">
-      {SOCIAL.map((item) => {
+    <nav
+      className={`social-links ${className}`.trim()}
+      aria-label={
+        items.length === 1 && items[0].id === "whatsapp"
+          ? "WhatsApp"
+          : "MediHome on social media"
+      }
+    >
+      {items.map((item) => {
         const openLabel = `${item.label} ${item.handle}`;
         const copied = copiedId === item.id;
         if (isCards) {

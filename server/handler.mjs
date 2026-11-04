@@ -2,6 +2,8 @@ import { randomBytes } from "node:crypto";
 import { listOrders, patchOrder, upsertOrder } from "./store.mjs";
 import { readReport, saveReportFromOrder, searchReports } from "./reports.mjs";
 import { applyPartnerMedicineCorrection } from "../src/rxPartnerShare.js";
+import { partnerAppKind } from "../src/partnerApp.js";
+import { doctorKnowsMobile, doctorPrescriptionFrom } from "../src/doctorVisit.js";
 import {
   attachSettlement,
   clampSplitPercent,
@@ -9,9 +11,21 @@ import {
   resolveCollector,
   splitExtrasForAssignedPartner,
   splitPayment,
+  defaultPartnerPercentFor,
 } from "../src/paymentSplit.js";
 import { stampLabOrderTests } from "../src/labTestSplit.js";
-import { listAddedLabTests, addLabTest, updateLabTestSplit } from "./labCatalog.mjs";
+import { catalogLabIdForPartner } from "../src/commonLabPanel.js";
+import { collectorCapacity, diagnosticLabId, slotRemaining } from "../src/labSlots.js";
+import { LAB_TIME_SLOTS } from "../src/appointmentSlot.js";
+import {
+  canCustomerChangeLabBooking,
+  customerCancelFields,
+  customerRescheduleFields,
+  guestMobile,
+  orderMobileDigits,
+} from "../src/labCustomerActions.js";
+import { normalizeReportResults } from "../src/labAccession.js";
+import { listAddedLabTests, addLabTest, updateLabTestSplit, updateLabTest, removeLabTest, saveLabPrice } from "./labCatalog.mjs";
 import { isOnlinePayment } from "../src/paymentMethods.js";
 import { publicSplit } from "../src/payeeBank.js";
 import { partnerCollectPatch } from "../src/partnerCollect.js";
@@ -72,6 +86,12 @@ import {
   updatePartnerTeamMember,
 } from "./partners.mjs";
 import { approvedTeamMember } from "../src/partnerTeam.js";
+import {
+  ambulanceOfferFields,
+  ambulancePublicOffer,
+  nearestAvailableAmbulance,
+  nextAmbulanceOffer,
+} from "../src/ambulanceDispatch.js";
 import {
   confirmAdminPartnerReset,
   confirmPartnerForgotPassword,
@@ -148,7 +168,7 @@ async function readJson(req) {
 }
 
 function orderMobile(row) {
-  return String(row.mobile || row.mobileNumber || "").replace(/\D/g, "");
+  return orderMobileDigits(row);
 }
 
 function orderId(row) {
@@ -263,6 +283,100 @@ export async function handleApi(req, res) {
 
     if (pathname === "/api/lab-tests" && req.method === "GET") {
       send(res, 200, { tests: await listAddedLabTests() });
+      return true;
+    }
+
+    if (pathname === "/api/partner/lab-tests" && req.method === "POST") {
+      const token = readToken(req);
+      const partnerId = partnerIdFromToken(token);
+      const partner = partnerId ? await findPartner(partnerId) : null;
+      if (!partner || partnerAppKind(partner) !== "lab") {
+        send(res, 401, { error: "Lab partner login required." });
+        return true;
+      }
+      const body = await readJson(req);
+      const created = await addLabTest({
+        ...body,
+        labId: catalogLabIdForPartner(partner),
+        partnerPercent: body.partnerPercent ?? defaultPartnerPercentFor("lab"),
+      });
+      if (!created.ok) {
+        send(res, 400, { error: created.error });
+        return true;
+      }
+      send(res, 200, { test: created.test, tests: created.tests });
+      return true;
+    }
+
+    const partnerLabTest = pathname.match(/^\/api\/partner\/lab-tests\/([^/]+)$/);
+    if (partnerLabTest && (req.method === "PATCH" || req.method === "DELETE")) {
+      const token = readToken(req);
+      const partnerId = partnerIdFromToken(token);
+      const partner = partnerId ? await findPartner(partnerId) : null;
+      if (!partner || partnerAppKind(partner) !== "lab") {
+        send(res, 401, { error: "Lab partner login required." });
+        return true;
+      }
+      const id = decodeURIComponent(partnerLabTest[1]);
+      const current = (await listAddedLabTests()).find((row) => row.id === id);
+      if (!current || current.labId !== catalogLabIdForPartner(partner)) {
+        send(res, 404, { error: "Lab test not found." });
+        return true;
+      }
+      if (req.method === "DELETE") {
+        const removed = await removeLabTest(id);
+        if (!removed.ok) {
+          send(res, 400, { error: removed.error });
+          return true;
+        }
+        send(res, 200, { tests: removed.tests });
+        return true;
+      }
+      const body = await readJson(req);
+      const updated = await updateLabTest(id, body);
+      if (!updated.ok) {
+        send(res, 400, { error: updated.error });
+        return true;
+      }
+      send(res, 200, { test: updated.test, tests: updated.tests });
+      return true;
+    }
+
+    if (pathname === "/api/partner/lab-prices" && req.method === "POST") {
+      const token = readToken(req);
+      const partnerId = partnerIdFromToken(token);
+      const partner = partnerId ? await findPartner(partnerId) : null;
+      if (!partner || partnerAppKind(partner) !== "lab") {
+        send(res, 401, { error: "Lab partner login required." });
+        return true;
+      }
+      const body = await readJson(req);
+      const saved = await saveLabPrice({
+        ...body,
+        labId: catalogLabIdForPartner(partner),
+        partnerPercent: body.partnerPercent ?? defaultPartnerPercentFor("lab"),
+      });
+      if (!saved.ok) {
+        send(res, 400, { error: saved.error });
+        return true;
+      }
+      send(res, 200, { test: saved.test, tests: saved.tests });
+      return true;
+    }
+
+    if (pathname === "/api/lab-slots" && req.method === "GET") {
+      const labId = String(url.searchParams.get("labId") || "").trim();
+      const date = String(url.searchParams.get("date") || "").slice(0, 10);
+      const kind = String(url.searchParams.get("kind") || "lab").toLowerCase() === "radiology" ? "radiology" : "lab";
+      const orders = await listOrders();
+      const partners = await listPartners();
+      const capacity = collectorCapacity(partners, labId);
+      const slots = LAB_TIME_SLOTS.map((label) => ({
+        label,
+        remaining: slotRemaining(orders, { labId, date, slot: label, kind, capacity }),
+        capacity,
+      }));
+      send(res, 200, { slots, capacity });
       return true;
     }
 
@@ -496,11 +610,15 @@ export async function handleApi(req, res) {
         send(res, 401, { error: "Partner login required." });
         return true;
       }
-      const reports = await searchReports({
-        partnerId,
-        mobile: url.searchParams.get("mobile") || "",
-        email: url.searchParams.get("email") || "",
-      });
+      const partner = await findPartner(partnerId);
+      const mobile = url.searchParams.get("mobile") || "";
+      const email = url.searchParams.get("email") || "";
+      const reports =
+        partner && partnerAppKind(partner) === "doctor"
+          ? doctorKnowsMobile(await listPartnerJobs(partnerId, token), mobile)
+            ? await searchReports({ mobile, email })
+            : []
+          : await searchReports({ partnerId, mobile, email });
       send(res, 200, { reports });
       return true;
     }
@@ -513,7 +631,14 @@ export async function handleApi(req, res) {
         send(res, 401, { error: "Partner login required." });
         return true;
       }
-      const report = await readReport(decodeURIComponent(partnerReportMatch[1]), { partnerId });
+      const partner = await findPartner(partnerId);
+      const reportId = decodeURIComponent(partnerReportMatch[1]);
+      let report = await readReport(reportId, { partnerId });
+      if (!report && partner && partnerAppKind(partner) === "doctor") {
+        const opened = await readReport(reportId, {});
+        const jobs = await listPartnerJobs(partnerId, token);
+        if (opened && doctorKnowsMobile(jobs, opened.mobile)) report = opened;
+      }
       if (!report) {
         send(res, 404, { error: "Report not found." });
         return true;
@@ -859,8 +984,8 @@ export async function handleApi(req, res) {
     }
 
     if (pathname === "/api/orders/mine" && req.method === "GET") {
-      const mobile = String(url.searchParams.get("mobile") || "").replace(/\D/g, "");
-      if (mobile.length !== 10) {
+      const mobile = guestMobile(url.searchParams.get("mobile") || "");
+      if (!mobile) {
         send(res, 400, { error: "A 10-digit mobile number is required." });
         return true;
       }
@@ -868,6 +993,59 @@ export async function handleApi(req, res) {
         (row) => orderMobile(row) === mobile
       );
       send(res, 200, { orders: await attachAssignedPartnerProfiles(orders) });
+      return true;
+    }
+
+    if (pathname === "/api/orders/customer" && req.method === "POST") {
+      const body = await readJson(req);
+      const mobile = guestMobile(body.mobile);
+      const wanted = String(body.id || "").trim();
+      if (!mobile || !wanted) {
+        send(res, 400, { error: "Mobile number and order number are required." });
+        return true;
+      }
+      const found = (await listOrders()).find((row) => orderId(row) === wanted);
+      if (!found || orderMobile(found) !== mobile) {
+        send(res, 404, { error: "No order found for that mobile number." });
+        return true;
+      }
+      if (!canCustomerChangeLabBooking(found)) {
+        send(res, 409, { error: "This booking can no longer be changed." });
+        return true;
+      }
+      const action = String(body.action || "").toLowerCase();
+      if (action === "cancel") {
+        const updated = await patchOrder(wanted, customerCancelFields());
+        send(res, 200, { order: updated });
+        return true;
+      }
+      if (action === "reschedule") {
+        const date = String(body.date || "").slice(0, 10);
+        const timeSlot = String(body.timeSlot || "").trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !LAB_TIME_SLOTS.includes(timeSlot)) {
+          send(res, 400, { error: "Choose a date and an open slot." });
+          return true;
+        }
+        const labId = diagnosticLabId(found);
+        const kind = String(found.kind || found.orderType || "lab").toLowerCase();
+        const partners = await listPartners();
+        const left = slotRemaining(await listOrders(), {
+          labId,
+          date,
+          slot: timeSlot,
+          kind,
+          excludeId: wanted,
+          capacity: collectorCapacity(partners, labId),
+        });
+        if (left < 1) {
+          send(res, 409, { error: "That slot is full. Choose another time." });
+          return true;
+        }
+        const updated = await patchOrder(wanted, customerRescheduleFields({ date, timeSlot }));
+        send(res, 200, { order: updated });
+        return true;
+      }
+      send(res, 400, { error: "Choose cancel or a new slot." });
       return true;
     }
 
@@ -1084,6 +1262,43 @@ export async function handleApi(req, res) {
       if (body.reportNotes != null) {
         patch.reportNotes = String(body.reportNotes || "").trim().slice(0, 400);
       }
+      if (body.accessionNo != null) {
+        patch.accessionNo = String(body.accessionNo || "").trim().slice(0, 40);
+      }
+      if (body.barcodeValue != null) {
+        patch.barcodeValue = String(body.barcodeValue || "").trim().slice(0, 40);
+      }
+      if (body.analyzerName != null) {
+        patch.analyzerName = String(body.analyzerName || "").trim().slice(0, 80);
+      }
+      if (body.analyzerRef != null) {
+        patch.analyzerRef = String(body.analyzerRef || "").trim().slice(0, 80);
+      }
+      if (body.collectorLat != null && Number.isFinite(Number(body.collectorLat))) {
+        patch.collectorLat = Number(body.collectorLat);
+      }
+      if (body.collectorLng != null && Number.isFinite(Number(body.collectorLng))) {
+        patch.collectorLng = Number(body.collectorLng);
+      }
+      if (body.collectorMapsUrl != null) {
+        patch.collectorMapsUrl = String(body.collectorMapsUrl || "").trim().slice(0, 200);
+      }
+      if (body.collectorLiveAt) {
+        patch.collectorLiveAt = Number(body.collectorLiveAt) || Date.now();
+      }
+      if (body.collectorLive != null) {
+        patch.collectorLive = Boolean(body.collectorLive);
+      }
+      if (Array.isArray(body.samples)) {
+        patch.samples = body.samples.slice(0, 12);
+      }
+      if (body.qcPassed != null) patch.qcPassed = Boolean(body.qcPassed);
+      if (body.sampleStatus != null) {
+        patch.sampleStatus = String(body.sampleStatus || "").trim().slice(0, 40);
+      }
+      if (Array.isArray(body.reportResults)) {
+        patch.reportResults = normalizeReportResults(body.reportResults);
+      }
       if (body.completedAt) {
         patch.completedAt = Number(body.completedAt) || Date.now();
       }
@@ -1098,6 +1313,14 @@ export async function handleApi(req, res) {
           return true;
         }
         Object.assign(patch, corrected.patch);
+      }
+      if (body.doctorPrescription) {
+        const saved = doctorPrescriptionFrom(body.doctorPrescription);
+        if (!saved.ok) {
+          send(res, 400, { error: saved.error });
+          return true;
+        }
+        patch.doctorPrescription = saved.prescription;
       }
       if (body.timeSlot != null) patch.timeSlot = String(body.timeSlot).slice(0, 40);
       if (body.date != null) patch.date = String(body.date).slice(0, 12);
@@ -1308,6 +1531,11 @@ export async function handleApi(req, res) {
         patch.technicianMobile = member.mobile;
         patch.technicianAssignedAt = Number(body.technicianAssignedAt) || Date.now();
       }
+      const ambulanceKind = String(existing.kind || existing.orderType || "").toLowerCase() === "ambulance";
+      if (ambulanceKind && String(body.partnerConfirmStatus || "").toLowerCase() === "declined") {
+        const offer = nextAmbulanceOffer(existing, await listPartners(), await listOrders());
+        if (offer) Object.assign(patch, offer);
+      }
       const updated = await patchOrder(
         orderId(existing),
         settleDiagnosticCompletion(existing, settleStepdownCompletion(existing, patch))
@@ -1321,6 +1549,19 @@ export async function handleApi(req, res) {
           await notifyCustomerSlotOffer(updated);
         } catch {
           /* keep the partner offer even if the notice store fails */
+        }
+      }
+      if (
+        updated &&
+        ambulanceKind &&
+        updated.teamMemberId &&
+        updated.teamMemberId !== existing.teamMemberId &&
+        updated.partnerConfirmStatus === "pending"
+      ) {
+        try {
+          await notifyPartnersForOrder(updated);
+        } catch {
+          /* keep the reassignment even if the notice store fails */
         }
       }
       if (
@@ -1479,6 +1720,21 @@ export async function handleApi(req, res) {
       return true;
     }
 
+    if (pathname === "/api/ambulance/nearest" && req.method === "GET") {
+      const partners = await listPartners();
+      const orders = await listOrders();
+      const unit = nearestAvailableAmbulance({
+        partners,
+        orders,
+        category: url.searchParams.get("type") || "",
+        lat: url.searchParams.get("lat"),
+        lng: url.searchParams.get("lng"),
+        pin: url.searchParams.get("pin") || "",
+      });
+      send(res, 200, { ambulance: ambulancePublicOffer(unit) });
+      return true;
+    }
+
     if (pathname === "/api/orders" && req.method === "GET") {
       if (!requireStaff(req, res)) return true;
       send(res, 200, { orders: await listOrders() });
@@ -1498,6 +1754,47 @@ export async function handleApi(req, res) {
       const incoming = enrichOrder(body);
       incoming.orderType = incoming.orderType || incoming.kind;
       const wanted = orderId(incoming);
+      if (incomingKind === "lab" || incomingKind === "radiology") {
+        const labId = diagnosticLabId(incoming);
+        const day = String(incoming.date || incoming.visitDate || "").slice(0, 10);
+        const slot = String(incoming.timeSlot || "").trim();
+        const sameSlot =
+          existing &&
+          diagnosticLabId(existing) === labId &&
+          String(existing.date || existing.visitDate || "").slice(0, 10) === day &&
+          String(existing.timeSlot || "").trim() === slot;
+        if (labId && day && slot && !sameSlot) {
+          const orders = await listOrders();
+          const partners = await listPartners();
+          const left = slotRemaining(orders, {
+            labId,
+            date: day,
+            slot,
+            kind: incomingKind,
+            excludeId: wanted,
+            capacity: collectorCapacity(partners, labId),
+          });
+          if (left < 1) {
+            send(res, 409, { error: "That slot is full. Choose another time." });
+            return true;
+          }
+        }
+      }
+      if (incomingKind === "ambulance") {
+        const unit = nearestAvailableAmbulance({
+          partners: await listPartners(),
+          orders: (await listOrders()).filter((row) => orderId(row) !== wanted),
+          category: incoming.emergencyType,
+          lat: incoming.lat,
+          lng: incoming.lng,
+          pin: incoming.pinCode || incoming.pin,
+        });
+        if (!unit) {
+          send(res, 409, { error: "No free ambulance of this type is available nearby." });
+          return true;
+        }
+        Object.assign(incoming, ambulanceOfferFields(unit));
+      }
       const existing = wanted
         ? (await listOrders()).find((row) => orderId(row) === wanted)
         : null;

@@ -5,6 +5,7 @@ import {
 } from "./prescriptionDraft.js";
 import { readPrescriptionParse } from "./prescriptionAi.js";
 import { rxDoseCode } from "./rxTextParse.js";
+import { buildDigitalPrescription } from "./digitalRxFormat.js";
 
 function compactMedicine(med = {}) {
   return {
@@ -37,7 +38,7 @@ function compactTest(test = {}) {
   };
 }
 
-export function buildDigitalRx(parsed = readPrescriptionParse()) {
+export function buildDigitalRx(parsed = readPrescriptionParse(), extras = {}) {
   if (!parsed) return null;
   const medicines = (parsed.medicines || []).map(compactMedicine);
   const tests = (parsed.tests || []).map(compactTest);
@@ -49,14 +50,29 @@ export function buildDigitalRx(parsed = readPrescriptionParse()) {
   ) {
     return null;
   }
-  return {
+  const digital = {
     patientName: parsed.patientName || "",
     doctorName: parsed.doctorName || "",
     date: parsed.date || "",
+    patientAge: parsed.patientAge || parsed.age || "",
+    patientGender: parsed.patientGender || parsed.gender || "",
+    doctorQualification: parsed.doctorQualification || parsed.qualification || "",
+    registrationNo: parsed.registrationNo || parsed.registrationNumber || "",
+    clinicName: parsed.clinicName || parsed.hospital || "",
+    primaryDiagnosis: parsed.primaryDiagnosis || "",
+    secondaryDiagnosis: parsed.secondaryDiagnosis || "",
+    clinicalNotes: parsed.clinicalNotes || "",
+    followUpDate: parsed.followUpDate || "",
     medicines,
     tests,
     notes: parsed.notes || "",
     medicinesConfirmed: Boolean(parsed.medicinesConfirmed),
+    sourceSavedAt: parsed.sourceSavedAt || parsed.savedAt || "",
+    accountRecordId: parsed.accountRecordId || "",
+  };
+  return {
+    ...digital,
+    document: buildDigitalPrescription(digital, extras),
   };
 }
 
@@ -135,6 +151,11 @@ export function applyPartnerMedicineCorrection(
     partnerCorrectedAt: now,
     verified: true,
   };
+  digital.document = buildDigitalPrescription(digital, {
+    originalAttached: Boolean(share.originalFile || share.hasOriginal || share.fileName),
+    mobile: order?.mobile || "",
+    patientId: order?.memberId || "",
+  });
   share.digital = digital;
   share.partnerCorrectedAt = now;
   const items = Array.isArray(order?.items)

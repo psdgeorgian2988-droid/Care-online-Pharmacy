@@ -109,11 +109,11 @@ export function serviceCategoryTitle(kind) {
     case "psychologist":
       return "Psychology orders";
     case "doctor":
-      return "Doctor appointment orders";
+      return "Appointments";
     case "stepdown":
       return "Step-down orders";
     case "ambulance":
-      return "Ambulance orders";
+      return "Bookings";
     default:
       return "Orders";
   }
@@ -205,6 +205,9 @@ export function isPartnerEnRoute(order) {
   const key = trackKey(order);
   if (EN_ROUTE_KEYS.has(key)) return true;
   if (order?.checkPickupAt || order?.qrPickedAt) return true;
+  if (order?.collectorLive && Number.isFinite(Number(order.collectorLat)) && Number.isFinite(Number(order.collectorLng))) {
+    return true;
+  }
   return key === "assigned" && Number(order?.trackStartedAt) > 0;
 }
 

@@ -79,14 +79,27 @@ export function stampLabOrderTests(tests, { labId = "", added = [] } = {}) {
 }
 
 export function mergeAddedLabTests(labs, added) {
-  const extras = (Array.isArray(added) ? added : []).filter((row) => row && row.name);
+  const extras = (Array.isArray(added) ? added : []).filter((row) => row && (row.name || row.code || row.hidden));
   if (!extras.length) return labs;
   return (Array.isArray(labs) ? labs : []).map((lab) => {
     const mine = extras.filter((row) => (row.labId || "others") === lab.id);
     if (!mine.length) return lab;
-    const tests = [...(lab.tests || [])];
+    let tests = [...(lab.tests || [])];
     for (const row of mine) {
-      if (tests.some((test) => sameTestKey(test, row))) continue;
+      const index = tests.findIndex((test) => sameTestKey(test, row) || String(test.id || "") === String(row.code || ""));
+      if (row.hidden) {
+        if (index >= 0) tests = tests.filter((_, i) => i !== index);
+        continue;
+      }
+      if (row.override && index >= 0) {
+        tests[index] = {
+          ...tests[index],
+          name: row.name || tests[index].name,
+          price: Number(row.price) > 0 ? Number(row.price) : tests[index].price,
+        };
+        continue;
+      }
+      if (index >= 0 || !row.name) continue;
       tests.push(withLabPartnerSplit(row));
     }
     return { ...lab, tests };

@@ -2,6 +2,7 @@ import { useState } from "react";
 import DoctorCredentialFields from "./DoctorCredentialFields.jsx";
 import { doctorProfileMissing, experienceLabel, specialtyLabel } from "./doctorCredentials.js";
 import { emptyPartnerProfile } from "./partnerProfile.js";
+import { AMBULANCE_TYPES, ambulanceTypeLabel } from "./ambulanceBooking.js";
 import { partnerAppKind } from "./partnerApp.js";
 import { teamDocumentSummary, teamFrom, teamStatusLabel } from "./partnerTeam.js";
 import {
@@ -83,7 +84,10 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
-  const isDoctor = partnerAppKind(partner) === "doctor";
+  const appKind = partnerAppKind(partner);
+  const isDoctor = appKind === "doctor";
+  const isAmbulance = appKind === "ambulance";
+  const addLabel = isAmbulance ? "Add ambulance details" : "Add Team Member";
 
   const setProfile = (patch) =>
     setDraft((current) => ({ ...current, profile: { ...current.profile, ...patch } }));
@@ -162,6 +166,26 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
         return;
       }
     }
+    if (isAmbulance) {
+      const ambulanceType = String(draft.profile.ambulanceType || "").trim();
+      const vehicleNumber = String(draft.profile.vehicleNumber || "").trim();
+      if (!ambulanceType) {
+        setError("Select the ambulance type.");
+        return;
+      }
+      if (vehicleNumber.length < 4) {
+        setError("Enter the vehicle number.");
+        return;
+      }
+      if (String(draft.name || "").trim().length < 2) {
+        setError("Enter the driver name.");
+        return;
+      }
+      if (!/^[6-9]\d{9}$/.test(String(draft.mobile || ""))) {
+        setError("Enter the driver mobile number.");
+        return;
+      }
+    }
     setBusy(true);
     setError("");
     setNote("");
@@ -169,7 +193,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
       const body = {
         name: draft.name,
         mobile: draft.mobile,
-        role: draft.role,
+        role: isAmbulance ? ambulanceTypeLabel(draft.profile.ambulanceType) : draft.role,
         profile: draft.profile,
       };
       const wasEditing = Boolean(editingId);
@@ -181,9 +205,11 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
       setDraft(emptyDraft(partner?.role || "Team member"));
       setMode("list");
       setNote(
-        wasEditing
-          ? "Profile updated. Admin approval is required again before this person can be assigned."
-          : "Team member added. Admin will approve the profile before you can assign this person."
+        isAmbulance
+          ? "Ambulance details saved."
+          : wasEditing
+            ? "Profile updated. Admin approval is required again before this person can be assigned."
+            : "Team member added. Admin will approve the profile before you can assign this person."
       );
     } catch (err) {
       setError(err.message || "Could not save the team member.");
@@ -193,7 +219,11 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
   };
 
   const remove = async (member) => {
-    const ok = window.confirm(`Remove ${member.name} from the team?`);
+    const ok = window.confirm(
+      isAmbulance
+        ? `Remove ${member.profile?.vehicleNumber || member.name}?`
+        : `Remove ${member.name} from the team?`
+    );
     if (!ok) return;
     setBusy(true);
     setError("");
@@ -248,7 +278,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
         .partner-team-status.is-rejected{color:#9b2c2c}
         .partner-team-status.is-pending{color:#8a5a00}
       `}</style>
-      <div className="partner-team-tabs" role="tablist" aria-label="Team">
+      <div className="partner-team-tabs" role="tablist" aria-label={isAmbulance ? "Ambulances" : "Team"}>
         <button
           type="button"
           role="tab"
@@ -256,7 +286,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
           aria-selected={mode === "list"}
           onClick={showList}
         >
-          Team
+          {isAmbulance ? "Ambulances" : "Team"}
         </button>
         <button
           type="button"
@@ -268,7 +298,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
             openAdd();
           }}
         >
-          Add Team Member
+          {addLabel}
         </button>
       </div>
       {mode === "list" ? (
@@ -288,8 +318,12 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
                       aria-pressed={open}
                       onClick={() => setOpenMemberId(open ? "" : member.id)}
                     >
-                      <span>{member.name}</span>
-                      <span className="member-mobile">{member.mobile || "No mobile"}</span>
+                      <span>{isAmbulance ? member.profile?.vehicleNumber || member.name : member.name}</span>
+                      <span className="member-mobile">
+                        {isAmbulance
+                          ? ambulanceTypeLabel(member.profile?.ambulanceType) || member.role || "Ambulance"
+                          : member.mobile || "No mobile"}
+                      </span>
                     </button>
                   );
                 })}
@@ -306,8 +340,17 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
                           Close
                         </button>
                       </div>
+                      {isAmbulance ? (
+                        <>
+                          <div className="detail-row"><span>Vehicle</span><strong>{profile.vehicleNumber || "—"}</strong></div>
+                          <div className="detail-row"><span>Type</span><strong>{ambulanceTypeLabel(profile.ambulanceType) || member.role || "—"}</strong></div>
+                          <div className="detail-row"><span>Driver</span><strong>{member.name || "—"}</strong></div>
+                        </>
+                      ) : null}
                       <div className="detail-row"><span>Mobile</span><strong>{member.mobile || "—"}</strong></div>
-                      <div className="detail-row"><span>Category</span><strong>{member.role || "—"}</strong></div>
+                      {isAmbulance ? null : (
+                        <div className="detail-row"><span>Category</span><strong>{member.role || "—"}</strong></div>
+                      )}
                       {isDoctor ? (
                         <>
                           <div className="detail-row"><span>Specialty</span><strong>{specialtyLabel(profile.specialty) || "—"}</strong></div>
@@ -316,10 +359,14 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
                           <div className="detail-row"><span>Council</span><strong>{profile.registrationCouncil || "—"}</strong></div>
                         </>
                       ) : null}
-                      <div className="detail-row"><span>Qualification</span><strong>{profile.qualification || "—"}</strong></div>
-                      <div className="detail-row"><span>Email</span><strong>{profile.email || "—"}</strong></div>
-                      <div className="detail-row"><span>Aadhaar</span><strong>{profile.aadhaarNumber || "—"}</strong></div>
-                      <div className="detail-row"><span>Documents</span><strong>{teamDocumentSummary(profile) || "—"}</strong></div>
+                      {isAmbulance ? null : (
+                        <>
+                          <div className="detail-row"><span>Qualification</span><strong>{profile.qualification || "—"}</strong></div>
+                          <div className="detail-row"><span>Email</span><strong>{profile.email || "—"}</strong></div>
+                          <div className="detail-row"><span>Aadhaar</span><strong>{profile.aadhaarNumber || "—"}</strong></div>
+                          <div className="detail-row"><span>Documents</span><strong>{teamDocumentSummary(profile) || "—"}</strong></div>
+                        </>
+                      )}
                       <div className="detail-row">
                         <span>Status</span>
                         <strong className={`partner-team-status is-${member.status}`}>
@@ -339,7 +386,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
                 })}
             </div>
           ) : (
-            <p>No team members yet.</p>
+            <p>{isAmbulance ? "No ambulance details yet." : "No team members yet."}</p>
           )}
         </>
       ) : (
@@ -350,12 +397,43 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
           save();
         }}
       >
-        <h2>{editingId ? "Edit details" : "Add Team Member"}</h2>
+        <h2>{editingId ? "Edit details" : addLabel}</h2>
         {isDoctor ? (
           <p>Every field is required, including a profile photo and at least one certificate.</p>
         ) : null}
+        {isAmbulance ? (
+          <>
+            <label>
+              Ambulance type
+              <select
+                value={draft.profile.ambulanceType || ""}
+                onChange={(event) => setProfile({ ambulanceType: event.target.value })}
+                required
+              >
+                <option value="">Select a type</option>
+                {AMBULANCE_TYPES.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Vehicle number
+              <input
+                value={draft.profile.vehicleNumber || ""}
+                onChange={(event) =>
+                  setProfile({ vehicleNumber: event.target.value.toUpperCase().slice(0, 20) })
+                }
+                placeholder="DL 01 AB 1234"
+                required
+                minLength={4}
+              />
+            </label>
+          </>
+        ) : null}
         <label>
-          Name
+          {isAmbulance ? "Driver name" : "Name"}
           <input
             value={draft.name}
             onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
@@ -364,7 +442,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
           />
         </label>
         <label>
-          Mobile
+          {isAmbulance ? "Driver mobile" : "Mobile"}
           <input
             value={draft.mobile}
             inputMode="numeric"
@@ -378,6 +456,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
             pattern="\d{10}"
           />
         </label>
+        {isAmbulance ? null : (
         <label>
           Role
           <input
@@ -387,7 +466,8 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
             minLength={isDoctor ? 2 : undefined}
           />
         </label>
-        {isDoctor ? (
+        )}
+        {isAmbulance ? null : isDoctor ? (
           <DoctorCredentialFields
             profile={draft.profile}
             onChange={setProfile}
@@ -408,6 +488,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
             />
           </label>
         )}
+        {isAmbulance ? null : (
         <label>
           Email
           <input
@@ -417,6 +498,8 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
             required={isDoctor}
           />
         </label>
+        )}
+        {isAmbulance ? null : (
         <label>
           Aadhaar number
           <input
@@ -429,13 +512,15 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
             pattern={isDoctor ? "\\d{12}" : undefined}
           />
         </label>
-        {isDoctor ? null : (
+        )}
+        {isDoctor || isAmbulance ? null : (
           <label>
             Profile photo (JPG or PNG, 512×512, max 3 MB)
             <input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" onChange={onPhoto} />
             {draft.profile.photoName ? <span>{draft.profile.photoName}</span> : null}
           </label>
         )}
+        {isAmbulance ? null : (
         <label>
           Aadhaar card (max 5 MB)
           <input
@@ -445,6 +530,8 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
           />
           {draft.profile.aadhaarFileName ? <span>{draft.profile.aadhaarFileName}</span> : null}
         </label>
+        )}
+        {isAmbulance ? null : (
         <label>
           Police verification (max 10 MB)
           <input
@@ -454,7 +541,8 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
           />
           {draft.profile.policeFileName ? <span>{draft.profile.policeFileName}</span> : null}
         </label>
-        {isDoctor ? null : (
+        )}
+        {isDoctor || isAmbulance ? null : (
           <label>
             Certificate (max 10 MB)
             <input
@@ -471,7 +559,7 @@ export default function PartnerTeamPanel({ partner, onSaved }) {
         {note ? <p>{note}</p> : null}
         <div className="partner-team-actions">
           <button type="submit" className="partner-accept" disabled={busy}>
-            {busy ? "Saving…" : editingId ? "Save details" : "Add to team"}
+            {busy ? "Saving…" : editingId ? "Save details" : isAmbulance ? "Save ambulance" : "Add to team"}
           </button>
           <button type="button" disabled={busy} onClick={showList}>
             Cancel

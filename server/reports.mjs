@@ -39,6 +39,8 @@ export function reportFromOrder(order = {}) {
     fileType: clip(order.reportFileType, 80),
     fileData,
     notes: clip(order.reportNotes, 400),
+    results: Array.isArray(order.reportResults) ? order.reportResults.slice(0, 40) : [],
+    accessionNo: clip(order.accessionNo, 40),
     source: "order",
     updatedAt: uploaded,
   };

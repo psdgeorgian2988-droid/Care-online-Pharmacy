@@ -14,6 +14,7 @@ import { orderPayableRupees, paymentPartsLabel } from "./partnerCollect.js";
 import { maskMobile, maskPartnerMobile } from "./personFields.js";
 import { isCompletedOrder, orderCurrentStatus } from "./orderStatus.js";
 import { namedReportFileName } from "./labPipeline.js";
+import { ambulanceTypeLabel } from "./ambulanceBooking.js";
 
 const CUSTOMER_COMPLETED_HIDDEN_EXTRAS = new Set([
   "Lab Partner",
@@ -447,14 +448,20 @@ export function orderKindExtras(order, audience = "partner") {
   if (kind === "ambulance") {
     rows.push({
       label: "Type",
-      value: order.emergencyType === "emergency" ? "Emergency" : "Non-emergency",
+      value: ambulanceTypeLabel(order.emergencyType),
     });
-    if (order.destinationName) {
+    const drop = [order.destinationName, order.destinationAddress, order.destinationPin]
+      .map((part) => String(part || "").trim())
+      .filter(Boolean)
+      .join(", ");
+    if (drop) rows.push({ label: "Drop location", value: drop });
+    const lat = Number(order.lat);
+    const lng = Number(order.lng);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
       rows.push({
-        label: "Drop at",
-        value: [order.destinationName, order.destinationAddress, order.destinationFacilities]
-          .filter(Boolean)
-          .join(" · "),
+        label: "Location",
+        value: order.liveGps ? "Live location" : "Map",
+        href: order.mapsUrl || `https://www.google.com/maps?q=${lat},${lng}`,
       });
     }
   }

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { customerGreeting, needsCustomerWelcome, useLoginSession } from "./authSession";
+import { customerGreeting, hasAccountSession, needsCustomerWelcome, useLoginSession } from "./authSession";
+import GuestOrderLookup from "./GuestOrderLookup.jsx";
 import CustomerWelcome from "./CustomerWelcome";
 import HomeServiceCatalog from "./HomeServiceCatalog";
 import { HomeWithAboutSlides } from "./HomeAboutSlides";
@@ -44,6 +45,7 @@ export default function CustomerHome({ sectionKey = "" } = {}) {
       <section className="account-more" aria-label="Services">
         <HomeServiceCatalog />
       </section>
+      {hasAccountSession(user) ? null : <GuestOrderLookup />}
       </HomeWithAboutSlides>
     </div>
   );

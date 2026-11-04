@@ -241,7 +241,7 @@ export function socialJsonLd() {
     email: SITE.email,
     areaServed: SITE.area,
     openingHours: "Mo-Su 08:00-22:00",
-    sameAs: SOCIAL.filter((item) => item.id !== "whatsapp").map((item) => item.href),
+    sameAs: [],
     contactPoint: {
       "@type": "ContactPoint",
       telephone: SITE.phoneTel,

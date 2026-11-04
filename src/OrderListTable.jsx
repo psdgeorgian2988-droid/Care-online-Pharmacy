@@ -32,15 +32,17 @@ export default function OrderListTable({
               const open = String(openId) === String(id);
               return (
                 <li key={`${orderKind(order)}-${id}`}>
-                  <button
-                    type="button"
-                    className={`order-list-card${open ? " is-on" : ""}`}
-                    onClick={() => onOpen?.(open ? "" : id, order)}
-                  >
-                    <strong>#{id}</strong>
+                  <article className={`order-list-card${open ? " is-on" : ""}`}>
+                    <button
+                      type="button"
+                      className={`order-list-job${open ? " is-on" : ""}`}
+                      onClick={() => onOpen?.(open ? "" : id, order)}
+                    >
+                      #{id}
+                    </button>
                     <span>{kindLabel(orderKind(order))}</span>
                     <em>{orderTrackLabel(order) || "—"}</em>
-                  </button>
+                  </article>
                   {open && renderDetail ? (
                     <div className="order-list-card-detail">{renderDetail(order)}</div>
                   ) : null}
@@ -116,9 +118,9 @@ const styles = `
 .order-list-cards{width:100%}
 .order-list-cards ul{list-style:none;margin:0;padding:0;display:grid;gap:14px}
 .order-list-empty{margin:0;padding:20px 4px;color:#5d7180;font-size:15px}
-.order-list-card{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:20px 18px;border:1px solid #e4ecef;border-radius:14px;background:#fff;box-shadow:0 1px 0 rgba(20,50,70,.04);text-align:left;cursor:pointer;font:inherit;color:#143246}
+.order-list-card{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:20px 18px;border:1px solid #e4ecef;border-radius:14px;background:#fff;box-shadow:0 1px 0 rgba(20,50,70,.04);text-align:left;font:inherit;color:#143246}
 .order-list-card.is-on{border-color:#1a6b7a;background:#f7fbfd}
-.order-list-card strong{color:#1a6b7a;font-size:16px;font-weight:800;word-break:break-word}
+.order-list-card .order-list-job{font-size:16px;word-break:break-word}
 .order-list-card span{color:#34546b;font-size:15px;font-weight:600}
 .order-list-card em{font-style:normal;color:#1a6b7a;font-size:13px;font-weight:800}
 .order-list-card-detail{margin-top:8px;padding:12px;border:1px solid #e4ecef;border-radius:12px;background:#fbfefe}

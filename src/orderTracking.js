@@ -13,6 +13,7 @@ import {
   isAwaitingPartnerConfirm,
 } from "./orderConfirm.js";
 import { diagnosticStepLabel, isDiagnosticKind, orderHasReport } from "./labPipeline.js";
+import { collectorHasFix } from "./labAccession.js";
 import { isStepdownDischarged, isStepdownOrder } from "./stepdownDesk.js";
 import { isOngoingTrackOrder } from "./orderStatus.js";
 import { readLoginSession } from "./authSession.js";
@@ -521,6 +522,15 @@ export function tickTracking(record, now = Date.now()) {
     return record;
   }
   const kind = recordKind(record);
+  if (isDiagnosticKind(kind) && collectorHasFix(record)) {
+    return {
+      ...record,
+      partnerLat: Number(record.collectorLat),
+      partnerLng: Number(record.collectorLng),
+      mapsUrl: record.collectorMapsUrl || record.mapsUrl || "",
+      trackLastAt: now,
+    };
+  }
   if (!Number.isFinite(Number(record?.destLat)) || !Number.isFinite(Number(record?.destLng))) {
     return record;
   }

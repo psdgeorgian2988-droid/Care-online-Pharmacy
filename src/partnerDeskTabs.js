@@ -26,9 +26,9 @@ export const PARTNER_DESK_TABS = {
   radiology: [
     { id: "new", label: "New orders", keys: ["requested", "slot_offered", "declined"] },
     { id: "approved", label: "Approved", keys: ["confirmed"] },
-    { id: "assigned", label: "Assigned", keys: ["assigned"] },
-    { id: "sample", label: "Sample collected", keys: ["sample_collected"] },
-    { id: "process", label: "Under process", keys: ["processing"] },
+    { id: "assigned", label: "Centre assigned", keys: ["assigned"] },
+    { id: "sample", label: "Scan completed", keys: ["sample_collected"] },
+    { id: "process", label: "Images under review", keys: ["processing"] },
     { id: "ready", label: "Report ready", keys: ["report_ready"] },
     { id: "uploaded", label: "Report uploaded", keys: ["report_uploaded"] },
     { id: "done", label: "Order complete", keys: ["done"] },

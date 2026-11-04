@@ -12,6 +12,7 @@ export const PROFILE_KEY = "mediHomeUser";
 export const LOGIN_SESSION_KEY = "mediHomeLoggedIn";
 export const ACTOR_SESSION_KEY = "mediHomeActor";
 export const ENTRY_CHOSEN_KEY = "mediHomeEntryChosen";
+export const WELCOME_FORCE_KEY = "mediHomeWelcomeOpen";
 export const AUTH_EVENT = "medihome-auth";
 
 function localStore() {
@@ -100,7 +101,32 @@ export function clearCustomerEntryChosen(store = sessionStore()) {
   if (local && local !== store) rememberEntry(local, false);
 }
 
+export function requestWelcomePage(store = sessionStore()) {
+  try {
+    store?.setItem?.(WELCOME_FORCE_KEY, "1");
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+export function clearWelcomeRequest(store = sessionStore()) {
+  try {
+    store?.removeItem?.(WELCOME_FORCE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function welcomeRequested(store = sessionStore()) {
+  try {
+    return store?.getItem?.(WELCOME_FORCE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function needsCustomerWelcome(user, store = sessionStore()) {
+  if (welcomeRequested(store)) return true;
   if (user) return false;
   if (entryChosenMemory && store === sessionStore()) return false;
   try {
@@ -182,6 +208,7 @@ export function writeLoginSession(user, actor) {
         JSON.stringify(actor || holderActor(user))
       );
       markCustomerEntryChosen();
+      clearWelcomeRequest();
     } else {
       removePersistedItem(LOGIN_SESSION_KEY);
       removePersistedItem(ACTOR_SESSION_KEY);

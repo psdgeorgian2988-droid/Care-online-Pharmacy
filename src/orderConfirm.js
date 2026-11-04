@@ -218,6 +218,15 @@ export function partnerAcceptFields(now = Date.now(), kind = "") {
       partnerConfirmedAt: now,
     };
   }
+  if (String(kind || "").toLowerCase() === "ambulance") {
+    return {
+      trackStatus: "confirmed",
+      status: "Ambulance confirmed",
+      partnerConfirmed: true,
+      partnerConfirmStatus: "accepted",
+      partnerConfirmedAt: now,
+    };
+  }
   return {
     trackStatus: "confirmed",
     status: "Confirmed",
@@ -371,7 +380,7 @@ export function awaitingPartnerMessage(kind) {
     return "Your home-care request was sent to all available nurses, caregivers, and physiotherapists in your PIN. The first partner who accepts is assigned, and their details appear here.";
   }
   if (key === "ambulance") {
-    return "Your ambulance request has been sent. It is confirmed only after the ambulance partner accepts it.";
+    return "Your request is with the nearest free ambulance of this type. The booking is confirmed after that driver accepts it.";
   }
   if (key === "stepdown") {
     return "Your step-down booking request has been sent. It is confirmed only after the centre taps Confirm. If they tap Not Available, the booking is declined.";

@@ -56,14 +56,20 @@ const parsedRx = {
 
 test("digital Rx HTML names the brand, dose code and days", () => {
   const html = digitalPrescriptionHtml(parsedRx);
+  assert.match(html, /DIGITAL PRESCRIPTION/);
+  assert.match(html, /Customer confirmed names — pharmacist verification pending/);
+  assert.match(html, /MH-RX-/);
   assert.match(html, /Prosigo/);
-  assert.match(html, />HS</);
+  assert.match(html, /HS/);
   assert.match(html, /More Fe/);
-  assert.match(html, />OD</);
+  assert.match(html, /OD/);
   assert.match(html, /Koglok-DS/);
-  assert.match(html, />TDS</);
-  assert.match(html, /For how many days: 15 days/);
+  assert.match(html, /1-1-1/);
+  assert.match(html, /15 days/);
   assert.match(html, /CBC/);
+  assert.match(html, /Laboratory investigations/);
+  assert.match(html, /Pharmacist verification/);
+  assert.match(html, /not a substitute/i);
   assert.equal(/Make correction/i.test(html), false);
 });
 

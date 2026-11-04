@@ -20,6 +20,8 @@ export function emptyPartnerProfile() {
     policeFileName: "",
     policeFileType: "",
     policeFileData: "",
+    ambulanceType: "",
+    vehicleNumber: "",
   };
 }
 
@@ -113,6 +115,8 @@ export function partnerProfileFrom(partner = {}) {
     policeFileName: police.fileName,
     policeFileType: police.fileType,
     policeFileData: police.fileData,
+    ambulanceType: clip(raw.ambulanceType, 40),
+    vehicleNumber: clip(raw.vehicleNumber, 20).toUpperCase(),
   };
 }
 
