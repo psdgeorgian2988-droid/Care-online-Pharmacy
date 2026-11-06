@@ -9855,8 +9855,8 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
   right: auto;
   bottom: var(--app-footer-h, 44px);
   z-index: 40;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  display: flex;
+  flex-wrap: nowrap;
   gap: 2px;
   width: 100%;
   max-width: var(--app-frame, 430px);
@@ -9867,17 +9867,25 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
   background: rgba(234, 246, 243, 0.96);
   backdrop-filter: blur(10px);
   box-sizing: border-box;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
 }
 
 .app-bottom-nav a {
   display: flex;
+  flex: 0 0 76px;
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  width: 76px;
   padding: 6px 2px 4px;
   border-radius: 12px;
   color: var(--app-muted);
   text-decoration: none;
+  scroll-snap-align: start;
 }
 
 .app-bottom-nav a span {
@@ -10670,6 +10678,13 @@ html:has(.app-customer) .app-bottom-nav {
   -webkit-overflow-scrolling: touch !important;
   touch-action: pan-y !important;
   padding-bottom: calc(var(--app-nav-h, 64px) + 8px) !important;
+}
+
+.app:not(.app-ops):not(.app-customer) .app-bottom-nav,
+.app-customer .app-bottom-nav,
+html.is-customer-app .app-bottom-nav {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
 }
 
 .app:not(.app-ops):not(.app-customer) .app-bottom-nav {

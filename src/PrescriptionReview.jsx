@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { goToHash } from "./hashRoute";
+import { customerBackHomeHash, goToHash } from "./hashRoute";
+import { hasAccountSession } from "./authSession";
 import {
   clearPrescriptionDraft,
   fileToPrescriptionDraft,
@@ -728,7 +729,13 @@ export default function PrescriptionReview() {
                   Book tests
                 </button>
               )}
-              <button type="button" className="rx-secondary" onClick={() => goToHash("#home")}>
+              <button
+                type="button"
+                className="rx-secondary"
+                onClick={() =>
+                  goToHash(customerBackHomeHash(window.location.hash, { account: hasAccountSession() }))
+                }
+              >
                 Back to Home
               </button>
             </div>

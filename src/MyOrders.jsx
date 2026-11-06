@@ -16,7 +16,6 @@ import {
   serviceKind,
 } from "./orderStatus";
 import OrderListTable from "./OrderListTable.jsx";
-import GuestOrderLookup from "./GuestOrderLookup.jsx";
 import OrderFullView from "./OrderFullView.jsx";
 import ServiceIcon from "./serviceIcons";
 import {
@@ -197,7 +196,9 @@ function MyOrders() {
           ) : null}
 
           {!registered ? (
-            <GuestOrderLookup />
+            <div className="orders-empty">
+              <p>Orders are saved on a registered account.</p>
+            </div>
           ) : !serviceTab ? (
             <div className="orders-empty">
               <p>Choose a service to see your orders.</p>

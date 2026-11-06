@@ -43,10 +43,15 @@ test("footer icons are Account first, then one home segment each", () => {
       "Account",
       "Medicines",
       "Labs",
-      "Doctor",
-      "Medical Record",
+      "Radiology",
       "Home Care",
       "Vaccination",
+      "Doctor",
+      "Psychologist",
+      "Step-Down",
+      "Ambulance",
+      "Medical Record",
+      "Education",
     ]
   );
   assert.match(source, /href: "#profile", label: "Account"/);

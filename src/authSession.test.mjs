@@ -187,7 +187,7 @@ test("log out is shown for registered customers on account and both shells", () 
 
   assert.match(
     tabs,
-    /Account[\s\S]*Medicines[\s\S]*Labs[\s\S]*Orders[\s\S]*Doctor[\s\S]*Medical Record[\s\S]*Home Care[\s\S]*Vaccination/
+    /Account[\s\S]*Medicines[\s\S]*Labs[\s\S]*Radiology[\s\S]*Home Care[\s\S]*Vaccination[\s\S]*Doctor[\s\S]*Psychologist[\s\S]*Step-Down[\s\S]*Ambulance[\s\S]*Medical Record[\s\S]*Education/
   );
 });
 

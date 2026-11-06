@@ -107,9 +107,12 @@ import {
   isLabReportUploadFile,
   labJobCanReceiveReport,
   labReportTargetJob,
+  orderCanAddReportFile,
   diagnosticTestName,
   mergeOrderReportIntoStore,
   namedReportFileName,
+  listReportFiles,
+  MAX_REPORT_FILES,
   markReportReadyFields,
   nextDiagnosticAction,
   partnerJobClosed,
@@ -125,6 +128,7 @@ import {
   ReportResultEditor,
 } from "./LabPartnerExtras";
 import { buildSampleTubes, normalizeReportResults, resultRowsFromOrder } from "./labAccession";
+import SlotCapacityControl from "./SlotCapacityControl";
 import {
   medicalRecordFileCard,
   medicalRecordForViewer,
@@ -430,6 +434,11 @@ export default function Partner() {
       setLabReportError("Report must be under 1.5 MB.");
       return;
     }
+    const savedFiles = listReportFiles(job);
+    if (savedFiles.length >= MAX_REPORT_FILES) {
+      setLabReportError("This order already has 4 reports.");
+      return;
+    }
     try {
       const data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -448,6 +457,7 @@ export default function Partner() {
           fileType: file.type || "application/octet-stream",
           fileData: data,
           testName,
+          reportFiles: savedFiles,
         })
       );
     } catch (err) {
@@ -869,6 +879,7 @@ export default function Partner() {
           return (
             <section key={group.kind} className="order-category" aria-label={group.title}>
               <h2>{deliveryDesk ? "Deliveries" : isLabStore ? "Lab tests" : group.title}</h2>
+              {isDiagnosticStore ? <SlotCapacityControl /> : null}
               {deliveryDesk ? (
                 <div className="lab-tabs partner-order-tabs" role="tablist" aria-label="Delivery jobs">
                   <button
@@ -1599,6 +1610,7 @@ function LabReportUploadPanel({
   onReportNotes,
   localError,
   onSubmit,
+  savedFiles = [],
   hidden = false,
 }) {
   const jobId = job ? String(job.id || job.bookingId || job.requestId || "") : "";
@@ -1608,12 +1620,19 @@ function LabReportUploadPanel({
       hidden={hidden}
       aria-hidden={hidden || undefined}
     >
-      <p className="partner-collect-title">Upload PDF or photo</p>
+      <p className="partner-collect-title">{savedFiles.length ? "Add another report" : "Upload PDF or photo"}</p>
       <p className="partner-report-note">
         {jobId
-          ? `Choose a PDF or photo for order #${jobId}.`
+          ? `Choose a PDF or photo for order #${jobId}. Each file stays under 1.5 MB. Up to ${MAX_REPORT_FILES} files.`
           : "Open a lab order first, then choose a PDF or photo."}
       </p>
+      {savedFiles.length ? (
+        <ul className="partner-report-note">
+          {savedFiles.map((file, index) => (
+            <li key={`${file.fileName}-${index}`}>{file.fileName || `Report ${index + 1}`}</li>
+          ))}
+        </ul>
+      ) : null}
       <label className="partner-report-file is-prompt">
         <span>{reportFile ? reportFile.name : "Upload PDF or photo"}</span>
         <input
@@ -1654,7 +1673,7 @@ function LabReportUploadPanel({
         disabled={busy}
         onClick={() => onSubmit(job)}
       >
-        Upload Report
+        {savedFiles.length ? "Add report" : "Upload Report"}
       </button>
     </div>
   );
@@ -1731,11 +1750,13 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false, team =
       <LabOrderProcess job={job} busy={busy} onAdvance={onAdvance} />
     ) : null;
   }
-  const canUpload = labJobCanReceiveReport(job);
+  const savedFiles = listReportFiles(job);
+  const canAddReport = orderCanAddReportFile(job);
   const showUpload =
-    action === "upload_report" ||
+    (action === "upload_report" && canAddReport) ||
     promptUpload ||
-    (diagnosticKindOf(job) !== "lab" && canUpload);
+    (action === "complete" && canAddReport) ||
+    (diagnosticKindOf(job) !== "lab" && canAddReport);
 
   const readFile = (file) =>
     new Promise((resolve, reject) => {
@@ -1774,6 +1795,10 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false, team =
       setLocalError("Report must be under 1.5 MB.");
       return;
     }
+    if (savedFiles.length >= MAX_REPORT_FILES) {
+      setLocalError("This order already has 4 reports.");
+      return;
+    }
     try {
       const data = await readFile(reportFile);
       const testName = String(reportName || "").trim() || diagnosticTestName(job);
@@ -1788,6 +1813,7 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false, team =
           testName,
           notes: reportNotes,
           reportResults: normalizeReportResults(resultRows),
+          reportFiles: savedFiles,
         })
       );
     } catch (err) {
@@ -1818,6 +1844,7 @@ function DiagnosticJobPanel({ job, busy, onAdvance, promptUpload = false, team =
         reportNotes={reportNotes}
         onReportNotes={setReportNotes}
         localError={localError}
+        savedFiles={savedFiles}
         onSubmit={() => submitReport()}
       />
       </>

@@ -46,6 +46,7 @@ const KEEP_IF_EMPTY = [
   "reportFileName",
   "reportFileData",
   "reportFileType",
+  "reportFiles",
   "reportUploadedAt",
   "reportTestName",
   "reportNotes",

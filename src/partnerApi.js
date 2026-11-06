@@ -167,6 +167,29 @@ export async function fetchPartnerJobs() {
   );
 }
 
+export async function fetchSlotCapacity() {
+  const { token } = partnerSession();
+  return parseResponse(
+    await apiFetch("/api/partner/slot-capacity", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  );
+}
+
+export async function saveSlotCapacity(capacity) {
+  const { token } = partnerSession();
+  return parseResponse(
+    await apiFetch("/api/partner/slot-capacity", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ capacity }),
+    })
+  );
+}
+
 export async function patchPartnerJob(id, patch) {
   const { token } = partnerSession();
   return parseResponse(

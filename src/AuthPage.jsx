@@ -21,6 +21,7 @@ import {
 import {
   PROFILE_KEY,
   consumeReturnHash,
+  hasAccountSession,
   readLoginSession,
   writeLoginSession,
 } from "./authSession";
@@ -321,9 +322,17 @@ function LoginRegisterPage({ mode }) {
           ) : null}
 
           <p className="auth-switch">
-            {editingAccount ? (
+            {editingAccount && hasAccountSession(session) ? (
               <>
-                Need the points page? <a href="#profile">Open Profile</a>
+                <a
+                  href="#profile"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    goToHash("#profile");
+                  }}
+                >
+                  Back to account
+                </a>
               </>
             ) : isRegister ? (
               <>

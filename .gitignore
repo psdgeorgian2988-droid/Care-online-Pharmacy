@@ -23,4 +23,5 @@ ios/App/App/public/
 server/data/partner-tokens.json
 server/data/partner-reset-otps.json
 server/data/reports.json
+server/data/slot-capacity.json
 server/data/medicine-photos/

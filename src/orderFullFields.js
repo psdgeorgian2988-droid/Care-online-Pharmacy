@@ -13,7 +13,7 @@ import {
 import { orderPayableRupees, paymentPartsLabel } from "./partnerCollect.js";
 import { maskMobile, maskPartnerMobile } from "./personFields.js";
 import { isCompletedOrder, orderCurrentStatus } from "./orderStatus.js";
-import { namedReportFileName } from "./labPipeline.js";
+import { listReportFiles, namedReportFileName } from "./labPipeline.js";
 import { ambulanceTypeLabel } from "./ambulanceBooking.js";
 
 const CUSTOMER_COMPLETED_HIDDEN_EXTRAS = new Set([
@@ -472,13 +472,21 @@ export function orderKindExtras(order, audience = "partner") {
     if (order.outletGstin) rows.push({ label: "Outlet GSTIN", value: order.outletGstin });
     if (order.outletDlNo) rows.push({ label: "Outlet DL No.", value: order.outletDlNo });
   }
-  if (order.reportFileName || order.reportFileData) {
+  const reportFiles = listReportFiles(order);
+  reportFiles.forEach((file, index) => {
     rows.push({
-      label: "Report",
-      value: namedReportFileName(order) || order.reportFileName || "Report attached",
+      label: reportFiles.length > 1 ? `Report ${index + 1}` : "Report",
+      value:
+        namedReportFileName(
+          file.testName ? { ...order, testName: file.testName, reportTestName: file.testName } : order,
+          file
+        ) ||
+        file.fileName ||
+        "Report attached",
       openFile: true,
+      file,
     });
-  }
+  });
   const visible = rows.filter((row) => row.value);
   if (isCustomerCompletedDetail(order, audience)) {
     return visible.filter((row) => !CUSTOMER_COMPLETED_HIDDEN_EXTRAS.has(row.label));

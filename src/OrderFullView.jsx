@@ -221,7 +221,7 @@ export default function OrderFullView({
               href={row.href}
               onOpen={
                 row.openFile
-                  ? () => openReportFile(reportFileForOrder(order) || order)
+                  ? () => openReportFile(row.file || reportFileForOrder(order) || order)
                   : undefined
               }
             />

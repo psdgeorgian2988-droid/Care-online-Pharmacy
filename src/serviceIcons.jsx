@@ -13,6 +13,7 @@ export const SERVICE_ICON_TONES = {
   psychologist: { color: "#7a6fbf", bg: "#eee8ff" },
   stepdown: { color: "#5a7a8f", bg: "#e6eef2" },
   ambulance: { color: "#c45c5c", bg: "#ffe6e6" },
+  education: { color: "#2f7d6d", bg: "#e5f6f1" },
 };
 
 const TYPE_ALIASES = {
@@ -43,6 +44,11 @@ const TYPE_ALIASES = {
   "step-down": "stepdown",
   icu: "stepdown",
   ambulance: "ambulance",
+  education: "education",
+  guides: "education",
+  webinar: "education",
+  webinars: "education",
+  quiz: "education",
 };
 
 export function serviceIconType(type = "") {
@@ -153,6 +159,13 @@ function glyph(type, color) {
           <circle cx="7.4" cy="16.8" r="1.7" {...stroke} />
           <circle cx="15.2" cy="16.8" r="1.7" {...stroke} />
           <path d="M8.4 10.2h3.2M10 8.6v3.2" {...stroke} />
+        </>
+      );
+    case "education":
+      return (
+        <>
+          <path d="M4 9.2 12 5.4l8 3.8L12 13z" {...wash} />
+          <path d="M7.2 10.6v4.1c1.5 1.1 3.1 1.7 4.8 1.7s3.3-.6 4.8-1.7v-4.1" {...stroke} />
         </>
       );
     default:

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { reportFromOrder, reportMatches } from "./reports.mjs";
+import { reportFromOrder, reportMatches, reportsFromOrder } from "./reports.mjs";
 
 test("a saved order report keeps mobile and email for search", () => {
   const row = reportFromOrder({
@@ -23,4 +23,20 @@ test("a saved order report keeps mobile and email for search", () => {
 
 test("an order without a report file is not stored", () => {
   assert.equal(reportFromOrder({ id: "MH-LAB-2", mobile: "9876543210" }), null);
+});
+
+test("each uploaded file is stored and the latest keeps the order id", () => {
+  const rows = reportsFromOrder({
+    id: "MH-LAB-9",
+    reportFileName: "KFT.pdf",
+    reportFileData: "data:application/pdf;base64,bbb",
+    reportFiles: [
+      { fileName: "CBC.pdf", fileData: "data:application/pdf;base64,aaa", testName: "CBC" },
+      { fileName: "KFT.pdf", fileData: "data:application/pdf;base64,bbb", testName: "KFT" },
+    ],
+  });
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].id, "ord-MH-LAB-9-1");
+  assert.equal(rows[1].id, "ord-MH-LAB-9");
+  assert.equal(rows[1].testName, "KFT");
 });

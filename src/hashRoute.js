@@ -141,9 +141,35 @@ export function isMedicalRecordNavActive(route, service = "") {
 }
 
 export function isLabsNavActive(route, service = "") {
-  if (route === "#labs") return true;
   const key = String(service || "").toLowerCase();
-  return route === "#home" && (key === "labs" || key === "lab" || key === "radiology");
+  if (key === "radiology") return false;
+  if (route === "#labs") return true;
+  return route === "#home" && (key === "labs" || key === "lab");
+}
+
+export function isRadiologyNavActive(route, service = "") {
+  if (String(service || "").toLowerCase() !== "radiology") return false;
+  return route === "#home" || route === "#labs";
+}
+
+export function isPsychologistNavActive(route, service = "") {
+  if (route === "#psychologist") return true;
+  return route === "#home" && String(service || "").toLowerCase() === "psychologist";
+}
+
+export function isStepdownNavActive(route, service = "") {
+  if (route === "#stepdown") return true;
+  return route === "#home" && String(service || "").toLowerCase() === "stepdown";
+}
+
+export function isAmbulanceNavActive(route, service = "") {
+  if (route === "#ambulance") return true;
+  return route === "#home" && String(service || "").toLowerCase() === "ambulance";
+}
+
+export function isEducationNavActive(route, service = "") {
+  if (route === "#education") return true;
+  return route === "#home" && String(service || "").toLowerCase() === "education";
 }
 
 export function isMedicineNavActive(route, service = "") {
@@ -349,12 +375,8 @@ function scrollStaffOrders() {
 export function activityHomeHash(rawHash = "") {
   const { route, service, plan } = parseAppHash(rawHash);
   const key = String(service || plan || "").toLowerCase();
-  if (
-    route === "#labs" ||
-    key === "labs" ||
-    key === "lab" ||
-    key === "radiology"
-  ) {
+  if (key === "radiology") return "#home?service=radiology";
+  if (route === "#labs" || key === "labs" || key === "lab") {
     return LABS_HOME_HASH;
   }
   if (
@@ -375,7 +397,7 @@ export function activityHomeHash(rawHash = "") {
   if (route === "#stepdown" || key === "stepdown") return "#home?service=stepdown";
   if (route === "#ambulance" || key === "ambulance") return "#home?service=ambulance";
   if (route === "#reports" || key === "reports") return MEDICAL_RECORD_HOME_HASH;
-  if (route === "#education" || key === "education" || key === "guides" || key === "webinars" || key === "quiz") {
+  if (route === "#education" || key === "education" || EDUCATION_TABS.has(key)) {
     return "#home?service=education";
   }
   if (route === "#profile") return "#profile";
@@ -388,7 +410,7 @@ export function customerBackHomeHash(rawHash = "", { account = false } = {}) {
   const current = rawHash || (typeof window !== "undefined" ? window.location.hash || "#home" : "#home");
   const dest = activityHomeHash(current);
   if (!account && (dest === "#profile" || dest === MEDICAL_RECORD_HOME_HASH)) return "#home";
-  if (hashesMatch(current, dest)) return account ? "#profile" : "#home";
+  if (hashesMatch(current, dest)) return "#home";
   return dest;
 }
 
@@ -564,9 +586,12 @@ export function goBackHash() {
     return;
   }
 
-  if (window.history.length > 1) {
-    window.history.back();
+  const { route } = parseAppHash(current);
+  if (route === "#myorders" || route === "#track" || route === "#scan") {
+    const dest = parentHashFor(current, { ...ctx, actor });
+    if (dest && !hashesMatch(current, dest)) goToHash(dest);
     return;
   }
-  goToHash(parentHashFor(current, { ...ctx, actor }) || "#home");
+  const dest = customerBackHomeHash(current, { account: hasAccountSession() });
+  if (dest && !hashesMatch(current, dest)) goToHash(dest);
 }

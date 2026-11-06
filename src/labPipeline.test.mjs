@@ -128,6 +128,17 @@ test("field helpers set the right track status", () => {
   });
   assert.equal(named.reportFileName, "CBC.pdf");
   assert.equal(named.reportTestName, "CBC");
+  assert.equal(named.reportFiles.length, 1);
+  const second = reportReadyFields({
+    fileName: "kft.pdf",
+    fileType: "application/pdf",
+    fileData: "data:application/pdf;base64,bbb",
+    testName: "KFT",
+    reportFiles: named.reportFiles,
+  });
+  assert.equal(second.reportFiles.length, 2);
+  assert.equal(second.reportFiles[0].testName, "CBC");
+  assert.equal(second.reportFileName, "KFT.pdf");
   assert.equal(diagnosticCompleteFields().trackStatus, "done");
 });
 

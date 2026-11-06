@@ -8,13 +8,14 @@ import {
   validateGuestCheckout,
   writeGuestCheckout,
 } from "./guestCheckout";
-import GuestOrderLookup from "./GuestOrderLookup.jsx";
 import LogoMark from "./LogoMark";
 import WelcomeSlideshow from "./WelcomeSlideshow";
 import { APP_PREVIEW_KEY, writeAppRole } from "./appRuntime";
 import {
   clearCustomerEntryChosen,
+  clearWelcomeRequest,
   markCustomerEntryChosen,
+  requestWelcomePage,
 } from "./authSession";
 
 export {
@@ -27,6 +28,7 @@ const FLASH_MS = 2200;
 
 /** Leave welcome and open the home catalog with every service section. */
 export function openGuestHome() {
+  clearWelcomeRequest();
   markCustomerEntryChosen();
   try {
     globalThis.localStorage?.removeItem?.(APP_PREVIEW_KEY);
@@ -57,6 +59,7 @@ export function openGuestHome() {
 
 /** Open the customer welcome (Login / Order as Guest) from any logo click. */
 export function openWelcomePage() {
+  requestWelcomePage();
   clearCustomerEntryChosen();
   try {
     globalThis.localStorage?.setItem?.(APP_PREVIEW_KEY, "1");
@@ -151,19 +154,6 @@ export default function CustomerWelcome({ onDone } = {}) {
     );
   }
 
-  if (mode === "lookup") {
-    return (
-      <div className="app-first is-guest">
-        <section className="app-first-card" aria-label="Find an order">
-          <GuestOrderLookup />
-          <button type="button" className="app-first-btn is-quiet" onClick={() => setMode("choose")}>
-            Back
-          </button>
-        </section>
-      </div>
-    );
-  }
-
   if (mode === "guest") {
     return (
       <div className="app-first is-guest">
@@ -238,9 +228,6 @@ export default function CustomerWelcome({ onDone } = {}) {
             <a className="app-first-btn is-quiet" href="/?app=0#home" onClick={enterAsGuest}>
               Order as Guest
             </a>
-            <button type="button" className="app-first-btn is-quiet" onClick={() => setMode("lookup")}>
-              Track by mobile
-            </button>
             <a className="app-first-btn is-quiet" href="#partner-desk" onClick={(event) => openOpsPage(event, "#partner-desk")}>
               Partner Login
             </a>

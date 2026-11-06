@@ -178,11 +178,40 @@ export function namedReportFileName(source = {}, file = {}) {
   return `report.${ext}`;
 }
 
+export const MAX_REPORT_FILES = 4;
+
+function reportFileRow(row = {}) {
+  return {
+    fileName: String(row.fileName || row.reportFileName || "").trim(),
+    fileType: String(row.fileType || row.reportFileType || "").trim(),
+    fileData: String(row.fileData || row.reportFileData || ""),
+    testName: String(row.testName || row.reportTestName || "").trim(),
+    notes: String(row.notes || row.reportNotes || "").trim(),
+    uploadedAt: Number(row.uploadedAt || row.reportUploadedAt) || 0,
+  };
+}
+
+export function listReportFiles(order = {}) {
+  const listed = Array.isArray(order?.reportFiles) ? order.reportFiles : [];
+  const files = listed.map(reportFileRow).filter((row) => row.fileName || row.fileData);
+  if (files.length) return files.slice(0, MAX_REPORT_FILES);
+  const legacyName = String(order?.reportFileName || "").trim();
+  const legacyData = String(order?.reportFileData || "");
+  if (!legacyName && !legacyData.trim()) return [];
+  return [
+    reportFileRow({
+      fileName: legacyName,
+      fileType: order?.reportFileType,
+      fileData: legacyData,
+      testName: order?.reportTestName,
+      notes: order?.reportNotes,
+      uploadedAt: order?.reportUploadedAt,
+    }),
+  ];
+}
+
 export function orderHasReport(order) {
-  return Boolean(
-    String(order?.reportFileName || "").trim() ||
-    String(order?.reportFileData || "").trim()
-  );
+  return listReportFiles(order).length > 0;
 }
 
 export function mergedReportOrder(existing = {}, patch = {}) {
@@ -237,16 +266,28 @@ export function guardOrderCompletion(existing = {}, patch = {}) {
 
 export function reportReadyFields(report = {}, now = Date.now()) {
   const testName = String(report.testName || "").trim();
+  const fileName = namedReportFileName({ testName }, report);
+  const fileType = String(report.fileType || "").trim();
+  const fileData = String(report.fileData || "");
+  const notes = String(report.notes || "").trim();
+  const prior = listReportFiles({ reportFiles: report.reportFiles }).filter(
+    (row) => !(row.fileData && row.fileData === fileData)
+  );
+  const reportFiles = [
+    ...prior,
+    { fileName, fileType, fileData, testName, notes, uploadedAt: now },
+  ].slice(-MAX_REPORT_FILES);
   return {
     trackStatus: "report_uploaded",
     status: "Report Uploaded",
     trackCompleted: false,
     reportUploadedAt: now,
-    reportFileName: namedReportFileName({ testName }, report),
-    reportFileType: String(report.fileType || "").trim(),
-    reportFileData: String(report.fileData || ""),
+    reportFileName: fileName,
+    reportFileType: fileType,
+    reportFileData: fileData,
     reportTestName: testName,
-    reportNotes: String(report.notes || "").trim(),
+    reportNotes: notes,
+    reportFiles,
     ...(Array.isArray(report.reportResults) ? { reportResults: report.reportResults } : {}),
   };
 }
@@ -301,6 +342,13 @@ export function orderCanReceiveReport(order) {
   if (status === "declined" || status === "cancelled") return false;
   if (orderHasReport(order)) return false;
   return true;
+}
+
+export function orderCanAddReportFile(order) {
+  if (!order || partnerJobClosed(order)) return false;
+  const status = String(order.trackStatus || "").toLowerCase();
+  if (status === "declined" || status === "cancelled") return false;
+  return listReportFiles(order).length < MAX_REPORT_FILES;
 }
 
 export function labJobCanReceiveReport(order) {
@@ -376,39 +424,53 @@ export function isLabReportUploadFile(file) {
   return /\.(png|jpe?g|gif|webp|heic|heif)$/i.test(name);
 }
 
-/** Persist partner-uploaded report into the customer reports list (local). */
-export function reportRecordFromOrder(order, people = []) {
-  if (!order?.reportFileData && !order?.reportFileName) return null;
+/** Persist partner-uploaded reports into the customer reports list (local). */
+export function reportRecordsFromOrder(order, people = []) {
+  const files = listReportFiles(order);
+  if (!files.length) return [];
   const id = String(order.id || order.bookingId || order.requestId || "");
   const identity = patientIdentityFromSource(order, people);
-  const testName = diagnosticTestName(order);
-  const fileName = namedReportFileName({ ...order, testName }, order);
-  return {
-    id: `ord-${id}`,
-    orderId: id,
-    patientId: identity.patientId,
-    patientName: identity.patientName,
-    memberId: identity.patientId,
-    memberName: identity.patientName,
-    kind: diagnosticKindOf(order) || "lab",
-    testName: testName || "Diagnostic report",
-    name: identity.patientName || order.patientName || order.name || "",
-    mobile: identity.mobile || order.mobile || "",
-    date: new Date(order.reportUploadedAt || Date.now()).toISOString().slice(0, 10),
-    notes: order.reportNotes || `From booking ${id}`,
-    fileName,
-    fileType: order.reportFileType || order.fileType || "",
-    fileData: order.reportFileData || order.fileData || "",
-    results: Array.isArray(order.reportResults) ? order.reportResults : order.results || [],
-    accessionNo: order.accessionNo || "",
-    source: "partner",
-  };
+  const fallbackTest = diagnosticTestName(order);
+  return files.map((file, index) => {
+    const namedTest = file.testName || fallbackTest;
+    const testName = namedTest || "Diagnostic report";
+    const latest = index === files.length - 1;
+    const fileName = namedReportFileName(
+      { ...order, testName: namedTest },
+      { fileName: file.fileName, fileType: file.fileType }
+    );
+    return {
+      id: latest || !id ? `ord-${id}` : `ord-${id}-${index + 1}`,
+      orderId: id,
+      patientId: identity.patientId,
+      patientName: identity.patientName,
+      memberId: identity.patientId,
+      memberName: identity.patientName,
+      kind: diagnosticKindOf(order) || "lab",
+      testName,
+      name: identity.patientName || order.patientName || order.name || "",
+      mobile: identity.mobile || order.mobile || "",
+      date: new Date(file.uploadedAt || order.reportUploadedAt || Date.now()).toISOString().slice(0, 10),
+      notes: file.notes || order.reportNotes || `From booking ${id}`,
+      fileName,
+      fileType: file.fileType || order.reportFileType || order.fileType || "",
+      fileData: file.fileData || "",
+      results: latest && Array.isArray(order.reportResults) ? order.reportResults : order.results || [],
+      accessionNo: order.accessionNo || "",
+      source: "partner",
+    };
+  });
+}
+
+export function reportRecordFromOrder(order, people = []) {
+  const rows = reportRecordsFromOrder(order, people);
+  return rows.length ? rows[rows.length - 1] : null;
 }
 
 export function mergeOrderReportIntoStore(order, storage = globalThis.localStorage, people = []) {
-  const row = reportRecordFromOrder(order, people);
-  if (!row || !storage) return null;
-  if (isHiddenMedicalRecordSource(order) || isHiddenMedicalRecordSource(row)) return null;
+  const rows = reportRecordsFromOrder(order, people);
+  if (!rows.length || !storage) return null;
+  if (rows.some((row) => isHiddenMedicalRecordSource(order) || isHiddenMedicalRecordSource(row))) return null;
   let list = [];
   try {
     const parsed = JSON.parse(storage.getItem("mediHomeReports") || "[]");
@@ -416,12 +478,17 @@ export function mergeOrderReportIntoStore(order, storage = globalThis.localStora
   } catch {
     list = [];
   }
-  const next = [row, ...list.filter((item) => item.id !== row.id && item.orderId !== row.orderId)];
+  const orderId = rows[0].orderId;
+  const ids = new Set(rows.map((row) => row.id));
+  const next = [
+    ...rows,
+    ...list.filter((item) => item.orderId !== orderId && !ids.has(item.id)),
+  ];
   storage.setItem("mediHomeReports", JSON.stringify(next));
   if (storage === globalThis.localStorage && typeof globalThis.dispatchEvent === "function") {
     globalThis.dispatchEvent(new Event("medihome-reports"));
   }
-  return row;
+  return rows[rows.length - 1];
 }
 
 export function loadStoredReports(storage = globalThis.localStorage) {

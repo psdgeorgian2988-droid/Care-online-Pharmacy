@@ -1,4 +1,7 @@
+import { hasAccountSession } from "./authSession";
 import {
+  customerBackHomeHash,
+  goToHash,
   goToOrderListHash,
   orderBackActor,
   orderBackHash,
@@ -39,9 +42,22 @@ export default function BackToHome({ show = true } = {}) {
     );
   }
 
+  const homeHash =
+    typeof window === "undefined"
+      ? "#home"
+      : customerBackHomeHash(window.location.hash, { account: hasAccountSession() });
+
   return (
     <div className="back-to-home-bar">
-      <a className="back-to-home-btn" href="#home">
+      <a
+        className="back-to-home-btn"
+        href={homeHash}
+        onClick={(event) => {
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+          event.preventDefault();
+          goToHash(homeHash);
+        }}
+      >
         ← Back to Home
       </a>
     </div>

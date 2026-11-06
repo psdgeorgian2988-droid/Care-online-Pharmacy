@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { apiFetch } from "./apiBase.js";
 import { guestMobile } from "./labCustomerActions.js";
-import { openReportFile, orderHasReport } from "./labPipeline.js";
+import { listReportFiles, openReportFile, orderHasReport } from "./labPipeline.js";
 import { goToHash } from "./hashRoute.js";
 import { markCustomerEntryChosen } from "./authSession.js";
 import { persistLocalOrder, trackHref } from "./orderTracking.js";
@@ -56,14 +56,17 @@ export default function GuestOrderLookup() {
     goToHash(trackHref(id));
   };
 
-  const openReport = async (order) => {
+  const openReport = async (order, file) => {
     const id = orderNumber(order);
     setError("");
     try {
       const res = await apiFetch(`/api/orders/lookup?id=${encodeURIComponent(id)}`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.order) throw new Error(data.error || "Report is not ready.");
-      if (!openReportFile(data.order)) {
+      const match = file
+        ? listReportFiles(data.order).find((row) => row.fileName === file.fileName) || file
+        : data.order;
+      if (!openReportFile(match)) {
         openOrder(data.order);
       }
     } catch (err) {
@@ -89,7 +92,7 @@ export default function GuestOrderLookup() {
         .guest-order-lookup article strong{color:#1a6b7a}
         .guest-order-lookup .guest-order-actions{display:flex;gap:8px;flex-wrap:wrap}
       `}</style>
-      <h2>Find an order or report</h2>
+      <h2>Track by mobile</h2>
       <form onSubmit={search}>
         <label>
           Mobile number
@@ -123,11 +126,18 @@ export default function GuestOrderLookup() {
               <button type="button" className="is-quiet" onClick={() => openOrder(order)}>
                 Track
               </button>
-              {orderHasReport(order) ? (
-                <button type="button" className="is-quiet" onClick={() => openReport(order)}>
-                  Open report
-                </button>
-              ) : null}
+              {orderHasReport(order)
+                ? listReportFiles(order).map((file, index, files) => (
+                    <button
+                      key={`${file.fileName}-${index}`}
+                      type="button"
+                      className="is-quiet"
+                      onClick={() => openReport(order, file)}
+                    >
+                      {files.length > 1 ? file.fileName || `Report ${index + 1}` : "Open report"}
+                    </button>
+                  ))
+                : null}
             </div>
           </article>
         );

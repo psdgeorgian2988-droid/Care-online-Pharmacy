@@ -15,7 +15,8 @@ import {
 } from "../src/paymentSplit.js";
 import { stampLabOrderTests } from "../src/labTestSplit.js";
 import { catalogLabIdForPartner } from "../src/commonLabPanel.js";
-import { collectorCapacity, diagnosticLabId, slotRemaining } from "../src/labSlots.js";
+import { diagnosticLabId, slotRemaining } from "../src/labSlots.js";
+import { slotCapacityFor, writeSlotCapacity } from "./slotCapacity.mjs";
 import { LAB_TIME_SLOTS } from "../src/appointmentSlot.js";
 import {
   canCustomerChangeLabBooking,
@@ -364,13 +365,38 @@ export async function handleApi(req, res) {
       return true;
     }
 
+    if (pathname === "/api/partner/slot-capacity" && (req.method === "GET" || req.method === "POST")) {
+      const token = readToken(req);
+      const partnerId = partnerIdFromToken(token);
+      const partner = partnerId ? await findPartner(partnerId) : null;
+      const kind = partner ? partnerAppKind(partner) : "";
+      if (!partner || (kind !== "lab" && kind !== "radiology")) {
+        send(res, 401, { error: "Lab partner login required." });
+        return true;
+      }
+      const labId = catalogLabIdForPartner(partner) || partner.id;
+      if (req.method === "GET") {
+        const capacity = await slotCapacityFor(labId, await listPartners());
+        send(res, 200, { labId, capacity });
+        return true;
+      }
+      const body = await readJson(req);
+      const saved = await writeSlotCapacity(labId, Number(body.capacity));
+      if (!saved.ok) {
+        send(res, 400, { error: saved.error || "Could not save slot size." });
+        return true;
+      }
+      send(res, 200, saved);
+      return true;
+    }
+
     if (pathname === "/api/lab-slots" && req.method === "GET") {
       const labId = String(url.searchParams.get("labId") || "").trim();
       const date = String(url.searchParams.get("date") || "").slice(0, 10);
       const kind = String(url.searchParams.get("kind") || "lab").toLowerCase() === "radiology" ? "radiology" : "lab";
       const orders = await listOrders();
       const partners = await listPartners();
-      const capacity = collectorCapacity(partners, labId);
+      const capacity = await slotCapacityFor(labId, partners);
       const slots = LAB_TIME_SLOTS.map((label) => ({
         label,
         remaining: slotRemaining(orders, { labId, date, slot: label, kind, capacity }),
@@ -1035,7 +1061,7 @@ export async function handleApi(req, res) {
           slot: timeSlot,
           kind,
           excludeId: wanted,
-          capacity: collectorCapacity(partners, labId),
+          capacity: await slotCapacityFor(labId, partners),
         });
         if (left < 1) {
           send(res, 409, { error: "That slot is full. Choose another time." });
@@ -1233,6 +1259,19 @@ export async function handleApi(req, res) {
       if (body.reportFileData != null) {
         const data = String(body.reportFileData || "");
         patch.reportFileData = data.slice(0, 2_800_000);
+      }
+      if (Array.isArray(body.reportFiles)) {
+        patch.reportFiles = body.reportFiles
+          .slice(0, 4)
+          .map((row) => ({
+            fileName: String(row?.fileName || "").trim().slice(0, 160),
+            fileType: String(row?.fileType || "").trim().slice(0, 80),
+            fileData: String(row?.fileData || "").slice(0, 2_800_000),
+            testName: String(row?.testName || "").trim().slice(0, 120),
+            notes: String(row?.notes || "").trim().slice(0, 400),
+            uploadedAt: Number(row?.uploadedAt) || Date.now(),
+          }))
+          .filter((row) => row.fileName || row.fileData);
       }
       if (body.reportFileName || body.reportFileData) {
         const uploadedStatus = String(body.trackStatus || patch.trackStatus || "").toLowerCase();
@@ -1772,7 +1811,7 @@ export async function handleApi(req, res) {
             slot,
             kind: incomingKind,
             excludeId: wanted,
-            capacity: collectorCapacity(partners, labId),
+            capacity: await slotCapacityFor(labId, partners),
           });
           if (left < 1) {
             send(res, 409, { error: "That slot is full. Choose another time." });

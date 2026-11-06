@@ -48,7 +48,7 @@ import {
   labBookingMaxDate,
   openAppointmentSlots,
 } from "./appointmentSlot";
-import { goToHash } from "./hashRoute";
+import { customerBackHomeHash, goToHash } from "./hashRoute";
 import { hasAccountSession, useLoginSession } from "./authSession";
 import {
   MEDICINE_CART_EVENT,
@@ -583,7 +583,9 @@ export default function CartCheckout() {
             <button
               type="button"
               className="cart-btn cart-btn-secondary"
-              onClick={() => goToHash("#home")}
+              onClick={() =>
+                goToHash(customerBackHomeHash(window.location.hash, { account: hasAccountSession() }))
+              }
             >
               Back to Home
             </button>
