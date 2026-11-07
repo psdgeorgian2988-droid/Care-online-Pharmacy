@@ -11857,4 +11857,29 @@ body > .record-viewer,
   padding-right: 52px !important;
 }
 
+/* Laptop, desktop, and iPad: one even row. Phones keep the sideways scroll. */
+@media (min-width: 768px) {
+  .app-bottom-nav,
+  .app:not(.app-ops):not(.app-customer) .app-bottom-nav,
+  .app-customer .app-bottom-nav,
+  html.is-customer-app .app-bottom-nav {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    transform: none !important;
+    justify-content: space-evenly !important;
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
+    scroll-snap-type: none !important;
+  }
+
+  .app-bottom-nav a {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    scroll-snap-align: none;
+  }
+}
+
 
