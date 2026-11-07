@@ -33,6 +33,7 @@ import { orderCurrentStatus, serviceKind } from "./orderStatus";
 import { useSyncedOrderTick } from "./useSyncedOrderTick";
 import CustomerLogOut from "./CustomerLogOut.jsx";
 import ProfileReports from "./ProfileReports.jsx";
+import DoseSchedule from "./DoseSchedule.jsx";
 import { MEMBER_ROLE, holderActor } from "./familyAccount";
 import { pickLoginPin } from "./loginPin";
 
@@ -246,6 +247,7 @@ function Profile() {
           </section>
           <ProfileOrders />
           <ProfileUploads />
+          <DoseSchedule />
           <div className="profile-actions">
             <CustomerLogOut className="profile-logout-btn" />
           </div>
@@ -299,6 +301,7 @@ function Profile() {
 
         <ProfileOrders />
         <ProfileUploads />
+        <DoseSchedule />
 
         <form className="profile-form" onSubmit={handleSave} autoComplete="off">
           <AutofillTrap />
