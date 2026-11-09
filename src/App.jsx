@@ -249,7 +249,6 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
         </div>
 
         <HomeReviewsTeaser />
-        {hasAccountSession(user) ? null : <GuestOrderLookup />}
       </div>
       </HomeWithAboutSlides>
     </div>
@@ -279,6 +278,7 @@ function PausedService({ route, features }) {
 function App() {
   const [hash, setHash] = useState(window.location.hash);
   const [needHelpOpen, setNeedHelpOpen] = useState(false);
+  const [guestSearchOpen, setGuestSearchOpen] = useState(false);
   const [sessionTick, setSessionTick] = useState(0);
   const user = useLoginSession();
 
@@ -295,6 +295,7 @@ function App() {
   useEffect(() => {
     const handleHashChange = () => {
       setHash(window.location.hash);
+      setGuestSearchOpen(false);
     };
 
     window.addEventListener("hashchange", handleHashChange);
@@ -549,10 +550,11 @@ function App() {
     route !== "#checkout" &&
     needsCustomerWelcome(user) &&
     sessionTick >= 0;
+  const guestSearchPanel = guestSearchOpen && !welcomeGate && !isAuthRoute && !hasAccountSession(user);
 
   if (customerShell) {
     return (
-      <div className={`app app-customer${welcomeGate ? " is-welcome-gate" : ""}`}>
+      <div className={`app app-customer${welcomeGate ? " is-welcome-gate" : ""}${guestSearchPanel ? " has-guest-report-open" : ""}`}>
         <Seo route={route} />
         <SiteTicker />
         <div className="app-frame">
@@ -575,7 +577,17 @@ function App() {
               </Suspense>
             </ErrorBoundary>
           </main>
-          {welcomeGate || isAuthRoute ? null : <AppBottomNav route={route} service={hashService} />}
+          {welcomeGate || isAuthRoute ? null : (
+            <>
+              <GuestOrderLookup open={guestSearchPanel} />
+              <AppBottomNav
+                route={route}
+                service={hashService}
+                guestSearchOpen={guestSearchPanel}
+                onGuestSearch={() => setGuestSearchOpen((open) => !open)}
+              />
+            </>
+          )}
         </div>
         <SiteFooter />
         <SiteFloatingHelp needHelpOpen={needHelpOpen} setNeedHelpOpen={setNeedHelpOpen} />
@@ -584,7 +596,7 @@ function App() {
   }
 
   return (
-    <div className={`app is-wide-main${welcomeGate ? " is-welcome-gate" : ""}`}>
+    <div className={`app is-wide-main${welcomeGate ? " is-welcome-gate" : ""}${guestSearchPanel ? " has-guest-report-open" : ""}`}>
       <Seo route={route} />
       <SiteTicker />
 
@@ -624,7 +636,15 @@ function App() {
           </Suspense>
         </ErrorBoundary>
         {welcomeGate || isAuthRoute ? null : (
-          <AppBottomNav route={route} service={hashService} />
+          <>
+            <GuestOrderLookup open={guestSearchPanel} />
+            <AppBottomNav
+              route={route}
+              service={hashService}
+              guestSearchOpen={guestSearchPanel}
+              onGuestSearch={() => setGuestSearchOpen((open) => !open)}
+            />
+          </>
         )}
       </main>
 

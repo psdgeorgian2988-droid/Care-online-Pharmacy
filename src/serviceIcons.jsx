@@ -14,6 +14,7 @@ export const SERVICE_ICON_TONES = {
   stepdown: { color: "#5a7a8f", bg: "#e6eef2" },
   ambulance: { color: "#c45c5c", bg: "#ffe6e6" },
   education: { color: "#2f7d6d", bg: "#e5f6f1" },
+  search: { color: "#1a6b7a", bg: "#d9eef2" },
 };
 
 const TYPE_ALIASES = {
@@ -49,6 +50,7 @@ const TYPE_ALIASES = {
   webinar: "education",
   webinars: "education",
   quiz: "education",
+  search: "search",
 };
 
 export function serviceIconType(type = "") {
@@ -166,6 +168,13 @@ function glyph(type, color) {
         <>
           <path d="M4 9.2 12 5.4l8 3.8L12 13z" {...wash} />
           <path d="M7.2 10.6v4.1c1.5 1.1 3.1 1.7 4.8 1.7s3.3-.6 4.8-1.7v-4.1" {...stroke} />
+        </>
+      );
+    case "search":
+      return (
+        <>
+          <circle cx="11" cy="11" r="5.2" {...wash} />
+          <path d="M15 15.2 19.2 19.4" {...stroke} />
         </>
       );
     default:

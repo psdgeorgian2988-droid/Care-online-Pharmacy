@@ -6667,6 +6667,29 @@ html:not(.is-native-app):not(.is-customer-app):not(.is-installed-app) #root {
   flex-wrap: nowrap !important;
 }
 
+.app:not(.app-ops) .profile-hero.is-account-bar {
+  display: grid !important;
+  grid-template-columns: 56px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 0 !important;
+  margin: 0 0 10px !important;
+}
+
+.app:not(.app-ops) .profile-hero.is-account-bar .profile-label {
+  display: block !important;
+  margin: 0 !important;
+  text-align: center !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+}
+
+.app.app-customer .profile-hero.is-account-bar > .profile-points-wrap {
+  flex: 0 0 auto !important;
+  width: auto !important;
+}
+
 .app:not(.app-ops) .lab-head > div,
 .app:not(.app-ops) .service-hero > div,
 .app:not(.app-ops) .profile-hero > div,
@@ -9849,6 +9872,11 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
   min-height: 0 !important;
 }
 
+.app.has-guest-report-open > main,
+.app.has-guest-report-open > .app-frame > main {
+  padding-bottom: calc(220px + var(--app-footer-h, 44px) + env(safe-area-inset-bottom, 0px));
+}
+
 .app-bottom-nav {
   position: fixed;
   left: 50%;
@@ -9874,21 +9902,29 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
   scrollbar-width: thin;
 }
 
-.app-bottom-nav a {
+.app-bottom-nav a,
+.app-bottom-nav button {
   display: flex;
   flex: 0 0 76px;
   flex-direction: column;
   align-items: center;
   gap: 2px;
   width: 76px;
+  margin: 0;
   padding: 6px 2px 4px;
+  border: 0;
   border-radius: 12px;
+  background: transparent;
   color: var(--app-muted);
+  font: inherit;
   text-decoration: none;
+  cursor: pointer;
   scroll-snap-align: start;
+  appearance: none;
 }
 
-.app-bottom-nav a span {
+.app-bottom-nav a span,
+.app-bottom-nav button span {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -9900,12 +9936,14 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
   color: var(--icon-color, var(--app-muted));
 }
 
-.app-bottom-nav a span svg {
+.app-bottom-nav a span svg,
+.app-bottom-nav button span svg {
   width: 22px;
   height: 22px;
 }
 
-.app-bottom-nav a em {
+.app-bottom-nav a em,
+.app-bottom-nav button em {
   font-style: normal;
   font-size: 9px;
   font-weight: 700;
@@ -9914,12 +9952,14 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
   max-width: 100%;
 }
 
-.app-bottom-nav a.active {
+.app-bottom-nav a.active,
+.app-bottom-nav button.active {
   background: transparent;
   color: var(--app-blue-deep);
 }
 
-.app-bottom-nav a.active span {
+.app-bottom-nav a.active span,
+.app-bottom-nav button.active span {
   background: var(--icon-bg, var(--app-blue-soft));
   color: var(--icon-color, var(--app-blue));
 }
@@ -10667,6 +10707,12 @@ html:has(.app-customer) .app-bottom-nav {
     overflow: visible !important;
     overflow-x: hidden !important;
     padding-bottom: calc(110px + var(--app-footer-h, 44px) + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .app.has-guest-report-open.app-customer > main,
+  .app.has-guest-report-open.app-customer > main#app-scroll,
+  .app.has-guest-report-open:not(.app-customer) > main {
+    padding-bottom: calc(220px + var(--app-footer-h, 44px) + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 
@@ -11902,7 +11948,8 @@ body > .record-viewer,
     scroll-snap-type: none !important;
   }
 
-  .app-bottom-nav a {
+  .app-bottom-nav a,
+  .app-bottom-nav button {
     flex: 1 1 0 !important;
     width: auto !important;
     min-width: 0 !important;

@@ -6,7 +6,7 @@ import {
   memberSummary,
   normalizeMobile,
 } from "./personFields";
-import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
+import { noContactEmailProps, noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import AutofillTrap from "./AutofillTrap";
 
 function memberHasInput(member) {
@@ -15,7 +15,8 @@ function memberHasInput(member) {
       member?.relation ||
       member?.gender ||
       member?.dob ||
-      (!member?.useAccountMobile && String(member?.mobile || "").trim())
+      (!member?.useAccountMobile && String(member?.mobile || "").trim()) ||
+      String(member?.email || "").trim()
   );
 }
 
@@ -105,6 +106,19 @@ function MemberForm({
       {errors[`familyMembers.${index}.mobile`] ? (
         <small className="family-error">
           {errors[`familyMembers.${index}.mobile`]}
+        </small>
+      ) : null}
+      <label htmlFor={`${idPrefix}-${index}-email`}>Mail ID</label>
+      <input
+        id={`${idPrefix}-${index}-email`}
+        placeholder="name@email.com"
+        value={member.email || ""}
+        onChange={(event) => onPatch({ email: event.target.value })}
+        {...noContactEmailProps}
+      />
+      {errors[`familyMembers.${index}.email`] ? (
+        <small className="family-error">
+          {errors[`familyMembers.${index}.email`]}
         </small>
       ) : null}
       <PersonFields
@@ -227,19 +241,22 @@ export default function FamilyMembersFields({
           </button>
         </div>
 
-        {savedList.map((member) => {
+        {savedList.map((member, displayIndex) => {
           const index = list.findIndex((row) => row.id === member.id);
           const id = member.id || String(index);
           const editing = isOpen(member, index);
+          const mobile = member.useAccountMobile ? account : member.mobile;
+          const email = String(member.email || "").trim();
           if (!editing && savedAs === "hidden") return null;
           return (
             <article key={id} className="family-card">
               <div className="family-card-top">
-                <strong>
-                  {member.name
-                    ? memberSummary(member, account)
-                    : `Family Member ${index + 1}`}
-                </strong>
+                <p className="family-line">
+                  <span className="family-no">{displayIndex + 1}</span>
+                  <span>{member.name || "Name"}</span>
+                  <span>{mobile || "—"}</span>
+                  <span>{email || "—"}</span>
+                </p>
                 <div className="family-card-actions">
                   {editing ? (
                     member.name ? (
@@ -331,7 +348,8 @@ const styles = `
 .family-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 12px;padding:12px;border:1px solid #d7e2e9;border-radius:10px;background:#fff}
 .family-card-top,.family-card .person-fields,.family-use-account{grid-column:1/-1}
 .family-card-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.family-card-top strong{font-size:12px;color:#29455a}
+.family-line{display:grid;grid-template-columns:1.4rem minmax(0,1.1fr) minmax(0,.9fr) minmax(0,1.2fr);gap:8px;align-items:center;margin:0;min-width:0;flex:1;font-size:13px;font-weight:700;color:#143246}
+.family-no{font-weight:800;color:#1a6b7a}
 .family-card label{font-size:12px;font-weight:700;color:#34546b}
 .family-card label span{color:#e34d4d}
 .family-card input:not([type="checkbox"]),.family-card select{width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#143246;font:inherit;font-size:14px}

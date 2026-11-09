@@ -11,6 +11,7 @@ import {
   writeDoseSchedule,
 } from "./doseReminders";
 import { scheduleDoseNotifications } from "./doseAlarm";
+import { isNativeRuntime } from "./appRuntime";
 
 function doseDayLabel(day) {
   const [year, month, date] = String(day || "").split("-").map(Number);
@@ -48,35 +49,6 @@ function chosenIds(schedule, slotId) {
   return new Set((schedule?.slots?.[slotId]?.medicines || []).map((med) => med.id));
 }
 
-function AlarmMark() {
-  return (
-    <svg viewBox="0 0 32 32" aria-hidden="true">
-      <path d="M8.2 9.4a6 6 0 0 1 4.1-3.5" />
-      <path d="M23.8 9.4a6 6 0 0 0-4.1-3.5" />
-      <circle cx="16" cy="17" r="7.1" />
-      <path d="M16 17V13.1M16 17l3.2 2.1" />
-      <path d="M11.1 24.5l-2.2 3.1M20.9 24.5l2.2 3.1" />
-      <path d="M16 9.8V8" />
-    </svg>
-  );
-}
-
-function ScheduleMark() {
-  return (
-    <svg viewBox="0 0 32 32" aria-hidden="true">
-      <rect x="6.5" y="4.5" width="19" height="23" rx="3.2" />
-      <path d="M6.5 10.2h19" />
-      <circle className="dose-dot" cx="11" cy="14.3" r="1.05" />
-      <path d="M13.7 14.3h8" />
-      <circle className="dose-dot" cx="11" cy="18.5" r="1.05" />
-      <path d="M13.7 18.5h8" />
-      <circle className="dose-dot" cx="11" cy="22.7" r="1.05" />
-      <rect x="13.5" y="21.3" width="8.2" height="2.8" rx="1.4" />
-      <path d="M17.6 21.3v2.8" />
-    </svg>
-  );
-}
-
 export default function DoseSchedule() {
   const catalog = usePublicCatalog();
   const [medicines, setMedicines] = useState(() => prescriptionMedicines());
@@ -85,7 +57,7 @@ export default function DoseSchedule() {
   const [draftIds, setDraftIds] = useState(() => chosenIds(readDoseSchedule(), DOSE_SLOTS[0].id));
   const [notice, setNotice] = useState("");
   const [missedOpen, setMissedOpen] = useState(false);
-  const [planOpen, setPlanOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
 
   useEffect(() => {
     const refresh = () => {
@@ -109,14 +81,7 @@ export default function DoseSchedule() {
   const scheduled = DOSE_SLOTS.filter((item) => !item.asNeeded && schedule.slots[item.id]?.medicines?.length);
   const missed = missedDoses(schedule);
   const alarmsArmed = scheduled.length > 0 && scheduled.every((item) => schedule.slots[item.id]?.alarmOn);
-  const armedPlan = DOSE_SLOTS.filter((item) => {
-    const row = schedule.slots[item.id];
-    return !item.asNeeded && row?.alarmOn && row.medicines?.length;
-  }).map((item) => ({
-    ...item,
-    time: schedule.slots[item.id].time || item.time,
-    medicines: schedule.slots[item.id].medicines,
-  }));
+  const phoneApp = isNativeRuntime();
 
   const store = (next) => {
     setSchedule(next);
@@ -161,12 +126,46 @@ export default function DoseSchedule() {
     store(armed);
     scheduleDoseNotifications(armed);
     setNotice("");
+    setEditorOpen(false);
+  };
+
+  const clearAlarm = () => {
+    setEditorOpen(false);
+    const cleared = setAllDoseAlarms(schedule, false);
+    store(cleared);
+    scheduleDoseNotifications(cleared);
+  };
+
+  const toggleAlarm = async () => {
+    if (alarmsArmed) {
+      clearAlarm();
+      return;
+    }
+    if (!scheduled.length) {
+      setMissedOpen(false);
+      setEditorOpen(true);
+      setNotice("Tick the medicines for this time, then save.");
+      return;
+    }
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      try {
+        await Notification.requestPermission();
+      } catch {
+        /* the alarm still rings while this app is open */
+      }
+    }
+    const armed = setAllDoseAlarms(schedule, true);
+    store(armed);
+    scheduleDoseNotifications(armed);
+    setEditorOpen(false);
+    setNotice("");
   };
 
   return (
     <section className="dose-schedule" aria-label="Dose times">
       <style>{`
-        .dose-schedule{display:grid;gap:8px;margin:8px 0 4px;padding:10px;border:1px solid #d7e2e9;border-radius:12px;background:#f7fbfb}
+        .dose-schedule{display:contents}
+        .dose-editor,.dose-missed-body{display:grid;gap:8px}
         .dose-schedule h2{margin:0;font-size:16px;color:#143246}
         .dose-schedule .dose-lead{margin:0;color:#5d7180;font-size:12px;line-height:1.35}
         .dose-time{display:grid;gap:4px;font-size:12px;font-weight:700;color:#34546b}
@@ -199,7 +198,7 @@ export default function DoseSchedule() {
         .dose-plan-med em{display:block;font-style:normal;color:#5d7180;font-size:11px}
         .dose-notice{margin:0;color:#1a6b7a;font-size:12px;font-weight:700}
         .dose-missed{display:grid;gap:6px;margin-top:4px}
-        .dose-missed-tab{justify-self:start;min-height:34px;padding:6px 14px;border:1px solid #1a6b7a;border-radius:8px;background:#fff;color:#1a6b7a;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+        .dose-fold,.dose-missed-tab{justify-self:start;min-height:34px;padding:6px 14px;border:1px solid #1a6b7a;border-radius:8px;background:#fff;color:#1a6b7a;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
         .dose-missed h3{margin:0;font-size:14px;color:#143246}
         .dose-missed p{margin:0;color:#5d7180;font-size:12px}
         .dose-missed ul{display:grid;gap:6px;margin:0;padding:0;list-style:none}
@@ -209,59 +208,40 @@ export default function DoseSchedule() {
         .dose-missed em{display:block;font-style:normal;color:#5d7180;font-size:11px}
         .dose-missed small{display:block;color:#9b2c2c;font-size:11px;font-weight:700}
       `}</style>
-      {alarmsArmed ? null : <h2>Dose schedule</h2>}
-      {alarmsArmed ? (
-        <>
-          <div className="dose-tabs" role="group" aria-label="Alarm and dose schedule">
-            <button
-              type="button"
-              className="dose-tab is-on"
-              onClick={() => {
-                setPlanOpen(false);
-                const cleared = setAllDoseAlarms(schedule, false);
-                store(cleared);
-                scheduleDoseNotifications(cleared);
-              }}
-            >
-              <AlarmMark />
-              <span>Alarm</span>
-            </button>
-            <button
-              type="button"
-              className={`dose-tab${planOpen ? " is-open" : ""}`}
-              aria-expanded={planOpen}
-              onClick={() => setPlanOpen((open) => !open)}
-            >
-              <ScheduleMark />
-              <span>Dose schedule</span>
-            </button>
-          </div>
-          {planOpen ? (
-            <ul className="dose-plan" aria-label="Dose schedule">
-              {armedPlan.map((item) => (
-                <li key={item.id}>
-                  <header>
-                    <strong>{item.plain}</strong>
-                    <span>{item.time}</span>
-                  </header>
-                  <ul>
-                    {item.medicines.map((med) => (
-                      <li key={med.id} className="dose-plan-med">
-                        <img src={med.image || "/meds/pack-navy.svg"} alt="" />
-                        <span>
-                          <strong>{med.brand || med.name}</strong>
-                          <em>{med.salt || "Salt not listed"}</em>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </>
-      ) : (
-        <>
+      <button
+        type="button"
+        className={editorOpen ? "dose-fold is-on" : "dose-fold"}
+        aria-expanded={editorOpen}
+        onClick={() => {
+          setMissedOpen(false);
+          setEditorOpen((open) => !open);
+        }}
+      >
+        Dose schedule
+      </button>
+      <button
+        type="button"
+        className={missedOpen ? "dose-missed-tab is-on" : "dose-missed-tab"}
+        aria-expanded={missedOpen}
+        onClick={() => {
+          setEditorOpen(false);
+          setMissedOpen((open) => !open);
+        }}
+      >
+        Missed doses
+      </button>
+      {phoneApp ? (
+        <button
+          type="button"
+          className={alarmsArmed ? "dose-alarm-tab is-on" : "dose-alarm-tab"}
+          aria-pressed={alarmsArmed}
+          onClick={toggleAlarm}
+        >
+          Alarm
+        </button>
+      ) : null}
+      {editorOpen ? (
+        <div className="dose-editor">
           <p className="dose-lead">
             Choose a time, tick the medicines, and save. Then choose the next time.
           </p>
@@ -298,36 +278,32 @@ export default function DoseSchedule() {
           {notice ? <p className="dose-notice">{notice}</p> : null}
           <div className="dose-actions">
             <button type="button" className="dose-save" onClick={() => saveTime()}>Save</button>
-            <button type="button" className="dose-arm" onClick={() => arm()}>Set alarm</button>
+            {phoneApp ? (
+              <button type="button" className="dose-arm" onClick={() => arm()}>Set alarm</button>
+            ) : null}
           </div>
-        </>
-      )}
+        </div>
+      ) : null}
       <section className="dose-missed" aria-label="Missed doses">
-        <button
-          type="button"
-          className="dose-missed-tab"
-          aria-expanded={missedOpen}
-          onClick={() => setMissedOpen((open) => !open)}
-        >
-          Missed doses
-        </button>
         {missedOpen ? (
-          missed.length ? (
-            <ul>
-              {missed.map((row) => (
-                <li key={row.id}>
-                  <img src={row.image || "/meds/pack-navy.svg"} alt="" />
-                  <span>
-                    <strong>{row.brand}</strong>
-                    <em>{row.salt || "Salt not listed"}</em>
-                    <small>{[row.slot, row.time, doseDayLabel(row.day)].filter(Boolean).join(" · ")}</small>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No missed doses.</p>
-          )
+          <div className="dose-missed-body">
+            {missed.length ? (
+              <ul>
+                {missed.map((row) => (
+                  <li key={row.id}>
+                    <img src={row.image || "/meds/pack-navy.svg"} alt="" />
+                    <span>
+                      <strong>{row.brand}</strong>
+                      <em>{row.salt || "Salt not listed"}</em>
+                      <small>{[row.slot, row.time, doseDayLabel(row.day)].filter(Boolean).join(" · ")}</small>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No missed doses.</p>
+            )}
+          </div>
         ) : null}
       </section>
     </section>

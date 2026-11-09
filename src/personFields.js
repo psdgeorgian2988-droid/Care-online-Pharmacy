@@ -166,6 +166,7 @@ export function emptyFamilyMember() {
     name: "",
     relation: "",
     mobile: "",
+    email: "",
     useAccountMobile: true,
     gender: "",
     dob: "",
@@ -300,6 +301,7 @@ export function pickFamilyMember(source = {}, index = 0, accountMobile = "") {
     name: String(source.name || "").trim(),
     relation: normalizeRelation(source.relation),
     mobile: useAccount ? account : own,
+    email: pickEmail(source),
     useAccountMobile: useAccount,
     ...pickPerson(source),
   };
@@ -330,6 +332,9 @@ export function validateFamilyMembers(source = {}) {
     } else if (!isValidMobile(member.mobile)) {
       errors[`familyMembers.${index}.mobile`] =
         "Enter a 10-digit mobile, or use the account holder's number.";
+    }
+    if (member.email && !isValidEmail(member.email)) {
+      errors[`familyMembers.${index}.email`] = "Enter a valid mail ID.";
     }
     const personErrors = validatePerson(member);
     if (personErrors.gender) {

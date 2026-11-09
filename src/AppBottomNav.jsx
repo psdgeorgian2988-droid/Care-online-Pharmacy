@@ -65,10 +65,17 @@ export function tabActive(href, route, service = "") {
   return route === href;
 }
 
-export default function AppBottomNav({ route, service = "" }) {
+export default function AppBottomNav({ route, service = "", guestSearchOpen = false, onGuestSearch }) {
   const user = useLoginSession();
   const loggedIn = hasAccountSession(user);
-  const tabs = footerTabs(route, loggedIn);
+  const listed = footerTabs(route, loggedIn);
+  const tabs = loggedIn
+    ? listed
+    : listed.flatMap((tab) =>
+        tab.href === LABS_HOME_HASH
+          ? [tab, { href: "#guest-search", label: "Search report", icon: "search", kind: "search" }]
+          : [tab],
+      );
   const navRef = useRef(null);
   const pinnedHrefs = new Set(["#profile", MEDICINE_HOME_HASH]);
   const pinned = tabs.filter((tab) => pinnedHrefs.has(tab.href));
@@ -80,11 +87,30 @@ export default function AppBottomNav({ route, service = "" }) {
     if (window.matchMedia?.("(min-width: 768px)")?.matches) return;
     const active = scroller.querySelector("[aria-current='page']");
     if (active) active.scrollIntoView({ inline: "nearest", block: "nearest" });
-  }, [route, service, loggedIn]);
+  }, [route, service, loggedIn, guestSearchOpen]);
 
   const renderTab = (tab) => {
-    const active = tabActive(tab.href, route, service);
     const tone = serviceIconTone(tab.icon);
+    if (tab.kind === "search") {
+      return (
+        <button
+          key={tab.href}
+          type="button"
+          className={guestSearchOpen ? "active" : undefined}
+          aria-pressed={guestSearchOpen}
+          aria-label="Search report"
+          data-icon={tab.icon}
+          style={{ "--icon-color": tone.color, "--icon-bg": tone.bg }}
+          onClick={onGuestSearch}
+        >
+          <span>
+            <ServiceGlyph type={tab.icon} color={tone.color} />
+          </span>
+          <em>{tab.label}</em>
+        </button>
+      );
+    }
+    const active = tabActive(tab.href, route, service);
     return (
       <a
         key={tab.href}

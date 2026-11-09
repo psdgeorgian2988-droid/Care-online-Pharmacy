@@ -27,13 +27,9 @@ import {
 } from "./personFields";
 import { noContactEmailProps, noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import AutofillTrap from "./AutofillTrap";
-import { hasAccountSession, PROFILE_KEY, useLoginSession, writeLoginSession } from "./authSession";
-import { loadCustomerOrders } from "./orderTracking";
-import { orderCurrentStatus, serviceKind } from "./orderStatus";
-import { useSyncedOrderTick } from "./useSyncedOrderTick";
+import { PROFILE_KEY, useLoginSession, writeLoginSession } from "./authSession";
 import CustomerLogOut from "./CustomerLogOut.jsx";
 import ProfileReports from "./ProfileReports.jsx";
-import DoseSchedule from "./DoseSchedule.jsx";
 import { MEMBER_ROLE, holderActor } from "./familyAccount";
 import { pickLoginPin } from "./loginPin";
 
@@ -41,45 +37,9 @@ function readProfile() {
   return readUserProfile();
 }
 
-function profileOrderHref(order) {
-  const params = new URLSearchParams();
-  const kind = serviceKind(order);
-  if (kind) params.set("service", kind);
-  const id = order.id || order.bookingId || order.requestId;
-  if (id) params.set("id", String(id));
-  const query = params.toString();
-  return query ? `#myorders?${query}` : "#myorders";
-}
-
-function ProfileOrders() {
-  const tick = useSyncedOrderTick();
-  const session = useLoginSession();
-  if (!hasAccountSession(session)) return null;
-  const orders = loadCustomerOrders();
-  void tick;
-  return (
-    <section className="profile-card" aria-label="Orders">
-      <h2>Orders</h2>
-      {orders.length ? (
-        <ul className="profile-order-list">
-          {orders.slice(0, 8).map((order) => (
-            <li key={order.id || order.bookingId || order.requestId}>
-              <a href={profileOrderHref(order)}>{order.displayId || order.id || "Order"}</a>
-              <strong>{orderCurrentStatus(order)}</strong>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="profile-order-empty">No orders yet.</p>
-      )}
-    </section>
-  );
-}
-
 function ProfileUploads() {
   return (
-    <section className="profile-card" aria-label="Uploads">
-      <h2>Uploads</h2>
+    <section className="profile-card" aria-label="Records">
       <ProfileReports />
     </section>
   );
@@ -98,6 +58,7 @@ function Profile() {
   const [errors, setErrors] = useState({});
   const [saved, setSaved] = useState(false);
   const [editDetails, setEditDetails] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [memberFormTick, setMemberFormTick] = useState(0);
   const [pointsOpen, setPointsOpen] = useState(
     () => parseAppHash(typeof window !== "undefined" ? window.location.hash : "").service === "points"
@@ -154,6 +115,7 @@ function Profile() {
         creatorMobile,
       }).filter((member) => member.name),
       ...withFormattedAddress({ ...form, addressConfirmed: "yes" }),
+      photo: String(form.photo || "").startsWith("data:image") ? form.photo : "",
     };
 
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
@@ -216,8 +178,6 @@ function Profile() {
           <section className="profile-hero">
             <div>
               <span className="profile-label">MEDIHOME ACCOUNT</span>
-              <h1>{session.name || "Your Details"}</h1>
-              <p>Only your details from this family account are shown.</p>
             </div>
           </section>
           <section className="profile-card" aria-label="Your details">
@@ -245,9 +205,7 @@ function Profile() {
               </div>
             </dl>
           </section>
-          <ProfileOrders />
           <ProfileUploads />
-          <DoseSchedule />
           <div className="profile-actions">
             <CustomerLogOut className="profile-logout-btn" />
           </div>
@@ -260,12 +218,22 @@ function Profile() {
     <>
       <style>{styles}</style>
       <div className="profile-page">
-        <section className="profile-hero">
-          <div className="profile-hero-copy">
-            <span className="profile-label">MEDIHOME ACCOUNT</span>
-            <h1>{form.name || "Your account"}</h1>
-            <p>{maskMobile(accountCreatorMobile(form)) || "Add your name and family below."}</p>
-          </div>
+        <section className="profile-hero is-account-bar">
+          <button
+            type="button"
+            className="profile-photo"
+            aria-label="Profile"
+            aria-expanded={accountOpen}
+            onClick={() => setAccountOpen((open) => !open)}
+          >
+            {form.photo ? <img src={form.photo} alt="" /> : (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="9" r="3.2" />
+                <path d="M5.5 19.2c1.4-3 3.7-4.5 6.5-4.5s5.1 1.5 6.5 4.5" />
+              </svg>
+            )}
+          </button>
+          <span className="profile-label">MEDIHOME ACCOUNT</span>
           <div className="profile-points-wrap" ref={pointsWrapRef}>
             <button
               type="button"
@@ -299,28 +267,45 @@ function Profile() {
           </div>
         </section>
 
-        <ProfileOrders />
         <ProfileUploads />
-        <DoseSchedule />
 
         <form className="profile-form" onSubmit={handleSave} autoComplete="off">
           <AutofillTrap />
-          <section className="profile-card profile-family" aria-label="Family">
-            <h2>Family</h2>
-            {hasFamilyTree(form) ? <FamilyTree profile={form} /> : null}
-            <FamilyMembersFields
-              idPrefix="profile-family"
-              members={form.familyMembers}
-              errors={errors}
-              accountMobile={accountCreatorMobile(form)}
-              savedAs="summary"
-              collapseTick={memberFormTick}
-              onChange={handleChange}
-            />
-          </section>
-
+          {accountOpen ? (
           <section className="profile-card" aria-label="Account">
-            <h2>Account</h2>
+            <label className="profile-photo-file">
+              Photo
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const source = typeof reader.result === "string" ? reader.result : "";
+                    if (!source.startsWith("data:image")) return;
+                    const image = new Image();
+                    image.onload = () => {
+                      const size = 256;
+                      const canvas = document.createElement("canvas");
+                      canvas.width = size;
+                      canvas.height = size;
+                      const ctx = canvas.getContext("2d");
+                      if (!ctx) return;
+                      const scale = Math.max(size / image.width, size / image.height);
+                      const width = image.width * scale;
+                      const height = image.height * scale;
+                      ctx.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+                      setForm((prev) => ({ ...prev, photo: canvas.toDataURL("image/jpeg", 0.82) }));
+                    };
+                    image.src = source;
+                  };
+                  reader.readAsDataURL(file);
+                }}
+              />
+            </label>
             {editDetails ? (
               <>
               <div className="profile-field">
@@ -422,6 +407,20 @@ function Profile() {
               </button>
             </div>
           </section>
+          ) : null}
+          <section className="profile-card profile-family" aria-label="Family Members">
+            {hasFamilyTree(form) ? <FamilyTree profile={form} /> : null}
+            <FamilyMembersFields
+              idPrefix="profile-family"
+              members={form.familyMembers}
+              errors={errors}
+              accountMobile={accountCreatorMobile(form)}
+              savedAs="summary"
+              collapseTick={memberFormTick}
+              onChange={handleChange}
+            />
+          </section>
+
         </form>
 
         <div className="profile-refer-wrap">
@@ -439,7 +438,12 @@ const styles = `
   .profile-page{display:grid;gap:12px;max-width:760px;margin:0 auto;padding:16px 0 32px;background:transparent;color:#17324d;box-sizing:border-box}
   .profile-hero{margin:0;padding:16px 18px;border-radius:14px;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:16px;box-shadow:0 3px 12px rgba(0,0,0,.06)}
   .profile-hero-copy{min-width:0;flex:1}
-  .profile-label{display:inline-block;margin-bottom:4px;font-size:10px;font-weight:800;letter-spacing:1.3px;color:#1686b8}
+  .profile-photo{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;padding:0;border:0;border-radius:50%;overflow:hidden;background:#e7f1f4;color:#1a6b7a;cursor:pointer}
+  .profile-photo img{width:100%;height:100%;object-fit:cover}
+  .profile-photo svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .profile-photo-file{display:grid;gap:4px;font-size:12px;font-weight:700;color:#34546b}
+  .profile-photo-file input{font:inherit;font-size:13px;font-weight:600}
+  .profile-label{display:block;margin:0;text-align:center;font-size:16px;font-weight:800;letter-spacing:0.08em;color:#1686b8}
   .profile-hero h1{margin:0 0 4px;font-size:24px;color:#123b59}
   .profile-hero p{margin:0;color:#607589;font-size:13px;line-height:1.4}
   .profile-points-wrap{position:relative;flex:0 0 auto}

@@ -50,7 +50,7 @@ export default function HomePrescriptionUpload({
       writePrescriptionDraft({ ...next, detect: normalizeRxDetect(detect) });
       goToHash("#prescription");
     } catch (err) {
-      setStatus(err?.message || "Upload failed.");
+      setStatus(err?.message || "Could not save this file.");
     } finally {
       setBusy(false);
     }
@@ -60,7 +60,7 @@ export default function HomePrescriptionUpload({
     return (
       <form
         className="profile-report-form"
-        aria-label="Upload prescription"
+        aria-label="Prescription"
         onSubmit={(event) => event.preventDefault()}
       >
         {draft?.fileName ? (
@@ -83,7 +83,7 @@ export default function HomePrescriptionUpload({
             onChange={onFile}
           />
         </label>
-        {busy ? <p className="profile-report-note">Uploading…</p> : null}
+        {busy ? <p className="profile-report-note">Saving…</p> : null}
         {status ? <small className="profile-error">{status}</small> : null}
       </form>
     );

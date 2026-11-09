@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import RecordViewer from "./RecordViewer.jsx";
+import DoseSchedule from "./DoseSchedule.jsx";
 import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
 import { readUserProfile } from "./addressFields";
-import { useLoginSession } from "./authSession";
+import { hasAccountSession, useLoginSession } from "./authSession";
+import { loadCustomerOrders, syncMyOrdersFromServer } from "./orderTracking";
+import { orderCurrentStatus } from "./orderStatus";
+import { useSyncedOrderTick } from "./useSyncedOrderTick";
 import { LABORATORY_TESTS, RADIOLOGY_TESTS } from "./healthTestNames";
 import { isoDateToday } from "./personFields";
 import {
@@ -26,6 +30,33 @@ import {
 } from "./reportCompare";
 
 const MAX_FILE_BYTES = 1.5 * 1024 * 1024;
+
+function ProfileOrderList() {
+  const tick = useSyncedOrderTick();
+  const [orders, setOrders] = useState(() => loadCustomerOrders());
+
+  useEffect(() => {
+    let cancelled = false;
+    syncMyOrdersFromServer(loadCustomerOrders()).then((next) => {
+      if (!cancelled) setOrders(Array.isArray(next) ? next : loadCustomerOrders());
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tick]);
+
+  if (!orders.length) return <p className="profile-order-empty">No orders yet.</p>;
+  return (
+    <ul className="profile-order-list">
+      {orders.map((order) => (
+        <li key={order.id || order.bookingId || order.requestId}>
+          <span>{order.displayId || order.id || "Order"}</span>
+          <strong>{orderCurrentStatus(order)}</strong>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function readFile(file) {
   return new Promise((resolve, reject) => {
@@ -151,7 +182,7 @@ export default function ProfileReports() {
       file.type === "application/pdf" ||
       /\.(pdf|png|jpe?g|webp)$/i.test(file.name);
     if (!allowed) {
-      setError("Upload a PDF or photo.");
+      setError("Choose a PDF or photo.");
       return;
     }
     if (file.size > MAX_FILE_BYTES) {
@@ -190,7 +221,7 @@ export default function ProfileReports() {
       if (input) input.value = "";
       setStatus(
         imaging
-          ? `${testName} saved as uploaded.`
+          ? `${testName} saved.`
           : record.values.length
             ? `${testName} saved. Numbers can be compared with the previous ${testName}.`
             : `${testName} saved. Add the numbers next time to compare it.`
@@ -203,26 +234,38 @@ export default function ProfileReports() {
   };
 
   return (
-    <div className="profile-reports" aria-label="Upload reports">
+    <div className="profile-reports" aria-label="Records">
       <style>{reportStyles}</style>
       <div className="profile-upload-row">
         <button
           type="button"
-          className={panel === "prescription" ? "profile-upload-tab is-on" : "profile-upload-tab"}
+          className={panel === "prescription" ? "profile-upload-tab is-rx is-on" : "profile-upload-tab is-rx"}
           aria-expanded={panel === "prescription"}
-          onClick={() => setPanel("prescription")}
+          onClick={() => setPanel((current) => (current === "prescription" ? "" : "prescription"))}
         >
-          Upload Prescription
+          Prescription
         </button>
         <button
           type="button"
-          className={panel === "report" ? "profile-upload-tab is-on" : "profile-upload-tab"}
+          className={panel === "report" ? "profile-upload-tab is-report is-on" : "profile-upload-tab is-report"}
           aria-expanded={panel === "report"}
-          onClick={() => setPanel("report")}
+          onClick={() => setPanel((current) => (current === "report" ? "" : "report"))}
         >
-          Upload Report
+          Report
         </button>
+        {hasAccountSession(session) ? (
+          <button
+            type="button"
+            className={panel === "orders" ? "profile-upload-tab is-orders is-on" : "profile-upload-tab is-orders"}
+            aria-expanded={panel === "orders"}
+            onClick={() => setPanel((current) => (current === "orders" ? "" : "orders"))}
+          >
+            Orders
+          </button>
+        ) : null}
+        <DoseSchedule />
       </div>
+      {hasAccountSession(session) && panel === "orders" ? <ProfileOrderList /> : null}
       {panel === "prescription" ? (
         <HomePrescriptionUpload showCart={false} idPrefix="profile" formOnly />
       ) : null}
@@ -278,13 +321,13 @@ export default function ProfileReports() {
         </label>
         {testName && imaging ? (
           <p className="profile-report-note">
-            This imaging report is stored as uploaded. It is not converted into a number chart.
+            This imaging report is stored as a file. It is not converted into a number chart.
           </p>
         ) : null}
         {testName && !imaging ? (
           <div className="profile-report-values">
             <p>
-              Enter the numbers printed on this report. The next upload of the same report is
+              Enter the numbers printed on this report. The next copy of the same report is
               compared with these.
             </p>
             {values.map((row, index) => (
@@ -358,7 +401,7 @@ export default function ProfileReports() {
                   ))}
                 </ul>
                 {group.kind === "radiology" ? (
-                  <p className="profile-report-note">Kept as uploaded.</p>
+                  <p className="profile-report-note">Kept as a file.</p>
                 ) : (
                   <CompareChart
                     rows={compared}
@@ -377,13 +420,28 @@ export default function ProfileReports() {
 }
 
 const reportStyles = `
-  .profile-upload-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:8px}
+  .profile-upload-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
   .profile-reports{display:grid;gap:12px}
-  .profile-upload-row .home-rx-inline,.profile-upload-row .home-rx-cart-row{width:auto;max-width:100%;margin:0;justify-content:flex-start}
-  .profile-upload-row .home-rx-tab{height:36px;min-height:36px;max-height:36px;padding:0 14px;border:1px solid #1a6b7a;border-radius:999px;background:#fff;color:#1a6b7a}
-  .profile-upload-row .home-rx-tab.is-on{background:#fff;color:#1a6b7a;border-color:#1a6b7a}
-  .profile-upload-tab{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:36px;min-height:36px;padding:0 14px;border:1px solid #1a6b7a;border-radius:999px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:800;line-height:1;cursor:pointer;white-space:nowrap}
-  .profile-upload-tab.is-on{background:#1a6b7a;color:#fff}
+  .profile-upload-row .dose-schedule,.profile-upload-row .dose-missed{display:contents}
+  .profile-upload-row .dose-editor,.profile-upload-row .dose-missed-body{grid-column:1 / -1;width:100%}
+  .profile-upload-tab,.profile-upload-row .dose-fold,.profile-upload-row .dose-missed-tab,.profile-upload-row .dose-alarm-tab{display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:100%;min-height:40px;margin:0;padding:8px 10px;border:1px solid transparent;border-radius:12px;font:inherit;font-size:13px;font-weight:800;line-height:1.2;cursor:pointer;text-align:center}
+  .profile-upload-tab.is-rx{background:#e5f4ee;color:#3c6b5c;border-color:#cfe6dc}
+  .profile-upload-tab.is-rx.is-on{background:#d3ebe2}
+  .profile-upload-tab.is-report{background:#e7f1fa;color:#3e6288;border-color:#d0e1f2}
+  .profile-upload-tab.is-report.is-on{background:#d4e6f6}
+  .profile-upload-tab.is-orders{background:#e7f6f4;color:#3d6d66;border-color:#cfe8e3}
+  .profile-upload-tab.is-orders.is-on{background:#d3eee9}
+  .profile-order-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+  .profile-order-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#f4fafb;font-size:14px}
+  .profile-order-list span{color:#143246;font-weight:800}
+  .profile-order-list strong{font-weight:800;color:#1a6b7a}
+  .profile-order-empty{margin:0;color:#5d7180;font-size:14px}
+  .profile-upload-row .dose-fold{background:#f7f1e6;color:#7a5d3c;border-color:#eadfcd}
+  .profile-upload-row .dose-fold.is-on{background:#efe4d2}
+  .profile-upload-row .dose-missed-tab{background:#f7eeee;color:#8a5858;border-color:#eadcdc}
+  .profile-upload-row .dose-missed-tab.is-on{background:#f0e0e0}
+  .profile-upload-row .dose-alarm-tab{background:#f0ecf8;color:#5e5684;border-color:#e0d9f0}
+  .profile-upload-row .dose-alarm-tab.is-on{background:#e2dbf3}
   .profile-reports>p{margin:0;color:#607589;font-size:13px;line-height:1.4}
   .profile-report-form{display:grid;gap:10px}
   .profile-report-form label{display:grid;gap:4px;font-size:12px;font-weight:700;color:#34546b}
