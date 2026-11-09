@@ -28,6 +28,13 @@ test("listed labs receive the common panel, and Metropolis keeps its directory",
   assert.equal(acacia.labId, "pathcare");
   assert.equal(metropolis.tests.some((row) => row.code === "AL001" || row.labId === "pathcare"), false);
   assert.equal(pathcare.tests.some((row) => row.code === "D8420" || row.labId === "metropolis"), false);
+  const healthians = labs.find((row) => row.id === "healthians");
+  assert.equal(healthians.name, "Healthians");
+  assert.equal(healthians.tests.find((row) => row.id === "cbc").price, 390);
+  assert.equal(healthians.tests.find((row) => row.id === "hi-2026-advance-plus").price, 2009);
+  assert.ok(healthians.tests.some((row) => row.id === "dengue"));
+  assert.equal(healthians.tests.some((row) => row.code === "D8420" || row.code === "AL001"), false);
+  assert.equal(healthians.tests.some((row) => row.labId === "metropolis" || row.labId === "pathcare"), false);
 });
 
 test("a Metropolis partner adds tests onto the Metropolis catalogue", () => {
