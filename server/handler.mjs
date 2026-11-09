@@ -1793,6 +1793,9 @@ export async function handleApi(req, res) {
       const incoming = enrichOrder(body);
       incoming.orderType = incoming.orderType || incoming.kind;
       const wanted = orderId(incoming);
+      const existing = wanted
+        ? (await listOrders()).find((row) => orderId(row) === wanted)
+        : null;
       if (incomingKind === "lab" || incomingKind === "radiology") {
         const labId = diagnosticLabId(incoming);
         const day = String(incoming.date || incoming.visitDate || "").slice(0, 10);
@@ -1834,9 +1837,6 @@ export async function handleApi(req, res) {
         }
         Object.assign(incoming, ambulanceOfferFields(unit));
       }
-      const existing = wanted
-        ? (await listOrders()).find((row) => orderId(row) === wanted)
-        : null;
       if (
         existing &&
         String(existing.partnerConfirmStatus || "").toLowerCase() === "accepted"
