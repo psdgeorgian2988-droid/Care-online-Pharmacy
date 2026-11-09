@@ -106,10 +106,11 @@ export default function DoseSchedule() {
     return next;
   };
 
-  const arm = async () => {
+  const saveDay = async () => {
     const next = setDoseMedicines(schedule, slot.id, draftMedicines());
     const timed = DOSE_SLOTS.filter((item) => !item.asNeeded && next.slots[item.id]?.medicines?.length);
     if (!timed.length) {
+      store(next);
       setNotice("Tick the medicines for this time, then save.");
       return;
     }
@@ -239,7 +240,7 @@ export default function DoseSchedule() {
       {editorOpen ? (
         <div className="dose-editor">
           <p className="dose-lead">
-            Choose a time, tick the medicines, and save. Then choose the next time.
+            Choose each time and tick the medicines. Save closes the day and sets the same alarm on the phone.
           </p>
           <label className="dose-time">
             Time
@@ -273,8 +274,8 @@ export default function DoseSchedule() {
           </ul>
           {notice ? <p className="dose-notice">{notice}</p> : null}
           <div className="dose-actions">
-            <button type="button" className="dose-save" onClick={() => saveTime()}>Save</button>
-            <button type="button" className="dose-arm" onClick={() => arm()}>Set alarm</button>
+            <button type="button" className="dose-save" onClick={() => saveDay()}>Save</button>
+            <button type="button" className="dose-arm" onClick={() => saveDay()}>Set alarm</button>
           </div>
         </div>
       ) : null}
