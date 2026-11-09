@@ -10,6 +10,7 @@ import {
   setDoseMedicines,
   writeDoseSchedule,
 } from "./doseReminders";
+import { scheduleDoseNotifications } from "./doseAlarm";
 
 function doseDayLabel(day) {
   const [year, month, date] = String(day || "").split("-").map(Number);
@@ -47,6 +48,35 @@ function chosenIds(schedule, slotId) {
   return new Set((schedule?.slots?.[slotId]?.medicines || []).map((med) => med.id));
 }
 
+function AlarmMark() {
+  return (
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M8.2 9.4a6 6 0 0 1 4.1-3.5" />
+      <path d="M23.8 9.4a6 6 0 0 0-4.1-3.5" />
+      <circle cx="16" cy="17" r="7.1" />
+      <path d="M16 17V13.1M16 17l3.2 2.1" />
+      <path d="M11.1 24.5l-2.2 3.1M20.9 24.5l2.2 3.1" />
+      <path d="M16 9.8V8" />
+    </svg>
+  );
+}
+
+function ScheduleMark() {
+  return (
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <rect x="6.5" y="4.5" width="19" height="23" rx="3.2" />
+      <path d="M6.5 10.2h19" />
+      <circle className="dose-dot" cx="11" cy="14.3" r="1.05" />
+      <path d="M13.7 14.3h8" />
+      <circle className="dose-dot" cx="11" cy="18.5" r="1.05" />
+      <path d="M13.7 18.5h8" />
+      <circle className="dose-dot" cx="11" cy="22.7" r="1.05" />
+      <rect x="13.5" y="21.3" width="8.2" height="2.8" rx="1.4" />
+      <path d="M17.6 21.3v2.8" />
+    </svg>
+  );
+}
+
 export default function DoseSchedule() {
   const catalog = usePublicCatalog();
   const [medicines, setMedicines] = useState(() => prescriptionMedicines());
@@ -55,6 +85,7 @@ export default function DoseSchedule() {
   const [draftIds, setDraftIds] = useState(() => chosenIds(readDoseSchedule(), DOSE_SLOTS[0].id));
   const [notice, setNotice] = useState("");
   const [missedOpen, setMissedOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
 
   useEffect(() => {
     const refresh = () => {
@@ -78,6 +109,14 @@ export default function DoseSchedule() {
   const scheduled = DOSE_SLOTS.filter((item) => !item.asNeeded && schedule.slots[item.id]?.medicines?.length);
   const missed = missedDoses(schedule);
   const alarmsArmed = scheduled.length > 0 && scheduled.every((item) => schedule.slots[item.id]?.alarmOn);
+  const armedPlan = DOSE_SLOTS.filter((item) => {
+    const row = schedule.slots[item.id];
+    return !item.asNeeded && row?.alarmOn && row.medicines?.length;
+  }).map((item) => ({
+    ...item,
+    time: schedule.slots[item.id].time || item.time,
+    medicines: schedule.slots[item.id].medicines,
+  }));
 
   const store = (next) => {
     setSchedule(next);
@@ -118,7 +157,9 @@ export default function DoseSchedule() {
         /* the alarm still rings while this app is open */
       }
     }
-    store(setAllDoseAlarms(next, true));
+    const armed = setAllDoseAlarms(next, true);
+    store(armed);
+    scheduleDoseNotifications(armed);
     setNotice("");
   };
 
@@ -140,7 +181,22 @@ export default function DoseSchedule() {
         .dose-arm,.dose-save{min-height:34px;padding:6px 14px;border-radius:8px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
         .dose-save{border:1px solid #1a6b7a;background:#fff;color:#1a6b7a}
         .dose-arm{border:0;background:#1a6b7a;color:#fff}
-        .dose-arm.is-on{background:#fff;color:#1a6b7a;border:1px solid #1a6b7a}
+        .dose-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:360px}
+        .dose-tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:78px;padding:10px 8px 8px;border:1px solid #d7e4ea;border-radius:16px;background:#fff;color:#1a6b7a;font:inherit;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 1px 2px rgba(20,50,70,.05)}
+        .dose-tab svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+        .dose-tab .dose-dot{fill:currentColor;stroke:none}
+        .dose-tab.is-on{background:#1a6b7a;color:#fff;border-color:#1a6b7a;box-shadow:0 8px 16px rgba(26,107,122,.18)}
+        .dose-tab.is-open{background:#eef7f8;border-color:#1a6b7a}
+        .dose-plan{display:grid;gap:8px;margin:0;padding:0;list-style:none;max-width:360px}
+        .dose-plan > li{display:grid;gap:6px;padding:8px;border:1px solid #e4ecef;border-radius:12px;background:#fff}
+        .dose-plan header{display:flex;justify-content:flex-start;align-items:baseline;gap:8px}
+        .dose-plan header strong{color:#143246;font-size:13px}
+        .dose-plan header span{color:#1a6b7a;font-size:12px;font-weight:800}
+        .dose-plan ul{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+        .dose-plan-med{display:flex;gap:8px;align-items:center}
+        .dose-plan-med img{width:48px;height:32px;object-fit:contain;flex:0 0 48px;border-radius:6px;background:#f4f8f8}
+        .dose-plan-med strong{display:block;color:#143246;font-size:13px}
+        .dose-plan-med em{display:block;font-style:normal;color:#5d7180;font-size:11px}
         .dose-notice{margin:0;color:#1a6b7a;font-size:12px;font-weight:700}
         .dose-missed{display:grid;gap:6px;margin-top:4px}
         .dose-missed-tab{justify-self:start;min-height:34px;padding:6px 14px;border:1px solid #1a6b7a;border-radius:8px;background:#fff;color:#1a6b7a;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
@@ -153,11 +209,57 @@ export default function DoseSchedule() {
         .dose-missed em{display:block;font-style:normal;color:#5d7180;font-size:11px}
         .dose-missed small{display:block;color:#9b2c2c;font-size:11px;font-weight:700}
       `}</style>
-      <h2>Dose schedule</h2>
+      {alarmsArmed ? null : <h2>Dose schedule</h2>}
       {alarmsArmed ? (
-        <button type="button" className="dose-arm is-on" onClick={() => store(setAllDoseAlarms(schedule, false))}>
-          Alarm
-        </button>
+        <>
+          <div className="dose-tabs" role="group" aria-label="Alarm and dose schedule">
+            <button
+              type="button"
+              className="dose-tab is-on"
+              onClick={() => {
+                setPlanOpen(false);
+                const cleared = setAllDoseAlarms(schedule, false);
+                store(cleared);
+                scheduleDoseNotifications(cleared);
+              }}
+            >
+              <AlarmMark />
+              <span>Alarm</span>
+            </button>
+            <button
+              type="button"
+              className={`dose-tab${planOpen ? " is-open" : ""}`}
+              aria-expanded={planOpen}
+              onClick={() => setPlanOpen((open) => !open)}
+            >
+              <ScheduleMark />
+              <span>Dose schedule</span>
+            </button>
+          </div>
+          {planOpen ? (
+            <ul className="dose-plan" aria-label="Dose schedule">
+              {armedPlan.map((item) => (
+                <li key={item.id}>
+                  <header>
+                    <strong>{item.plain}</strong>
+                    <span>{item.time}</span>
+                  </header>
+                  <ul>
+                    {item.medicines.map((med) => (
+                      <li key={med.id} className="dose-plan-med">
+                        <img src={med.image || "/meds/pack-navy.svg"} alt="" />
+                        <span>
+                          <strong>{med.brand || med.name}</strong>
+                          <em>{med.salt || "Salt not listed"}</em>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
       ) : (
         <>
           <p className="dose-lead">

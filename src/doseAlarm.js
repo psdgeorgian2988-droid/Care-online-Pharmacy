@@ -1,4 +1,10 @@
-import { dueDoseAlarms, markDoseFired, readDoseSchedule, writeDoseSchedule } from "./doseReminders.js";
+import {
+  dueDoseAlarms,
+  markDoseFired,
+  readDoseSchedule,
+  scheduledDoseAlarms,
+  writeDoseSchedule,
+} from "./doseReminders.js";
 
 export const DOSE_ALARM_EVENT = "mediHomeDoseAlarm";
 
@@ -69,9 +75,27 @@ export function checkDoseAlarms(env = globalThis, now = new Date()) {
   return due;
 }
 
+export function scheduleDoseNotifications(schedule, env = globalThis) {
+  const ready = env.navigator?.serviceWorker?.ready;
+  if (!ready?.then) return Promise.resolve(false);
+  const items = scheduledDoseAlarms(schedule).map((item) => ({
+    title: item.slot.plain,
+    body: alarmLines(item),
+    stamp: item.stamp,
+    at: item.at,
+  }));
+  return ready
+    .then((registration) => {
+      registration.active?.postMessage({ type: "dose-alarms", items });
+      return true;
+    })
+    .catch(() => false);
+}
+
 export function startDoseAlarms(env = globalThis) {
   if (!env || env.__mediHomeDoseAlarms) return () => {};
   env.__mediHomeDoseAlarms = true;
+  scheduleDoseNotifications(readDoseSchedule(env.localStorage), env);
   const tick = () => checkDoseAlarms(env, new Date());
   const timer = env.setInterval?.(tick, 15000);
   return () => {

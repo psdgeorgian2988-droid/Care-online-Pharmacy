@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { catalogLabIdForPartner, withCommonLabPanel } from "./commonLabPanel.js";
-import { barcodeBars, newAccession, normalizeReportResults } from "./labAccession.js";
+import { barcodeBars, newAccession, normalizeReportResults, parseAnalyzerFeed } from "./labAccession.js";
 import { diagnosticStepLabel, sampleCollectedFields } from "./labPipeline.js";
 
 test("each listed lab receives the common panel without duplicating CBC", () => {
@@ -35,6 +35,16 @@ test("radiology steps do not say sample collected", () => {
   assert.equal(diagnosticStepLabel("sample_collected", "radiology"), "Scan completed");
   assert.equal(diagnosticStepLabel("processing", "radiology"), "Images under review");
   assert.equal(diagnosticStepLabel("sample_collected", "lab"), "Sample Collected");
+});
+
+test("an analyzer cable frame and a CSV export become the same result rows", () => {
+  const csv = parseAnalyzerFeed("name,value,unit,reference,flag\nGlucose,96,mg/dL,70-110,normal");
+  const cable = parseAnalyzerFeed("H|\\^&|||Analyzer\nR|1|^^^GLU^Glucose|96|mg/dL|70-110|N\nL|1|N");
+  assert.equal(csv[0].name, "Glucose");
+  assert.equal(cable[0].name, "Glucose");
+  assert.equal(cable[0].value, "96");
+  assert.equal(cable[0].unit, "mg/dL");
+  assert.equal(cable[0].flag, "normal");
 });
 
 test("report rows keep a value per test and drop blanks", () => {

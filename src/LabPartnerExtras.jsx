@@ -9,7 +9,7 @@ import {
   buildSampleTubes,
   collectorLocationFields,
   normalizeReportResults,
-  parseAnalyzerCsv,
+  parseAnalyzerFeed,
   resultRowsFromOrder,
 } from "./labAccession";
 import { AccessionBarcode } from "./LabTrackFacts";
@@ -310,16 +310,63 @@ export function AnalyzerLinkFields({ job, onChange }) {
 
 export function ReportResultEditor({ job, rows, onChange }) {
   const list = rows?.length ? rows : resultRowsFromOrder(job);
+  const [cableNote, setCableNote] = useState("");
   const update = (index, patch) => {
     const next = list.map((row, i) => (i === index ? { ...row, ...patch } : row));
     onChange(normalizeReportResults(next));
+  };
+  const applyFeed = (text) => {
+    const parsed = parseAnalyzerFeed(text);
+    if (parsed.length) {
+      onChange(parsed);
+      setCableNote(`Read ${parsed.length} result${parsed.length === 1 ? "" : "s"} from the analyzer.`);
+      return;
+    }
+    setCableNote("No results were read. Check the cable, or import the analyzer CSV.");
+  };
+  const readCable = async () => {
+    const serial = globalThis.navigator?.serial;
+    if (!serial?.requestPort) {
+      setCableNote("Open this desk in Chrome or Edge, then connect the analyzer cable.");
+      return;
+    }
+    let port;
+    try {
+      port = await serial.requestPort();
+      await port.open({ baudRate: 9600 });
+      const reader = port.readable?.getReader();
+      if (!reader) throw new Error("The analyzer port did not open.");
+      const decoder = new TextDecoder();
+      let text = "";
+      const deadline = Date.now() + 8000;
+      while (Date.now() < deadline) {
+        const next = await Promise.race([
+          reader.read(),
+          new Promise((resolve) => setTimeout(() => resolve({ done: true }), 1200)),
+        ]);
+        if (next?.done) break;
+        if (next?.value) text += decoder.decode(next.value, { stream: true });
+      }
+      text += decoder.decode();
+      reader.releaseLock();
+      applyFeed(text);
+    } catch (err) {
+      setCableNote(err?.message || "The analyzer cable could not be read.");
+    } finally {
+      try {
+        await port?.close?.();
+      } catch {
+        /* the port may already be closed */
+      }
+    }
   };
   return (
     <div className="lab-result-editor">
       <p className="partner-collect-title">Result for each test</p>
       <p className="partner-report-note">
-        Import a CSV the analyzer exported (name, value, unit, reference, flag). MediHome does not plug a cable into the machine.
+        Connect the analyzer cable in Chrome or Edge, or import the CSV it exported.
       </p>
+      <button type="button" onClick={readCable}>Read from analyzer</button>
       <input
         type="file"
         accept=".csv,text/csv"
@@ -329,13 +376,11 @@ export function ReportResultEditor({ job, rows, onChange }) {
           event.target.value = "";
           if (!file) return;
           const reader = new FileReader();
-          reader.onload = () => {
-            const parsed = parseAnalyzerCsv(String(reader.result || ""));
-            if (parsed.length) onChange(parsed);
-          };
+          reader.onload = () => applyFeed(String(reader.result || ""));
           reader.readAsText(file);
         }}
       />
+      {cableNote ? <p className="partner-report-note">{cableNote}</p> : null}
       {list.map((row, index) => (
         <div className="lab-result-row" key={`${row.name}-${index}`}>
           <strong>{row.name}</strong>

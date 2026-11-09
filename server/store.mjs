@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.join(root, "data");
 const dataFile = path.join(dataDir, "orders.json");
+const sqliteFile = path.join(dataDir, "orders.sqlite");
 
 const TERMINAL_TRACK = new Set(["done", "declined", "cancelled"]);
 const TRACK_RANKS = {
@@ -72,7 +73,7 @@ async function ensureFile() {
   }
 }
 
-async function readStore() {
+async function readJsonStore() {
   await ensureFile();
   try {
     const parsed = JSON.parse(await readFile(dataFile, "utf8"));
@@ -82,9 +83,85 @@ async function readStore() {
   }
 }
 
-async function writeStore(store) {
+async function writeJsonStore(store) {
   await ensureFile();
   await writeFile(dataFile, `${JSON.stringify(store, null, 2)}\n`);
+}
+
+let dbPromise;
+async function ordersDb() {
+  if (process.env.NODE_TEST_CONTEXT) return null;
+  if (!dbPromise) {
+    dbPromise = (async () => {
+      try {
+        const { DatabaseSync } = await import("node:sqlite");
+        await mkdir(dataDir, { recursive: true });
+        const db = new DatabaseSync(sqliteFile);
+        db.exec(`CREATE TABLE IF NOT EXISTS orders (
+          id TEXT PRIMARY KEY,
+          updated_at INTEGER NOT NULL DEFAULT 0,
+          body TEXT NOT NULL
+        )`);
+        return db;
+      } catch {
+        return null;
+      }
+    })();
+  }
+  return dbPromise;
+}
+
+function readSqlite(db) {
+  return db
+    .prepare("SELECT body FROM orders")
+    .all()
+    .map((row) => {
+      try {
+        return JSON.parse(row.body);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
+function writeSqlite(db, orders) {
+  db.exec("BEGIN");
+  try {
+    db.exec("DELETE FROM orders");
+    const insert = db.prepare("INSERT INTO orders (id, updated_at, body) VALUES (?, ?, ?)");
+    for (const order of orders) {
+      const id = orderIdKey(order);
+      if (!id) continue;
+      insert.run(id, Number(order.updatedAt || order.sortKey || 0) || 0, JSON.stringify(order));
+    }
+    db.exec("COMMIT");
+  } catch (error) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      /* the transaction may already be closed */
+    }
+    throw error;
+  }
+}
+
+async function readStore() {
+  const db = await ordersDb();
+  if (db) {
+    const orders = readSqlite(db);
+    if (orders.length) return { orders };
+  }
+  const json = await readJsonStore();
+  if (db && json.orders.length) writeSqlite(db, json.orders);
+  return json;
+}
+
+async function writeStore(store) {
+  const orders = Array.isArray(store?.orders) ? store.orders : [];
+  const db = await ordersDb();
+  if (db) writeSqlite(db, orders);
+  await writeJsonStore({ orders });
 }
 
 export function orderIdKey(record) {

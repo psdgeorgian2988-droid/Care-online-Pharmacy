@@ -8,6 +8,7 @@ import {
   markDoseFired,
   missedDoses,
   recordDoseAnswer,
+  scheduledDoseAlarms,
   setAllDoseAlarms,
   setDoseAlarm,
   setDoseMedicines,
@@ -103,4 +104,8 @@ test("the alarm is due only in its minute and only once that day", () => {
   assert.equal(missed.doseLog.length, 1);
   assert.equal(missedDoses(missed)[0].brand, "Pantocid");
   assert.equal(missedDoses(missed)[0].taken, false);
+  const later = scheduledDoseAlarms(fired, new Date(2026, 10, 7, 22, 5, 0));
+  assert.equal(later.length, 1);
+  assert.equal(later[0].time, "22:00");
+  assert.ok(later[0].at > new Date(2026, 10, 7, 22, 5, 0).getTime());
 });

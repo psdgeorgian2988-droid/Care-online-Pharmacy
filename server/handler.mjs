@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { listOrders, patchOrder, upsertOrder } from "./store.mjs";
-import { readReport, saveReportFromOrder, searchReports } from "./reports.mjs";
+import { readReport, reportsFromOrder, saveReportFromOrder, searchReports } from "./reports.mjs";
 import { applyPartnerMedicineCorrection } from "../src/rxPartnerShare.js";
 import { partnerAppKind } from "../src/partnerApp.js";
 import { doctorKnowsMobile, doctorPrescriptionFrom } from "../src/doctorVisit.js";
@@ -1681,7 +1681,7 @@ export async function handleApi(req, res) {
           /* keep the report even if the notice store fails */
         }
       }
-      if (updated && (updated.reportFileData || updated.reportFileName)) {
+      if (updated && reportsFromOrder(updated).length) {
         try {
           await saveReportFromOrder(updated);
         } catch {

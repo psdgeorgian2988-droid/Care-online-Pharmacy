@@ -19,7 +19,9 @@ import {
 import {
   isDiagnosticKind,
   mergeOrderReportIntoStore,
+  orderHasReport,
 } from "./labPipeline";
+import { pullRecordLibrary } from "./recordLibrary";
 import { loadCustomerOrders } from "./orderTracking";
 import {
   ADD_UNLISTED_TEST,
@@ -243,6 +245,9 @@ function Reports({ initialTab = "" } = {}) {
   const [addingTest, setAddingTest] = useState(false);
   const [draftTest, setDraftTest] = useState("");
   const [viewer, setViewer] = useState(null);
+  const [libraryMobile, setLibraryMobile] = useState("");
+  const [libraryNote, setLibraryNote] = useState("");
+  const [libraryBusy, setLibraryBusy] = useState(false);
   const closeViewer = useCallback(() => setViewer(null), []);
   const openRecord = (item) => setViewer(medicalRecordForViewer(item));
   const patientRows = people;
@@ -252,13 +257,16 @@ function Reports({ initialTab = "" } = {}) {
     setVaxOrders(orders);
     orders.forEach((order) => {
       const kind = order?.kind || order?.orderType;
-      if (
-        (isDiagnosticKind(kind) || kind === "vaccination") &&
-        (order.reportFileData || order.reportFileName)
-      ) {
+      if ((isDiagnosticKind(kind) || kind === "vaccination") && orderHasReport(order)) {
         mergeOrderReportIntoStore(order, globalThis.localStorage, household);
       }
     });
+    const mobile = String(session?.mobile || "").replace(/\D/g, "").slice(-10);
+    if (mobile.length === 10) {
+      pullRecordLibrary(mobile, { people: household })
+        .then(() => setReports(loadMedicalRecords()))
+        .catch(() => {});
+    }
     const kept = loadMedicalRecords();
     saveMedicalRecords(kept);
     setReports(kept);
@@ -499,7 +507,28 @@ function Reports({ initialTab = "" } = {}) {
     return `No ${sectionLabel.toLowerCase()}s saved yet for ${filterPerson.name}.`;
   };
 
+  const findLibrary = async (event) => {
+    event.preventDefault();
+    const digits = libraryMobile.replace(/\D/g, "").slice(0, 10);
+    if (digits.length !== 10) {
+      setLibraryNote("Enter the 10-digit mobile used while ordering.");
+      return;
+    }
+    setLibraryBusy(true);
+    setLibraryNote("");
+    try {
+      const { records } = await pullRecordLibrary(digits, { people: household });
+      setReports(loadMedicalRecords());
+      setLibraryNote(records.length ? "Saved reports are ready." : "No saved report was found for that mobile.");
+    } catch (err) {
+      setLibraryNote(err.message || "Could not open records.");
+    } finally {
+      setLibraryBusy(false);
+    }
+  };
+
   if (!hasAccountSession(session)) {
+    const saved = reports.filter((item) => item?.fileData || item?.fileName);
     return (
       <>
         <style>{styles}</style>
@@ -507,7 +536,24 @@ function Reports({ initialTab = "" } = {}) {
           <section className="service-hero">
             <div>
               <span className="service-kicker">MediHome Medical Record</span>
-              <h1>Medical Record is in your account</h1>
+              <h1>Medical Record</h1>
+              <p>Find saved reports with the mobile used on the booking, or log in to keep them on the account.</p>
+              <form onSubmit={findLibrary}>
+                <label>
+                  Mobile number
+                  <input
+                    inputMode="numeric"
+                    value={libraryMobile}
+                    maxLength={10}
+                    placeholder="10-digit mobile"
+                    onChange={(event) => setLibraryMobile(event.target.value.replace(/\D/g, "").slice(0, 10))}
+                  />
+                </label>
+                <button type="submit" className="service-submit" disabled={libraryBusy}>
+                  {libraryBusy ? "Opening" : "Open records"}
+                </button>
+              </form>
+              {libraryNote ? <p>{libraryNote}</p> : null}
               <a
                 className="service-submit"
                 href="#login"
@@ -517,6 +563,24 @@ function Reports({ initialTab = "" } = {}) {
               </a>
             </div>
           </section>
+          {saved.length ? (
+            <section className="medical-record-panel" aria-label="Saved reports">
+              <ul>
+                {saved.map((item) => {
+                  const card = medicalRecordFileCard(item);
+                  return (
+                    <li key={item.id}>
+                      <button type="button" className="record-card" onClick={() => openRecord(item)}>
+                        <strong>{card.primary}</strong>
+                        {card.secondary ? <span>{card.secondary}</span> : null}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
+          {viewer ? <RecordViewer record={viewer} onClose={closeViewer} /> : null}
         </div>
       </>
     );

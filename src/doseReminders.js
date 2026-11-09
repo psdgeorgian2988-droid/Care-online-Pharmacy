@@ -216,6 +216,31 @@ function dayOf(now) {
   return `${year}-${month}-${day}`;
 }
 
+export function scheduledDoseAlarms(schedule, now = new Date()) {
+  const items = [];
+  DOSE_SLOTS.forEach((slot) => {
+    const row = schedule?.slots?.[slot.id];
+    if (slot.asNeeded || !row?.alarmOn || !row.medicines?.length) return;
+    if (!/^\d{2}:\d{2}$/.test(String(row.time || ""))) return;
+    const [hours, minutes] = row.time.split(":").map(Number);
+    for (let dayOffset = 0; dayOffset < 2; dayOffset += 1) {
+      const at = new Date(now);
+      at.setDate(at.getDate() + dayOffset);
+      at.setHours(hours, minutes, 0, 0);
+      if (at.getTime() <= now.getTime()) continue;
+      const day = dayOf(at);
+      items.push({
+        slot,
+        time: row.time,
+        medicines: row.medicines,
+        stamp: `${day}|${slot.id}|${row.time}`,
+        at: at.getTime(),
+      });
+    }
+  });
+  return items;
+}
+
 export function dueDoseAlarms(schedule, now = new Date()) {
   const clock = clockOf(now);
   const day = dayOf(now);

@@ -179,6 +179,41 @@ export function parseAnalyzerCsv(text = "") {
   );
 }
 
+function analyzerFlag(value) {
+  const flag = String(value || "").trim().toLowerCase();
+  if (flag === "h" || flag === "hh" || flag === "high") return "high";
+  if (flag === "l" || flag === "ll" || flag === "low") return "low";
+  if (flag === "n" || flag === "normal") return "normal";
+  return "";
+}
+
+function parseAstmResult(line) {
+  const parts = String(line || "").split("|");
+  const bits = String(parts[2] || "")
+    .split("^")
+    .map((bit) => bit.trim())
+    .filter(Boolean);
+  return {
+    name: bits[bits.length - 1] || "",
+    value: parts[3] || "",
+    unit: parts[4] || "",
+    reference: parts[5] || "",
+    flag: analyzerFlag(parts[6]),
+  };
+}
+
+/** CSV export or an ASTM result frame from a cabled analyzer. */
+export function parseAnalyzerFeed(text = "") {
+  const raw = String(text || "").replace(/[\u0002\u0003\u0004]/g, "\n");
+  const lines = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const astm = lines.filter((line) => /^R\|/i.test(line));
+  if (astm.length) return normalizeReportResults(astm.map(parseAstmResult));
+  return parseAnalyzerCsv(raw);
+}
+
 export function collectorHasFix(order = {}) {
   const lat = Number(order.collectorLat);
   const lng = Number(order.collectorLng);

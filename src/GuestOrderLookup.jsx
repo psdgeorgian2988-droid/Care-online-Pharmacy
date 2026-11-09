@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { apiFetch } from "./apiBase.js";
 import { guestMobile } from "./labCustomerActions.js";
-import { listReportFiles, openReportFile, orderHasReport } from "./labPipeline.js";
+import { listReportFiles, mergeOrderReportIntoStore, openReportFile, orderHasReport } from "./labPipeline.js";
+import { pullRecordLibrary } from "./recordLibrary.js";
 import { goToHash } from "./hashRoute.js";
 import { markCustomerEntryChosen } from "./authSession.js";
 import { persistLocalOrder, trackHref } from "./orderTracking.js";
@@ -28,10 +29,7 @@ export default function GuestOrderLookup() {
     setBusy(true);
     setError("");
     try {
-      const res = await apiFetch(`/api/orders/mine?mobile=${encodeURIComponent(digits)}`);
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Could not search orders.");
-      const orders = Array.isArray(data.orders) ? data.orders : [];
+      const { orders } = await pullRecordLibrary(digits);
       orders.forEach((order) => {
         try {
           persistLocalOrder(order);
@@ -63,6 +61,7 @@ export default function GuestOrderLookup() {
       const res = await apiFetch(`/api/orders/lookup?id=${encodeURIComponent(id)}`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.order) throw new Error(data.error || "Report is not ready.");
+      mergeOrderReportIntoStore(data.order);
       const match = file
         ? listReportFiles(data.order).find((row) => row.fileName === file.fileName) || file
         : data.order;

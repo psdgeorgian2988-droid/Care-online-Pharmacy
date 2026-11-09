@@ -70,33 +70,44 @@ export default function AppBottomNav({ route, service = "" }) {
   const loggedIn = hasAccountSession(user);
   const tabs = footerTabs(route, loggedIn);
   const navRef = useRef(null);
+  const pinnedHrefs = new Set(["#profile", MEDICINE_HOME_HASH]);
+  const pinned = tabs.filter((tab) => pinnedHrefs.has(tab.href));
+  const scrolling = tabs.filter((tab) => !pinnedHrefs.has(tab.href));
 
   useEffect(() => {
-    const active = navRef.current?.querySelector("[aria-current='page']");
-    active?.scrollIntoView({ inline: "center", block: "nearest" });
+    const scroller = navRef.current;
+    if (!scroller || typeof window === "undefined") return;
+    if (window.matchMedia?.("(min-width: 768px)")?.matches) return;
+    const active = scroller.querySelector("[aria-current='page']");
+    if (active) active.scrollIntoView({ inline: "nearest", block: "nearest" });
   }, [route, service, loggedIn]);
 
+  const renderTab = (tab) => {
+    const active = tabActive(tab.href, route, service);
+    const tone = serviceIconTone(tab.icon);
+    return (
+      <a
+        key={tab.href}
+        href={tab.href}
+        className={active ? "active" : undefined}
+        aria-current={active ? "page" : undefined}
+        data-icon={tab.icon}
+        style={{ "--icon-color": tone.color, "--icon-bg": tone.bg }}
+      >
+        <span>
+          <ServiceGlyph type={tab.icon} color={tone.color} />
+        </span>
+        <em>{tab.label}</em>
+      </a>
+    );
+  };
+
   return (
-    <nav className="app-bottom-nav" aria-label="App" ref={navRef}>
-      {tabs.map((tab) => {
-        const active = tabActive(tab.href, route, service);
-        const tone = serviceIconTone(tab.icon);
-        return (
-          <a
-            key={tab.href}
-            href={tab.href}
-            className={active ? "active" : undefined}
-            aria-current={active ? "page" : undefined}
-            data-icon={tab.icon}
-            style={{ "--icon-color": tone.color, "--icon-bg": tone.bg }}
-          >
-            <span>
-              <ServiceGlyph type={tab.icon} color={tone.color} />
-            </span>
-            <em>{tab.label}</em>
-          </a>
-        );
-      })}
+    <nav className="app-bottom-nav" aria-label="App">
+      <div className="app-bottom-pin">{pinned.map(renderTab)}</div>
+      <div className="app-bottom-scroll" ref={navRef}>
+        {scrolling.map(renderTab)}
+      </div>
     </nav>
   );
 }

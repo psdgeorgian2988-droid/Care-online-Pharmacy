@@ -70,6 +70,8 @@ test("footer icons are Account first, then one home segment each", () => {
   assert.doesNotMatch(source, /href: "#reports"/);
   assert.doesNotMatch(source, /href: "#medicine-search"/);
   assert.doesNotMatch(source, /loggedIn && \(tab\.href === "#home"/);
+  assert.match(source, /className="app-bottom-pin"/);
+  assert.match(source, /className="app-bottom-scroll"/);
   assert.match(source, /icon: "account"/);
   assert.match(source, /icon: "medicine"/);
   assert.match(source, /icon: "lab"/);

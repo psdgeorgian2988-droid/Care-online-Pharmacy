@@ -10683,8 +10683,28 @@ html:has(.app-customer) .app-bottom-nav {
 .app:not(.app-ops):not(.app-customer) .app-bottom-nav,
 .app-customer .app-bottom-nav,
 html.is-customer-app .app-bottom-nav {
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
+  overflow: hidden !important;
+}
+
+.app-bottom-pin,
+.app-bottom-scroll {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.app-bottom-pin {
+  flex: 0 0 auto;
+}
+
+.app-bottom-scroll {
+  flex: 1 1 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
 }
 
 .app:not(.app-ops):not(.app-customer) .app-bottom-nav {
@@ -11879,6 +11899,11 @@ body > .record-viewer,
     width: auto !important;
     min-width: 0 !important;
     scroll-snap-align: none;
+  }
+
+  .app-bottom-pin,
+  .app-bottom-scroll {
+    display: contents;
   }
 }
 
