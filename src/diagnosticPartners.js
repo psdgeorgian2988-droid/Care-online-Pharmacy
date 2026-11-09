@@ -1,3 +1,4 @@
+import { METROPOLIS_TESTS } from "./data/metropolisTests.js";
 import { PATHCARE_TESTS } from "./data/pathcareTests.js";
 
 export const MEDIHOME_BILLING = {
@@ -22,15 +23,7 @@ export const DIAGNOSTIC_LABS = [
     gstin: "07AABCM3847M1Z1",
     dlNo: "DMC/LAB/2018/1142",
     licenseLabel: "Lab Licence No.",
-    tests: [
-      { id: "cbc", name: "Complete Blood Count (CBC)", price: 499 },
-      { id: "hba1c", name: "HbA1c - Diabetes Test", price: 599 },
-      { id: "lipid", name: "Lipid Profile", price: 699 },
-      { id: "lft", name: "Liver Function Test (LFT)", price: 799 },
-      { id: "kft", name: "Kidney Function Test (KFT)", price: 799 },
-      { id: "fbs", name: "Fasting Blood Sugar", price: 199 },
-      { id: "stool-occult", name: "Stool Occult Blood", price: 349 },
-    ],
+    tests: METROPOLIS_TESTS,
   },
   {
     id: "max-healthcare",

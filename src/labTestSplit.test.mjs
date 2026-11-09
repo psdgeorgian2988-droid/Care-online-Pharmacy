@@ -37,10 +37,13 @@ test("add-partner hides split in every category; admin update still sets a perce
 });
 
 test("pathcare catalog split comes from transfer price, and new tests require a percent", () => {
-  const vitamin = DIAGNOSTIC_LABS.find((lab) => lab.id === "pathcare").tests.find(
-    (row) => row.id === "BC004"
+  const hiia = DIAGNOSTIC_LABS.find((lab) => lab.id === "pathcare").tests.find(
+    (row) => row.code === "BC004"
   );
-  assert.equal(partnerPercentOnTest(vitamin), Math.round((vitamin.tp / vitamin.price) * 100));
+  assert.equal(hiia.price, 2700);
+  assert.match(hiia.instruction, /Urine/);
+  const withTransfer = { name: "Absolute Eosinophil Count", price: 150, tp: 98 };
+  assert.equal(partnerPercentOnTest(withTransfer), Math.round((98 / 150) * 100));
   assert.equal(validateAddedLabTest({ name: "CBC panel", price: 499 }).ok, false);
   const added = validateAddedLabTest({ name: "CBC panel", price: 499, partnerPercent: 72 });
   assert.equal(added.ok, true);
@@ -60,7 +63,7 @@ test("added lab tests merge onto Others and override a spoofed booking percent",
   assert.equal(merged[1].tests.some((row) => row.name === "New panel"), false);
 
   const stamped = stampLabOrderTests(
-    [{ id: "cbc", name: "Complete Blood Count (CBC)", price: 499, partnerPercent: 100, partnerId: "metropolis" }],
+    [{ id: "mhl-1", code: "D8420", name: "11 Deoxy Cortisol, Serum", price: 3500, partnerPercent: 100, partnerId: "metropolis" }],
     { labId: "metropolis", added: [] }
   );
   assert.equal(stamped[0].partnerPercent, 85);

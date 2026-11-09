@@ -105,10 +105,23 @@ function paymentKindFor(medicines, tests) {
   return tests.length ? "lab" : "cart";
 }
 
+function checkoutTestsOnly(raw = "") {
+  const value = String(raw || (typeof window !== "undefined" ? window.location.hash : ""));
+  const query = value.includes("?") ? value.slice(value.indexOf("?") + 1) : "";
+  try {
+    return new URLSearchParams(query).get("tests") === "1";
+  } catch {
+    return false;
+  }
+}
+
 export default function CartCheckout() {
   const user = useLoginSession();
   const isRegisteredMember = hasAccountSession(user);
-  const [medicines, setMedicines] = useState(() => readMedicineCart());
+  const [testsOnlyCheckout, setTestsOnlyCheckout] = useState(() => checkoutTestsOnly());
+  const [medicines, setMedicines] = useState(() =>
+    checkoutTestsOnly() ? [] : readMedicineCart()
+  );
   const [tests, setTests] = useState(() => readTestCart());
   const profile = useMemo(() => readUserProfile() || {}, []);
   const [whoFor, setWhoFor] = useState(() => initialBookingFor(profile));
@@ -136,23 +149,26 @@ export default function CartCheckout() {
 
   useEffect(() => {
     const sync = () => {
-      setMedicines(readMedicineCart());
+      setMedicines(testsOnlyCheckout ? [] : readMedicineCart());
       setTests(readTestCart());
     };
     const syncRx = () => setRxDraft(readPrescriptionDraft());
+    const syncHash = () => setTestsOnlyCheckout(checkoutTestsOnly());
     window.addEventListener(MEDICINE_CART_EVENT, sync);
     window.addEventListener(TEST_CART_EVENT, sync);
     window.addEventListener(PRESCRIPTION_EVENT, syncRx);
     window.addEventListener("storage", sync);
     window.addEventListener("storage", syncRx);
+    window.addEventListener("hashchange", syncHash);
     return () => {
       window.removeEventListener(MEDICINE_CART_EVENT, sync);
       window.removeEventListener(TEST_CART_EVENT, sync);
       window.removeEventListener(PRESCRIPTION_EVENT, syncRx);
       window.removeEventListener("storage", sync);
       window.removeEventListener("storage", syncRx);
+      window.removeEventListener("hashchange", syncHash);
     };
-  }, []);
+  }, [testsOnlyCheckout]);
 
   const testGroups = useMemo(() => groupTests(tests), [tests]);
   const testTotal = tests.reduce((sum, item) => sum + Number(item.price || 0), 0);

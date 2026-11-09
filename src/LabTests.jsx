@@ -84,6 +84,7 @@ const PREP_LABEL = {
   blood: "Preparation note",
   imaging: "Scan preparation",
   none: "",
+  catalogue: "Test instructions",
 };
 
 const PREP_COPY = {
@@ -143,8 +144,8 @@ function withPrep(partners, { split = false } = {}) {
     tests: partner.tests.map((test) => {
       const next = {
         ...test,
-        prepType: TEST_PREP[test.id]?.prepType || "none",
-        instruction: TEST_PREP[test.id]?.instruction || "",
+        prepType: TEST_PREP[test.id]?.prepType || test.prepType || "none",
+        instruction: TEST_PREP[test.id]?.instruction || test.instruction || "",
       };
       if (!split) return next;
       return {
@@ -158,6 +159,7 @@ function withPrep(partners, { split = false } = {}) {
 function LabPrice({ test }) {
   const price = Number(test?.price) || 0;
   const mrp = Number(test?.mrp) || 0;
+  if (!(price > 0)) return <>Price on request</>;
   if (!(mrp > price)) return <>₹{price}</>;
   return (
     <span className="lab-price">
@@ -330,7 +332,9 @@ function LabTests() {
     };
   }, []);
   const labTestOptions = useMemo(() => {
-    const all = (selectedLab?.tests || []).map((test, index) => ({
+    const all = (selectedLab?.tests || [])
+      .filter((test) => !test.labId || test.labId === selectedLab.id)
+      .map((test, index) => ({
       ...test,
       sr: test.sr || index + 1,
       code: test.code || test.id || "—",
@@ -421,6 +425,8 @@ function LabTests() {
         if (next.labId) setSelectedRadiologyPartnerId(next.labId);
       } else if (next.labId) {
         setSelectedLabId(next.labId);
+        setPendingLabIds(new Set());
+        setLabTestQuery("");
       }
     };
     window.addEventListener("hashchange", syncHash);
@@ -664,6 +670,7 @@ function LabTests() {
   const selectPreferredLab = (labId) => {
     setSelectedLabId(labId);
     setSelectedTestId("");
+    setPendingLabIds(new Set());
     setLabTestQuery("");
     setServiceType("lab");
     setErrors((prev) => ({ ...prev, lab: "", test: "" }));
@@ -678,6 +685,22 @@ function LabTests() {
 
   const togglePendingLab = (test) => {
     if (!test?.id) return;
+    if (test.labId && test.labId !== selectedLabId) return;
+    if (!(Number(test.price) > 0)) {
+      setErrors((prev) => ({
+        ...prev,
+        test: "This test has no published price. Please call the lab to book it.",
+      }));
+      return;
+    }
+    if (test.unavailable) {
+      setPrepPopup({ test, kind: "lab" });
+      setErrors((prev) => ({
+        ...prev,
+        test: "This test is currently not available.",
+      }));
+      return;
+    }
     setServiceType("lab");
     if (!selectedLabId) {
       setErrors((prev) => ({ ...prev, lab: "Please select a lab tab first." }));
@@ -714,7 +737,9 @@ function LabTests() {
   };
 
   const addPendingLabsToCart = () => {
-    const chosen = (selectedLab?.tests || []).filter((test) => pendingLabIds.has(test.id));
+    const chosen = (selectedLab?.tests || []).filter(
+      (test) => pendingLabIds.has(test.id) && (!test.labId || test.labId === selectedLabId)
+    );
     if (!chosen.length || !selectedLabId) return;
     chosen.forEach((raw, index) => {
       addTestToCart(
@@ -1220,14 +1245,17 @@ function LabTests() {
     boot.labId && !isLab && selectedRadiologyPartnerId === boot.labId
   );
   const selectableLabTests = labTestOptions.filter(
-    (test) => !selectedTests.some((item) => item.id === test.id)
+    (test) =>
+      Number(test.price) > 0 &&
+      !test.unavailable &&
+      !selectedTests.some((item) => item.id === test.id)
   );
 
   return (
     <>
       <style>{styles}</style>
       {busyWait ? <BusyWait kind={busyKind} traffic={busyWait} /> : null}
-      <div className="lab-page">
+      <div className={`lab-page${isLab && selectedLabId === "metropolis" ? " is-metropolis" : ""}`}>
         <header className="lab-head">
           <div>
             <p className="lab-kicker">Diagnostics</p>
@@ -1286,6 +1314,7 @@ function LabTests() {
           idPrefix="lab-diagnostics"
           detect={isLab ? "lab" : "radiology"}
           showCart
+          cartTestsOnly
         />
 
         <form className="lab-shell" onSubmit={handleBooking}>
@@ -1915,8 +1944,112 @@ const styles = `
 .ghost-button{border:1px solid #d8e3e9;border-radius:8px;background:#fff;color:#34546b;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;min-height:40px;padding:8px 14px}
 .ghost-button:hover{background:#f7fbfe}
 .prep-dialog-actions .service-submit,.prep-dialog-actions .lab-submit{width:auto;min-width:112px}
+.lab-page.is-metropolis{color:#212529;background:#f4fbf7}
+.lab-page.is-metropolis .lab-head{background:#00984a;margin:-18px -22px 16px -16px;padding:14px 22px 14px 16px}
+.lab-page.is-metropolis .lab-kicker,
+.lab-page.is-metropolis .lab-head h1,
+.lab-page.is-metropolis .lab-change-partner{color:#fff}
+.lab-page.is-metropolis .lab-head .lab-tabs{background:rgba(255,255,255,.2)}
+.lab-page.is-metropolis .lab-head .lab-tabs button{color:#fff}
+.lab-page.is-metropolis .lab-head .lab-tabs button.is-on{background:#fff;color:#00984a}
+.lab-page.is-metropolis .lab-head .lab-tabs span{background:#00984a;color:#fff}
+.lab-page.is-metropolis .lab-lead,
+.lab-page.is-metropolis .lab-card-head p,
+.lab-page.is-metropolis .lab-hint,
+.lab-page.is-metropolis .lab-search-meta,
+.lab-page.is-metropolis .lab-card-foot,
+.lab-page.is-metropolis .lab-empty,
+.lab-page.is-metropolis .lab-col-sr,
+.lab-page.is-metropolis .centre-note,
+.lab-page.is-metropolis .service-confirm p,
+.lab-page.is-metropolis .confirm-row span,
+.lab-page.is-metropolis .confirm-note,
+.lab-page.is-metropolis .booking-row-label,
+.lab-page.is-metropolis .prep-summary li span,
+.lab-page.is-metropolis .prep-dialog-body p{color:#6d6d6d}
+.lab-page.is-metropolis .lab-head h1,
+.lab-page.is-metropolis .lab-card-head h2,
+.lab-page.is-metropolis .lab-search-name,
+.lab-page.is-metropolis .lab-col-name,
+.lab-page.is-metropolis .lab-row-main strong,
+.lab-page.is-metropolis .lab-selected-main strong,
+.lab-page.is-metropolis .lab-row-price,
+.lab-page.is-metropolis .lab-col-mrp,
+.lab-page.is-metropolis .lab-card-foot strong,
+.lab-page.is-metropolis .lab-book-foot strong,
+.lab-page.is-metropolis .prep-dialog h2,
+.lab-page.is-metropolis .prep-summary li strong,
+.lab-page.is-metropolis .prep-summary-alert{color:#212529}
+.lab-page.is-metropolis .lab-label,
+.lab-page.is-metropolis .lab-field label,
+.lab-page.is-metropolis .ghost-button{color:#495057}
+.lab-page.is-metropolis .lab-card,
+.lab-page.is-metropolis .lab-search-results,
+.lab-page.is-metropolis .lab-catalog,
+.lab-page.is-metropolis .lab-selected-list,
+.lab-page.is-metropolis .lab-table,
+.lab-page.is-metropolis .confirm-card,
+.lab-page.is-metropolis .prep-dialog,
+.lab-page.is-metropolis .centre-note{background:#fff;border-color:#dee2e6}
+.lab-page.is-metropolis .lab-card-head,
+.lab-page.is-metropolis .lab-card-foot,
+.lab-page.is-metropolis .lab-book-foot,
+.lab-page.is-metropolis .lab-search-row,
+.lab-page.is-metropolis .lab-catalog-row,
+.lab-page.is-metropolis .lab-row,
+.lab-page.is-metropolis .lab-selected-row,
+.lab-page.is-metropolis .prep-dialog-actions{border-color:#dee2e6}
+.lab-page.is-metropolis .lab-card>input[type="search"],
+.lab-page.is-metropolis .lab-card>input[type="text"],
+.lab-page.is-metropolis .lab-card>select,
+.lab-page.is-metropolis .lab-field input,
+.lab-page.is-metropolis .lab-field select,
+.lab-page.is-metropolis .lab-field textarea{border-color:#ced4da;color:#212529}
+.lab-page.is-metropolis .lab-card>input[type="search"]:focus,
+.lab-page.is-metropolis .lab-card>input[type="text"]:focus,
+.lab-page.is-metropolis .lab-card>select:focus,
+.lab-page.is-metropolis .lab-field input:focus,
+.lab-page.is-metropolis .lab-field select:focus,
+.lab-page.is-metropolis .lab-field textarea:focus{border-color:#00984a}
+.lab-page.is-metropolis .lab-search-row:hover,
+.lab-page.is-metropolis .lab-search-row:focus-visible,
+.lab-page.is-metropolis .lab-search-row.is-picked,
+.lab-page.is-metropolis .lab-catalog-row:hover,
+.lab-page.is-metropolis .lab-catalog-row.is-on,
+.lab-page.is-metropolis .lab-row:hover,
+.lab-page.is-metropolis .lab-row.is-on{background:#effdf6}
+.lab-page.is-metropolis .lab-catalog-head,
+.lab-page.is-metropolis .lab-table-head{background:#00984a;color:#fff;border-bottom-color:#007a3c}
+.lab-page.is-metropolis .lab-col-code,
+.lab-page.is-metropolis .lab-selected-main em,
+.lab-page.is-metropolis .lab-row-main em,
+.lab-page.is-metropolis .prep-dialog-kicker,
+.lab-page.is-metropolis .prep-summary-kicker,
+.lab-page.is-metropolis .confirmation-test strong{color:#00984a}
+.lab-page.is-metropolis .lab-check{border-color:#9ed4b4;color:#00984a}
+.lab-page.is-metropolis .lab-row.is-on .lab-check{border-color:#00984a;background:#dff6e8}
+.lab-page.is-metropolis .lab-partner-tabs button{border-color:#cfe8d8;background:#f7fdf9;color:#212529}
+.lab-page.is-metropolis .lab-partner-tabs button:hover{border-color:#00984a}
+.lab-page.is-metropolis .lab-partner-tabs button.is-on,
+.lab-page.is-metropolis .lab-submit,
+.lab-page.is-metropolis .service-submit,
+.lab-page.is-metropolis .home-rx-tab.is-on{background:#00984a;border-color:#00984a;color:#fff}
+.lab-page.is-metropolis .lab-partner-tabs button.is-on:hover,
+.lab-page.is-metropolis .lab-submit:hover,
+.lab-page.is-metropolis .service-submit:hover,
+.lab-page.is-metropolis .home-rx-tab.is-on:hover{background:#007a3c;border-color:#007a3c}
+.lab-page.is-metropolis .confirm-head span{background:#effdf6;color:#00984a}
+.lab-page.is-metropolis .prep-summary{border-color:#cfe8d8;background:#f7fdf9}
+.lab-page.is-metropolis .prep-summary.has-fasting{border-color:#00984a;background:#effdf6}
+.lab-page.is-metropolis .success-icon{background:#e5f8ee;color:#00984a}
+.lab-page.is-metropolis .ghost-button{border-color:#ced4da;background:#fff}
+.lab-page.is-metropolis .ghost-button:hover{background:#f4fbf7}
+.lab-page.is-metropolis .lab-head h1,
+.lab-page.is-metropolis .lab-kicker,
+.lab-page.is-metropolis .lab-change-partner{color:#fff}
 @media (max-width:900px){
   .lab-page{padding:14px}
+  .lab-page.is-metropolis .lab-head{margin:-14px -14px 14px;padding:14px}
   .lab-shell,.lab-fields{grid-template-columns:1fr}
   .lab-book{position:static}
   .lab-catalog-head,.lab-catalog-row{grid-template-columns:44px 72px minmax(0,1fr) 64px;gap:6px;padding:8px 10px}

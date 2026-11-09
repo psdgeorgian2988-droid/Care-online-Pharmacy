@@ -4,14 +4,30 @@ import { catalogLabIdForPartner, withCommonLabPanel } from "./commonLabPanel.js"
 import { barcodeBars, newAccession, normalizeReportResults, parseAnalyzerFeed } from "./labAccession.js";
 import { diagnosticStepLabel, sampleCollectedFields } from "./labPipeline.js";
 
-test("each listed lab receives the common panel without duplicating CBC", () => {
+test("listed labs receive the common panel, and Metropolis keeps its directory", () => {
   const labs = withCommonLabPanel();
-  const metropolis = labs.find((row) => row.id === "metropolis");
-  const cbc = metropolis.tests.filter((row) => row.id === "cbc");
+  const max = labs.find((row) => row.id === "max-healthcare");
+  const cbc = max.tests.filter((row) => row.id === "cbc");
   assert.equal(cbc.length, 1);
-  assert.equal(cbc[0].price, 499);
-  assert.ok(metropolis.tests.some((row) => row.id === "dengue"));
-  assert.ok(metropolis.tests.length > 20);
+  assert.equal(cbc[0].price, 449);
+  assert.ok(max.tests.some((row) => row.id === "dengue"));
+  const metropolis = labs.find((row) => row.id === "metropolis");
+  assert.equal(metropolis.tests.length, 3362);
+  assert.equal(metropolis.tests[0].code, "D8420");
+  assert.equal(metropolis.tests[0].price, 3500);
+  assert.match(metropolis.tests[0].instruction, /Serum/);
+  assert.equal(metropolis.tests.some((row) => row.id === "dengue"), false);
+  const pathcare = labs.find((row) => row.id === "pathcare");
+  assert.equal(pathcare.tests.length, 2198);
+  assert.equal(pathcare.tests.some((row) => row.id === "dengue"), false);
+  const acacia = pathcare.tests.find((row) => row.code === "AL001");
+  assert.equal(acacia.name, "Acacia");
+  assert.equal(acacia.price, 990);
+  assert.match(acacia.instruction, /Serum/);
+  assert.equal(acacia.prepType, "catalogue");
+  assert.equal(acacia.labId, "pathcare");
+  assert.equal(metropolis.tests.some((row) => row.code === "AL001" || row.labId === "pathcare"), false);
+  assert.equal(pathcare.tests.some((row) => row.code === "D8420" || row.labId === "metropolis"), false);
 });
 
 test("a Metropolis partner adds tests onto the Metropolis catalogue", () => {

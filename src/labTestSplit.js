@@ -33,19 +33,10 @@ function sameTestKey(test, line) {
 
 export function findCatalogLabTest(labId, line) {
   const wanted = String(labId || line?.partnerId || "").trim().toLowerCase();
-  const pools = [];
-  if (wanted) {
-    const lab = DIAGNOSTIC_LABS.find((row) => row.id.toLowerCase() === wanted);
-    if (lab) pools.push(lab);
-  }
-  for (const lab of DIAGNOSTIC_LABS) {
-    if (!pools.includes(lab)) pools.push(lab);
-  }
-  for (const lab of pools) {
-    const hit = (lab.tests || []).find((test) => sameTestKey(test, line));
-    if (hit) return hit;
-  }
-  return null;
+  if (!wanted) return null;
+  const lab = DIAGNOSTIC_LABS.find((row) => row.id.toLowerCase() === wanted);
+  if (!lab) return null;
+  return (lab.tests || []).find((test) => sameTestKey(test, line)) || null;
 }
 
 function findAddedLabTest(added, line) {

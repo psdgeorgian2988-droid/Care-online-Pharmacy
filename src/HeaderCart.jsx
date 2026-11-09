@@ -58,17 +58,18 @@ function money(value) {
   return `₹${Number(value || 0)}`;
 }
 
-export default function HeaderCart({ className = "", disabled = false }) {
+export default function HeaderCart({ className = "", disabled = false, testsOnly = false }) {
   const [open, setOpen] = useState(false);
-  const [medicines, setMedicines] = useState(() => readMedicineCart());
+  const [medicines, setMedicines] = useState(() => (testsOnly ? [] : readMedicineCart()));
   const [tests, setTests] = useState(() => readTestCart());
-  const [count, setCount] = useState(() => shopCartCount());
+  const [count, setCount] = useState(() => (testsOnly ? readTestCart().length : shopCartCount()));
 
   useEffect(() => {
     const sync = () => {
-      setMedicines(readMedicineCart());
-      setTests(readTestCart());
-      setCount(shopCartCount());
+      const nextTests = readTestCart();
+      setMedicines(testsOnly ? [] : readMedicineCart());
+      setTests(nextTests);
+      setCount(testsOnly ? nextTests.length : shopCartCount());
     };
     const onOpen = () => {
       if (disabled) return;
@@ -79,13 +80,14 @@ export default function HeaderCart({ className = "", disabled = false }) {
     window.addEventListener(MEDICINE_CART_EVENT, sync);
     window.addEventListener(TEST_CART_EVENT, sync);
     window.addEventListener("storage", sync);
+    sync();
     return () => {
       window.removeEventListener(CART_OPEN_EVENT, onOpen);
       window.removeEventListener(MEDICINE_CART_EVENT, sync);
       window.removeEventListener(TEST_CART_EVENT, sync);
       window.removeEventListener("storage", sync);
     };
-  }, [disabled]);
+  }, [disabled, testsOnly]);
 
   useEffect(() => {
     if (disabled) setOpen(false);
@@ -106,18 +108,18 @@ export default function HeaderCart({ className = "", disabled = false }) {
   }, [open]);
 
   const testGroups = useMemo(() => groupTests(tests), [tests]);
+  const shownMedicines = testsOnly ? [] : medicines;
   const testTotal = tests.reduce((sum, item) => sum + Number(item.price || 0), 0);
-  const medicineTotal = medicines.reduce(
+  const medicineTotal = shownMedicines.reduce(
     (sum, item) => sum + Number(item.price || 0) * (item.quantity || 1),
     0
   );
 
   const close = () => setOpen(false);
-
   const checkout = (focusId = "") => {
-    if (!medicines.length && !tests.length) return;
+    if (!shownMedicines.length && !tests.length) return;
     close();
-    goToHash("#checkout");
+    goToHash(testsOnly ? "#checkout?tests=1" : "#checkout");
     if (!focusId) return;
     window.setTimeout(() => {
       document.getElementById(focusId)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -155,7 +157,7 @@ export default function HeaderCart({ className = "", disabled = false }) {
                 </button>
               </header>
 
-              <div className="shop-cart-split">
+              <div className={`shop-cart-split${testsOnly ? " is-tests-only" : ""}`}>
                 <section className="shop-cart-col is-tests" aria-label="Tests in cart">
                   <div className="shop-cart-col-head">
                     <h3>Tests</h3>
@@ -198,6 +200,7 @@ export default function HeaderCart({ className = "", disabled = false }) {
                   )}
                 </section>
 
+                {testsOnly ? null : (
                 <section
                   className="shop-cart-col is-meds"
                   aria-label="Medicines in cart"
@@ -205,18 +208,18 @@ export default function HeaderCart({ className = "", disabled = false }) {
                   <div className="shop-cart-col-head">
                     <h3>Medicines</h3>
                     <span>
-                      {medicines.length
-                        ? `${medicines.reduce(
+                      {shownMedicines.length
+                        ? `${shownMedicines.reduce(
                             (sum, item) => sum + (item.quantity || 1),
                             0
                           )} · ${money(medicineTotal)}`
                         : "None yet"}
                     </span>
                   </div>
-                  {medicines.length === 0 ? (
+                  {shownMedicines.length === 0 ? (
                     <p className="shop-cart-empty">No medicines added yet.</p>
                   ) : (
-                    medicines.map((item) => (
+                    shownMedicines.map((item) => (
                       <div className="shop-cart-row" key={item.id}>
                         <div>
                           <strong>{item.name}</strong>
@@ -267,12 +270,13 @@ export default function HeaderCart({ className = "", disabled = false }) {
                     ))
                   )}
                 </section>
+                )}
               </div>
 
               <footer className="shop-cart-foot">
                 <p>
                   Total {money(testTotal + medicineTotal)}
-                  {tests.length && medicines.length
+                  {tests.length && shownMedicines.length
                     ? ` · tests ${money(testTotal)} · medicines ${money(medicineTotal)}`
                     : ""}
                 </p>
@@ -289,7 +293,7 @@ export default function HeaderCart({ className = "", disabled = false }) {
                   <button
                     type="button"
                     className="cart-btn cart-btn-primary"
-                    disabled={!medicines.length && !tests.length}
+                    disabled={!shownMedicines.length && !tests.length}
                     onClick={() => checkout(tests.length ? "checkout-pay" : "")}
                   >
                     {tests.length ? "Payment" : "Checkout"}

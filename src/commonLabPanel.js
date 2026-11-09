@@ -71,6 +71,12 @@ function ratioFrom(tests, anchorId, anchorBase) {
 
 function mergePanel(partners, panel, anchorId, anchorBase) {
   return (partners || []).map((partner) => {
+    if (partner.id === "metropolis" || partner.id === "pathcare") {
+      return {
+        ...partner,
+        tests: (partner.tests || []).map((test) => ({ ...test, labId: partner.id })),
+      };
+    }
     const tests = [...(partner.tests || [])];
     const seen = new Set(tests.map((row) => fold(row.id || row.name)));
     const ratio = ratioFrom(tests, anchorId, anchorBase);

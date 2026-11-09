@@ -13,6 +13,7 @@ import {
 
 export default function HomePrescriptionUpload({
   showCart = true,
+  cartTestsOnly = false,
   idPrefix = "home",
   detect = "",
   disabled = false,
@@ -172,7 +173,9 @@ export default function HomePrescriptionUpload({
         )}
         {status ? <small className="home-rx-error">{status}</small> : null}
       </section>
-      {showCart ? <HeaderCart className="home-rx-cart" disabled={disabled} /> : null}
+      {showCart ? (
+        <HeaderCart className="home-rx-cart" disabled={disabled} testsOnly={cartTestsOnly} />
+      ) : null}
     </div>
   );
 }

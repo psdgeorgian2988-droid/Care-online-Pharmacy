@@ -11342,6 +11342,14 @@ body > .record-viewer,
   background: #fbfefe;
 }
 
+.shop-cart-split.is-tests-only {
+  grid-template-columns: 1fr;
+}
+
+.shop-cart-split.is-tests-only .shop-cart-col.is-tests {
+  border-right: 0;
+}
+
 .shop-cart-col-head {
   display: flex;
   align-items: baseline;
