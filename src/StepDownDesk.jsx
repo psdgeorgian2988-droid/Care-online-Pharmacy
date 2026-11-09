@@ -13,7 +13,7 @@ import {
   stepdownDeskField,
   stepdownFileObjectUrl,
 } from "./stepdownDesk";
-import { orderRecordId } from "./orderFullFields";
+import { orderRecordId, orderTestName } from "./orderFullFields";
 import StepdownBillingPanel from "./StepdownBillingPanel.jsx";
 import StepdownDischargePay from "./StepdownDischargePay.jsx";
 
@@ -200,7 +200,7 @@ export default function StepDownDesk({
                 return (
                   <li key={orderRecordId(order)}>
                     <button type="button" onClick={() => setOpenId(id)}>
-                      {id || "Booking"}
+                      {orderTestName(order)} · #{id || "—"}
                     </button>
                   </li>
                 );

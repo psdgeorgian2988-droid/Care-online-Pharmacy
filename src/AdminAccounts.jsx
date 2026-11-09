@@ -3,14 +3,11 @@ import { apiFetch } from "./apiBase.js";
 import { staffToken } from "./adminApi";
 import { orderMobileDigits } from "./labCustomerActions";
 import { genderLabel, relationLabel } from "./personFields";
-import { kindLabel } from "./orderTracking";
 import {
   orderAddress,
-  orderKind,
-  orderLineItems,
   orderPatientName,
   orderRecordId,
-  orderTrackLabel,
+  orderTestName,
 } from "./orderFullFields";
 
 const CUSTOMER_TABS = [
@@ -270,13 +267,7 @@ export default function AdminAccounts({ orders = [] }) {
                 <ul>
                   {customerOrders.map((order) => (
                     <li key={orderRecordId(order)}>
-                      {[
-                        kindLabel(orderKind(order)),
-                        `#${orderRecordId(order)}`,
-                        orderTrackLabel(order),
-                        order.date || order.bookedAt || "",
-                        orderLineItems(order).map((item) => item.name).filter(Boolean).join(", "),
-                      ].filter(Boolean).join(" · ")}
+                      {`${orderTestName(order)} · #${orderRecordId(order)}`}
                     </li>
                   ))}
                 </ul>

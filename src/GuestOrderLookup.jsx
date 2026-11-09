@@ -6,7 +6,8 @@ import { listReportFiles, mergeOrderReportIntoStore, openReportFile, orderHasRep
 import { pullRecordLibrary } from "./recordLibrary.js";
 import { goToHash } from "./hashRoute.js";
 import { persistLocalOrder, trackHref } from "./orderTracking.js";
-import { orderCurrentStatus, serviceKind } from "./orderStatus.js";
+import { orderTestName } from "./orderFullFields.js";
+import { serviceKind } from "./orderStatus.js";
 
 function orderNumber(order) {
   return String(order?.id || order?.bookingId || order?.requestId || "");
@@ -111,10 +112,8 @@ export default function GuestOrderLookup({ open = false }) {
             const kind = serviceKind(order);
             return (
               <article key={id || kind}>
-                <strong>#{id}</strong>
-                <span>
-                  {[kind, orderCurrentStatus(order), order.date || order.timeSlot].filter(Boolean).join(" · ")}
-                </span>
+                <strong>{orderTestName(order)}</strong>
+                <span>#{id}</span>
                 <div className="guest-order-actions">
                   <button type="button" className="is-quiet" onClick={() => openOrder(order)}>
                     Track

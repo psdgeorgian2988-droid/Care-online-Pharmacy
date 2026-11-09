@@ -38,7 +38,6 @@ import {
   filterReport,
   formatInr,
   formatPct,
-  formatWhen,
   groupByOutlet,
   groupByPayment,
   groupByPin,
@@ -92,6 +91,7 @@ import {
   parseAppHash,
 } from "./hashRoute";
 import OrderFullView from "./OrderFullView.jsx";
+import { orderTestName } from "./orderFullFields";
 import OrderListTable from "./OrderListTable.jsx";
 import RefundStatusPanel from "./RefundStatus.jsx";
 import { isRefundOrder, refundTrackKey } from "./refundTrack";
@@ -1205,28 +1205,20 @@ function Admin() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Order</th>
-                    <th>Type</th>
-                    <th>When</th>
-                    <th>PIN</th>
-                    <th>Store</th>
-                    <th>Amount</th>
+                    <th>Test</th>
+                    <th>Order no</th>
                   </tr>
                 </thead>
                 <tbody>
                   {reportRows.length === 0 ? (
                     <tr>
-                      <td colSpan="6">No Rows For This Period.</td>
+                      <td colSpan="2">No Rows For This Period.</td>
                     </tr>
                   ) : (
                     reportRows.map((row) => (
                       <tr key={orderId(row)}>
+                        <td>{orderTestName(row)}</td>
                         <td>#{orderId(row)}</td>
-                        <td>{kindLabel(row.kind || row.orderType)}</td>
-                        <td>{formatWhen(row)}</td>
-                        <td>{row.pinCode || row.pin || "—"}</td>
-                        <td>{row.outletName || "—"}</td>
-                        <td>{formatInr(orderAmount(row))}</td>
                       </tr>
                     ))
                   )}

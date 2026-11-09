@@ -7,6 +7,7 @@ import {
   visitsForPatient,
 } from "./doctorVisit.js";
 import { openPartnerReport, searchPartnerReports } from "./reportApi.js";
+import { orderTestName } from "./orderFullFields.js";
 
 export function DoctorAppointmentList({ jobs = [], openId = "", onOpen, renderDetail, empty = "No appointments yet." }) {
   if (!jobs.length) return <p className="order-list-empty">{empty}</p>;
@@ -14,11 +15,11 @@ export function DoctorAppointmentList({ jobs = [], openId = "", onOpen, renderDe
     <ul className="doctor-visit-list">
       {jobs.map((job) => {
         const id = String(job.id || job.bookingId || job.requestId || "");
-        const summary = doctorVisitSummary(job);
         const open = String(openId) === id;
         return (
-          <li key={id || summary.name}>
+          <li key={id || orderTestName(job)}>
             <div className={`doctor-visit-card${open ? " is-on" : ""}`}>
+              <strong>{orderTestName(job)}</strong>
               <button
                 type="button"
                 className={`order-list-job${open ? " is-on" : ""}`}
@@ -26,11 +27,6 @@ export function DoctorAppointmentList({ jobs = [], openId = "", onOpen, renderDe
               >
                 #{id}
               </button>
-              <strong>{summary.name}</strong>
-              <span>Mobile: {summary.mobile}</span>
-              <span>Address: {summary.address}</span>
-              <span>Time: {summary.time}</span>
-              <em>Reason: {summary.reason}</em>
             </div>
             {open && renderDetail ? <div className="doctor-visit-detail">{renderDetail(job)}</div> : null}
           </li>

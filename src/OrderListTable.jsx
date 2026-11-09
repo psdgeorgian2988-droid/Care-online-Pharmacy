@@ -1,14 +1,5 @@
 import { Fragment } from "react";
-import { kindLabel } from "./orderTracking";
-import {
-  orderAssignedLabel,
-  orderKind,
-  orderOutletLabel,
-  orderPatientName,
-  orderPaymentModeLabel,
-  orderRecordId,
-  orderTrackLabel,
-} from "./orderFullFields";
+import { orderKind, orderRecordId, orderTestName } from "./orderFullFields";
 
 export default function OrderListTable({
   orders = [],
@@ -18,9 +9,8 @@ export default function OrderListTable({
   onOpen,
   renderDetail,
 }) {
-  const compact = audience === "customer";
-  const colSpan = compact ? 3 : 9;
-  if (compact) {
+  const colSpan = 2;
+  if (audience === "customer") {
     return (
       <div className="order-list-cards">
         <style>{styles}</style>
@@ -34,6 +24,7 @@ export default function OrderListTable({
               return (
                 <li key={`${orderKind(order)}-${id}`}>
                   <article className={`order-list-card${open ? " is-on" : ""}`}>
+                    <span>{orderTestName(order)}</span>
                     <button
                       type="button"
                       className={`order-list-job${open ? " is-on" : ""}`}
@@ -41,8 +32,6 @@ export default function OrderListTable({
                     >
                       #{id}
                     </button>
-                    <span>{kindLabel(orderKind(order))}</span>
-                    <em>{orderTrackLabel(order) || "—"}</em>
                   </article>
                   {open && renderDetail ? (
                     <div className="order-list-card-detail">{renderDetail(order)}</div>
@@ -61,15 +50,8 @@ export default function OrderListTable({
       <table className="admin-table order-list-table">
         <thead>
           <tr>
-            <th>Job</th>
-            <th>Type</th>
-            {compact ? null : <th>Customer</th>}
-            {compact ? null : <th>Mobile</th>}
-            {compact ? null : <th>Mail ID</th>}
-            {compact ? null : <th>Outlet</th>}
-            {compact ? null : <th>Payment mode</th>}
-            {compact ? null : <th>Assigned to</th>}
-            <th>Status</th>
+            <th>Test</th>
+            <th>Order no</th>
           </tr>
         </thead>
         <tbody>
@@ -84,6 +66,7 @@ export default function OrderListTable({
               return (
                 <Fragment key={`${orderKind(order)}-${id}`}>
                   <tr className={open ? "is-open" : ""}>
+                    <td>{orderTestName(order)}</td>
                     <td>
                       <button
                         type="button"
@@ -93,14 +76,6 @@ export default function OrderListTable({
                         #{id}
                       </button>
                     </td>
-                    <td>{kindLabel(orderKind(order))}</td>
-                    {compact ? null : <td>{orderPatientName(order) || "—"}</td>}
-                    {compact ? null : <td>{order.mobile || order.mobileNumber || "—"}</td>}
-                    {compact ? null : <td>{order.email || order.mailId || "—"}</td>}
-                    {compact ? null : <td>{orderOutletLabel(order)}</td>}
-                    {compact ? null : <td>{orderPaymentModeLabel(order, audience)}</td>}
-                    {compact ? null : <td>{orderAssignedLabel(order)}</td>}
-                    <td>{orderTrackLabel(order) || "—"}</td>
                   </tr>
                   {open && renderDetail ? (
                     <tr className="order-list-detail">

@@ -5,7 +5,7 @@ import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
 import { readUserProfile } from "./addressFields";
 import { useLoginSession } from "./authSession";
 import { loadCustomerOrders, syncMyOrdersFromServer } from "./orderTracking";
-import { orderCurrentStatus } from "./orderStatus";
+import { orderRecordId, orderTestName } from "./orderFullFields";
 import { useSyncedOrderTick } from "./useSyncedOrderTick";
 import { LABORATORY_TESTS, RADIOLOGY_TESTS } from "./healthTestNames";
 import { isoDateToday } from "./personFields";
@@ -50,8 +50,8 @@ function ProfileOrderList() {
     <ul className="profile-order-list">
       {orders.map((order) => (
         <li key={order.id || order.bookingId || order.requestId}>
-          <span>{order.displayId || order.id || "Order"}</span>
-          <strong>{orderCurrentStatus(order)}</strong>
+          <span>{orderTestName(order)}</span>
+          <strong>#{orderRecordId(order) || "—"}</strong>
         </li>
       ))}
     </ul>

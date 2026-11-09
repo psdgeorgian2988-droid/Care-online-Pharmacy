@@ -117,6 +117,14 @@ export function orderLineItems(order) {
   return [];
 }
 
+export function orderTestName(order) {
+  const names = orderLineItems(order)
+    .map((item) => String(item?.name || item?.testName || "").trim())
+    .filter(Boolean);
+  if (names.length) return [...new Set(names)].join(", ");
+  return itemsHeading(orderKind(order));
+}
+
 export function itemsHeading(kind) {
   switch (String(kind || "").toLowerCase()) {
     case "lab":

@@ -1,4 +1,4 @@
-import { ambulanceBookingSummary } from "./ambulanceBooking.js";
+import { orderTestName } from "./orderFullFields.js";
 
 export default function AmbulanceBookingList({
   jobs = [],
@@ -12,11 +12,11 @@ export default function AmbulanceBookingList({
     <ul className="doctor-visit-list">
       {jobs.map((job) => {
         const id = String(job.id || job.bookingId || job.requestId || "");
-        const summary = ambulanceBookingSummary(job);
         const open = String(openId) === id;
         return (
-          <li key={id || summary.mobile}>
+          <li key={id || orderTestName(job)}>
             <div className={`ambulance-booking-card${open ? " is-on" : ""}`}>
+              <strong>{orderTestName(job)}</strong>
               <button
                 type="button"
                 className={`order-list-job${open ? " is-on" : ""}`}
@@ -24,21 +24,6 @@ export default function AmbulanceBookingList({
               >
                 #{id}
               </button>
-              <strong>{summary.name}</strong>
-              <span>Mobile: {summary.mobile}</span>
-              <span>Pickup address: {summary.pickup}</span>
-              <span>Drop location: {summary.drop}</span>
-              <span>Ambulance: {summary.type}</span>
-              <span>
-                Location:{" "}
-                {summary.geoHref ? (
-                  <a href={summary.geoHref} target="_blank" rel="noreferrer">
-                    {summary.liveGps ? "Live location" : summary.pin ? `PIN ${summary.pin}` : "Map"} · {summary.geoText}
-                  </a>
-                ) : (
-                  summary.geoText
-                )}
-              </span>
             </div>
             {open && renderDetail ? <div className="doctor-visit-detail">{renderDetail(job)}</div> : null}
           </li>
