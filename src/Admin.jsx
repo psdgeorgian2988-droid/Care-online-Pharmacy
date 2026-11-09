@@ -60,6 +60,7 @@ import {
   yoySnapshot,
 } from "./salesReport";
 import AdminPartnerLogins from "./AdminPartnerLogins";
+import AdminAccounts from "./AdminAccounts";
 import ReportSearch from "./ReportSearch";
 import { openStaffReport, searchStaffReports } from "./reportApi";
 import AdminLabTests from "./AdminLabTests";
@@ -173,7 +174,7 @@ function Admin() {
   const featuresDirtyRef = useRef(false);
   const [webinars, setWebinars] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState("");
+  const [filter, setFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("");
   const [reportPeriod, setReportPeriod] = useState("mtd");
   const [reportKind, setReportKind] = useState("all");
@@ -928,6 +929,10 @@ function Admin() {
 
         <AdminFold title="Partners">
           <AdminPartnerLogins partners={partners} onChange={setPartners} />
+        </AdminFold>
+
+        <AdminFold title="Customers">
+          <AdminAccounts orders={orders} />
         </AdminFold>
 
         <AdminFold title="Sales figures">

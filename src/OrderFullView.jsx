@@ -126,6 +126,9 @@ export default function OrderFullView({
           <p className="order-full-kicker">Customer</p>
           <MetaRow label="Name" value={name || "Not provided"} />
           <MetaRow label="Mobile" value={mobile || "Not provided"} />
+          {audience === "customer" ? null : (
+            <MetaRow label="Mail ID" value={order.email || order.mailId || "Not provided"} />
+          )}
           <MetaRow
             label={kind === "ambulance" ? "Pickup Address" : "Address"}
             value={address || "Not provided"}

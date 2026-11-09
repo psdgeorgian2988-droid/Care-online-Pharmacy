@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { listOrders, patchOrder, upsertOrder } from "./store.mjs";
+import { rememberOrderCustomers, resetAccountPin, upsertAccount, verifyAccountPin } from "./accounts.mjs";
 import { readReport, reportsFromOrder, saveReportFromOrder, searchReports } from "./reports.mjs";
 import { applyPartnerMedicineCorrection } from "../src/rxPartnerShare.js";
 import { partnerAppKind } from "../src/partnerApp.js";
@@ -712,6 +713,47 @@ export async function handleApi(req, res) {
       const jobs = await listPartnerJobs(partnerId, token);
       const inventory = await listPartnerInventory(partner, jobs || []);
       send(res, 200, inventory);
+      return true;
+    }
+
+    if (pathname === "/api/accounts" && req.method === "POST") {
+      const body = await readJson(req);
+      const saved = await upsertAccount(body);
+      if (!saved.ok) {
+        send(res, saved.status || 400, { error: saved.error });
+        return true;
+      }
+      send(res, 200, { account: saved.account });
+      return true;
+    }
+
+    if (pathname === "/api/accounts/login" && req.method === "POST") {
+      const body = await readJson(req);
+      const account = await verifyAccountPin(body.mobile, body.pin || body.pinCode || body.loginPin);
+      if (!account) {
+        send(res, 401, { error: "Mobile or PIN does not match this account." });
+        return true;
+      }
+      send(res, 200, { account });
+      return true;
+    }
+
+    if (pathname === "/api/admin/accounts" && req.method === "GET") {
+      if (!requireStaff(req, res)) return true;
+      const accounts = await rememberOrderCustomers(await listOrders());
+      send(res, 200, { accounts });
+      return true;
+    }
+
+    if (pathname === "/api/admin/accounts/reset" && req.method === "POST") {
+      if (!requireStaff(req, res)) return true;
+      const body = await readJson(req);
+      const saved = await resetAccountPin(body.mobile, body.pin || body.password || body.loginPin);
+      if (!saved.ok) {
+        send(res, saved.status || 400, { error: saved.error });
+        return true;
+      }
+      send(res, 200, { account: saved.account });
       return true;
     }
 
@@ -1903,6 +1945,11 @@ export async function handleApi(req, res) {
       if (!saved) {
         send(res, 400, { error: "Order id is required." });
         return true;
+      }
+      try {
+        await rememberOrderCustomers([saved]);
+      } catch {
+        /* the order is already saved */
       }
       try {
         await notifyPartnersForOrder(saved);

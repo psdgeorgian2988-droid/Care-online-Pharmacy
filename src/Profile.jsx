@@ -32,6 +32,7 @@ import CustomerLogOut from "./CustomerLogOut.jsx";
 import ProfileReports from "./ProfileReports.jsx";
 import { MEMBER_ROLE, holderActor } from "./familyAccount";
 import { pickLoginPin } from "./loginPin";
+import { publishAccount } from "./accountSync";
 
 function readProfile() {
   return readUserProfile();
@@ -120,6 +121,7 @@ function Profile() {
 
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     writeLoginSession(profile, holderActor(profile));
+    publishAccount(profile);
     const points = awardFamilyMemberPoints(profile.familyMembers);
     setForm(profile);
     setEditDetails(false);

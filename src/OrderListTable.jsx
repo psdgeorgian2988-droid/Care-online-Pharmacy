@@ -4,6 +4,7 @@ import {
   orderAssignedLabel,
   orderKind,
   orderOutletLabel,
+  orderPatientName,
   orderPaymentModeLabel,
   orderRecordId,
   orderTrackLabel,
@@ -18,7 +19,7 @@ export default function OrderListTable({
   renderDetail,
 }) {
   const compact = audience === "customer";
-  const colSpan = compact ? 3 : 6;
+  const colSpan = compact ? 3 : 9;
   if (compact) {
     return (
       <div className="order-list-cards">
@@ -62,6 +63,9 @@ export default function OrderListTable({
           <tr>
             <th>Job</th>
             <th>Type</th>
+            {compact ? null : <th>Customer</th>}
+            {compact ? null : <th>Mobile</th>}
+            {compact ? null : <th>Mail ID</th>}
             {compact ? null : <th>Outlet</th>}
             {compact ? null : <th>Payment mode</th>}
             {compact ? null : <th>Assigned to</th>}
@@ -90,6 +94,9 @@ export default function OrderListTable({
                       </button>
                     </td>
                     <td>{kindLabel(orderKind(order))}</td>
+                    {compact ? null : <td>{orderPatientName(order) || "—"}</td>}
+                    {compact ? null : <td>{order.mobile || order.mobileNumber || "—"}</td>}
+                    {compact ? null : <td>{order.email || order.mailId || "—"}</td>}
                     {compact ? null : <td>{orderOutletLabel(order)}</td>}
                     {compact ? null : <td>{orderPaymentModeLabel(order, audience)}</td>}
                     {compact ? null : <td>{orderAssignedLabel(order)}</td>}

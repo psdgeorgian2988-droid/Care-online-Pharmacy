@@ -34,6 +34,7 @@ import {
   holderActor,
 } from "./familyAccount";
 import { normalizeLoginPin, pickLoginPin, profileLoginPin } from "./loginPin";
+import { loginAccountOnServer, publishAccount } from "./accountSync";
 import {
   confirmResetOtp,
   lookupResetAccount,
@@ -120,7 +121,7 @@ function LoginRegisterPage({ mode }) {
     setStatus({ type: "", text: "" });
   };
 
-  const handleLogin = (event) => {
+  const handleLogin = async (event) => {
     event.preventDefault();
     const saved = readUserProfile();
     if (!/^[6-9]\d{9}$/.test(login.mobile)) {
@@ -131,20 +132,34 @@ function LoginRegisterPage({ mode }) {
       setStatus({ type: "error", text: "Enter your 6-digit PIN." });
       return;
     }
-    if (!saved.mobile) {
-      setStatus({ type: "error", text: "No account found. Please register first." });
+    const actor = saved.mobile ? findAccountActor(saved, login.mobile) : null;
+    if (actor && profileLoginPin(saved) === login.pinCode) {
+      publishAccount(saved);
+      writeLoginSession(saved, actor);
+      goToHash(actor.role === MEMBER_ROLE ? "#profile" : consumeReturnHash());
       return;
     }
-    const actor = findAccountActor(saved, login.mobile);
-    if (!actor || profileLoginPin(saved) !== login.pinCode) {
+    const remote = await loginAccountOnServer(login.mobile, login.pinCode);
+    if (!remote) {
       setStatus({
         type: "error",
-        text: "Mobile or PIN does not match your saved profile.",
+        text: saved.mobile
+          ? "Mobile or PIN does not match your saved profile."
+          : "No account found. Please register first.",
       });
       return;
     }
-    writeLoginSession(saved, actor);
-    goToHash(actor.role === MEMBER_ROLE ? "#profile" : consumeReturnHash());
+    const profile = {
+      ...saved,
+      ...remote,
+      mobile: remote.mobile,
+      creatorMobile: remote.mobile,
+      loginPin: login.pinCode,
+    };
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    const nextActor = findAccountActor(profile, login.mobile) || holderActor(profile);
+    writeLoginSession(profile, nextActor);
+    goToHash(nextActor.role === MEMBER_ROLE ? "#profile" : consumeReturnHash());
   };
 
   const openForgot = () => {
@@ -191,6 +206,7 @@ function LoginRegisterPage({ mode }) {
     };
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     writeLoginSession(profile, holderActor(profile));
+    publishAccount(profile);
     const next = editingAccount ? "#profile" : consumeReturnHash();
     goToHash(next);
   };

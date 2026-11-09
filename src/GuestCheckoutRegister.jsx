@@ -8,6 +8,7 @@ import {
 import { readUserProfile, withFormattedAddress } from "./addressFields";
 import { pickFamilyMembers, pickPerson, pickEmail, validatePerson, validateEmail, accountCreatorMobile } from "./personFields";
 import { normalizeLoginPin, pickLoginPin } from "./loginPin";
+import { publishAccount } from "./accountSync";
 import { noContactEmailProps } from "./noContactAutofill";
 import {
   GUEST_REGISTER_BENEFITS,
@@ -36,6 +37,7 @@ function saveAccount(draft) {
   };
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
   writeLoginSession(profile);
+  publishAccount(profile);
 }
 
 export default function GuestCheckoutRegister({
