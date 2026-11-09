@@ -4,7 +4,7 @@ import "./index.css";
 import App from "./App.jsx";
 import ErrorBoundary from "./ErrorBoundary";
 import { bootstrapNativeShell } from "./nativeShell.js";
-import { bootAppPreview, isNativeRuntime } from "./appRuntime.js";
+import { bootAppPreview } from "./appRuntime.js";
 import { registerPwa } from "./registerPwa";
 import { bootLayoutMode } from "./layoutMode.js";
 import { startDoseAlarms } from "./doseAlarm.js";
@@ -20,7 +20,7 @@ if (typeof globalThis.resetCustomerDataThroughToday !== "function") {
 }
 
 bootLayoutMode();
-if (isNativeRuntime()) startDoseAlarms();
+startDoseAlarms();
 bootAppPreview();
 registerPwa();
 bootstrapNativeShell();

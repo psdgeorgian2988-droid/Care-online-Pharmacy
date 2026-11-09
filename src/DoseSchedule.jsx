@@ -11,7 +11,6 @@ import {
   writeDoseSchedule,
 } from "./doseReminders";
 import { scheduleDoseNotifications } from "./doseAlarm";
-import { isNativeRuntime } from "./appRuntime";
 
 function doseDayLabel(day) {
   const [year, month, date] = String(day || "").split("-").map(Number);
@@ -81,7 +80,6 @@ export default function DoseSchedule() {
   const scheduled = DOSE_SLOTS.filter((item) => !item.asNeeded && schedule.slots[item.id]?.medicines?.length);
   const missed = missedDoses(schedule);
   const alarmsArmed = scheduled.length > 0 && scheduled.every((item) => schedule.slots[item.id]?.alarmOn);
-  const phoneApp = isNativeRuntime();
 
   const store = (next) => {
     setSchedule(next);
@@ -230,16 +228,14 @@ export default function DoseSchedule() {
       >
         Missed doses
       </button>
-      {phoneApp ? (
-        <button
-          type="button"
-          className={alarmsArmed ? "dose-alarm-tab is-on" : "dose-alarm-tab"}
-          aria-pressed={alarmsArmed}
-          onClick={toggleAlarm}
-        >
-          Alarm
-        </button>
-      ) : null}
+      <button
+        type="button"
+        className={alarmsArmed ? "dose-alarm-tab is-on" : "dose-alarm-tab"}
+        aria-pressed={alarmsArmed}
+        onClick={toggleAlarm}
+      >
+        Alarm
+      </button>
       {editorOpen ? (
         <div className="dose-editor">
           <p className="dose-lead">
@@ -278,9 +274,7 @@ export default function DoseSchedule() {
           {notice ? <p className="dose-notice">{notice}</p> : null}
           <div className="dose-actions">
             <button type="button" className="dose-save" onClick={() => saveTime()}>Save</button>
-            {phoneApp ? (
-              <button type="button" className="dose-arm" onClick={() => arm()}>Set alarm</button>
-            ) : null}
+            <button type="button" className="dose-arm" onClick={() => arm()}>Set alarm</button>
           </div>
         </div>
       ) : null}

@@ -3,7 +3,7 @@ import RecordViewer from "./RecordViewer.jsx";
 import DoseSchedule from "./DoseSchedule.jsx";
 import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
 import { readUserProfile } from "./addressFields";
-import { hasAccountSession, useLoginSession } from "./authSession";
+import { useLoginSession } from "./authSession";
 import { loadCustomerOrders, syncMyOrdersFromServer } from "./orderTracking";
 import { orderCurrentStatus } from "./orderStatus";
 import { useSyncedOrderTick } from "./useSyncedOrderTick";
@@ -253,19 +253,17 @@ export default function ProfileReports() {
         >
           Report
         </button>
-        {hasAccountSession(session) ? (
-          <button
-            type="button"
-            className={panel === "orders" ? "profile-upload-tab is-orders is-on" : "profile-upload-tab is-orders"}
-            aria-expanded={panel === "orders"}
-            onClick={() => setPanel((current) => (current === "orders" ? "" : "orders"))}
-          >
-            Orders
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className={panel === "orders" ? "profile-upload-tab is-orders is-on" : "profile-upload-tab is-orders"}
+          aria-expanded={panel === "orders"}
+          onClick={() => setPanel((current) => (current === "orders" ? "" : "orders"))}
+        >
+          Orders
+        </button>
         <DoseSchedule />
       </div>
-      {hasAccountSession(session) && panel === "orders" ? <ProfileOrderList /> : null}
+      {panel === "orders" ? <ProfileOrderList /> : null}
       {panel === "prescription" ? (
         <HomePrescriptionUpload showCart={false} idPrefix="profile" formOnly />
       ) : null}

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { isNativeRuntime } from "./appRuntime.js";
 import { DOSE_ALARM_EVENT } from "./doseAlarm.js";
 import { readDoseSchedule, recordDoseAnswer, writeDoseSchedule } from "./doseReminders.js";
 
@@ -8,10 +7,8 @@ export default function DoseAlarmScreen() {
   const [asking, setAsking] = useState(false);
   const medicineCount = items.reduce((count, item) => count + (item.medicines?.length || 0), 0);
   const question = medicineCount > 1 ? "Have you taken these medicines?" : "Have you taken this medicine?";
-  const phoneApp = isNativeRuntime();
 
   useEffect(() => {
-    if (!phoneApp) return undefined;
     const open = (event) => {
       const item = event.detail;
       if (!item?.medicines?.length) return;
@@ -20,7 +17,7 @@ export default function DoseAlarmScreen() {
     };
     window.addEventListener(DOSE_ALARM_EVENT, open);
     return () => window.removeEventListener(DOSE_ALARM_EVENT, open);
-  }, [phoneApp]);
+  }, []);
 
   const answer = (taken) => {
     writeDoseSchedule(recordDoseAnswer(readDoseSchedule(), items, taken));
@@ -28,7 +25,7 @@ export default function DoseAlarmScreen() {
     setAsking(false);
   };
 
-  if (!phoneApp || !items.length) return null;
+  if (!items.length) return null;
 
   return (
     <div className="dose-alarm-screen" role="dialog" aria-modal="true" aria-label="Medicine reminder">
