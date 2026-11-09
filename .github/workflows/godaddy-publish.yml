@@ -30,7 +30,20 @@ jobs:
             exit 1
           fi
       - name: Install gddy CLI
-        run: curl -fsSL https://github.com/godaddy/cli/releases/latest/download/install.sh | bash
+        run: |
+          set -e
+          ok=0
+          for _ in 1 2 3 4 5; do
+            if curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
+              https://github.com/godaddy/cli/releases/latest/download/install.sh \
+              -o /tmp/gddy-install.sh; then
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+          test "$ok" = 1
+          bash /tmp/gddy-install.sh
       - name: Publish
         env:
           GDDY_PAT: ${{ secrets.GDDY_PAT }}
