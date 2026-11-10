@@ -20,8 +20,11 @@ import {
 const source = readFileSync(new URL("./AppBottomNav.jsx", import.meta.url), "utf8");
 
 function tabBlockOrder() {
+  const start = source.indexOf("export const TABS");
+  const end = source.indexOf("const AUTH_ROUTES");
+  const block = source.slice(start, end);
   const matches = [
-    ...source.matchAll(/href:\s*([A-Z_]+|["']#[^"']+["']),\s*label:\s*"([^"]+)"/g),
+    ...block.matchAll(/href:\s*([A-Z_]+|["']#[^"']+["']),\s*label:\s*"([^"]+)"/g),
   ];
   return matches.map((row) => ({ href: row[1].replace(/^["']|["']$/g, ""), label: row[2] }));
 }
@@ -80,7 +83,8 @@ test("footer icons are Account first, then one home segment each", () => {
   assert.doesNotMatch(source, /stroke="currentColor"/);
 });
 
-test("logged-in users still see section icons; guests hide Medical Record only", () => {
+test("guests hide Account and Medical Record; registered users keep both", () => {
+  assert.match(source, /tab\.href === "#profile" && !loggedIn/);
   assert.match(source, /tab\.href === MEDICAL_RECORD_HOME_HASH && !loggedIn/);
   assert.doesNotMatch(source, /tab\.href === "#home" \|\| tab\.href === "#medicine-search"/);
 });

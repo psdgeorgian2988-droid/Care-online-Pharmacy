@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { alreadyNotified } from "./partnerNotify.mjs";
+import { alreadyNotified, partnerCancelNotice } from "./partnerNotify.mjs";
 import { concernedPartnersForOrder } from "./partners.mjs";
 
 const partners = [
@@ -55,6 +55,22 @@ test("notifies medicine partners at the order outlet", () => {
     hit.map((row) => row.id),
     ["P-MED-01"]
   );
+});
+
+test("a new-order message does not block the cancellation message", () => {
+  assert.equal(
+    alreadyNotified(
+      [{ partnerId: "P-LAB-01", orderId: "MH-LAB-1", type: "new_order" }],
+      "P-LAB-01",
+      "MH-LAB-1",
+      "booking_cancelled"
+    ),
+    false
+  );
+  assert.equal(partnerCancelNotice({
+    id: "MH-LAB-1",
+    tests: [{ name: "Thyroid Profile" }],
+  }).body, "Thyroid Profile · #MH-LAB-1 · Customer cancelled this booking");
 });
 
 test("does not notify the same partner twice for one order", () => {

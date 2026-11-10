@@ -84,6 +84,51 @@ export function alreadyNotified(list, partnerId, orderId, type) {
   });
 }
 
+export function partnerCancelNotice(order) {
+  const id = orderIdOf(order);
+  const tests = []
+    .concat(Array.isArray(order?.tests) ? order.tests : [])
+    .concat(Array.isArray(order?.items) ? order.items : [])
+    .map((row) => String(row?.name || row?.testName || "").trim())
+    .filter(Boolean);
+  const testName = [...new Set(tests)].join(", ") || "Lab booking";
+  return {
+    title: "Booking cancelled",
+    body: [testName, id ? `#${id}` : "", "Customer cancelled this booking"]
+      .filter(Boolean)
+      .join(" · "),
+  };
+}
+
+export async function notifyPartnersBookingCancelled(order) {
+  const orderId = orderIdOf(order);
+  if (!orderId) return [];
+  const partners = concernedPartnersForOrder(order, await listPartners());
+  if (!partners.length) return [];
+  const notice = partnerCancelNotice(order);
+  const kind = orderKind(order);
+  const store = await readStore();
+  const created = [];
+  for (const partner of partners) {
+    if (alreadyNotified(store.notifications, partner.id, orderId, "booking_cancelled")) continue;
+    const row = {
+      id: `N-${Date.now().toString(36)}-${partner.id}-cancel-${created.length}`,
+      partnerId: partner.id,
+      orderId,
+      kind,
+      type: "booking_cancelled",
+      title: notice.title,
+      body: notice.body,
+      createdAt: Date.now(),
+      readAt: null,
+    };
+    store.notifications.unshift(row);
+    created.push(row);
+  }
+  if (created.length) await writeStore(store);
+  return created;
+}
+
 export async function notifyPartnersForOrder(order) {
   const orderId = orderIdOf(order);
   if (!orderId) return [];

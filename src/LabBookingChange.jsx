@@ -32,7 +32,11 @@ export default function LabBookingChange({ order, onChanged }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not update the booking.");
       if (data.order) persistLocalOrder(data.order);
-      setNote(action === "cancel" ? "Booking cancelled." : "Slot updated.");
+      setNote(
+        action === "cancel"
+          ? "Booking cancelled. A message was sent to you and the lab partner."
+          : "Slot updated."
+      );
       onChanged?.(data.order);
     } catch (err) {
       setError(err.message || "Could not update the booking.");

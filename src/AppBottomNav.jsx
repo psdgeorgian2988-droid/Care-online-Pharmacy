@@ -42,6 +42,7 @@ const AUTH_HIDDEN_TABS = new Set([LABS_HOME_HASH, MEDICAL_RECORD_HOME_HASH]);
 export function footerTabs(route, loggedIn) {
   return TABS.filter((tab) => {
     if (AUTH_ROUTES.has(route) && AUTH_HIDDEN_TABS.has(tab.href)) return false;
+    if (tab.href === "#profile" && !loggedIn) return false;
     if (tab.href === MEDICAL_RECORD_HOME_HASH && !loggedIn) return false;
     return true;
   });

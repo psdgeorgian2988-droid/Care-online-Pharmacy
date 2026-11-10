@@ -66,6 +66,7 @@ import SlotOfferBanner from "./SlotOfferBanner";
 import RefundBanner from "./RefundBanner";
 import StepdownDecisionBanner from "./StepdownDecisionBanner";
 import ReportReadyBanner from "./ReportReadyBanner";
+import BookingCancelledBanner from "./BookingCancelledBanner";
 import CustomerWelcome, { needsCustomerWelcome } from "./CustomerWelcome";
 import {
   isAppShell,
@@ -204,7 +205,6 @@ function HomeReviewsTeaser() {
 }
 
 function WebsiteHomePage({ sectionKey = "" } = {}) {
-  const user = useLoginSession();
   const isPhone = useIsPhoneLayout();
 
   if (sectionKey) {
@@ -227,20 +227,6 @@ function WebsiteHomePage({ sectionKey = "" } = {}) {
     <div className="home-content home-landing">
       <HomeWithAboutSlides>
       <div className="home-shell">
-        {hasAccountSession(user) ? (
-          <div className="home-hero-row">
-            <aside className="home-account-card" aria-label="Account">
-              <a className="home-account-btn is-primary" href="#profile">
-                Profile
-              </a>
-              <a className="home-account-btn is-edit" href="#register">
-                Edit Account
-              </a>
-              <CustomerLogOut className="home-account-btn is-logout" />
-            </aside>
-          </div>
-        ) : null}
-
         <div className="home-services-catalog" id="home-services">
           <HomeServiceCatalog
             className={isPhone ? "is-mobile-web" : "is-desktop-web"}
@@ -388,6 +374,12 @@ function App() {
     goToHash("#login");
     return undefined;
   }, [hashService, route, user]);
+
+  useEffect(() => {
+    if (route !== "#profile" || hasAccountSession(user)) return undefined;
+    goToHash("#home");
+    return undefined;
+  }, [route, user]);
 
   const renderPage = () => {
     if (shouldShowAppPicker(route)) {
@@ -565,6 +557,7 @@ function App() {
             {welcomeGate || isAuthRoute ? null : <RefundBanner />}
             {welcomeGate || isAuthRoute ? null : <StepdownDecisionBanner />}
             {welcomeGate || isAuthRoute ? null : <ReportReadyBanner />}
+            {welcomeGate || isAuthRoute ? null : <BookingCancelledBanner />}
             <ErrorBoundary key={welcomeGate ? "welcome" : route}>
               <Suspense fallback={<PageFallback />}>
                 {welcomeGate ? (
@@ -626,6 +619,7 @@ function App() {
         {welcomeGate || isAuthRoute ? null : <RefundBanner />}
         {welcomeGate || isAuthRoute ? null : <StepdownDecisionBanner />}
         {welcomeGate || isAuthRoute ? null : <ReportReadyBanner />}
+        {welcomeGate || isAuthRoute ? null : <BookingCancelledBanner />}
         <ErrorBoundary key={welcomeGate ? "welcome" : route}>
           <Suspense fallback={<PageFallback />}>
             {welcomeGate ? (

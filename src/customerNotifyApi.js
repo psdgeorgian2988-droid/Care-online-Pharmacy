@@ -13,6 +13,18 @@ async function parseResponse(response) {
   return data;
 }
 
+export async function markCustomerNotificationsRead(mobile, ids = []) {
+  const id = last10(mobile);
+  if (id.length !== 10 || !ids.length) return { notifications: [] };
+  return parseResponse(
+    await apiFetch("/api/customer/notifications/read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mobile: id, ids }),
+    })
+  );
+}
+
 export async function fetchCustomerNotifications(mobile) {
   const id = last10(mobile);
   if (id.length !== 10) return { notifications: [] };

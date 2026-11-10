@@ -28,6 +28,7 @@ import {
   usesPartnerServiceDesk,
 } from "./partnerDeskTabs";
 import ReturnMedicinePanel from "./ReturnMedicine.jsx";
+import PartnerCancelNotice from "./PartnerCancelNotice";
 import {
   customerPaidAtCheckout,
   isOnlinePayment,
@@ -666,6 +667,7 @@ export default function Partner() {
           </div>
         </section>
         {error ? <p className="admin-error">{error}</p> : null}
+        <PartnerCancelNotice />
         <div className="partner-home-tabs" role="tablist" aria-label="Partner home">
           {homeTabs.map((tab) => (
             <button

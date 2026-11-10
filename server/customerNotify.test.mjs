@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   alreadyNotifiedCustomer,
   alreadyNotifiedCustomerType,
+  bookingCancelledNotice,
   diagnosticReportTestName,
   shouldNotifyCustomerReportReady,
 } from "./customerNotify.mjs";
@@ -130,6 +131,21 @@ test("report-ready notice body uses test name and order id", () => {
     "CBC, ESR"
   );
   assert.equal(diagnosticReportTestName({}), "Diagnostic report");
+});
+
+test("customer cancel notice names the test and the order", () => {
+  const notice = bookingCancelledNotice({
+    id: "MH-LAB-4",
+    tests: [{ name: "CBC" }, { name: "CBC" }, { name: "Lipid Profile" }],
+  });
+  assert.equal(notice.title, "Booking cancelled");
+  assert.equal(notice.body, "CBC, Lipid Profile · #MH-LAB-4");
+});
+
+test("customer cancel stores a message for the customer and the lab partner", async () => {
+  const source = await readFile(new URL("./handler.mjs", import.meta.url), "utf8");
+  assert.match(source, /await notifyCustomerBookingCancelled\(updated\)/);
+  assert.match(source, /await notifyPartnersBookingCancelled\(updated\)/);
 });
 
 test("partner job PATCH calls report-ready customer notify", async () => {

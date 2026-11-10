@@ -154,6 +154,29 @@ export async function fetchPartnerStock() {
   );
 }
 
+export async function fetchPartnerNotifications() {
+  const { token } = partnerSession();
+  return parseResponse(
+    await apiFetch("/api/partner/notifications", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  );
+}
+
+export async function markPartnerNotificationsRead(ids = []) {
+  const { token } = partnerSession();
+  return parseResponse(
+    await apiFetch("/api/partner/notifications/read", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ids }),
+    })
+  );
+}
+
 export async function fetchPartnerJobs() {
   const { token, partner } = partnerSession();
   const params = new URLSearchParams({

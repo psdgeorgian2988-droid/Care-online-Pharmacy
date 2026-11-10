@@ -307,6 +307,47 @@ export async function notifyCustomerReportReady(order) {
   return row;
 }
 
+export function bookingCancelledNotice(order) {
+  const orderId = orderIdOf(order);
+  const tests = []
+    .concat(Array.isArray(order?.tests) ? order.tests : [])
+    .concat(Array.isArray(order?.items) ? order.items : [])
+    .map((row) => String(row?.name || row?.testName || "").trim())
+    .filter(Boolean);
+  const testName = [...new Set(tests)].join(", ") || "Lab booking";
+  return {
+    orderId,
+    testName,
+    title: "Booking cancelled",
+    body: [testName, orderId ? `#${orderId}` : ""].filter(Boolean).join(" · "),
+  };
+}
+
+export async function notifyCustomerBookingCancelled(order) {
+  const mobile = last10(order?.mobile || order?.mobileNumber);
+  const notice = bookingCancelledNotice(order);
+  if (!mobile || mobile.length !== 10 || !notice.orderId) return null;
+  const type = "booking_cancelled";
+  const store = await readStore();
+  if (alreadyNotifiedCustomerType(store.notifications, mobile, notice.orderId, type)) {
+    return null;
+  }
+  const row = {
+    id: `CN-${Date.now().toString(36)}-${mobile.slice(-4)}`,
+    mobile,
+    orderId: notice.orderId,
+    kind: String(order?.kind || order?.orderType || "lab").toLowerCase(),
+    type,
+    title: notice.title,
+    body: notice.body,
+    createdAt: Date.now(),
+    readAt: null,
+  };
+  store.notifications.unshift(row);
+  await writeStore(store);
+  return row;
+}
+
 export async function notifyCustomerSlotOffer(order) {
   const mobile = last10(order?.mobile || order?.mobileNumber);
   const orderId = orderIdOf(order);

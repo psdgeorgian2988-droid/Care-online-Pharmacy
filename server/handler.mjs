@@ -45,6 +45,7 @@ import {
 import {
   listCustomerNotifications,
   markCustomerNotificationsRead,
+  notifyCustomerBookingCancelled,
   notifyCustomerRefund,
   notifyCustomerReportReady,
   notifyCustomerSlotOffer,
@@ -118,7 +119,13 @@ import { readSettings, writeSettings } from "./settings.mjs";
 import { lookupPin, nearestPin, resolvePinFromLocation } from "./pincodes.mjs";
 import { parsePrescriptionPayload } from "./prescriptionAi.mjs";
 import { withDeliveryOutlet } from "../src/deliveryOutlets.js";
-import { notifyDeliveryPartnersForReturn, notifyPartnersForOrder } from "./partnerNotify.mjs";
+import {
+  listPartnerNotifications,
+  markPartnerNotificationsRead,
+  notifyDeliveryPartnersForReturn,
+  notifyPartnersBookingCancelled,
+  notifyPartnersForOrder,
+} from "./partnerNotify.mjs";
 import {
   isReturnPhoto,
   returnCollectError,
@@ -617,6 +624,30 @@ export async function handleApi(req, res) {
       return true;
     }
 
+    if (pathname === "/api/partner/notifications" && req.method === "GET") {
+      const token = readToken(req);
+      const partnerId = partnerIdFromToken(token);
+      if (!partnerId) {
+        send(res, 401, { error: "Partner login required." });
+        return true;
+      }
+      send(res, 200, { notifications: await listPartnerNotifications(partnerId) });
+      return true;
+    }
+
+    if (pathname === "/api/partner/notifications/read" && req.method === "POST") {
+      const token = readToken(req);
+      const partnerId = partnerIdFromToken(token);
+      if (!partnerId) {
+        send(res, 401, { error: "Partner login required." });
+        return true;
+      }
+      const body = await readJson(req);
+      const notifications = await markPartnerNotificationsRead(partnerId, body.ids || []);
+      send(res, 200, { notifications });
+      return true;
+    }
+
     if (pathname === "/api/partner/jobs" && req.method === "GET") {
       const token = readToken(req) || url.searchParams.get("token") || "";
       const partnerId =
@@ -1084,6 +1115,12 @@ export async function handleApi(req, res) {
       const action = String(body.action || "").toLowerCase();
       if (action === "cancel") {
         const updated = await patchOrder(wanted, customerCancelFields());
+        try {
+          await notifyCustomerBookingCancelled(updated);
+          await notifyPartnersBookingCancelled(updated);
+        } catch {
+          /* the booking stays cancelled even if a message cannot be stored */
+        }
         send(res, 200, { order: updated });
         return true;
       }
@@ -1737,6 +1774,14 @@ export async function handleApi(req, res) {
     if (pathname === "/api/customer/notifications" && req.method === "GET") {
       const mobile = String(url.searchParams.get("mobile") || "").replace(/\D/g, "");
       send(res, 200, { notifications: await listCustomerNotifications(mobile) });
+      return true;
+    }
+
+    if (pathname === "/api/customer/notifications/read" && req.method === "POST") {
+      const body = await readJson(req);
+      const mobile = String(body.mobile || "").replace(/\D/g, "");
+      const notifications = await markCustomerNotificationsRead(mobile, body.ids || []);
+      send(res, 200, { notifications });
       return true;
     }
 
