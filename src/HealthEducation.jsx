@@ -297,7 +297,8 @@ function webinarBadge(webinar, nowMs, outcome) {
   return "Session ended";
 }
 
-function WebinarsPanel({ sessionId }) {
+function WebinarsPanel({ sessionId, onBack }) {
+  const leaveSession = onBack || goBackHash;
   const wallet = useWallet();
   const scheduled = useScheduledWebinars();
   const profile = useMemo(() => readProfile(), []);
@@ -355,7 +356,7 @@ function WebinarsPanel({ sessionId }) {
       <WebinarSession
         webinar={session}
         registered={registeredIds.has(session.id)}
-        onBack={() => goBackHash()}
+        onBack={leaveSession}
       />
     );
   }
@@ -671,11 +672,12 @@ function QuizRunner({ quiz, onExit }) {
   );
 }
 
-function QuizPanel({ quizId = "" } = {}) {
+function QuizPanel({ quizId = "", onOpen } = {}) {
+  const open = onOpen || goToHash;
   const quiz = QUIZZES.find((item) => item.id === quizId);
 
   if (quiz) {
-    return <QuizRunner quiz={quiz} onExit={() => goToHash("#education?service=quiz")} />;
+    return <QuizRunner quiz={quiz} onExit={() => open("#education?service=quiz")} />;
   }
 
   return (
@@ -691,7 +693,7 @@ function QuizPanel({ quizId = "" } = {}) {
           <button
             type="button"
             className="edu-btn edu-btn-primary"
-            onClick={() => goToHash(`#education?service=quiz&id=${item.id}`)}
+            onClick={() => open(`#education?service=quiz&id=${item.id}`)}
           >
             Start quiz · +{POINT_VALUES.quiz} pts
           </button>
@@ -701,36 +703,59 @@ function QuizPanel({ quizId = "" } = {}) {
   );
 }
 
-function HealthEducation() {
-  const [{ tab, sessionId, quizId }, setRoute] = useState(() =>
-    educationRouteFromHash(window.location.hash)
+function HealthEducation({ embedded = false } = {}) {
+  const [localRoute, setLocalRoute] = useState({ tab: "guides", sessionId: "", quizId: "" });
+  const [hashRoute, setHashRoute] = useState(() =>
+    educationRouteFromHash(typeof window === "undefined" ? "" : window.location.hash)
   );
 
   useEffect(() => {
-    const syncTab = () => setRoute(educationRouteFromHash(window.location.hash));
+    if (embedded) return undefined;
+    const syncTab = () => setHashRoute(educationRouteFromHash(window.location.hash));
     window.addEventListener("hashchange", syncTab);
     return () => window.removeEventListener("hashchange", syncTab);
-  }, []);
+  }, [embedded]);
+
+  const route = embedded ? localRoute : hashRoute;
+  const { sessionId, quizId } = route;
+  const tab = embedded && route.tab === "webinars" ? "guides" : route.tab;
+  const tabs = embedded ? TABS.filter((item) => item.id !== "webinars") : TABS;
+  const open = (hash) => {
+    if (embedded) {
+      setLocalRoute(educationRouteFromHash(hash));
+      return;
+    }
+    goToHash(hash);
+  };
+  const back = () => {
+    if (embedded) {
+      setLocalRoute({ tab: "webinars", sessionId: "", quizId: "" });
+      return;
+    }
+    goBackHash();
+  };
 
   return (
-    <div className="service-page info-page edu-page">
+    <div className={`service-page info-page edu-page${embedded ? " is-embedded" : ""}`}>
       <style>{styles}</style>
-      <section className="service-hero">
-        <div>
-          <span className="service-kicker">MediHome Health Education</span>
-          <h1>Guides, Live Webinars, And Quick Quizzes</h1>
-        </div>
-      </section>
+      {embedded ? null : (
+        <section className="service-hero">
+          <div>
+            <span className="service-kicker">MediHome Health Education</span>
+            <h1>Guides, Live Webinars, And Quick Quizzes</h1>
+          </div>
+        </section>
+      )}
 
       <div className="edu-tabs" role="tablist" aria-label="Health education sections">
-        {TABS.map((item) => (
+        {tabs.map((item) => (
           <button
             key={item.id}
             type="button"
             role="tab"
             aria-selected={tab === item.id}
             className={tab === item.id ? "edu-tab is-active" : "edu-tab"}
-            onClick={() => goToHash(`#education?service=${item.id}`)}
+            onClick={() => open(`#education?service=${item.id}`)}
           >
             {item.label}
           </button>
@@ -738,8 +763,10 @@ function HealthEducation() {
       </div>
 
       {tab === "guides" ? <GuidesPanel /> : null}
-      {tab === "webinars" ? <WebinarsPanel sessionId={sessionId} /> : null}
-      {tab === "quiz" ? <QuizPanel quizId={quizId} /> : null}
+      {!embedded && tab === "webinars" ? (
+        <WebinarsPanel sessionId={sessionId} onBack={back} />
+      ) : null}
+      {tab === "quiz" ? <QuizPanel quizId={quizId} onOpen={open} /> : null}
       {tab === "refer" ? <ReferFamily /> : null}
 
       <p className="info-footnote">
@@ -759,6 +786,7 @@ const styles = `
 .service-hero p{margin:0;color:#5d7180;font-size:13px;line-height:1.4}
 .info-stack,.edu-grid,.edu-tabs,.info-footnote,.points-refer-card{max-width:760px;margin-left:auto;margin-right:auto}
 .edu-page{display:flex;flex-direction:column;min-height:0;width:100%;box-sizing:border-box}
+.edu-page.is-embedded{padding:0}
 .edu-tabs{display:flex;flex-wrap:wrap;gap:8px;width:100%;margin:0 auto 14px;padding:4px;border-radius:12px;background:#e8f0f4;box-sizing:border-box}
 .edu-tab{flex:1 1 120px;min-height:42px;border:0;border-radius:9px;background:transparent;color:#34546b;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
 .info-card{background:#fff;border:1px solid #e4ecef;border-radius:12px;margin-bottom:10px;overflow:hidden}

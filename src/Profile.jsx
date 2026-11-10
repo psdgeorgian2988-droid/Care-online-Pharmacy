@@ -500,7 +500,7 @@ function Profile({ activity = null } = {}) {
 }
 
 const styles = `
-  .profile-page{display:grid;gap:12px;max-width:760px;margin:0 auto;padding:16px 0 32px;background:transparent;color:#17324d;box-sizing:border-box}
+  .profile-page{display:grid;gap:12px;max-width:760px;margin:0 auto;padding:0 0 32px;background:transparent;color:#17324d;box-sizing:border-box}
   .profile-page > .profile-hero.is-account-bar{margin-bottom:0}
   .profile-page > .profile-hero.is-account-bar + .profile-dashboard{margin-top:-8px}
   .profile-page.is-activity{max-width:none;padding:0 0 24px}
@@ -533,9 +533,9 @@ const styles = `
   .profile-order-grid a.is-education{background:#e5f6f1;color:#1f6a5b;border-color:#bfe6db}
   .profile-hero{margin:0;padding:16px 18px;border-radius:14px;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:16px;box-shadow:0 3px 12px rgba(0,0,0,.06)}
   .profile-hero-copy{min-width:0;flex:1}
-  .profile-photo-stack{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:56px;max-width:140px}
+  .profile-photo-stack{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:56px;max-width:140px;margin-top:0}
   .profile-account-pop{grid-column:1 / -1;width:min(720px,100%);max-width:720px;margin:4px auto 0;justify-self:center}
-  .profile-holder-name{border:0;background:transparent;padding:0;margin:0;font:inherit;font-size:13px;font-weight:800;line-height:1.25;color:#143246;text-align:center;cursor:pointer}
+  .profile-holder-name{border:0;background:transparent;padding:0;margin:0;font:inherit;font-size:13px;font-weight:800;line-height:1.2;color:#143246;text-align:center;cursor:pointer}
   .profile-photo{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;padding:0;border:0;border-radius:50%;overflow:hidden;background:#e7f1f4;color:#1a6b7a;cursor:pointer}
   .profile-photo img{width:100%;height:100%;object-fit:cover}
   .profile-photo svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}

@@ -37,7 +37,12 @@ export const TABS = [
 ];
 
 export function orderServiceTabs() {
-  return TABS.filter((tab) => tab.href !== "#profile");
+  return TABS.filter(
+    (tab) =>
+      tab.href !== "#profile" &&
+      tab.href !== MEDICAL_RECORD_HOME_HASH &&
+      tab.href !== "#home?service=education"
+  );
 }
 
 const AUTH_ROUTES = new Set(["#login", "#register", "#forgot"]);

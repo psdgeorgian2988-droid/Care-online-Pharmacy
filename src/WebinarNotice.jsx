@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { hasAccountSession } from "./authSession";
+import { goToHash } from "./hashRoute";
 import { isoDateToday } from "./personFields";
 import { useScheduledWebinars } from "./featureFlags";
 import {
@@ -20,6 +22,8 @@ export default function WebinarNotice() {
 
   if (!notice) return null;
 
+  const signedIn = hasAccountSession();
+
   return (
     <div className="webinar-notice" role="status">
       <style>{styles}</style>
@@ -28,7 +32,18 @@ export default function WebinarNotice() {
         {formatWebinarDate(notice.date)} · {notice.time}
       </p>
       <div className="webinar-notice-actions">
-        <a href="#education?service=webinars">Book a seat</a>
+        <a
+          href={signedIn ? "#profile" : "#education?service=webinars"}
+          onClick={(event) => {
+            if (!signedIn) return;
+            event.preventDefault();
+            sessionStorage.setItem("mediHomeOpenEducationWebinar", "1");
+            goToHash("#profile");
+            window.dispatchEvent(new Event("mediHomeEducationNotice"));
+          }}
+        >
+          Book a seat
+        </a>
         <button
           type="button"
           onClick={() => {

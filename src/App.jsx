@@ -572,7 +572,12 @@ function App() {
     );
   }
 
+  const hideAccountBack =
+    hasAccountSession(user) &&
+    (route === "#profile" || ACCOUNT_ACTIVITY_ROUTES.has(route));
+
   const showBackHome =
+    !hideAccountBack &&
     route !== "#home" &&
     route !== "#portals" &&
     route !== "#apps" &&
@@ -598,7 +603,10 @@ function App() {
         <Seo route={route} />
         <SiteTicker />
         <div className="app-frame">
-          <AppHeader hideCart={hideHeaderCart(route, hashService, hashPlan)} />
+          <AppHeader
+            hideBack={hideAccountBack}
+            hideCart={hideHeaderCart(route, hashService, hashPlan)}
+          />
           <main id="app-scroll">
             {welcomeGate || isAuthRoute ? null : <WebinarNotice />}
             {welcomeGate || isAuthRoute ? null : <SlotOfferBanner />}

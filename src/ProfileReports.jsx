@@ -3,6 +3,7 @@ import RecordViewer from "./RecordViewer.jsx";
 import AccountPopup from "./AccountPopup.jsx";
 import DoseSchedule from "./DoseSchedule.jsx";
 import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
+import HealthEducation from "./HealthEducation.jsx";
 import { readUserProfile } from "./addressFields";
 import { useLoginSession } from "./authSession";
 import { loadCustomerOrders, syncMyOrdersFromServer } from "./orderTracking";
@@ -15,9 +16,12 @@ import {
   formatWebinarDate,
   isWebinarBookable,
   readCachedWebinars,
+  readSeenWebinarNotice,
   readWebinarSignups,
   saveWebinarSignup,
+  webinarNotice,
   webinarSessionHref,
+  writeSeenWebinarNotice,
 } from "./webinars";
 import {
   buildCustomerMedicalRecord,
@@ -205,7 +209,30 @@ export default function ProfileReports() {
   const [busy, setBusy] = useState(false);
   const [viewer, setViewer] = useState(null);
   const [panel, setPanel] = useState("");
+  const [recordPick, setRecordPick] = useState("");
+  const [eduPick, setEduPick] = useState("");
+  const scheduledWebinars = useScheduledWebinars();
+  const [seenNoticeId, setSeenNoticeId] = useState(readSeenWebinarNotice);
+  const [noticeNow, setNoticeNow] = useState(() => Date.now());
   const seenWebinarIds = useRef(null);
+  const webinarAlert = webinarNotice(scheduledWebinars, seenNoticeId, isoDateToday(), noticeNow);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNoticeNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const openFromNotice = () => {
+      if (sessionStorage.getItem("mediHomeOpenEducationWebinar") !== "1") return;
+      sessionStorage.removeItem("mediHomeOpenEducationWebinar");
+      setEduPick("webinar");
+      setPanel("education");
+    };
+    openFromNotice();
+    window.addEventListener("mediHomeEducationNotice", openFromNotice);
+    return () => window.removeEventListener("mediHomeEducationNotice", openFromNotice);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -226,7 +253,10 @@ export default function ProfileReports() {
       }
       const fresh = ids.some((id) => !known.has(id));
       seenWebinarIds.current = new Set(ids);
-      if (fresh) setPanel("webinar");
+      if (fresh) {
+        setEduPick("webinar");
+        setPanel("education");
+      }
     };
     pull(true);
     const timer = window.setInterval(() => pull(false), 15000);
@@ -349,19 +379,14 @@ export default function ProfileReports() {
       <div className="profile-upload-row">
         <button
           type="button"
-          className={panel === "prescription" ? "profile-upload-tab is-rx is-on" : "profile-upload-tab is-rx"}
-          aria-expanded={panel === "prescription"}
-          onClick={() => setPanel((current) => (current === "prescription" ? "" : "prescription"))}
+          className={panel === "record" ? "profile-upload-tab is-record is-on" : "profile-upload-tab is-record"}
+          aria-expanded={panel === "record"}
+          onClick={() => {
+            setRecordPick("");
+            setPanel((current) => (current === "record" ? "" : "record"));
+          }}
         >
-          Prescription
-        </button>
-        <button
-          type="button"
-          className={panel === "report" ? "profile-upload-tab is-report is-on" : "profile-upload-tab is-report"}
-          aria-expanded={panel === "report"}
-          onClick={() => setPanel((current) => (current === "report" ? "" : "report"))}
-        >
-          Report
+          Medical Record
         </button>
         <button
           type="button"
@@ -373,33 +398,98 @@ export default function ProfileReports() {
         </button>
         <button
           type="button"
-          className={panel === "webinar" ? "profile-upload-tab is-webinar is-on" : "profile-upload-tab is-webinar"}
-          aria-expanded={panel === "webinar"}
-          onClick={() => setPanel((current) => (current === "webinar" ? "" : "webinar"))}
+          className={panel === "education" ? "profile-upload-tab is-education is-on" : "profile-upload-tab is-education"}
+          aria-expanded={panel === "education"}
+          onClick={() => {
+            if (panel === "education") {
+              setEduPick("");
+              setPanel("");
+              return;
+            }
+            setEduPick(webinarAlert ? "webinar" : "");
+            setPanel("education");
+          }}
         >
-          Book webinar
+          Education
+          {webinarAlert ? <span className="profile-edu-dot">New</span> : null}
         </button>
         <DoseSchedule holdClosed={Boolean(panel)} onOpen={() => setPanel("")} />
       </div>
       {panel ? (
         <AccountPopup
           title={
-            panel === "prescription"
-              ? "Prescription"
-              : panel === "report"
-                ? "Report"
-                : panel === "orders"
-                  ? "Orders"
-                  : "Book webinar"
+            panel === "record" ? "Medical Record" : panel === "orders" ? "Orders" : "Education"
           }
-          onClose={() => setPanel("")}
+          onClose={() => {
+            setRecordPick("");
+            setEduPick("");
+            setPanel("");
+          }}
         >
           {panel === "orders" ? <ProfileOrderList /> : null}
-          {panel === "webinar" ? <ProfileWebinars /> : null}
-          {panel === "prescription" ? (
+          {panel === "education" && webinarAlert ? (
+            <div className="profile-edu-alert" role="status">
+              <strong>Webinar scheduled.</strong>
+              <span>
+                {webinarAlert.title} · {formatWebinarDate(webinarAlert.date)} · {webinarAlert.time}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  writeSeenWebinarNotice(webinarAlert.id);
+                  setSeenNoticeId(webinarAlert.id);
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          ) : null}
+          {panel === "education" && eduPick !== "learn" ? (
+            <div className="profile-record-picks">
+              <button
+                type="button"
+                className={eduPick === "webinar" ? "profile-upload-tab is-webinar is-on" : "profile-upload-tab is-webinar"}
+                aria-expanded={eduPick === "webinar"}
+                onClick={() => setEduPick((current) => (current === "webinar" ? "" : "webinar"))}
+              >
+                Book webinar
+              </button>
+              <button
+                type="button"
+                className="profile-upload-tab is-education"
+                aria-expanded={false}
+                onClick={() => setEduPick("learn")}
+              >
+                Guides
+              </button>
+            </div>
+          ) : null}
+          {panel === "education" && eduPick === "webinar" ? <ProfileWebinars /> : null}
+          {panel === "education" && eduPick === "learn" ? <HealthEducation embedded /> : null}
+          {panel === "record" ? (
+            <div className="profile-record-picks">
+              <button
+                type="button"
+                className={recordPick === "prescription" ? "profile-upload-tab is-rx is-on" : "profile-upload-tab is-rx"}
+                aria-expanded={recordPick === "prescription"}
+                onClick={() => setRecordPick((current) => (current === "prescription" ? "" : "prescription"))}
+              >
+                Prescription
+              </button>
+              <button
+                type="button"
+                className={recordPick === "report" ? "profile-upload-tab is-report is-on" : "profile-upload-tab is-report"}
+                aria-expanded={recordPick === "report"}
+                onClick={() => setRecordPick((current) => (current === "report" ? "" : "report"))}
+              >
+                Report
+              </button>
+            </div>
+          ) : null}
+          {panel === "record" && recordPick === "prescription" ? (
             <HomePrescriptionUpload showCart={false} idPrefix="profile" formOnly />
           ) : null}
-          {panel === "report" ? (
+          {panel === "record" && recordPick === "report" ? (
             <>
       <form className="profile-report-form" onSubmit={saveReport}>
         {people.length > 1 ? (
@@ -563,7 +653,13 @@ const reportStyles = `
   .profile-upload-tab.is-rx{background:#e3f6ee;color:#1f7a5c;border-color:#bfe4d2}
   .profile-upload-tab.is-report{background:#e3f0fb;color:#2f6394;border-color:#c5dbf2}
   .profile-upload-tab.is-orders{background:#e2f7f4;color:#1d7a70;border-color:#bfe6e0}
-  .profile-upload-tab.is-webinar{background:#eceefe;color:#4a4f96;border-color:#d4d8f6}
+  .profile-upload-tab.is-record{background:#e6eef8;color:#34598a;border-color:#c9d6ee}
+  .profile-edu-dot{display:inline-flex;align-items:center;margin-left:6px;padding:1px 6px;border-radius:999px;background:#0639b8;color:#fff;font-size:10px;font-weight:800;letter-spacing:.02em;line-height:1.5}
+  .profile-edu-alert{display:grid;gap:2px;margin:0 0 12px;padding:12px 14px;border-radius:12px;background:#0639b8;color:#fff}
+  .profile-edu-alert strong{font-size:13px;letter-spacing:.02em}
+  .profile-edu-alert span{font-size:14px;font-weight:700}
+  .profile-edu-alert button{justify-self:start;margin-top:6px;border:0;border-radius:8px;background:#fff;color:#0639b8;font:inherit;font-size:12px;font-weight:800;padding:6px 10px;cursor:pointer}
+  .profile-record-picks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
   .profile-webinar-list{display:grid;gap:8px}
   .profile-webinar-list article{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#f4f6fc}
   .profile-webinar-list strong{display:block;color:#143246;font-size:14px}
