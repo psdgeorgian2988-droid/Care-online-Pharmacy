@@ -7234,6 +7234,7 @@ html:not(.is-native-app):not(.is-customer-app):not(.is-installed-app) #root {
   text-align: center !important;
   overflow: visible !important;
   padding-right: 110px !important;
+  box-shadow: 0 -8px 0 #e8f4f2 !important;
 }
 
 .app-customer > footer.app-footer p {
@@ -9892,8 +9893,7 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
   transform: translateX(-50%);
   padding: 6px 6px calc(8px + env(safe-area-inset-bottom));
   border-top: 1px solid #c5ddd8;
-  background: rgba(234, 246, 243, 0.96);
-  backdrop-filter: blur(10px);
+  background: #e8f4f2;
   box-sizing: border-box;
   overflow-x: auto;
   overflow-y: hidden;
@@ -10762,6 +10762,13 @@ html.is-customer-app .app-bottom-nav {
   width: 100%;
   max-width: none;
   transform: none;
+  background: #e8f4f2;
+}
+
+.app:not(.app-ops):not(.app-customer) > footer.app-footer {
+  position: relative;
+  z-index: 46;
+  box-shadow: 0 -8px 0 #e8f4f2;
 }
 
 .app:not(.app-ops):not(.app-customer) .site-floating-help {

@@ -630,18 +630,18 @@ function App() {
           </Suspense>
         </ErrorBoundary>
         {welcomeGate || isAuthRoute ? null : (
-          <>
-            <GuestOrderLookup open={guestSearchPanel} />
-            <AppBottomNav
-              route={route}
-              service={hashService}
-              guestSearchOpen={guestSearchPanel}
-              onGuestSearch={() => setGuestSearchOpen((open) => !open)}
-            />
-          </>
+          <GuestOrderLookup open={guestSearchPanel} />
         )}
       </main>
 
+      {welcomeGate || isAuthRoute ? null : (
+        <AppBottomNav
+          route={route}
+          service={hashService}
+          guestSearchOpen={guestSearchPanel}
+          onGuestSearch={() => setGuestSearchOpen((open) => !open)}
+        />
+      )}
       <SiteFooter showOpsLinks={route !== "#home"} />
       <SiteFloatingHelp needHelpOpen={needHelpOpen} setNeedHelpOpen={setNeedHelpOpen} />
     </div>

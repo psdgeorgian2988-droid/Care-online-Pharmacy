@@ -21,15 +21,19 @@ async function loadRegisteredAccounts() {
     headers: { Authorization: `Bearer ${staffToken()}` },
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) return [];
-  return Array.isArray(data.accounts) ? data.accounts : [];
+  if (!response.ok) return { accounts: [], removed: [] };
+  return {
+    accounts: Array.isArray(data.accounts) ? data.accounts : [],
+    removed: Array.isArray(data.removed) ? data.removed : [],
+  };
 }
 
-function customersFromActivity(accounts, orders) {
+function customersFromActivity(accounts, orders, removed = []) {
+  const hidden = new Set(removed.map((mobile) => orderMobileDigits({ mobile })).filter(Boolean));
   const byMobile = new Map();
   for (const account of accounts) {
     const mobile = orderMobileDigits(account);
-    if (!mobile) continue;
+    if (!mobile || hidden.has(mobile)) continue;
     byMobile.set(mobile, {
       ...account,
       mobile,
@@ -38,6 +42,7 @@ function customersFromActivity(accounts, orders) {
   }
   for (const order of orders) {
     const mobile = orderMobileDigits(order);
+    if (mobile && hidden.has(mobile)) continue;
     const key = mobile || `order-${orderRecordId(order)}`;
     const current = byMobile.get(key) || {
       mobile,
@@ -119,24 +124,35 @@ function fileLink(label, href) {
 
 export default function AdminAccounts({ orders = [] }) {
   const [accounts, setAccounts] = useState([]);
+  const [removed, setRemoved] = useState([]);
   const [selectedKey, setSelectedKey] = useState("");
   const [tab, setTab] = useState("");
+  const [removeError, setRemoveError] = useState("");
+  const [removing, setRemoving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     loadRegisteredAccounts()
       .then((next) => {
-        if (!cancelled) setAccounts(next);
+        if (cancelled) return;
+        setAccounts(next.accounts);
+        setRemoved(next.removed);
       })
       .catch(() => {
-        if (!cancelled) setAccounts([]);
+        if (!cancelled) {
+          setAccounts([]);
+          setRemoved([]);
+        }
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const rows = useMemo(() => customersFromActivity(accounts, orders), [accounts, orders]);
+  const rows = useMemo(
+    () => customersFromActivity(accounts, orders, removed),
+    [accounts, orders, removed]
+  );
   const selected = rows.find((row, index) => (row.mobile || `customer-${index}`) === selectedKey) || null;
   const customerOrders = selected?.orders || [];
   const reports = customerOrders.flatMap(reportRows);
@@ -166,6 +182,8 @@ export default function AdminAccounts({ orders = [] }) {
         .admin-customer-panel{display:grid;gap:8px}
         .admin-customer-panel p,.admin-customer-panel li{margin:0;color:#143246;font-size:14px}
         .admin-customer-panel ul,.admin-customer-panel ol{display:grid;gap:6px;margin:0;padding-left:18px}
+        .admin-customer-remove{justify-self:start;min-height:34px;padding:6px 12px;border:1px solid #e3b4b4;border-radius:999px;background:#fff6f6;color:#8a3b3b;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+        .admin-customer-remove:disabled{opacity:.6;cursor:wait}
       `}</style>
       {rows.length ? (
         <div className="admin-table-wrap">
@@ -209,6 +227,42 @@ export default function AdminAccounts({ orders = [] }) {
       {selected ? (
         <article className="admin-customer-card" aria-label={`${selected.name || "Customer"} details`}>
           <h3>{selected.name || "Customer"}</h3>
+          {selected.mobile ? (
+            <button
+              type="button"
+              className="admin-customer-remove"
+              disabled={removing}
+              onClick={async () => {
+                const name = selected.name || "this customer";
+                if (!window.confirm(`Remove ${name} from the customer list?`)) return;
+                setRemoving(true);
+                setRemoveError("");
+                try {
+                  const response = await apiFetch("/api/admin/accounts/remove", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${staffToken()}`,
+                    },
+                    body: JSON.stringify({ mobile: selected.mobile }),
+                  });
+                  const data = await response.json().catch(() => ({}));
+                  if (!response.ok) throw new Error(data.error || "Could not remove this customer.");
+                  setAccounts(Array.isArray(data.accounts) ? data.accounts : []);
+                  setRemoved(Array.isArray(data.removed) ? data.removed : [...removed, selected.mobile]);
+                  setSelectedKey("");
+                  setTab("");
+                } catch (err) {
+                  setRemoveError(err.message || "Could not remove this customer.");
+                } finally {
+                  setRemoving(false);
+                }
+              }}
+            >
+              {removing ? "Removing…" : "Remove customer"}
+            </button>
+          ) : null}
+          {removeError ? <p className="admin-error">{removeError}</p> : null}
           <dl>
             <dt>Name</dt>
             <dd>{selected.name || "—"}</dd>

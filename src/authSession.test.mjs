@@ -162,7 +162,7 @@ test("log out clears the customer login and guest checkout, then returns to welc
   assert.equal(pushed.some((url) => url.includes("#partner") || url.includes("#admin")), false);
 });
 
-test("log out is shown for registered customers on account and both shells", () => {
+test("log out stays on the site header and is not at the bottom of the account page", () => {
   const profile = readFileSync(new URL("./Profile.jsx", import.meta.url), "utf8");
   const header = readFileSync(new URL("./AppHeader.jsx", import.meta.url), "utf8");
   const app = readFileSync(new URL("./App.jsx", import.meta.url), "utf8");
@@ -171,11 +171,10 @@ test("log out is shown for registered customers on account and both shells", () 
 
   assert.match(button, /Log out/);
   assert.match(button, /hasAccountSession\(user\)/);
-  assert.match(profile, /CustomerLogOut/);
+  assert.equal(/CustomerLogOut/.test(profile), false);
   assert.match(header, /CustomerLogOut/);
   assert.match(app, /CustomerLogOut/);
   assert.match(app, /className="site-logout-btn"/);
-  assert.match(app, /className="home-account-btn/);
   assert.match(app, /hasAccountSession\(user\)/);
 
   const admin = readFileSync(new URL("./Admin.jsx", import.meta.url), "utf8");

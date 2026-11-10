@@ -1,6 +1,13 @@
 import { randomBytes } from "node:crypto";
 import { listOrders, patchOrder, upsertOrder } from "./store.mjs";
-import { rememberOrderCustomers, resetAccountPin, upsertAccount, verifyAccountPin } from "./accounts.mjs";
+import {
+  listRemovedMobiles,
+  rememberOrderCustomers,
+  removeAccount,
+  resetAccountPin,
+  upsertAccount,
+  verifyAccountPin,
+} from "./accounts.mjs";
 import { readReport, reportsFromOrder, saveReportFromOrder, searchReports } from "./reports.mjs";
 import { applyPartnerMedicineCorrection } from "../src/rxPartnerShare.js";
 import { partnerAppKind } from "../src/partnerApp.js";
@@ -772,7 +779,19 @@ export async function handleApi(req, res) {
     if (pathname === "/api/admin/accounts" && req.method === "GET") {
       if (!requireStaff(req, res)) return true;
       const accounts = await rememberOrderCustomers(await listOrders());
-      send(res, 200, { accounts });
+      send(res, 200, { accounts, removed: await listRemovedMobiles() });
+      return true;
+    }
+
+    if (pathname === "/api/admin/accounts/remove" && req.method === "POST") {
+      if (!requireStaff(req, res)) return true;
+      const body = await readJson(req);
+      const saved = await removeAccount(body.mobile);
+      if (!saved.ok) {
+        send(res, saved.status || 400, { error: saved.error });
+        return true;
+      }
+      send(res, 200, { accounts: saved.accounts, removed: saved.removed });
       return true;
     }
 

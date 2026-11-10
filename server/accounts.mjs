@@ -106,12 +106,33 @@ export function mergeAccount(previous, input, { pin = "", now = new Date() } = {
   return next;
 }
 
+function removedMobiles(list) {
+  return [...new Set((Array.isArray(list) ? list : []).map(mobileOf).filter(Boolean))];
+}
+
+export function isRemovedMobile(store, mobileValue) {
+  const mobile = mobileOf(mobileValue);
+  if (!mobile) return false;
+  return removedMobiles(store?.removed).includes(mobile);
+}
+
+export function accountStoreWithout(store, mobileValue) {
+  const mobile = mobileOf(mobileValue);
+  if (!mobile) return { ok: false, status: 400, error: "Enter a valid 10-digit mobile number." };
+  const accounts = (store?.accounts || []).filter((row) => row.mobile !== mobile);
+  const removed = removedMobiles([...(store?.removed || []), mobile]);
+  return { ok: true, store: { accounts, removed } };
+}
+
 async function readStore() {
   try {
     const parsed = JSON.parse(await readFile(dataFile, "utf8"));
-    return { accounts: Array.isArray(parsed?.accounts) ? parsed.accounts : [] };
+    return {
+      accounts: Array.isArray(parsed?.accounts) ? parsed.accounts : [],
+      removed: removedMobiles(parsed?.removed),
+    };
   } catch {
-    return { accounts: [] };
+    return { accounts: [], removed: [] };
   }
 }
 
@@ -132,6 +153,9 @@ export async function upsertAccount(input) {
   const pin = pinOf(input?.loginPin || input?.pinCode);
   if (!mobile) return { ok: false, status: 400, error: "Enter a valid 10-digit mobile number." };
   const store = await readStore();
+  if (isRemovedMobile(store, mobile)) {
+    store.removed = removedMobiles(store.removed).filter((id) => id !== mobile);
+  }
   const index = store.accounts.findIndex((row) => row.mobile === mobile);
   const existing = index >= 0 ? store.accounts[index] : null;
   if (existing?.loginPin && existing.loginPin !== pin) {
@@ -169,12 +193,25 @@ export async function resetAccountPin(mobileValue, pinValue) {
   return { ok: true, account: publicAccount(store.accounts[index]) };
 }
 
+export async function listRemovedMobiles() {
+  const store = await readStore();
+  return store.removed;
+}
+
+export async function removeAccount(mobileValue) {
+  const store = await readStore();
+  const next = accountStoreWithout(store, mobileValue);
+  if (!next.ok) return next;
+  await writeStore(next.store);
+  return { ok: true, accounts: await listAccounts(), removed: next.store.removed };
+}
+
 export async function rememberOrderCustomers(orders = []) {
   const store = await readStore();
   let changed = false;
   for (const order of orders) {
     const mobile = orderMobileDigits(order);
-    if (!mobile) continue;
+    if (!mobile || isRemovedMobile(store, mobile)) continue;
     const index = store.accounts.findIndex((row) => row.mobile === mobile);
     const existing = index >= 0 ? store.accounts[index] : null;
     const next = mergeAccount(existing, {
