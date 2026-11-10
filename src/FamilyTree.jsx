@@ -26,7 +26,10 @@ function Generation({ people, className = "" }) {
 
 export default function FamilyTree({ profile = {} }) {
   const tree = familyTreeLayout(profile);
-  const couple = [tree.holder, ...tree.spouse];
+  const couple = tree.spouse;
+  const hasRelatives =
+    tree.grandparents.length || tree.parents.length || couple.length || tree.children.length;
+  if (!hasRelatives) return null;
 
   return (
     <>

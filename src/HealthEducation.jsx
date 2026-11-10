@@ -7,13 +7,14 @@ import { useScheduledWebinars } from "./featureFlags";
 import { educationRouteFromHash, goBackHash, goToHash } from "./hashRoute";
 import WebinarSession from "./WebinarSession";
 import {
-  WEBINAR_SIGNUP_KEY,
   attendanceOutcome,
   formatIstClock,
   formatWebinarDate,
   isWebinarBookable,
   joinWindowState,
   readAttendance,
+  readWebinarSignups,
+  saveWebinarSignup,
   webinarSessionBounds,
   webinarSessionHref,
 } from "./webinars";
@@ -230,21 +231,6 @@ function readProfile() {
   }
 }
 
-function loadSignups() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(WEBINAR_SIGNUP_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveSignup(entry) {
-  const next = [...loadSignups(), entry];
-  localStorage.setItem(WEBINAR_SIGNUP_KEY, JSON.stringify(next));
-  return next;
-}
-
 function PointsEarnedBanner({ result, label }) {
   if (!result) return null;
   const total = Number(result.wallet?.balance) || 0;
@@ -315,7 +301,7 @@ function WebinarsPanel({ sessionId }) {
   const wallet = useWallet();
   const scheduled = useScheduledWebinars();
   const profile = useMemo(() => readProfile(), []);
-  const [signups, setSignups] = useState(loadSignups);
+  const [signups, setSignups] = useState(readWebinarSignups);
   const [activeId, setActiveId] = useState("");
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [form, setForm] = useState({
@@ -359,7 +345,7 @@ function WebinarsPanel({ sessionId }) {
       mobile: form.mobile,
       createdAt: new Date().toLocaleString(),
     };
-    setSignups(saveSignup(entry));
+    setSignups(saveWebinarSignup(entry));
     setActiveId("");
     setDone(entry);
   };

@@ -46,7 +46,6 @@ function ProfileUploads() {
 }
 
 function hasFamilyTree(profile) {
-  if (String(profile?.name || "").trim()) return true;
   return (profile?.familyMembers || []).some((member) => String(member?.name || "").trim());
 }
 
@@ -217,20 +216,32 @@ function Profile() {
       <style>{styles}</style>
       <div className="profile-page">
         <section className="profile-hero is-account-bar">
-          <button
-            type="button"
-            className="profile-photo"
-            aria-label="Profile"
-            aria-expanded={accountOpen}
-            onClick={() => setAccountOpen((open) => !open)}
-          >
-            {form.photo ? <img src={form.photo} alt="" /> : (
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="9" r="3.2" />
-                <path d="M5.5 19.2c1.4-3 3.7-4.5 6.5-4.5s5.1 1.5 6.5 4.5" />
-              </svg>
-            )}
-          </button>
+          <div className="profile-photo-stack">
+            <button
+              type="button"
+              className="profile-photo"
+              aria-label="Profile"
+              aria-expanded={accountOpen}
+              onClick={() => setAccountOpen((open) => !open)}
+            >
+              {form.photo ? <img src={form.photo} alt="" /> : (
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="9" r="3.2" />
+                  <path d="M5.5 19.2c1.4-3 3.7-4.5 6.5-4.5s5.1 1.5 6.5 4.5" />
+                </svg>
+              )}
+            </button>
+            {String(form.name || "").trim() ? (
+              <button
+                type="button"
+                className="profile-holder-name"
+                aria-expanded={accountOpen}
+                onClick={() => setAccountOpen((open) => !open)}
+              >
+                {form.name.trim()}
+              </button>
+            ) : null}
+          </div>
           <span className="profile-label">MEDIHOME ACCOUNT</span>
           <div className="profile-points-wrap" ref={pointsWrapRef}>
             <button
@@ -433,6 +444,8 @@ const styles = `
   .profile-page{display:grid;gap:12px;max-width:760px;margin:0 auto;padding:16px 0 32px;background:transparent;color:#17324d;box-sizing:border-box}
   .profile-hero{margin:0;padding:16px 18px;border-radius:14px;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:16px;box-shadow:0 3px 12px rgba(0,0,0,.06)}
   .profile-hero-copy{min-width:0;flex:1}
+  .profile-photo-stack{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:56px;max-width:140px}
+  .profile-holder-name{border:0;background:transparent;padding:0;margin:0;font:inherit;font-size:13px;font-weight:800;line-height:1.25;color:#143246;text-align:center;cursor:pointer}
   .profile-photo{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;padding:0;border:0;border-radius:50%;overflow:hidden;background:#e7f1f4;color:#1a6b7a;cursor:pointer}
   .profile-photo img{width:100%;height:100%;object-fit:cover}
   .profile-photo svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}

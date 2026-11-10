@@ -194,6 +194,25 @@ export function writeSeenWebinarNotice(id) {
   }
 }
 
+export function readWebinarSignups() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(WEBINAR_SIGNUP_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveWebinarSignup(entry) {
+  const next = [...readWebinarSignups(), entry];
+  try {
+    localStorage.setItem(WEBINAR_SIGNUP_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore quota */
+  }
+  return next;
+}
+
 export function readCachedWebinars() {
   try {
     return normalizeWebinars(JSON.parse(sessionStorage.getItem(WEBINAR_CACHE_KEY) || "[]"));

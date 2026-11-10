@@ -8,7 +8,15 @@ import { loadCustomerOrders, syncMyOrdersFromServer } from "./orderTracking";
 import { orderRecordId, orderTestName } from "./orderFullFields";
 import { useSyncedOrderTick } from "./useSyncedOrderTick";
 import { LABORATORY_TESTS, RADIOLOGY_TESTS } from "./healthTestNames";
-import { isoDateToday } from "./personFields";
+import { accountCreatorMobile, isoDateToday } from "./personFields";
+import { useScheduledWebinars } from "./featureFlags";
+import {
+  formatWebinarDate,
+  isWebinarBookable,
+  readWebinarSignups,
+  saveWebinarSignup,
+  webinarSessionHref,
+} from "./webinars";
 import {
   buildCustomerMedicalRecord,
   loadMedicalRecords,
@@ -55,6 +63,76 @@ function ProfileOrderList() {
         </li>
       ))}
     </ul>
+  );
+}
+
+function ProfileWebinars() {
+  const scheduled = useScheduledWebinars();
+  const profile = readUserProfile();
+  const [signups, setSignups] = useState(readWebinarSignups);
+  const [note, setNote] = useState("");
+  const bookedIds = new Set(signups.map((row) => row.webinarId));
+  const openSessions = scheduled.filter((row) => isWebinarBookable(row));
+
+  const book = (webinar) => {
+    const name = String(profile.name || "").trim();
+    const mobile = accountCreatorMobile(profile);
+    if (!name || !/^[6-9]\d{9}$/.test(mobile)) {
+      setNote("Add your name and mobile in the account before booking.");
+      return;
+    }
+    if (bookedIds.has(webinar.id)) return;
+    const entry = {
+      id: `MH-WB-${Math.floor(100000 + Math.random() * 900000)}`,
+      webinarId: webinar.id,
+      title: webinar.title,
+      name,
+      mobile,
+      createdAt: new Date().toLocaleString(),
+    };
+    setSignups(saveWebinarSignup(entry));
+    setNote(`Seat reserved for ${webinar.title}. Reference ${entry.id}.`);
+  };
+
+  if (!openSessions.length && !signups.length) {
+    return <p className="profile-order-empty">No webinar is open for booking.</p>;
+  }
+
+  return (
+    <div className="profile-webinar-list">
+      {note ? <p className="profile-report-note">{note}</p> : null}
+      {openSessions.map((webinar) => {
+        const booked = bookedIds.has(webinar.id);
+        return (
+          <article key={webinar.id}>
+            <div>
+              <strong>{webinar.title}</strong>
+              <span>
+                {formatWebinarDate(webinar.date)} · {webinar.time}
+              </span>
+            </div>
+            {booked ? (
+              <a href={webinarSessionHref(webinar.id)}>Seat reserved</a>
+            ) : (
+              <button type="button" onClick={() => book(webinar)}>
+                Book
+              </button>
+            )}
+          </article>
+        );
+      })}
+      {signups
+        .filter((row) => !openSessions.some((webinar) => webinar.id === row.webinarId))
+        .map((row) => (
+          <article key={row.id}>
+            <div>
+              <strong>{row.title || "Webinar"}</strong>
+              <span>{row.id}</span>
+            </div>
+            <a href={webinarSessionHref(row.webinarId)}>Open</a>
+          </article>
+        ))}
+    </div>
   );
 }
 
@@ -261,9 +339,18 @@ export default function ProfileReports() {
         >
           Orders
         </button>
+        <button
+          type="button"
+          className={panel === "webinar" ? "profile-upload-tab is-webinar is-on" : "profile-upload-tab is-webinar"}
+          aria-expanded={panel === "webinar"}
+          onClick={() => setPanel((current) => (current === "webinar" ? "" : "webinar"))}
+        >
+          Book webinar
+        </button>
         <DoseSchedule />
       </div>
       {panel === "orders" ? <ProfileOrderList /> : null}
+      {panel === "webinar" ? <ProfileWebinars /> : null}
       {panel === "prescription" ? (
         <HomePrescriptionUpload showCart={false} idPrefix="profile" formOnly />
       ) : null}
@@ -429,6 +516,13 @@ const reportStyles = `
   .profile-upload-tab.is-report.is-on{background:#d4e6f6}
   .profile-upload-tab.is-orders{background:#e7f6f4;color:#3d6d66;border-color:#cfe8e3}
   .profile-upload-tab.is-orders.is-on{background:#d3eee9}
+  .profile-upload-tab.is-webinar{background:#eef0fb;color:#4c5688;border-color:#d9def3}
+  .profile-upload-tab.is-webinar.is-on{background:#e0e4f6}
+  .profile-webinar-list{display:grid;gap:8px}
+  .profile-webinar-list article{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#f4f6fc}
+  .profile-webinar-list strong{display:block;color:#143246;font-size:14px}
+  .profile-webinar-list span{display:block;color:#5d7180;font-size:12px}
+  .profile-webinar-list button,.profile-webinar-list a{border:0;border-radius:8px;background:#4c5688;color:#fff;font:inherit;font-size:13px;font-weight:800;text-decoration:none;padding:8px 12px;cursor:pointer}
   .profile-order-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
   .profile-order-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#f4fafb;font-size:14px}
   .profile-order-list span{color:#143246;font-weight:800}
