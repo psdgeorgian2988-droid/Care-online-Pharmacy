@@ -167,17 +167,33 @@ pack_zip() {
   printf '%s' "$zip_path"
 }
 
+gddy_json() {
+  local attempt payload
+  for attempt in 1 2 3 4; do
+    payload="$("$@" 2>&1 || true)"
+    if [[ -n "$payload" && "$payload" != *"HTTP error 403"* && "$payload" != *"NETWORK_ERROR"* ]]; then
+      printf '%s' "$payload"
+      return 0
+    fi
+    echo "GoDaddy did not answer (attempt $attempt)." >&2
+    echo "$payload" >&2
+    sleep $((attempt * 5))
+  done
+  printf '%s' "$payload"
+  return 1
+}
+
 app_id="${GODADDY_APP_ID:-}"
 if [[ -z "$app_id" ]]; then
   echo "Looking for an existing $APP_NAME Node.js app…"
-  list_json="$(gddy hosting app list --app-type NODEJS --json || true)"
+  list_json="$(gddy_json gddy hosting app list --app-type NODEJS --json)"
   echo "$list_json"
   app_id="$(printf '%s' "$list_json" | json_find_app "$APP_NAME" || true)"
 fi
 
 if [[ -z "$app_id" ]]; then
   echo "Creating Node.js app slot…"
-  create_json="$(gddy hosting app create --app-type NODEJS --name "$APP_NAME" --json)"
+  create_json="$(gddy_json gddy hosting app create --app-type NODEJS --name "$APP_NAME" --json)"
   echo "$create_json"
   op_id="$(printf '%s' "$create_json" | json_get operationId)"
   create_done="$(wait_status "create" "gddy hosting operation get --operation-id $op_id --json")"
