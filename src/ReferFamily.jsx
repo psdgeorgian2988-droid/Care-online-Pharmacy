@@ -32,6 +32,7 @@ function ReferFamily() {
   });
   const [errors, setErrors] = useState({});
   const [done, setDone] = useState(null);
+  const [open, setOpen] = useState(false);
 
   const shareHref = done ? referralWhatsAppHref(done, me.name) : "";
 
@@ -62,9 +63,16 @@ function ReferFamily() {
   return (
     <>
     <article className="points-refer-card">
-      <h2>Refer Family And Friends</h2>
+      <button
+        type="button"
+        className={open ? "points-refer-tab is-on" : "points-refer-tab"}
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        Refer Family And Friends
+      </button>
 
-      {done ? (
+      {open && done ? (
         <div className="points-refer-done">
           <p>
             WhatsApp is ready for <strong>{done.name}</strong>{" "}
@@ -86,7 +94,7 @@ function ReferFamily() {
             Refer Someone Else
           </button>
         </div>
-      ) : (
+      ) : open ? (
         <form className="points-refer-form" onSubmit={handleSubmit}>
           {errors.points ? <p className="points-error">{errors.points}</p> : null}
           <label>
@@ -121,9 +129,9 @@ function ReferFamily() {
             Send App Link On WhatsApp
           </button>
         </form>
-      )}
+      ) : null}
 
-      {wallet.referrals.length ? (
+      {open && wallet.referrals.length ? (
         <ul className="points-refer-list">
           {wallet.referrals.map((row) => (
             <li key={row.id}>
@@ -151,7 +159,9 @@ function ReferFamily() {
 }
 
 const referStyles = `
-.points-refer-card{padding:16px;border:1px solid #e4ecef;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(20,50,70,.06);color:#143246}
+.points-refer-card{display:grid;gap:12px;width:min(720px,100%);margin-left:auto;margin-right:auto;padding:16px;border:1px solid #e4ecef;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(20,50,70,.06);color:#143246;box-sizing:border-box}
+.points-refer-tab{display:flex;align-items:center;justify-content:center;width:100%;min-height:40px;margin:0;padding:8px 10px;border:1px solid #cfe8e3;border-radius:12px;background:#e7f6f4;color:#3d6d66;font:inherit;font-size:14px;font-weight:800;line-height:1.2;text-align:center;cursor:pointer}
+.points-refer-tab.is-on{background:#d3eee9}
 .points-kicker{display:inline-block;margin:0 0 8px;padding:3px 8px;border-radius:999px;background:#e8f4f6;color:#1a6b7a;font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase}
 .points-refer-card h2{margin:0 0 8px;font-size:18px}
 .points-refer-card p{margin:0 0 12px;color:#5d7180;font-size:14px;line-height:1.45}

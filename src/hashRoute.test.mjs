@@ -137,7 +137,8 @@ test("other customer child hashes map back to their parent section", () => {
   assert.equal(catalogParentHash("lab", "#labs"), "#labs");
   assert.equal(catalogParentHash("lab", "#home?service=labs"), LABS_HOME_HASH);
   assert.equal(catalogParentHash("radiology", "#home?service=labs"), LABS_HOME_HASH);
-  assert.deepEqual(homeCatalogSectionKeys("labs"), ["lab", "radiology"]);
+  assert.deepEqual(homeCatalogSectionKeys("labs"), ["lab"]);
+  assert.deepEqual(homeCatalogSectionKeys("radiology"), ["radiology"]);
   assert.deepEqual(homeCatalogSectionKeys("medicine"), ["medicine"]);
   assert.deepEqual(homeCatalogSectionKeys("reports"), ["reports"]);
   assert.equal(isHomeSectionKey("labs"), true);

@@ -83,9 +83,10 @@ test("footer icons are Account first, then one home segment each", () => {
   assert.doesNotMatch(source, /stroke="currentColor"/);
 });
 
-test("guests hide Account and Medical Record; registered users keep both", () => {
+test("guests hide Account and Medical Record; logged-in customers have no bottom icons", () => {
   assert.match(source, /tab\.href === "#profile" && !loggedIn/);
   assert.match(source, /tab\.href === MEDICAL_RECORD_HOME_HASH && !loggedIn/);
+  assert.match(source, /if \(loggedIn\) return null/);
   assert.doesNotMatch(source, /tab\.href === "#home" \|\| tab\.href === "#medicine-search"/);
 });
 

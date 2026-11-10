@@ -36,6 +36,10 @@ export const TABS = [
   { href: "#home?service=education", label: "Education", icon: "education" },
 ];
 
+export function orderServiceTabs() {
+  return TABS.filter((tab) => tab.href !== "#profile");
+}
+
 const AUTH_ROUTES = new Set(["#login", "#register", "#forgot"]);
 const AUTH_HIDDEN_TABS = new Set([LABS_HOME_HASH, MEDICAL_RECORD_HOME_HASH]);
 
@@ -69,14 +73,12 @@ export function tabActive(href, route, service = "") {
 export default function AppBottomNav({ route, service = "", guestSearchOpen = false, onGuestSearch }) {
   const user = useLoginSession();
   const loggedIn = hasAccountSession(user);
-  const listed = footerTabs(route, loggedIn);
-  const tabs = loggedIn
-    ? listed
-    : listed.flatMap((tab) =>
-        tab.href === LABS_HOME_HASH
-          ? [tab, { href: "#guest-search", label: "Search report", icon: "search", kind: "search" }]
-          : [tab],
-      );
+  const listed = footerTabs(route, false);
+  const tabs = listed.flatMap((tab) =>
+    tab.href === LABS_HOME_HASH
+      ? [tab, { href: "#guest-search", label: "Search report", icon: "search", kind: "search" }]
+      : [tab],
+  );
   const navRef = useRef(null);
   const pinnedHrefs = new Set(["#profile", MEDICINE_HOME_HASH]);
   const pinned = tabs.filter((tab) => pinnedHrefs.has(tab.href));
@@ -89,6 +91,8 @@ export default function AppBottomNav({ route, service = "", guestSearchOpen = fa
     const active = scroller.querySelector("[aria-current='page']");
     if (active) active.scrollIntoView({ inline: "nearest", block: "nearest" });
   }, [route, service, loggedIn, guestSearchOpen]);
+
+  if (loggedIn) return null;
 
   const renderTab = (tab) => {
     const tone = serviceIconTone(tab.icon);

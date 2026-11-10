@@ -534,7 +534,7 @@ export default function ProfileReports() {
 }
 
 const reportStyles = `
-  .profile-upload-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
+  .profile-upload-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:stretch}
   .profile-reports{display:grid;gap:12px}
   .profile-upload-row .dose-schedule,.profile-upload-row .dose-missed{display:contents}
   .profile-upload-row .dose-editor,.profile-upload-row .dose-missed-body{grid-column:1 / -1;width:100%}

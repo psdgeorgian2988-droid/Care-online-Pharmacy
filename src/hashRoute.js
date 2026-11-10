@@ -230,7 +230,7 @@ export function isHomeSectionKey(key) {
 
 export function homeCatalogSectionKeys(service) {
   const key = String(service || "").trim().toLowerCase();
-  if (key === "labs") return ["lab", "radiology"];
+  if (key === "labs") return ["lab"];
   return isHomeSectionKey(key) ? [key] : [];
 }
 

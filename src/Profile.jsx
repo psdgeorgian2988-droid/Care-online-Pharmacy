@@ -28,6 +28,7 @@ import { noContactEmailProps, noContactMobileProps, noContactNameProps } from ".
 import AutofillTrap from "./AutofillTrap";
 import { PROFILE_KEY, useLoginSession, writeLoginSession } from "./authSession";
 import ProfileReports from "./ProfileReports.jsx";
+import { orderServiceTabs, tabActive } from "./AppBottomNav";
 import { MEMBER_ROLE, holderActor } from "./familyAccount";
 import { pickLoginPin } from "./loginPin";
 import { publishAccount } from "./accountSync";
@@ -38,9 +39,81 @@ function readProfile() {
 
 function ProfileUploads() {
   return (
-    <section className="profile-card" aria-label="Records">
+    <section className="profile-card profile-dashboard" aria-label="My Health Dashboard">
+      <h2>My Health Dashboard</h2>
       <ProfileReports />
     </section>
+  );
+}
+
+function PlaceYourOrder() {
+  const [hash, setHash] = useState(() => (typeof window !== "undefined" ? window.location.hash : ""));
+  useEffect(() => {
+    const sync = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+  const { route, service } = parseAppHash(hash);
+  return (
+    <section className="profile-card profile-place-order" aria-label="Book Medihome Service">
+      <h2>Book Medihome Service</h2>
+      <div className="profile-order-grid">
+        {orderServiceTabs().map((tab) => {
+          const active = tabActive(tab.href, route, service);
+          return (
+            <a
+              key={tab.href}
+              href={tab.href}
+              className={active ? "is-on" : undefined}
+              aria-current={active ? "page" : undefined}
+            >
+              {tab.label}
+            </a>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function servicePopupTitle() {
+  const { route, service } = parseAppHash(typeof window !== "undefined" ? window.location.hash : "");
+  const tab = orderServiceTabs().find((item) => tabActive(item.href, route, service));
+  return tab?.label || "Medihome Service";
+}
+
+function ServicePopup({ children }) {
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key === "Escape") goToHash("#profile");
+    };
+    document.addEventListener("keydown", onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+    };
+  }, []);
+
+  return (
+    <div className="profile-service-pop" role="presentation" onClick={() => goToHash("#profile")}>
+      <div
+        className="profile-service-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label={servicePopupTitle()}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="profile-service-bar">
+          <h2>{servicePopupTitle()}</h2>
+          <button type="button" className="profile-service-close" onClick={() => goToHash("#profile")}>
+            Close
+          </button>
+        </div>
+        <div className="profile-service-body">{children}</div>
+      </div>
+    </div>
   );
 }
 
@@ -169,14 +242,13 @@ function Profile({ activity = null } = {}) {
     return (
       <>
         <style>{styles}</style>
-        <div className={`profile-page${activity ? " is-activity" : ""}`}>
+        <div className="profile-page">
           <section className="profile-hero">
             <div>
               <span className="profile-label">MEDIHOME ACCOUNT</span>
             </div>
           </section>
-          {activity ? <div className="profile-activity">{activity}</div> : null}
-          {activity ? null : <section className="profile-card" aria-label="Your details">
+          <section className="profile-card" aria-label="Your details">
             <h2>Your details</h2>
             <dl className="profile-member-details">
               <div>
@@ -200,8 +272,10 @@ function Profile({ activity = null } = {}) {
                 <dd>{maskMobile(session.mobile) || "—"}</dd>
               </div>
             </dl>
-          </section>}
-          {activity ? null : <ProfileUploads />}
+          </section>
+          <ProfileUploads />
+          <PlaceYourOrder />
+          {activity ? <ServicePopup>{activity}</ServicePopup> : null}
         </div>
       </>
     );
@@ -210,7 +284,7 @@ function Profile({ activity = null } = {}) {
   return (
     <>
       <style>{styles}</style>
-      <div className={`profile-page${activity ? " is-activity" : ""}`}>
+      <div className="profile-page">
         <section className="profile-hero is-account-bar">
           <div className="profile-photo-stack">
             <button
@@ -282,153 +356,153 @@ function Profile({ activity = null } = {}) {
               </div>
             ) : null}
           </div>
+          {accountOpen ? (
+            <form className="profile-account-pop" onSubmit={handleSave} autoComplete="off">
+              <AutofillTrap />
+              <section className="profile-card" aria-label="Account">
+                <label className="profile-photo-file">
+                  Photo
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const source = typeof reader.result === "string" ? reader.result : "";
+                        if (!source.startsWith("data:image")) return;
+                        const image = new Image();
+                        image.onload = () => {
+                          const size = 256;
+                          const canvas = document.createElement("canvas");
+                          canvas.width = size;
+                          canvas.height = size;
+                          const ctx = canvas.getContext("2d");
+                          if (!ctx) return;
+                          const scale = Math.max(size / image.width, size / image.height);
+                          const width = image.width * scale;
+                          const height = image.height * scale;
+                          ctx.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+                          setForm((prev) => ({ ...prev, photo: canvas.toDataURL("image/jpeg", 0.82) }));
+                        };
+                        image.src = source;
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </label>
+                {editDetails ? (
+                  <>
+                  <div className="profile-field">
+                    <label htmlFor="profile-account-name">
+                      Full Name <span>*</span>
+                    </label>
+                    <input
+                      id="profile-account-name"
+                      name="name"
+                      placeholder="Enter your full name"
+                      value={form.name}
+                      onChange={handleChange}
+                      {...noContactNameProps}
+                    />
+                    {errors.name && <small className="profile-error">{errors.name}</small>}
+                  </div>
+
+                  <div className="profile-field">
+                    <label htmlFor="profile-account-mobile">
+                      Account Mobile <span>*</span>
+                    </label>
+                    <input
+                      id="profile-account-mobile"
+                      name="mobile"
+                      maxLength="10"
+                      placeholder="10-digit mobile number"
+                      value={maskMobile(accountCreatorMobile(form)) || accountCreatorMobile(form)}
+                      readOnly
+                      {...noContactMobileProps}
+                    />
+                    <small className="profile-hint">
+                      This is the mobile used when the account was created. Family
+                      members without their own number use it.
+                    </small>
+                  </div>
+
+                  <div className="profile-field">
+                    <label htmlFor="profile-account-email">
+                      Mail ID <span>*</span>
+                    </label>
+                    <input
+                      id="profile-account-email"
+                      name="email"
+                      placeholder="name@email.com"
+                      value={form.email || ""}
+                      onChange={handleChange}
+                      {...noContactEmailProps}
+                    />
+                    {errors.email && <small className="profile-error">{errors.email}</small>}
+                  </div>
+
+                  <PersonFields
+                    idPrefix="profile"
+                    values={form}
+                    errors={errors}
+                    onChange={handleChange}
+                  />
+
+                  <AddressFields
+                    idPrefix="profile"
+                    values={form}
+                    errors={errors}
+                    onChange={handleChange}
+                  />
+                  </>
+                ) : (
+                  <dl className="profile-summary">
+                    <div>
+                      <dt>Name</dt>
+                      <dd>{form.name || "Not added"}</dd>
+                    </div>
+                    <div>
+                      <dt>Mobile</dt>
+                      <dd>{maskMobile(accountCreatorMobile(form)) || "Not added"}</dd>
+                    </div>
+                    <div>
+                      <dt>Mail ID</dt>
+                      <dd>{form.email || "Not added"}</dd>
+                    </div>
+                  </dl>
+                )}
+                {saved ? (
+                  <p className="profile-success">
+                    {typeof saved === "string"
+                      ? saved
+                      : "Profile saved. These details will auto-fill medicine checkout and laboratory/radiology bookings for yourself."}
+                  </p>
+                ) : null}
+                <div className="profile-actions">
+                  <button
+                    type="button"
+                    className="profile-edit-btn"
+                    onClick={() => setEditDetails((on) => !on)}
+                  >
+                    {editDetails ? "Hide Account Details" : "Edit Account Details"}
+                  </button>
+                  <button type="submit" className="profile-save-btn">
+                    Save Profile
+                  </button>
+                </div>
+              </section>
+            </form>
+          ) : null}
           </section>
 
-        {activity ? (
-          <div className="profile-activity">{activity}</div>
-        ) : (
-          <>
         <ProfileUploads />
-
+        <PlaceYourOrder />
+        {activity ? <ServicePopup>{activity}</ServicePopup> : null}
         <form className="profile-form" onSubmit={handleSave} autoComplete="off">
           <AutofillTrap />
-          {accountOpen ? (
-          <section className="profile-card" aria-label="Account">
-            <label className="profile-photo-file">
-              Photo
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = "";
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    const source = typeof reader.result === "string" ? reader.result : "";
-                    if (!source.startsWith("data:image")) return;
-                    const image = new Image();
-                    image.onload = () => {
-                      const size = 256;
-                      const canvas = document.createElement("canvas");
-                      canvas.width = size;
-                      canvas.height = size;
-                      const ctx = canvas.getContext("2d");
-                      if (!ctx) return;
-                      const scale = Math.max(size / image.width, size / image.height);
-                      const width = image.width * scale;
-                      const height = image.height * scale;
-                      ctx.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
-                      setForm((prev) => ({ ...prev, photo: canvas.toDataURL("image/jpeg", 0.82) }));
-                    };
-                    image.src = source;
-                  };
-                  reader.readAsDataURL(file);
-                }}
-              />
-            </label>
-            {editDetails ? (
-              <>
-              <div className="profile-field">
-                <label htmlFor="profile-account-name">
-                  Full Name <span>*</span>
-                </label>
-                <input
-                  id="profile-account-name"
-                  name="name"
-                  placeholder="Enter your full name"
-                  value={form.name}
-                  onChange={handleChange}
-                  {...noContactNameProps}
-                />
-                {errors.name && <small className="profile-error">{errors.name}</small>}
-              </div>
-
-              <div className="profile-field">
-                <label htmlFor="profile-account-mobile">
-                  Account Mobile <span>*</span>
-                </label>
-                <input
-                  id="profile-account-mobile"
-                  name="mobile"
-                  maxLength="10"
-                  placeholder="10-digit mobile number"
-                  value={maskMobile(accountCreatorMobile(form)) || accountCreatorMobile(form)}
-                  readOnly
-                  {...noContactMobileProps}
-                />
-                <small className="profile-hint">
-                  This is the mobile used when the account was created. Family
-                  members without their own number use it.
-                </small>
-              </div>
-
-              <div className="profile-field">
-                <label htmlFor="profile-account-email">
-                  Mail ID <span>*</span>
-                </label>
-                <input
-                  id="profile-account-email"
-                  name="email"
-                  placeholder="name@email.com"
-                  value={form.email || ""}
-                  onChange={handleChange}
-                  {...noContactEmailProps}
-                />
-                {errors.email && <small className="profile-error">{errors.email}</small>}
-              </div>
-
-              <PersonFields
-                idPrefix="profile"
-                values={form}
-                errors={errors}
-                onChange={handleChange}
-              />
-
-              <AddressFields
-                idPrefix="profile"
-                values={form}
-                errors={errors}
-                onChange={handleChange}
-              />
-              </>
-            ) : (
-              <dl className="profile-summary">
-                <div>
-                  <dt>Name</dt>
-                  <dd>{form.name || "Not added"}</dd>
-                </div>
-                <div>
-                  <dt>Mobile</dt>
-                  <dd>{maskMobile(accountCreatorMobile(form)) || "Not added"}</dd>
-                </div>
-                <div>
-                  <dt>Mail ID</dt>
-                  <dd>{form.email || "Not added"}</dd>
-                </div>
-              </dl>
-            )}
-            {saved ? (
-              <p className="profile-success">
-                {typeof saved === "string"
-                  ? saved
-                  : "Profile saved. These details will auto-fill medicine checkout and laboratory/radiology bookings for yourself."}
-              </p>
-            ) : null}
-            <div className="profile-actions">
-              <button
-                type="button"
-                className="profile-edit-btn"
-                onClick={() => setEditDetails((on) => !on)}
-              >
-                {editDetails ? "Hide Account Details" : "Edit Account Details"}
-              </button>
-              <button type="submit" className="profile-save-btn">
-                Save Profile
-              </button>
-            </div>
-          </section>
-          ) : null}
           <section className="profile-card profile-family" aria-label="Family Members">
             <FamilyMembersFields
               idPrefix="profile-family"
@@ -446,8 +520,6 @@ function Profile({ activity = null } = {}) {
         <div className="profile-refer-wrap">
           <ReferFamily />
         </div>
-          </>
-        )}
       </div>
     </>
   );
@@ -456,11 +528,29 @@ function Profile({ activity = null } = {}) {
 const styles = `
   .profile-page{display:grid;gap:12px;max-width:760px;margin:0 auto;padding:16px 0 32px;background:transparent;color:#17324d;box-sizing:border-box}
   .profile-page.is-activity{max-width:none;padding:0 0 24px}
-  .profile-page.is-activity .profile-hero{max-width:760px;margin:0 auto}
+  .profile-page.is-activity .profile-hero,
+  .profile-page.is-activity .profile-dashboard,
+  .profile-page.is-activity .profile-place-order{max-width:720px;margin-left:auto;margin-right:auto}
+  .profile-dashboard,
+  .profile-place-order{display:grid !important;grid-template-columns:minmax(0,1fr) !important;width:min(720px,100%) !important;max-width:720px !important;margin-left:auto !important;margin-right:auto !important;justify-self:center}
+  .profile-dashboard h2,
+  .profile-place-order h2{grid-column:1 / -1;width:100%;text-align:center}
+  .profile-dashboard .profile-reports,
+  .profile-place-order .profile-order-grid{grid-column:1 / -1;width:100%}
   .profile-activity{min-width:0}
+  .profile-service-pop{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:20px 16px;background:rgba(20,50,70,.5);box-sizing:border-box}
+  .profile-service-sheet{display:flex;flex-direction:column;width:min(980px,100%);max-height:min(860px,calc(100dvh - 40px));overflow:hidden;border-radius:16px;background:#f7fbfe;box-shadow:0 18px 48px rgba(20,50,70,.28)}
+  .profile-service-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:#fff;border-bottom:1px solid #d7e2e9}
+  .profile-service-bar h2{margin:0;font-size:16px;font-weight:800;color:#123b59}
+  .profile-service-close{min-height:36px;padding:6px 14px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#1a6b7a;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+  .profile-service-body{overflow:auto;min-height:0;padding:12px 14px 20px}
+  .profile-order-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .profile-order-grid a{display:flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:40px;padding:8px 10px;border:1px solid #cfe8e3;border-radius:12px;background:#e7f6f4;color:#3d6d66;font-size:13px;font-weight:800;line-height:1.2;text-align:center;text-decoration:none}
+  .profile-order-grid a.is-on{background:#d3eee9}
   .profile-hero{margin:0;padding:16px 18px;border-radius:14px;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:16px;box-shadow:0 3px 12px rgba(0,0,0,.06)}
   .profile-hero-copy{min-width:0;flex:1}
   .profile-photo-stack{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:56px;max-width:140px}
+  .profile-account-pop{grid-column:1 / -1;width:min(720px,100%);max-width:720px;margin:4px auto 0;justify-self:center}
   .profile-holder-name{border:0;background:transparent;padding:0;margin:0;font:inherit;font-size:13px;font-weight:800;line-height:1.25;color:#143246;text-align:center;cursor:pointer}
   .profile-photo{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;padding:0;border:0;border-radius:50%;overflow:hidden;background:#e7f1f4;color:#1a6b7a;cursor:pointer}
   .profile-photo img{width:100%;height:100%;object-fit:cover}

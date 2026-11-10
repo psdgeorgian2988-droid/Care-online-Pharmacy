@@ -594,7 +594,7 @@ function App() {
 
   if (customerShell) {
     return (
-      <div className={`app app-customer${welcomeGate ? " is-welcome-gate" : ""}${guestSearchPanel ? " has-guest-report-open" : ""}`}>
+      <div className={`app app-customer${welcomeGate ? " is-welcome-gate" : ""}${guestSearchPanel ? " has-guest-report-open" : ""}${hasAccountSession(user) ? " is-signed-in" : ""}`}>
         <Seo route={route} />
         <SiteTicker />
         <div className="app-frame">
@@ -637,7 +637,7 @@ function App() {
   }
 
   return (
-    <div className={`app is-wide-main${welcomeGate ? " is-welcome-gate" : ""}${guestSearchPanel ? " has-guest-report-open" : ""}`}>
+    <div className={`app is-wide-main${welcomeGate ? " is-welcome-gate" : ""}${guestSearchPanel ? " has-guest-report-open" : ""}${hasAccountSession(user) ? " is-signed-in" : ""}`}>
       <Seo route={route} />
       <SiteTicker />
 
