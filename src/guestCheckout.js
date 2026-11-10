@@ -6,6 +6,7 @@ import {
   withFormattedAddress,
 } from "./addressFields.js";
 import { PROFILE_KEY } from "./authSession.js";
+import { profileLoginPin } from "./loginPin.js";
 import { GUEST_REGISTER_BENEFITS } from "./guestOrder.js";
 
 export const GUEST_CHECKOUT_KEY = "mediHomeGuestCheckout";
@@ -80,9 +81,12 @@ export function writeGuestCheckout(details, store) {
   };
   storage?.setItem?.(GUEST_CHECKOUT_KEY, JSON.stringify(guest));
 
-  // Seed address/mobile for checkout without creating a login session.
+  // A registered account stays available for the next login.
   try {
     const existing = readUserProfile();
+    if (profileLoginPin(existing) || (existing.mobile && existing.isGuest !== true && existing.name)) {
+      return guest;
+    }
     const next = {
       ...existing,
       name: guest.name,

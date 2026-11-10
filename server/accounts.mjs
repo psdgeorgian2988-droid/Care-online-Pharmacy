@@ -148,9 +148,21 @@ export async function listAccounts() {
     .sort((a, b) => a.name.localeCompare(b.name) || a.mobile.localeCompare(b.mobile));
 }
 
+export function loginPinFromInput(input) {
+  return pinOf(input?.loginPin);
+}
+
+export function accountMatchesLogin(account, mobileValue, pinValue) {
+  const mobile = mobileOf(mobileValue);
+  const pin = pinOf(pinValue);
+  if (!account || !mobile || !pin || account.loginPin !== pin) return false;
+  if (account.mobile === mobile) return true;
+  return (account.familyMembers || []).some((member) => mobileOf(member.mobile) === mobile);
+}
+
 export async function upsertAccount(input) {
   const mobile = mobileOf(input?.mobile);
-  const pin = pinOf(input?.loginPin || input?.pinCode);
+  const pin = loginPinFromInput(input);
   if (!mobile) return { ok: false, status: 400, error: "Enter a valid 10-digit mobile number." };
   const store = await readStore();
   if (isRemovedMobile(store, mobile)) {
@@ -158,7 +170,7 @@ export async function upsertAccount(input) {
   }
   const index = store.accounts.findIndex((row) => row.mobile === mobile);
   const existing = index >= 0 ? store.accounts[index] : null;
-  if (existing?.loginPin && existing.loginPin !== pin) {
+  if (existing?.loginPin && pin && existing.loginPin !== pin) {
     return { ok: false, status: 409, error: "Mobile or PIN does not match this account." };
   }
   if (!existing && !pin) {
@@ -174,10 +186,26 @@ export async function upsertAccount(input) {
 export async function verifyAccountPin(mobileValue, pinValue) {
   const mobile = mobileOf(mobileValue);
   const pin = pinOf(pinValue);
-  if (!mobile || !pin) return null;
+  if (!mobile || !pin) {
+    return { ok: false, status: 400, error: "Enter the mobile number and 6-digit PIN." };
+  }
   const store = await readStore();
-  const found = store.accounts.find((row) => row.mobile === mobile && row.loginPin === pin);
-  return found ? publicAccount(found) : null;
+  if (isRemovedMobile(store, mobile)) {
+    return { ok: false, status: 404, error: "This mobile number is not registered." };
+  }
+  const rows = store.accounts.filter(
+    (row) =>
+      row.mobile === mobile ||
+      (row.familyMembers || []).some((member) => mobileOf(member.mobile) === mobile)
+  );
+  if (!rows.length) {
+    return { ok: false, status: 404, error: "This mobile number is not registered." };
+  }
+  const found = rows.find((row) => accountMatchesLogin(row, mobile, pin));
+  if (!found) {
+    return { ok: false, status: 401, error: "Mobile or PIN does not match this account." };
+  }
+  return { ok: true, account: publicAccount(found) };
 }
 
 export async function resetAccountPin(mobileValue, pinValue) {

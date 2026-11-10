@@ -767,12 +767,12 @@ export async function handleApi(req, res) {
 
     if (pathname === "/api/accounts/login" && req.method === "POST") {
       const body = await readJson(req);
-      const account = await verifyAccountPin(body.mobile, body.pin || body.pinCode || body.loginPin);
-      if (!account) {
-        send(res, 401, { error: "Mobile or PIN does not match this account." });
+      const result = await verifyAccountPin(body.mobile, body.pin || body.pinCode || body.loginPin);
+      if (!result.ok) {
+        send(res, result.status || 401, { error: result.error || "Mobile or PIN does not match this account." });
         return true;
       }
-      send(res, 200, { account });
+      send(res, 200, { account: result.account });
       return true;
     }
 

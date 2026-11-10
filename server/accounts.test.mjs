@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
-import { accountStoreWithout, isRemovedMobile } from "./accounts.mjs";
+import { accountMatchesLogin, accountStoreWithout, isRemovedMobile, loginPinFromInput } from "./accounts.mjs";
 
 test("removing a customer drops the account and keeps that mobile hidden", () => {
   const next = accountStoreWithout(
@@ -40,4 +40,18 @@ test("admin customer remove is a staff route", async () => {
   const source = await readFile(new URL("./handler.mjs", import.meta.url), "utf8");
   assert.match(source, /pathname === "\/api\/admin\/accounts\/remove"/);
   assert.match(source, /await removeAccount\(body\.mobile\)/);
+});
+
+test("address PIN is not the login password, and a family mobile can sign in", () => {
+  assert.equal(loginPinFromInput({ pinCode: "110001", loginPin: "" }), "");
+  assert.equal(loginPinFromInput({ loginPin: "246810" }), "246810");
+  const account = {
+    mobile: "9876543210",
+    loginPin: "246810",
+    familyMembers: [{ name: "Anita", mobile: "9810012346" }],
+  };
+  assert.equal(accountMatchesLogin(account, "9876543210", "246810"), true);
+  assert.equal(accountMatchesLogin(account, "9810012346", "246810"), true);
+  assert.equal(accountMatchesLogin(account, "9810012346", "110001"), false);
+  assert.equal(accountMatchesLogin(account, "9000000000", "246810"), false);
 });

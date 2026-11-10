@@ -190,11 +190,10 @@ test("log out stays on the site header and is not at the bottom of the account p
   );
 });
 
-test("create account and login send a new holder to #home, not Profile", () => {
+test("create account and login keep a holder in the account", () => {
   const authPage = readFileSync(new URL("./AuthPage.jsx", import.meta.url), "utf8");
-  const home = readFileSync(new URL("./CustomerHome.jsx", import.meta.url), "utf8");
-  assert.equal(/next === "#home" \? "#profile"/.test(authPage), false);
+  const session = readFileSync(new URL("./authSession.js", import.meta.url), "utf8");
   assert.match(authPage, /consumeReturnHash\(\)/);
-  assert.match(home, /customerGreeting\(user\)/);
-  assert.match(home, /className="app-home-hello"/);
+  assert.match(authPage, /goToHash\("#profile"\)/);
+  assert.match(session, /return "#profile"/);
 });

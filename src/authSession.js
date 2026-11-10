@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { rememberAccount } from "./accountBook.js";
 import { readUserProfile } from "./addressFields.js";
 import {
   holderActor,
@@ -207,6 +208,7 @@ export function writeLoginSession(user, actor) {
         ACTOR_SESSION_KEY,
         JSON.stringify(actor || holderActor(user))
       );
+      rememberAccount(user);
       markCustomerEntryChosen();
       clearWelcomeRequest();
     } else {
@@ -237,10 +239,11 @@ export function consumeReturnHash() {
   } catch {
     /* ignore */
   }
-  return "#home";
+  return "#profile";
 }
 
 export function logoutSession() {
+  rememberAccount(readUserProfile());
   writeLoginSession(null);
   clearCustomerEntryChosen();
 }

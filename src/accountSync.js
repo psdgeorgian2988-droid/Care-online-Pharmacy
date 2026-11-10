@@ -23,9 +23,15 @@ export async function loginAccountOnServer(mobile, pin) {
       body: JSON.stringify({ mobile, pin }),
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.account) return null;
-    return data.account;
+    if (!response.ok || !data.account) {
+      return {
+        account: null,
+        status: response.status,
+        error: data.error || "",
+      };
+    }
+    return { account: data.account, status: response.status, error: "" };
   } catch {
-    return null;
+    return { account: null, status: 0, error: "" };
   }
 }

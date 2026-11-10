@@ -82,6 +82,27 @@ import CustomerLogOut from "./CustomerLogOut.jsx";
 
 const AUTH_ROUTES = new Set(["#login", "#register", "#forgot"]);
 
+const ACCOUNT_ACTIVITY_ROUTES = new Set([
+  "#home",
+  "#medicine-search",
+  "#labs",
+  "#homecare",
+  "#vaccination",
+  "#doctor",
+  "#psychologist",
+  "#stepdown",
+  "#ambulance",
+  "#reports",
+  "#prescription",
+  "#checkout",
+  "#myorders",
+  "#education",
+  "#feedback",
+  "#reviews",
+  "#scan",
+  "#track",
+]);
+
 const RX_SECTION_CART = new Set([
   "medicine",
   "lab",
@@ -381,6 +402,33 @@ function App() {
     return undefined;
   }, [route, user]);
 
+  useEffect(() => {
+    if (
+      isOps ||
+      appRole === "staff" ||
+      appRole === "partner" ||
+      !hasAccountSession(user)
+    ) {
+      return undefined;
+    }
+    if (route === "#home" && !hashService) goToHash("#profile");
+    return undefined;
+  }, [appRole, hashService, isOps, route, user]);
+
+  const frameAccount = (node) => {
+    if (
+      !hasAccountSession(user) ||
+      isOps ||
+      isAuthRoute ||
+      appRole === "staff" ||
+      appRole === "partner" ||
+      !ACCOUNT_ACTIVITY_ROUTES.has(route)
+    ) {
+      return node;
+    }
+    return <Profile activity={node} />;
+  };
+
   const renderPage = () => {
     if (shouldShowAppPicker(route)) {
       return <PortalsChooser />;
@@ -565,7 +613,7 @@ function App() {
                     onDone={() => setSessionTick((n) => n + 1)}
                   />
                 ) : (
-                  renderPage()
+                  frameAccount(renderPage())
                 )}
               </Suspense>
             </ErrorBoundary>
@@ -625,7 +673,7 @@ function App() {
             {welcomeGate ? (
               <CustomerWelcome onDone={() => setSessionTick((n) => n + 1)} />
             ) : (
-              renderPage()
+              frameAccount(renderPage())
             )}
           </Suspense>
         </ErrorBoundary>

@@ -44,7 +44,7 @@ function ProfileUploads() {
   );
 }
 
-function Profile() {
+function Profile({ activity = null } = {}) {
   const wallet = useWallet();
   const session = useLoginSession();
   const holderView = session?.accountRole !== MEMBER_ROLE;
@@ -169,13 +169,14 @@ function Profile() {
     return (
       <>
         <style>{styles}</style>
-        <div className="profile-page">
+        <div className={`profile-page${activity ? " is-activity" : ""}`}>
           <section className="profile-hero">
             <div>
               <span className="profile-label">MEDIHOME ACCOUNT</span>
             </div>
           </section>
-          <section className="profile-card" aria-label="Your details">
+          {activity ? <div className="profile-activity">{activity}</div> : null}
+          {activity ? null : <section className="profile-card" aria-label="Your details">
             <h2>Your details</h2>
             <dl className="profile-member-details">
               <div>
@@ -199,8 +200,8 @@ function Profile() {
                 <dd>{maskMobile(session.mobile) || "—"}</dd>
               </div>
             </dl>
-          </section>
-          <ProfileUploads />
+          </section>}
+          {activity ? null : <ProfileUploads />}
         </div>
       </>
     );
@@ -209,7 +210,7 @@ function Profile() {
   return (
     <>
       <style>{styles}</style>
-      <div className="profile-page">
+      <div className={`profile-page${activity ? " is-activity" : ""}`}>
         <section className="profile-hero is-account-bar">
           <div className="profile-photo-stack">
             <button
@@ -217,7 +218,13 @@ function Profile() {
               className="profile-photo"
               aria-label="Profile"
               aria-expanded={accountOpen}
-              onClick={() => setAccountOpen((open) => !open)}
+              onClick={() => {
+                if (activity) {
+                  goToHash("#profile");
+                  return;
+                }
+                setAccountOpen((open) => !open);
+              }}
             >
               {form.photo ? <img src={form.photo} alt="" /> : (
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -231,7 +238,13 @@ function Profile() {
                 type="button"
                 className="profile-holder-name"
                 aria-expanded={accountOpen}
-                onClick={() => setAccountOpen((open) => !open)}
+                onClick={() => {
+                if (activity) {
+                  goToHash("#profile");
+                  return;
+                }
+                setAccountOpen((open) => !open);
+              }}
               >
                 {form.name.trim()}
               </button>
@@ -269,8 +282,12 @@ function Profile() {
               </div>
             ) : null}
           </div>
-        </section>
+          </section>
 
+        {activity ? (
+          <div className="profile-activity">{activity}</div>
+        ) : (
+          <>
         <ProfileUploads />
 
         <form className="profile-form" onSubmit={handleSave} autoComplete="off">
@@ -429,6 +446,8 @@ function Profile() {
         <div className="profile-refer-wrap">
           <ReferFamily />
         </div>
+          </>
+        )}
       </div>
     </>
   );
@@ -436,6 +455,9 @@ function Profile() {
 
 const styles = `
   .profile-page{display:grid;gap:12px;max-width:760px;margin:0 auto;padding:16px 0 32px;background:transparent;color:#17324d;box-sizing:border-box}
+  .profile-page.is-activity{max-width:none;padding:0 0 24px}
+  .profile-page.is-activity .profile-hero{max-width:760px;margin:0 auto}
+  .profile-activity{min-width:0}
   .profile-hero{margin:0;padding:16px 18px;border-radius:14px;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:16px;box-shadow:0 3px 12px rgba(0,0,0,.06)}
   .profile-hero-copy{min-width:0;flex:1}
   .profile-photo-stack{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:56px;max-width:140px}

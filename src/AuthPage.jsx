@@ -35,6 +35,7 @@ import {
 } from "./familyAccount";
 import { normalizeLoginPin, pickLoginPin, profileLoginPin } from "./loginPin";
 import { loginAccountOnServer, publishAccount } from "./accountSync";
+import { findRememberedAccount, rememberAccount } from "./accountBook";
 import {
   confirmResetOtp,
   lookupResetAccount,
@@ -66,6 +67,7 @@ function LoginRegisterPage({ mode }) {
   const isRegister = mode === "register";
   const [login, setLogin] = useState({ mobile: "", pinCode: "" });
   const [register, setRegister] = useState({
+    password: "",
     name: "",
     mobile: "",
     email: "",
@@ -81,7 +83,7 @@ function LoginRegisterPage({ mode }) {
 
   useEffect(() => {
     if (isRegister) return;
-    if (readLoginSession()) goToHash("#home");
+    if (readLoginSession()) goToHash("#profile");
   }, [isRegister]);
 
   useEffect(() => {
@@ -115,7 +117,7 @@ function LoginRegisterPage({ mode }) {
   const handleRegisterChange = (event) => {
     const { name, value } = event.target;
     const nextValue =
-      name === "mobile" || name === "pinCode" ? digitsOnly(value) : value;
+      name === "mobile" || name === "pinCode" || name === "password" ? digitsOnly(value) : value;
     setRegister((prev) => ({ ...prev, [name]: nextValue }));
     setErrors((prev) => ({ ...prev, [name]: "" }));
     setStatus({ type: "", text: "" });
@@ -133,33 +135,64 @@ function LoginRegisterPage({ mode }) {
       return;
     }
     const actor = saved.mobile ? findAccountActor(saved, login.mobile) : null;
-    if (actor && profileLoginPin(saved) === login.pinCode) {
-      publishAccount(saved);
-      writeLoginSession(saved, actor);
-      goToHash(actor.role === MEMBER_ROLE ? "#profile" : consumeReturnHash());
+    const remembered = findRememberedAccount(login.mobile);
+    const known = remembered?.profile || (actor ? saved : null);
+    const knownActor = remembered?.actor || actor;
+    const knownPin = profileLoginPin(known || {});
+    if (known && knownActor && knownPin && knownPin === login.pinCode) {
+      const profile = {
+        ...known,
+        isGuest: false,
+        loginPin: login.pinCode,
+      };
+      rememberAccount(profile);
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+      publishAccount(profile);
+      writeLoginSession(profile, knownActor);
+      goToHash("#profile");
       return;
     }
     const remote = await loginAccountOnServer(login.mobile, login.pinCode);
-    if (!remote) {
-      setStatus({
-        type: "error",
-        text: saved.mobile
-          ? "Mobile or PIN does not match your saved profile."
-          : "No account found. Please register first.",
-      });
+    if (remote.account) {
+      const profile = {
+        ...(known || saved),
+        ...remote.account,
+        mobile: remote.account.mobile || known?.mobile || saved.mobile,
+        creatorMobile: remote.account.mobile || known?.creatorMobile || saved.creatorMobile,
+        familyMembers: remote.account.familyMembers?.length
+          ? remote.account.familyMembers
+          : known?.familyMembers || saved.familyMembers || [],
+        loginPin: login.pinCode,
+        isGuest: false,
+      };
+      const nextActor = findAccountActor(profile, login.mobile) || knownActor || holderActor(profile);
+      rememberAccount(profile);
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+      writeLoginSession(profile, nextActor);
+      goToHash("#profile");
       return;
     }
-    const profile = {
-      ...saved,
-      ...remote,
-      mobile: remote.mobile,
-      creatorMobile: remote.mobile,
-      loginPin: login.pinCode,
-    };
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-    const nextActor = findAccountActor(profile, login.mobile) || holderActor(profile);
-    writeLoginSession(profile, nextActor);
-    goToHash(nextActor.role === MEMBER_ROLE ? "#profile" : consumeReturnHash());
+    if (known && knownActor && !knownPin && remote.status !== 401) {
+      const profile = {
+        ...known,
+        isGuest: false,
+        loginPin: login.pinCode,
+      };
+      rememberAccount(profile);
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+      publishAccount(profile);
+      writeLoginSession(profile, knownActor);
+      goToHash("#profile");
+      return;
+    }
+    if (known || remote.status === 401) {
+      setStatus({ type: "error", text: "Mobile or PIN does not match this account." });
+      return;
+    }
+    setStatus({
+      type: "error",
+      text: remote.error || "This mobile number is not registered.",
+    });
   };
 
   const openForgot = () => {
@@ -177,6 +210,9 @@ function LoginRegisterPage({ mode }) {
     if (!register.name.trim()) nextErrors.name = "Full name is required.";
     if (!/^[6-9]\d{9}$/.test(register.mobile)) {
       nextErrors.mobile = "Enter a valid 10-digit mobile number.";
+    }
+    if (!editingAccount && !/^\d{6}$/.test(register.password)) {
+      nextErrors.password = "Enter a 6-digit password.";
     }
     Object.assign(nextErrors, validateEmail(register));
     Object.assign(nextErrors, validatePerson(register));
@@ -197,7 +233,7 @@ function LoginRegisterPage({ mode }) {
       mobile: creatorMobile,
       creatorMobile,
       email: pickEmail(register),
-      loginPin: pickLoginPin(register, previous) || normalizeLoginPin(register.pinCode),
+      loginPin: pickLoginPin(register, previous) || normalizeLoginPin(register.password),
       ...pickPerson(register),
       familyMembers: sameAccount
         ? pickFamilyMembers({ ...previous, mobile: creatorMobile, creatorMobile })
@@ -280,6 +316,25 @@ function LoginRegisterPage({ mode }) {
                 errors={errors}
                 onChange={handleRegisterChange}
               />
+              {editingAccount ? null : (
+                <div className="auth-field">
+                  <label htmlFor="auth-register-password">
+                    Password <span>*</span>
+                  </label>
+                  <SeePasswordInput
+                    id="auth-register-password"
+                    name="password"
+                    inputMode="numeric"
+                    maxLength="6"
+                    placeholder="6-digit password"
+                    value={register.password}
+                    onChange={handleRegisterChange}
+                  />
+                  {errors.password ? (
+                    <small className="auth-error">{errors.password}</small>
+                  ) : null}
+                </div>
+              )}
               {editingAccount ? null : (
                 <p className="auth-hint">
                   After you create this account and log in, add family members
@@ -376,7 +431,7 @@ function ForgotPinPage() {
   const [status, setStatus] = useState({ type: "", text: "" });
 
   useEffect(() => {
-    if (readLoginSession()) goToHash("#home");
+    if (readLoginSession()) goToHash("#profile");
   }, []);
 
   const available = account ? resetOtpChannels(account.profile, account.actor) : [];
