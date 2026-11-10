@@ -160,8 +160,8 @@ function ReferFamily() {
 
 const referStyles = `
 .points-refer-card{display:grid;gap:12px;width:min(720px,100%);margin-left:auto;margin-right:auto;padding:16px;border:1px solid #e4ecef;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(20,50,70,.06);color:#143246;box-sizing:border-box}
-.points-refer-tab{display:flex;align-items:center;justify-content:center;width:100%;min-height:40px;margin:0;padding:8px 10px;border:1px solid #cfe8e3;border-radius:12px;background:#e7f6f4;color:#3d6d66;font:inherit;font-size:14px;font-weight:800;line-height:1.2;text-align:center;cursor:pointer}
-.points-refer-tab.is-on{background:#d3eee9}
+.points-refer-tab{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;margin:0;padding:8px 10px;border:1px solid #f3d0d8;border-radius:16px;background:#fdecef;color:#9a4d62;font:inherit;font-size:14px;font-weight:800;line-height:1.2;text-align:center;cursor:pointer;box-shadow:0 1px 0 rgba(255,255,255,.75) inset, 0 6px 14px rgba(20,50,70,.06)}
+.points-refer-tab.is-on{box-shadow:inset 0 0 0 2px currentColor, 0 6px 14px rgba(20,50,70,.08)}
 .points-kicker{display:inline-block;margin:0 0 8px;padding:3px 8px;border-radius:999px;background:#e8f4f6;color:#1a6b7a;font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase}
 .points-refer-card h2{margin:0 0 8px;font-size:18px}
 .points-refer-card p{margin:0 0 12px;color:#5d7180;font-size:14px;line-height:1.45}

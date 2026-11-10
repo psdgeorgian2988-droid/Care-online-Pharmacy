@@ -32,6 +32,7 @@ import { orderServiceTabs, tabActive } from "./AppBottomNav";
 import { MEMBER_ROLE, holderActor } from "./familyAccount";
 import { pickLoginPin } from "./loginPin";
 import { publishAccount } from "./accountSync";
+import AccountPopup from "./AccountPopup.jsx";
 
 function readProfile() {
   return readUserProfile();
@@ -64,7 +65,7 @@ function PlaceYourOrder() {
             <a
               key={tab.href}
               href={tab.href}
-              className={active ? "is-on" : undefined}
+              className={`is-${tab.icon}${active ? " is-on" : ""}`}
               aria-current={active ? "page" : undefined}
             >
               {tab.label}
@@ -83,37 +84,10 @@ function servicePopupTitle() {
 }
 
 function ServicePopup({ children }) {
-  useEffect(() => {
-    const onKey = (event) => {
-      if (event.key === "Escape") goToHash("#profile");
-    };
-    document.addEventListener("keydown", onKey);
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = previous;
-    };
-  }, []);
-
   return (
-    <div className="profile-service-pop" role="presentation" onClick={() => goToHash("#profile")}>
-      <div
-        className="profile-service-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-label={servicePopupTitle()}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="profile-service-bar">
-          <h2>{servicePopupTitle()}</h2>
-          <button type="button" className="profile-service-close" onClick={() => goToHash("#profile")}>
-            Close
-          </button>
-        </div>
-        <div className="profile-service-body">{children}</div>
-      </div>
-    </div>
+    <AccountPopup title={servicePopupTitle()} onClose={() => goToHash("#profile")}>
+      {children}
+    </AccountPopup>
   );
 }
 
@@ -245,7 +219,7 @@ function Profile({ activity = null } = {}) {
         <div className="profile-page">
           <section className="profile-hero">
             <div>
-              <span className="profile-label">MEDIHOME ACCOUNT</span>
+              <span className="profile-label">My Account</span>
             </div>
           </section>
           <section className="profile-card" aria-label="Your details">
@@ -324,7 +298,7 @@ function Profile({ activity = null } = {}) {
               </button>
             ) : null}
           </div>
-          <span className="profile-label">MEDIHOME ACCOUNT</span>
+          <span className="profile-label">My Account</span>
           <div className="profile-points-wrap" ref={pointsWrapRef}>
             <button
               type="button"
@@ -527,26 +501,36 @@ function Profile({ activity = null } = {}) {
 
 const styles = `
   .profile-page{display:grid;gap:12px;max-width:760px;margin:0 auto;padding:16px 0 32px;background:transparent;color:#17324d;box-sizing:border-box}
+  .profile-page > .profile-hero.is-account-bar{margin-bottom:0}
+  .profile-page > .profile-hero.is-account-bar + .profile-dashboard{margin-top:-8px}
   .profile-page.is-activity{max-width:none;padding:0 0 24px}
   .profile-page.is-activity .profile-hero,
   .profile-page.is-activity .profile-dashboard,
   .profile-page.is-activity .profile-place-order{max-width:720px;margin-left:auto;margin-right:auto}
   .profile-dashboard,
   .profile-place-order{display:grid !important;grid-template-columns:minmax(0,1fr) !important;width:min(720px,100%) !important;max-width:720px !important;margin-left:auto !important;margin-right:auto !important;justify-self:center}
-  .profile-dashboard h2,
-  .profile-place-order h2{grid-column:1 / -1;width:100%;text-align:center}
+  .profile-card.profile-dashboard > h2,
+  .profile-card.profile-place-order > h2{display:inline-block;justify-self:center;grid-column:1 / -1;width:max-content;max-width:100%;margin:0 auto;padding:7px 18px;border-radius:999px;color:#fff;-webkit-text-fill-color:#fff;font-size:16px;font-weight:800;letter-spacing:.02em;line-height:1.2;text-align:center;text-transform:none}
+  .profile-card.profile-dashboard > h2{background:linear-gradient(115deg,#0d9488 0%,#22c55e 46%,#0ea5e9 100%);box-shadow:0 8px 18px rgba(13,148,136,.28)}
+  .profile-card.profile-place-order > h2{background:linear-gradient(115deg,#7c3aed 0%,#ec4899 50%,#f97316 100%);box-shadow:0 8px 18px rgba(124,58,237,.28)}
   .profile-dashboard .profile-reports,
   .profile-place-order .profile-order-grid{grid-column:1 / -1;width:100%}
   .profile-activity{min-width:0}
-  .profile-service-pop{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:20px 16px;background:rgba(20,50,70,.5);box-sizing:border-box}
-  .profile-service-sheet{display:flex;flex-direction:column;width:min(980px,100%);max-height:min(860px,calc(100dvh - 40px));overflow:hidden;border-radius:16px;background:#f7fbfe;box-shadow:0 18px 48px rgba(20,50,70,.28)}
-  .profile-service-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:#fff;border-bottom:1px solid #d7e2e9}
-  .profile-service-bar h2{margin:0;font-size:16px;font-weight:800;color:#123b59}
-  .profile-service-close{min-height:36px;padding:6px 14px;border:1px solid #d7e2e9;border-radius:8px;background:#fff;color:#1a6b7a;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
-  .profile-service-body{overflow:auto;min-height:0;padding:12px 14px 20px}
-  .profile-order-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
-  .profile-order-grid a{display:flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:40px;padding:8px 10px;border:1px solid #cfe8e3;border-radius:12px;background:#e7f6f4;color:#3d6d66;font-size:13px;font-weight:800;line-height:1.2;text-align:center;text-decoration:none}
-  .profile-order-grid a.is-on{background:#d3eee9}
+  .profile-order-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .profile-order-grid a{display:flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:46px;padding:8px 10px;border:1px solid transparent;border-radius:16px;font-size:13px;font-weight:800;line-height:1.2;text-align:center;text-decoration:none;box-shadow:0 1px 0 rgba(255,255,255,.7) inset, 0 6px 14px rgba(20,50,70,.06);transition:transform .12s ease, box-shadow .12s ease, background .12s ease}
+  .profile-order-grid a:hover{transform:translateY(-1px);box-shadow:0 1px 0 rgba(255,255,255,.7) inset, 0 8px 16px rgba(20,50,70,.1)}
+  .profile-order-grid a.is-on{box-shadow:inset 0 0 0 2px currentColor, 0 6px 14px rgba(20,50,70,.08)}
+  .profile-order-grid a.is-medicine{background:#d7f1ec;color:#1f6f64;border-color:#b7e4dc}
+  .profile-order-grid a.is-lab{background:#fff1d4;color:#8a5a12;border-color:#f0d7a2}
+  .profile-order-grid a.is-radiology{background:#e6eefc;color:#3d5c99;border-color:#c9d7f4}
+  .profile-order-grid a.is-homecare{background:#fff0d6;color:#8a5a1e;border-color:#f0d3a4}
+  .profile-order-grid a.is-vaccination{background:#def3e3;color:#21743a;border-color:#b7e2c4}
+  .profile-order-grid a.is-doctor{background:#fde8eb;color:#9a3d4b;border-color:#f4c9d0}
+  .profile-order-grid a.is-psychologist{background:#eee8ff;color:#5648a0;border-color:#d5ccf4}
+  .profile-order-grid a.is-stepdown{background:#e6eef2;color:#3d5c70;border-color:#c9d7e0}
+  .profile-order-grid a.is-ambulance{background:#ffe6e6;color:#9a3d3d;border-color:#f4c9c9}
+  .profile-order-grid a.is-record{background:#e6eef8;color:#34598a;border-color:#c9d6ee}
+  .profile-order-grid a.is-education{background:#e5f6f1;color:#1f6a5b;border-color:#bfe6db}
   .profile-hero{margin:0;padding:16px 18px;border-radius:14px;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:16px;box-shadow:0 3px 12px rgba(0,0,0,.06)}
   .profile-hero-copy{min-width:0;flex:1}
   .profile-photo-stack{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:56px;max-width:140px}
@@ -557,7 +541,7 @@ const styles = `
   .profile-photo svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .profile-photo-file{display:grid;gap:4px;font-size:12px;font-weight:700;color:#34546b}
   .profile-photo-file input{font:inherit;font-size:13px;font-weight:600}
-  .profile-label{display:block;margin:0;text-align:center;font-size:16px;font-weight:800;letter-spacing:0.08em;color:#1686b8}
+  .profile-label{display:inline-block;justify-self:center;width:max-content;max-width:100%;margin:0 auto;padding:7px 18px;border-radius:999px;background:linear-gradient(115deg,#14b8a6 0%,#3b82f6 42%,#ec4899 78%,#f59e0b 100%);color:#fff;font-size:16px;font-weight:800;letter-spacing:.02em;line-height:1.2;text-align:center;text-transform:none;box-shadow:0 8px 18px rgba(59,130,246,.28)}
   .profile-hero h1{margin:0 0 4px;font-size:24px;color:#123b59}
   .profile-hero p{margin:0;color:#607589;font-size:13px;line-height:1.4}
   .profile-points-wrap{position:relative;flex:0 0 auto}

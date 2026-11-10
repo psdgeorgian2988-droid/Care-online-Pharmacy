@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AccountPopup from "./AccountPopup.jsx";
 import { usePublicCatalog } from "./catalogClient";
 import {
   DOSE_REMINDER_EVENT,
@@ -48,7 +49,7 @@ function chosenIds(schedule, slotId) {
   return new Set((schedule?.slots?.[slotId]?.medicines || []).map((med) => med.id));
 }
 
-export default function DoseSchedule() {
+export default function DoseSchedule({ onOpen, holdClosed = false } = {}) {
   const catalog = usePublicCatalog();
   const [medicines, setMedicines] = useState(() => prescriptionMedicines());
   const [schedule, setSchedule] = useState(() => readDoseSchedule());
@@ -57,6 +58,14 @@ export default function DoseSchedule() {
   const [notice, setNotice] = useState("");
   const [missedOpen, setMissedOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [alarmOpen, setAlarmOpen] = useState(false);
+
+  useEffect(() => {
+    if (!holdClosed) return;
+    setEditorOpen(false);
+    setMissedOpen(false);
+    setAlarmOpen(false);
+  }, [holdClosed]);
 
   useEffect(() => {
     const refresh = () => {
@@ -141,8 +150,10 @@ export default function DoseSchedule() {
       return;
     }
     if (!scheduled.length) {
+      setAlarmOpen(false);
       setMissedOpen(false);
       setEditorOpen(true);
+      onOpen?.();
       setNotice("Tick the medicines for this time, then save.");
       return;
     }
@@ -212,8 +223,14 @@ export default function DoseSchedule() {
         className={editorOpen ? "dose-fold is-on" : "dose-fold"}
         aria-expanded={editorOpen}
         onClick={() => {
+          if (editorOpen) {
+            setEditorOpen(false);
+            return;
+          }
           setMissedOpen(false);
-          setEditorOpen((open) => !open);
+          setAlarmOpen(false);
+          setEditorOpen(true);
+          onOpen?.();
         }}
       >
         Dose schedule
@@ -223,21 +240,38 @@ export default function DoseSchedule() {
         className={missedOpen ? "dose-missed-tab is-on" : "dose-missed-tab"}
         aria-expanded={missedOpen}
         onClick={() => {
+          if (missedOpen) {
+            setMissedOpen(false);
+            return;
+          }
           setEditorOpen(false);
-          setMissedOpen((open) => !open);
+          setAlarmOpen(false);
+          setMissedOpen(true);
+          onOpen?.();
         }}
       >
         Missed doses
       </button>
       <button
         type="button"
-        className={alarmsArmed ? "dose-alarm-tab is-on" : "dose-alarm-tab"}
+        className={alarmOpen || alarmsArmed ? "dose-alarm-tab is-on" : "dose-alarm-tab"}
+        aria-expanded={alarmOpen}
         aria-pressed={alarmsArmed}
-        onClick={toggleAlarm}
+        onClick={() => {
+          if (alarmOpen) {
+            setAlarmOpen(false);
+            return;
+          }
+          setEditorOpen(false);
+          setMissedOpen(false);
+          setAlarmOpen(true);
+          onOpen?.();
+        }}
       >
         Alarm
       </button>
       {editorOpen ? (
+        <AccountPopup title="Dose schedule" onClose={() => setEditorOpen(false)}>
         <div className="dose-editor">
           <p className="dose-lead">
             Choose each time and tick the medicines. Save closes the day and sets the same alarm on the phone.
@@ -278,10 +312,11 @@ export default function DoseSchedule() {
             <button type="button" className="dose-arm" onClick={() => saveDay()}>Set alarm</button>
           </div>
         </div>
+        </AccountPopup>
       ) : null}
-      <section className="dose-missed" aria-label="Missed doses">
-        {missedOpen ? (
-          <div className="dose-missed-body">
+      {missedOpen ? (
+        <AccountPopup title="Missed doses" onClose={() => setMissedOpen(false)}>
+          <div className="dose-missed dose-missed-body">
             {missed.length ? (
               <ul>
                 {missed.map((row) => (
@@ -299,8 +334,25 @@ export default function DoseSchedule() {
               <p>No missed doses.</p>
             )}
           </div>
-        ) : null}
-      </section>
+        </AccountPopup>
+      ) : null}
+      {alarmOpen ? (
+        <AccountPopup title="Alarm" onClose={() => setAlarmOpen(false)}>
+          <p className="dose-lead">
+            {alarmsArmed
+              ? "The alarm is on for the saved dose times."
+              : "Save the medicines for each time, then turn the alarm on."}
+          </p>
+          {notice ? <p className="dose-notice">{notice}</p> : null}
+          <div className="dose-actions">
+            {alarmsArmed ? (
+              <button type="button" className="dose-arm" onClick={clearAlarm}>Turn alarm off</button>
+            ) : (
+              <button type="button" className="dose-arm" onClick={() => toggleAlarm()}>Set alarm</button>
+            )}
+          </div>
+        </AccountPopup>
+      ) : null}
     </section>
   );
 }

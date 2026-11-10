@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import RecordViewer from "./RecordViewer.jsx";
+import AccountPopup from "./AccountPopup.jsx";
 import DoseSchedule from "./DoseSchedule.jsx";
 import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
 import { readUserProfile } from "./addressFields";
@@ -95,7 +96,9 @@ function ProfileWebinars() {
     setNote(`Seat reserved for ${webinar.title}. Reference ${entry.id}.`);
   };
 
-  if (!openSessions.length && !signups.length && !note) return null;
+  if (!openSessions.length && !signups.length && !note) {
+    return <p className="profile-order-empty">No webinar is open.</p>;
+  }
 
   return (
     <div className="profile-webinar-list">
@@ -376,14 +379,28 @@ export default function ProfileReports() {
         >
           Book webinar
         </button>
-        <DoseSchedule />
+        <DoseSchedule holdClosed={Boolean(panel)} onOpen={() => setPanel("")} />
       </div>
-      {panel === "orders" ? <ProfileOrderList /> : null}
-      {panel === "webinar" ? <ProfileWebinars /> : null}
-      {panel === "prescription" ? (
-        <HomePrescriptionUpload showCart={false} idPrefix="profile" formOnly />
-      ) : null}
-      {panel === "report" ? (
+      {panel ? (
+        <AccountPopup
+          title={
+            panel === "prescription"
+              ? "Prescription"
+              : panel === "report"
+                ? "Report"
+                : panel === "orders"
+                  ? "Orders"
+                  : "Book webinar"
+          }
+          onClose={() => setPanel("")}
+        >
+          {panel === "orders" ? <ProfileOrderList /> : null}
+          {panel === "webinar" ? <ProfileWebinars /> : null}
+          {panel === "prescription" ? (
+            <HomePrescriptionUpload showCart={false} idPrefix="profile" formOnly />
+          ) : null}
+          {panel === "report" ? (
+            <>
       <form className="profile-report-form" onSubmit={saveReport}>
         {people.length > 1 ? (
           <label>
@@ -490,8 +507,6 @@ export default function ProfileReports() {
           {busy ? "Saving report…" : "Save report"}
         </button>
       </form>
-      ) : null}
-
       {groups.length ? (
         <div className="profile-report-list">
           {groups.map((group) => {
@@ -528,25 +543,27 @@ export default function ProfileReports() {
           })}
         </div>
       ) : null}
+            </>
+          ) : null}
+        </AccountPopup>
+      ) : null}
       {viewer ? <RecordViewer record={viewer} onClose={() => setViewer(null)} /> : null}
     </div>
   );
 }
 
 const reportStyles = `
-  .profile-upload-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:stretch}
+  .profile-upload-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:stretch}
   .profile-reports{display:grid;gap:12px}
   .profile-upload-row .dose-schedule,.profile-upload-row .dose-missed{display:contents}
   .profile-upload-row .dose-editor,.profile-upload-row .dose-missed-body{grid-column:1 / -1;width:100%}
-  .profile-upload-tab,.profile-upload-row .dose-fold,.profile-upload-row .dose-missed-tab,.profile-upload-row .dose-alarm-tab{display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:100%;min-height:40px;margin:0;padding:8px 10px;border:1px solid transparent;border-radius:12px;font:inherit;font-size:13px;font-weight:800;line-height:1.2;cursor:pointer;text-align:center}
-  .profile-upload-tab.is-rx{background:#e5f4ee;color:#3c6b5c;border-color:#cfe6dc}
-  .profile-upload-tab.is-rx.is-on{background:#d3ebe2}
-  .profile-upload-tab.is-report{background:#e7f1fa;color:#3e6288;border-color:#d0e1f2}
-  .profile-upload-tab.is-report.is-on{background:#d4e6f6}
-  .profile-upload-tab.is-orders{background:#e7f6f4;color:#3d6d66;border-color:#cfe8e3}
-  .profile-upload-tab.is-orders.is-on{background:#d3eee9}
-  .profile-upload-tab.is-webinar{background:#eef0fb;color:#4c5688;border-color:#d9def3}
-  .profile-upload-tab.is-webinar.is-on{background:#e0e4f6}
+  .profile-upload-tab,.profile-upload-row .dose-fold,.profile-upload-row .dose-missed-tab,.profile-upload-row .dose-alarm-tab{display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:100%;min-height:46px;margin:0;padding:8px 10px;border:1px solid transparent;border-radius:16px;font:inherit;font-size:13px;font-weight:800;line-height:1.2;cursor:pointer;text-align:center;box-shadow:0 1px 0 rgba(255,255,255,.75) inset, 0 6px 14px rgba(20,50,70,.06);transition:transform .12s ease, box-shadow .12s ease, background .12s ease}
+  .profile-upload-tab:hover,.profile-upload-row .dose-fold:hover,.profile-upload-row .dose-missed-tab:hover,.profile-upload-row .dose-alarm-tab:hover{transform:translateY(-1px)}
+  .profile-upload-tab.is-on,.profile-upload-row .dose-fold.is-on,.profile-upload-row .dose-missed-tab.is-on,.profile-upload-row .dose-alarm-tab.is-on{box-shadow:inset 0 0 0 2px currentColor, 0 6px 14px rgba(20,50,70,.08)}
+  .profile-upload-tab.is-rx{background:#e3f6ee;color:#1f7a5c;border-color:#bfe4d2}
+  .profile-upload-tab.is-report{background:#e3f0fb;color:#2f6394;border-color:#c5dbf2}
+  .profile-upload-tab.is-orders{background:#e2f7f4;color:#1d7a70;border-color:#bfe6e0}
+  .profile-upload-tab.is-webinar{background:#eceefe;color:#4a4f96;border-color:#d4d8f6}
   .profile-webinar-list{display:grid;gap:8px}
   .profile-webinar-list article{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#f4f6fc}
   .profile-webinar-list strong{display:block;color:#143246;font-size:14px}
@@ -560,12 +577,9 @@ const reportStyles = `
   .profile-order-list span{color:#143246;font-weight:800}
   .profile-order-list strong{font-weight:800;color:#1a6b7a}
   .profile-order-empty{margin:0;color:#5d7180;font-size:14px}
-  .profile-upload-row .dose-fold{background:#f7f1e6;color:#7a5d3c;border-color:#eadfcd}
-  .profile-upload-row .dose-fold.is-on{background:#efe4d2}
-  .profile-upload-row .dose-missed-tab{background:#f7eeee;color:#8a5858;border-color:#eadcdc}
-  .profile-upload-row .dose-missed-tab.is-on{background:#f0e0e0}
-  .profile-upload-row .dose-alarm-tab{background:#f0ecf8;color:#5e5684;border-color:#e0d9f0}
-  .profile-upload-row .dose-alarm-tab.is-on{background:#e2dbf3}
+  .profile-upload-row .dose-fold{background:#fbf3e4;color:#8a6230;border-color:#ead7b4}
+  .profile-upload-row .dose-missed-tab{background:#fbeeee;color:#8d4e4e;border-color:#f0d0d0}
+  .profile-upload-row .dose-alarm-tab{background:#f3eefb;color:#5d4f8a;border-color:#ddd2f2}
   .profile-reports>p{margin:0;color:#607589;font-size:13px;line-height:1.4}
   .profile-report-form{display:grid;gap:10px}
   .profile-report-form label{display:grid;gap:4px;font-size:12px;font-weight:700;color:#34546b}
