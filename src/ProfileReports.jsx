@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import RecordViewer from "./RecordViewer.jsx";
 import DoseSchedule from "./DoseSchedule.jsx";
 import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
@@ -9,10 +9,11 @@ import { orderRecordId, orderTestName } from "./orderFullFields";
 import { useSyncedOrderTick } from "./useSyncedOrderTick";
 import { LABORATORY_TESTS, RADIOLOGY_TESTS } from "./healthTestNames";
 import { accountCreatorMobile, isoDateToday } from "./personFields";
-import { useScheduledWebinars } from "./featureFlags";
+import { fetchPublicFeatures, useScheduledWebinars } from "./featureFlags";
 import {
   formatWebinarDate,
   isWebinarBookable,
+  readCachedWebinars,
   readWebinarSignups,
   saveWebinarSignup,
   webinarSessionHref,
@@ -94,9 +95,7 @@ function ProfileWebinars() {
     setNote(`Seat reserved for ${webinar.title}. Reference ${entry.id}.`);
   };
 
-  if (!openSessions.length && !signups.length) {
-    return <p className="profile-order-empty">No webinar is open for booking.</p>;
-  }
+  if (!openSessions.length && !signups.length && !note) return null;
 
   return (
     <div className="profile-webinar-list">
@@ -104,11 +103,11 @@ function ProfileWebinars() {
       {openSessions.map((webinar) => {
         const booked = bookedIds.has(webinar.id);
         return (
-          <article key={webinar.id}>
+          <article key={webinar.id} className="profile-webinar-notice" role="status">
             <div>
-              <strong>{webinar.title}</strong>
+              <strong>Webinar scheduled.</strong>
               <span>
-                {formatWebinarDate(webinar.date)} · {webinar.time}
+                {webinar.title} · {formatWebinarDate(webinar.date)} · {webinar.time}
               </span>
             </div>
             {booked ? (
@@ -203,6 +202,36 @@ export default function ProfileReports() {
   const [busy, setBusy] = useState(false);
   const [viewer, setViewer] = useState(null);
   const [panel, setPanel] = useState("");
+  const seenWebinarIds = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const openIds = () =>
+      readCachedWebinars().filter((row) => isWebinarBookable(row)).map((row) => row.id);
+    const pull = async (markBaseline) => {
+      try {
+        await fetchPublicFeatures();
+      } catch {
+        /* keep the last known plan */
+      }
+      if (cancelled) return;
+      const ids = openIds();
+      const known = seenWebinarIds.current;
+      if (markBaseline || known == null) {
+        seenWebinarIds.current = new Set(ids);
+        return;
+      }
+      const fresh = ids.some((id) => !known.has(id));
+      seenWebinarIds.current = new Set(ids);
+      if (fresh) setPanel("webinar");
+    };
+    pull(true);
+    const timer = window.setInterval(() => pull(false), 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     const refresh = () => setRecords(loadMedicalRecords());
@@ -522,6 +551,9 @@ const reportStyles = `
   .profile-webinar-list article{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#f4f6fc}
   .profile-webinar-list strong{display:block;color:#143246;font-size:14px}
   .profile-webinar-list span{display:block;color:#5d7180;font-size:12px}
+  .profile-webinar-list article.profile-webinar-notice{background:#0639b8;color:#fff}
+  .profile-webinar-list article.profile-webinar-notice strong{color:#fff;letter-spacing:.02em}
+  .profile-webinar-list article.profile-webinar-notice span{color:#e7eeff}
   .profile-webinar-list button,.profile-webinar-list a{border:0;border-radius:8px;background:#4c5688;color:#fff;font:inherit;font-size:13px;font-weight:800;text-decoration:none;padding:8px 12px;cursor:pointer}
   .profile-order-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
   .profile-order-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#f4fafb;font-size:14px}

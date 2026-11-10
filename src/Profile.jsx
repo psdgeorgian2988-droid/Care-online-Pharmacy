@@ -7,7 +7,6 @@ import { readTestCart } from "./medicineCartStore";
 import AddressFields from "./AddressFields.jsx";
 import PersonFields from "./PersonFields.jsx";
 import FamilyMembersFields from "./FamilyMembersFields";
-import FamilyTree from "./FamilyTree";
 import {
   readUserProfile,
   validateAddress,
@@ -43,10 +42,6 @@ function ProfileUploads() {
       <ProfileReports />
     </section>
   );
-}
-
-function hasFamilyTree(profile) {
-  return (profile?.familyMembers || []).some((member) => String(member?.name || "").trim());
 }
 
 function Profile() {
@@ -418,7 +413,6 @@ function Profile() {
           </section>
           ) : null}
           <section className="profile-card profile-family" aria-label="Family Members">
-            {hasFamilyTree(form) ? <FamilyTree profile={form} /> : null}
             <FamilyMembersFields
               idPrefix="profile-family"
               members={form.familyMembers}
@@ -467,7 +461,6 @@ const styles = `
   .profile-form{display:grid;gap:12px;margin:0;max-width:none}
   .profile-card{margin:0;padding:16px 18px;background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.06);display:grid;gap:12px}
   .profile-card h2{margin:0;font-size:16px;color:#123b59}
-  .profile-family .family-tree{border:0;background:#f7fbfc}
   .profile-summary,.profile-member-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:0}
   .profile-summary div,.profile-member-details div{display:grid;gap:2px;padding:10px 12px;border-radius:10px;background:#f4fafb}
   .profile-summary dt,.profile-member-details dt{font-size:11px;font-weight:800;color:#5d7180}
