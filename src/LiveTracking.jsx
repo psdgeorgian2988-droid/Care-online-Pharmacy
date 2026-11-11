@@ -23,6 +23,7 @@ import { visitingPartnerProfile } from "./partnerProfile.js";
 import { DIAGNOSTIC_TRACK_STEPS, isDiagnosticKind } from "./labPipeline";
 import { isPharmacyOrder, PHARMACY_TRACK_STEPS, pharmacyTrackKey } from "./pharmacyTrack";
 import LabBookingChange from "./LabBookingChange.jsx";
+import LabReportFlash from "./LabReportFlash.jsx";
 import { orderCurrentStatus, trackKey } from "./orderStatus";
 import { mapsUrlForPin, normalizePin, osmEmbedUrl } from "./pinLocation";
 import ShareAmbulanceLive from "./ShareAmbulanceLive";
@@ -450,6 +451,9 @@ export default function TrackPage({ trackId, from = "" }) {
           />
           {String(order.kind || order.orderType || "").toLowerCase() === "ambulance" ? (
             <ShareAmbulanceLive order={order} />
+          ) : null}
+          {!fromAdmin && String(order.kind || order.orderType || "").toLowerCase() === "lab" ? (
+            <LabReportFlash slot={order.timeSlot || order.requestedTimeSlot || ""} />
           ) : null}
           <LabBookingChange order={order} onChanged={setOrder} />
         </div>

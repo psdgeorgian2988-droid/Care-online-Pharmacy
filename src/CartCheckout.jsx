@@ -27,6 +27,7 @@ import { holdForPartnerQueue } from "./partnerQueue";
 import { findDiagnosticParty } from "./diagnosticPartners";
 import BookingFlow from "./BookingFlow";
 import DateMonthYearFields from "./DateMonthYearFields";
+import LabReportFlash from "./LabReportFlash.jsx";
 import {
   applyResolvedPin,
   emptyAddress,
@@ -815,6 +816,9 @@ export default function CartCheckout() {
 
           {tests.length ? (
               <div className="cart-checkout-slot" id="checkout-book">
+                {tests.some((test) => (test.kind || "lab") === "lab") ? (
+                  <LabReportFlash slot={form.timeSlot} />
+                ) : null}
                 <DateMonthYearFields
                   idPrefix="cart-date"
                   name="date"

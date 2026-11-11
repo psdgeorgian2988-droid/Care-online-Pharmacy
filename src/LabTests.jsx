@@ -49,6 +49,7 @@ import {
   withBookingIdentity,
 } from "./bookingFor";
 import DateMonthYearFields from "./DateMonthYearFields";
+import LabReportFlash from "./LabReportFlash.jsx";
 import { isoDateToday } from "./personFields";
 import {
   LAB_TIME_SLOTS,
@@ -1143,6 +1144,9 @@ function LabTests() {
                   localStorage.setItem("mediHomeLastBooking", JSON.stringify(next));
                 }}
               />
+              {isLabBooking ? (
+                <LabReportFlash slot={booking.timeSlot || booking.requestedTimeSlot || ""} />
+              ) : null}
               <div className="confirm-row">
                 <span>Address</span>
                 <strong>{booking.address}</strong>
@@ -1697,6 +1701,7 @@ function LabTests() {
               <h2>Patient And Slot</h2>
             </div>
             <div className="lab-fields">
+            {isLab ? <LabReportFlash slot={form.timeSlot} /> : null}
             {catalogTests.length ? (
               <div className="lab-selected-wrap">
                 <p className="lab-label">Tests to book</p>

@@ -7,6 +7,8 @@ import {
   isAppointmentDateAllowed,
   isOpenAppointmentSlot,
   openAppointmentSlots,
+  labReportTiming,
+  labReportTimingMessage,
   parseSlotStartMinutes,
 } from "./appointmentSlot.js";
 
@@ -17,6 +19,17 @@ test("slot labels parse to minutes from midnight", () => {
   assert.equal(parseSlotStartMinutes("11:00 AM - 1:00 PM"), 11 * 60);
   assert.equal(parseSlotStartMinutes("2:00 PM - 4:00 PM"), 14 * 60);
   assert.equal(parseSlotStartMinutes("08:00 AM – 10:00 AM"), 8 * 60);
+});
+
+test("report delivery lines follow collection before or after noon", () => {
+  assert.equal(labReportTiming("7:00 AM - 9:00 AM"), "same-day");
+  assert.equal(labReportTiming("9:00 AM - 11:00 AM"), "same-day");
+  assert.equal(labReportTiming("11:00 AM - 1:00 PM"), "either");
+  assert.equal(labReportTiming("2:00 PM - 4:00 PM"), "next-day");
+  assert.match(labReportTimingMessage("9:00 AM - 11:00 AM"), /same day/);
+  assert.match(labReportTimingMessage("4:00 PM - 6:00 PM"), /next day/);
+  assert.match(labReportTimingMessage(""), /same day/);
+  assert.match(labReportTimingMessage(""), /next day/);
 });
 
 test("lab appointment date must be today or later", () => {

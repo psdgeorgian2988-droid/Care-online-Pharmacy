@@ -17,6 +17,7 @@ import {
 } from "./orderStatus";
 import OrderListTable from "./OrderListTable.jsx";
 import OrderFullView from "./OrderFullView.jsx";
+import LabReportFlash from "./LabReportFlash.jsx";
 import ServiceIcon from "./serviceIcons";
 import {
   isDiagnosticKind,
@@ -155,6 +156,11 @@ function MyOrders() {
       {registered && selectedOrder ? (
         <div className="order-details-page">
           <OrderFullView order={selectedOrder} audience="customer" />
+          {serviceKind(selectedOrder) === "lab" ? (
+            <LabReportFlash
+              slot={selectedOrder.timeSlot || selectedOrder.requestedTimeSlot || ""}
+            />
+          ) : null}
           {isOngoingTrackOrder(selectedOrder) ? (
             <div className="order-action-buttons">
               <a className="order-details-btn" href={trackHref(selectedOrder.id)}>

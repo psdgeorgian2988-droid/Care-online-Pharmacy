@@ -124,7 +124,6 @@ import {
 import {
   AnalyzerLinkFields,
   CollectorLiveShare,
-  LabPartnerCatalog,
   SampleTubePanel,
   ReportResultEditor,
 } from "./LabPartnerExtras";
@@ -881,6 +880,9 @@ export default function Partner() {
           return (
             <section key={group.kind} className="order-category" aria-label={group.title}>
               <h2>{deliveryDesk ? "Deliveries" : isLabStore ? "Lab tests" : group.title}</h2>
+              {group.kind === "lab" ? (
+                <LabDeskWorkflow activeId={labTab} onOpenTab={setLabTab} />
+              ) : null}
               {isDiagnosticStore ? <SlotCapacityControl /> : null}
               {deliveryDesk ? (
                 <div className="lab-tabs partner-order-tabs" role="tablist" aria-label="Delivery jobs">
@@ -1098,6 +1100,38 @@ export default function Partner() {
   );
 }
 
+const LAB_FLOW_HINTS = {
+  new: "Accept or Decline",
+  approved: "Lab has confirmed",
+  assigned: "Assign team member",
+  sample: "Collect payment if unpaid",
+  process: "Submitted to lab",
+  ready: "Mark report ready",
+  uploaded: "Upload PDF or photo",
+  done: "Order complete",
+};
+
+function LabDeskWorkflow({ activeId = "", onOpenTab }) {
+  const tabs = partnerDeskTabsFor("lab");
+  return (
+    <ol className="lab-desk-flow" aria-label="Lab order workflow">
+      {tabs.map((tab, index) => (
+        <li key={tab.id}>
+          <button
+            type="button"
+            className={activeId === tab.id ? "is-on" : ""}
+            onClick={() => onOpenTab?.(tab.id)}
+          >
+            <span>{index + 1}</span>
+            <strong>{tab.label}</strong>
+            <em>{LAB_FLOW_HINTS[tab.id] || ""}</em>
+          </button>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function PartnerHome({ partner, jobs, kind, onOpen, teamPanel = null }) {
   const openOrders = (jobs || []).filter((job) => {
     const tab = partnerDeskTab(job, kind);
@@ -1122,7 +1156,6 @@ function PartnerHome({ partner, jobs, kind, onOpen, teamPanel = null }) {
         </button>
       </div>
       {teamPanel}
-      {kind === "lab" ? <LabPartnerCatalog partner={partner} /> : null}
     </section>
   );
 }
@@ -2432,6 +2465,14 @@ ${rxShareCardStyles}
 .partner-home-tabs button{border:0;background:transparent;color:#3d5a6c;font:inherit;font-size:13px;font-weight:800;padding:8px 14px;border-radius:8px;cursor:pointer}
 .partner-home-tabs button.is-on{background:#fff;color:#1a6b7a;box-shadow:0 1px 3px rgba(20,50,70,.08)}
 .partner-home-lead{margin:0 0 12px;font-size:13px;line-height:1.4;color:#34546b}
+.lab-desk-flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;list-style:none;margin:0 0 14px;padding:0}
+.lab-desk-flow li{min-width:0}
+.lab-desk-flow button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:78px;padding:10px 12px;border:1px solid #d7e2e9;border-radius:10px;background:#fff;text-align:left;cursor:pointer;font:inherit;color:#143246}
+.lab-desk-flow button.is-on{border-color:#1a6b7a;background:#e8f4f6}
+.lab-desk-flow span{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#1a6b7a;color:#fff;font-size:11px;font-weight:800}
+.lab-desk-flow strong{font-size:13px;line-height:1.25}
+.lab-desk-flow em{font-style:normal;font-size:11px;font-weight:650;line-height:1.3;color:#5d7180}
+@media (max-width:800px){.lab-desk-flow{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .partner-home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
 .partner-home-card{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px;border:1px solid #d7e2e9;border-radius:12px;background:#fff;text-align:left;cursor:pointer;font:inherit;color:#143246}
 .partner-home-card span{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#1a6b7a}

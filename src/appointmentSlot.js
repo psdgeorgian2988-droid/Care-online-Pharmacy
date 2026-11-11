@@ -32,11 +32,8 @@ export function labBookingMaxDate(now = new Date()) {
   return bookingMaxDate(now);
 }
 
-export function parseSlotStartMinutes(label) {
-  const start = String(label || "")
-    .split(/\s*[-–—]\s*/)[0]
-    .trim();
-  const match = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(start);
+function clockToMinutes(label) {
+  const match = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(String(label || "").trim());
   if (!match) return null;
   let hour = Number(match[1]);
   const minute = Number(match[2]);
@@ -44,6 +41,55 @@ export function parseSlotStartMinutes(label) {
   if (meridiem === "PM" && hour !== 12) hour += 12;
   if (meridiem === "AM" && hour === 12) hour = 0;
   return hour * 60 + minute;
+}
+
+export function parseSlotStartMinutes(label) {
+  const start = String(label || "")
+    .split(/\s*[-–—]\s*/)[0]
+    .trim();
+  return clockToMinutes(start);
+}
+
+export function parseSlotEndMinutes(label) {
+  const parts = String(label || "").split(/\s*[-–—]\s*/);
+  const end = (parts[1] || parts[0] || "").trim();
+  return clockToMinutes(end);
+}
+
+/** 12:00 noon. Collection by this time is reported the same day. */
+export const LAB_REPORT_NOON_MINUTES = 12 * 60;
+
+/** Both lines stay visible to the customer while booking and on the order. */
+export const LAB_REPORT_DELIVERY_LINES = [
+  {
+    id: "same-day",
+    text: "Sample collected by 12 noon. The report will be given the same day.",
+  },
+  {
+    id: "next-day",
+    text: "Sample collected after 12 noon. The report will be provided the next day.",
+  },
+];
+
+/**
+ * same-day: the collection window ends at or before 12 noon.
+ * next-day: the window starts at or after 12 noon.
+ * either: the window crosses 12 noon, so the report day follows the actual collection time.
+ */
+export function labReportTiming(slot) {
+  const start = parseSlotStartMinutes(slot);
+  const end = parseSlotEndMinutes(slot);
+  if (start == null) return "either";
+  if (end != null && end <= LAB_REPORT_NOON_MINUTES) return "same-day";
+  if (start >= LAB_REPORT_NOON_MINUTES) return "next-day";
+  return "either";
+}
+
+export function labReportTimingMessage(slot) {
+  const timing = labReportTiming(slot);
+  const current = LAB_REPORT_DELIVERY_LINES.find((line) => line.id === timing);
+  if (current) return current.text;
+  return LAB_REPORT_DELIVERY_LINES.map((line) => line.text).join(" ");
 }
 
 export function minutesFromDate(now = new Date()) {

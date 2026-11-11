@@ -6551,6 +6551,38 @@ a.order-details-btn {
   width: auto;
 }
 
+.app.app-ops.is-partner-desk {
+  grid-template-rows: 40px auto minmax(0, 1fr) 44px !important;
+}
+
+.app.app-ops.is-partner-desk.app-ops-bare {
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  grid-template-areas:
+    "opsbar"
+    "main" !important;
+}
+
+.app.app-ops.is-partner-desk > header.ops-bar {
+  min-height: 72px;
+  background: #ffffff;
+  border-bottom: 1px solid #d7e2e9;
+}
+
+.app.app-ops.is-partner-desk > header.ops-bar .ops-brand .logo-mark-img {
+  height: 52px;
+}
+
+.app.app-ops.is-partner-desk > header.ops-bar .ops-nav a,
+.app.app-ops.is-partner-desk > header.ops-bar .ops-nav-stay {
+  color: #0b3d4a;
+}
+
+.app.app-ops.is-partner-desk > header.ops-bar .ops-nav a:hover,
+.app.app-ops.is-partner-desk > header.ops-bar .ops-nav a.active {
+  background: #e7f4f6;
+  color: #0b3d4a;
+}
+
 .ops-nav {
   display: flex;
   align-items: center;

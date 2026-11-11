@@ -504,15 +504,15 @@ function App() {
 
   if (isOps) {
     return (
-      <div className={`app app-ops${barePartnerDesk ? " app-ops-bare" : ""}`}>
+      <div className={`app app-ops${barePartnerDesk ? " app-ops-bare" : ""}${partnerEntry ? " is-partner-desk" : ""}`}>
         <Seo route={route} />
         {barePartnerDesk ? null : <SiteTicker />}
-        {barePartnerDesk ? null : (
-          <header className="ops-bar">
-            <a className="ops-brand" href="#admin" aria-label="MediHome operations">
-              <LogoMark size="sm" />
-              <span>Operations</span>
+        <header className="ops-bar">
+            <a className="ops-brand" href={partnerEntry ? "#home" : "#admin"} aria-label="MediHome">
+              <LogoMark size={partnerEntry ? "lg" : "sm"} />
+              {partnerEntry ? null : <span>Operations</span>}
             </a>
+            {barePartnerDesk ? null : (
             <nav className="ops-nav" aria-label="Operations">
               {partnerEntry ? (
                 <>
@@ -535,8 +535,8 @@ function App() {
                 </>
               )}
             </nav>
+            )}
           </header>
-        )}
         <main>
           <ErrorBoundary key={route}>
             <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
