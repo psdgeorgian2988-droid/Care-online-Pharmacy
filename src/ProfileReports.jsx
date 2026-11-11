@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import RecordViewer from "./RecordViewer.jsx";
 import AccountPopup from "./AccountPopup.jsx";
 import DoseSchedule from "./DoseSchedule.jsx";
-import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
 import HealthEducation from "./HealthEducation.jsx";
 import { readUserProfile } from "./addressFields";
 import { useLoginSession } from "./authSession";
@@ -27,9 +26,13 @@ import {
   buildCustomerMedicalRecord,
   loadMedicalRecords,
   MEDICAL_RECORD_EVENT,
+  medicalRecordForViewer,
+  medicalRecordKind,
   recordsForPatient,
   saveMedicalRecords,
 } from "./medicalRecord";
+import { pullRecordLibrary } from "./recordLibrary";
+import { isDiagnosticKind, mergeOrderReportIntoStore, orderHasReport } from "./labPipeline";
 import {
   defaultReportPatientId,
   householdReportPeople,
@@ -37,8 +40,6 @@ import {
 } from "./reportPeople";
 import {
   cleanReportValues,
-  compareReportPair,
-  groupReportsByName,
   isImagingReportName,
   panelForReport,
 } from "./reportCompare";
@@ -210,6 +211,13 @@ export default function ProfileReports() {
   const [viewer, setViewer] = useState(null);
   const [panel, setPanel] = useState("");
   const [recordPick, setRecordPick] = useState("");
+  const [reportUpload, setReportUpload] = useState(false);
+  const [rxUpload, setRxUpload] = useState(false);
+  const [rxDate, setRxDate] = useState(isoDateToday);
+  const [rxFile, setRxFile] = useState(null);
+  const [rxError, setRxError] = useState("");
+  const [rxStatus, setRxStatus] = useState("");
+  const [rxBusy, setRxBusy] = useState(false);
   const [eduPick, setEduPick] = useState("");
   const scheduledWebinars = useScheduledWebinars();
   const [seenNoticeId, setSeenNoticeId] = useState(readSeenWebinarNotice);
@@ -277,6 +285,32 @@ export default function ProfileReports() {
   }, []);
 
   useEffect(() => {
+    if (panel !== "record") return undefined;
+    let cancelled = false;
+    const household = householdReportPeople(readUserProfile(), session);
+    loadCustomerOrders().forEach((order) => {
+      const kind = order?.kind || order?.orderType;
+      if ((isDiagnosticKind(kind) || kind === "vaccination") && orderHasReport(order)) {
+        mergeOrderReportIntoStore(order, globalThis.localStorage, household);
+      }
+    });
+    const mobile = String(session?.mobile || accountCreatorMobile(readUserProfile()) || "")
+      .replace(/\D/g, "")
+      .slice(-10);
+    const finish = () => {
+      if (!cancelled) setRecords(loadMedicalRecords());
+    };
+    if (mobile.length === 10) {
+      pullRecordLibrary(mobile, { people: household }).then(finish).catch(finish);
+    } else {
+      finish();
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [panel, session?.mobile]);
+
+  useEffect(() => {
     if (!people.some((row) => row.id === memberId)) {
       setMemberId(defaultReportPatientId(people));
     }
@@ -284,7 +318,19 @@ export default function ProfileReports() {
 
   const imaging = isImagingReportName(testName);
   const mine = recordsForPatient(records, memberId, people);
-  const groups = groupReportsByName(mine);
+  const savedReports = mine
+    .filter((row) => {
+      const kind = medicalRecordKind(row);
+      return kind === "lab" || kind === "radiology";
+    })
+    .sort((a, b) =>
+      String(a.date || a.savedAt || "").localeCompare(String(b.date || b.savedAt || ""))
+    );
+  const savedPrescriptions = mine
+    .filter((row) => medicalRecordKind(row) === "prescription")
+    .sort((a, b) =>
+      String(a.date || a.savedAt || "").localeCompare(String(b.date || b.savedAt || ""))
+    );
 
   const chooseReport = (name) => {
     setTestName(name);
@@ -366,11 +412,70 @@ export default function ProfileReports() {
             ? `${testName} saved. Numbers can be compared with the previous ${testName}.`
             : `${testName} saved. Add the numbers next time to compare it.`
       );
+      setReportUpload(false);
     } catch (err) {
       setError(err.message || "Could not save this report.");
     } finally {
       setBusy(false);
     }
+  };
+
+  const savePrescription = async (event) => {
+    event.preventDefault();
+    setRxError("");
+    setRxStatus("");
+    if (!rxDate) {
+      setRxError("Choose the prescription date.");
+      return;
+    }
+    if (!rxFile) {
+      setRxError("Choose a PDF or photo of the prescription.");
+      return;
+    }
+    const allowed =
+      rxFile.type.startsWith("image/") ||
+      rxFile.type === "application/pdf" ||
+      /\.(pdf|png|jpe?g|webp)$/i.test(rxFile.name);
+    if (!allowed) {
+      setRxError("Choose a PDF or photo.");
+      return;
+    }
+    if (rxFile.size > MAX_FILE_BYTES) {
+      setRxError("Prescription must be under 1.5 MB.");
+      return;
+    }
+    setRxBusy(true);
+    try {
+      const fileData = await readFile(rxFile);
+      const person = people.find((row) => row.id === memberId) || people[0] || null;
+      const record = buildCustomerMedicalRecord(
+        "prescription",
+        {
+          memberId: person?.id || memberId,
+          date: rxDate,
+          fileName: rxFile.name,
+          fileType: rxFile.type || "application/octet-stream",
+          fileData,
+        },
+        { person, people, now: new Date() }
+      );
+      const next = [record, ...loadMedicalRecords().filter((row) => row.id !== record.id)];
+      saveMedicalRecords(next);
+      setRecords(next);
+      setRxFile(null);
+      setRxStatus("Prescription saved.");
+      setRxUpload(false);
+    } catch (err) {
+      setRxError(err.message || "Could not save this prescription.");
+    } finally {
+      setRxBusy(false);
+    }
+  };
+
+  const leaveRecord = () => {
+    setRecordPick("");
+    setReportUpload(false);
+    setRxUpload(false);
   };
 
   return (
@@ -383,6 +488,8 @@ export default function ProfileReports() {
           aria-expanded={panel === "record"}
           onClick={() => {
             setRecordPick("");
+            setReportUpload(false);
+            setRxUpload(false);
             setPanel((current) => (current === "record" ? "" : "record"));
           }}
         >
@@ -430,6 +537,8 @@ export default function ProfileReports() {
           }
           onClose={() => {
             setRecordPick("");
+            setReportUpload(false);
+            setRxUpload(false);
             setEduPick("");
             setPanel("");
           }}
@@ -495,15 +604,111 @@ export default function ProfileReports() {
             </div>
           ) : null}
           {panel === "record" && recordPick ? (
-            <button type="button" className="profile-record-back" onClick={() => setRecordPick("")}>
+            <button type="button" className="profile-record-back" onClick={leaveRecord}>
               Back
             </button>
           ) : null}
           {panel === "record" && recordPick === "prescription" ? (
-            <HomePrescriptionUpload showCart={false} idPrefix="profile" formOnly />
+            <div className="profile-record-stack">
+              {savedPrescriptions.length ? (
+                <ul className="profile-saved-list">
+                  {savedPrescriptions.map((item) => (
+                    <li key={item.id}>
+                      <div>
+                        <strong>Prescription</strong>
+                        <span>{item.date || "Undated"}</span>
+                      </div>
+                      {item.fileData ? (
+                        <button type="button" onClick={() => setViewer(medicalRecordForViewer(item))}>
+                          View
+                        </button>
+                      ) : (
+                        <span>Saved</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="profile-order-empty">No prescription is saved yet.</p>
+              )}
+              <button
+                type="button"
+                className={rxUpload ? "profile-upload-tab is-rx is-on" : "profile-upload-tab is-rx"}
+                aria-expanded={rxUpload}
+                onClick={() => setRxUpload((open) => !open)}
+              >
+                Upload new prescription
+              </button>
+              {rxUpload ? (
+                <form className="profile-report-form" onSubmit={savePrescription}>
+                  {people.length > 1 ? (
+                    <label>
+                      Whose prescription
+                      <select value={memberId} onChange={(event) => setMemberId(event.target.value)}>
+                        {people.map((person) => (
+                          <option key={person.id} value={person.id}>
+                            {personLabel(person)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  <label>
+                    Prescription date
+                    <input type="date" value={rxDate} onChange={(event) => setRxDate(event.target.value)} />
+                  </label>
+                  <label>
+                    Prescription file
+                    <input
+                      type="file"
+                      accept="image/*,.pdf,application/pdf"
+                      onChange={(event) => {
+                        setRxFile(event.target.files?.[0] || null);
+                        setRxError("");
+                      }}
+                    />
+                  </label>
+                  {rxError ? <small className="profile-error">{rxError}</small> : null}
+                  {rxStatus ? <p className="profile-success">{rxStatus}</p> : null}
+                  <button type="submit" className="profile-save-btn" disabled={rxBusy}>
+                    {rxBusy ? "Saving prescription…" : "Save prescription"}
+                  </button>
+                </form>
+              ) : null}
+            </div>
           ) : null}
           {panel === "record" && recordPick === "report" ? (
-            <>
+            <div className="profile-record-stack">
+              {savedReports.length ? (
+                <ul className="profile-saved-list">
+                  {savedReports.map((item) => (
+                    <li key={item.id}>
+                      <div>
+                        <strong>{item.testName || item.name || "Report"}</strong>
+                        <span>{item.date || "Undated"}</span>
+                      </div>
+                      {item.fileData ? (
+                        <button type="button" onClick={() => setViewer(medicalRecordForViewer(item))}>
+                          View
+                        </button>
+                      ) : (
+                        <span>Saved</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="profile-order-empty">No report is saved yet.</p>
+              )}
+              <button
+                type="button"
+                className={reportUpload ? "profile-upload-tab is-report is-on" : "profile-upload-tab is-report"}
+                aria-expanded={reportUpload}
+                onClick={() => setReportUpload((open) => !open)}
+              >
+                Upload new report
+              </button>
+              {reportUpload ? (
       <form className="profile-report-form" onSubmit={saveReport}>
         {people.length > 1 ? (
           <label>
@@ -610,43 +815,8 @@ export default function ProfileReports() {
           {busy ? "Saving report…" : "Save report"}
         </button>
       </form>
-      {testName && groups.some((group) => group.name === testName) ? (
-        <div className="profile-report-list">
-          {groups.filter((group) => group.name === testName).map((group) => {
-            const [current, previous] = group.reports;
-            const compared = group.kind === "radiology" ? [] : compareReportPair(current, previous);
-            return (
-              <article key={group.name} className="profile-report-group">
-                <h3>{group.name}</h3>
-                <ul>
-                  {group.reports.map((report) => (
-                    <li key={report.id || `${group.name}-${report.date}-${report.savedAt}`}>
-                      <span>{report.date || "Undated"}</span>
-                      {report.fileData ? (
-                        <button type="button" onClick={() => setViewer(report)}>
-                          View file
-                        </button>
-                      ) : (
-                        <span>File name saved</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-                {group.kind === "radiology" ? (
-                  <p className="profile-report-note">Kept as a file.</p>
-                ) : (
-                  <CompareChart
-                    rows={compared}
-                    previousDate={previous?.date || ""}
-                    currentDate={current?.date || ""}
-                  />
-                )}
-              </article>
-            );
-          })}
-        </div>
-      ) : null}
-            </>
+              ) : null}
+            </div>
           ) : null}
         </AccountPopup>
       ) : null}
@@ -674,6 +844,14 @@ const reportStyles = `
   .profile-edu-alert button{justify-self:start;margin-top:6px;border:0;border-radius:8px;background:#fff;color:#0639b8;font:inherit;font-size:12px;font-weight:800;padding:6px 10px;cursor:pointer}
   .profile-record-picks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
   .profile-record-back{justify-self:start;margin:0 0 12px;border:1px solid #c9d6ee;border-radius:999px;background:#fff;color:#34598a;font:inherit;font-size:13px;font-weight:800;min-height:34px;padding:0 14px;cursor:pointer}
+  .profile-record-stack{display:grid;gap:12px}
+  .profile-saved-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+  .profile-saved-list li,.profile-report-group li{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .profile-saved-list strong,.profile-saved-list span{display:block}
+  .profile-saved-list strong{color:#143246;font-size:14px}
+  .profile-saved-list span{color:#5d7180;font-size:12px}
+  .profile-saved-list button{border:0;background:transparent;color:#1a6b7a;font:inherit;font-weight:800;cursor:pointer}
+  .profile-record-stack>.profile-upload-tab{width:100%}
   .profile-webinar-list{display:grid;gap:8px}
   .profile-webinar-list article{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#f4f6fc}
   .profile-webinar-list strong{display:block;color:#143246;font-size:14px}
