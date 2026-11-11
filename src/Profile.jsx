@@ -447,9 +447,7 @@ function Profile({ activity = null } = {}) {
                   </div>
 
                   <div className="profile-field">
-                    <label htmlFor="profile-account-email">
-                      Mail ID <span>*</span>
-                    </label>
+                    <label htmlFor="profile-account-email">Mail ID</label>
                     <input
                       id="profile-account-email"
                       name="email"

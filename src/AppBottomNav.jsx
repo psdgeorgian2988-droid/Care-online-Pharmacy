@@ -1,5 +1,3 @@
-import { useEffect, useRef } from "react";
-import { hasAccountSession, useLoginSession } from "./authSession";
 import {
   DOCTOR_HOME_HASH,
   HOMECARE_HOME_HASH,
@@ -19,7 +17,6 @@ import {
   MEDICINE_HOME_HASH,
   VACCINATION_HOME_HASH,
 } from "./hashRoute";
-import { ServiceGlyph, serviceIconTone } from "./serviceIcons";
 
 export const TABS = [
   { href: "#profile", label: "Account", icon: "account" },
@@ -75,75 +72,7 @@ export function tabActive(href, route, service = "") {
   return route === href;
 }
 
-export default function AppBottomNav({ route, service = "", guestSearchOpen = false, onGuestSearch }) {
-  const user = useLoginSession();
-  const loggedIn = hasAccountSession(user);
-  const listed = footerTabs(route, false);
-  const tabs = listed.flatMap((tab) =>
-    tab.href === LABS_HOME_HASH
-      ? [tab, { href: "#guest-search", label: "Search report", icon: "search", kind: "search" }]
-      : [tab],
-  );
-  const navRef = useRef(null);
-  const pinnedHrefs = new Set(["#profile", MEDICINE_HOME_HASH]);
-  const pinned = tabs.filter((tab) => pinnedHrefs.has(tab.href));
-  const scrolling = tabs.filter((tab) => !pinnedHrefs.has(tab.href));
-
-  useEffect(() => {
-    const scroller = navRef.current;
-    if (!scroller || typeof window === "undefined") return;
-    if (window.matchMedia?.("(min-width: 768px)")?.matches) return;
-    const active = scroller.querySelector("[aria-current='page']");
-    if (active) active.scrollIntoView({ inline: "nearest", block: "nearest" });
-  }, [route, service, loggedIn, guestSearchOpen]);
-
-  if (loggedIn) return null;
-
-  const renderTab = (tab) => {
-    const tone = serviceIconTone(tab.icon);
-    if (tab.kind === "search") {
-      return (
-        <button
-          key={tab.href}
-          type="button"
-          className={guestSearchOpen ? "active" : undefined}
-          aria-pressed={guestSearchOpen}
-          aria-label="Search report"
-          data-icon={tab.icon}
-          style={{ "--icon-color": tone.color, "--icon-bg": tone.bg }}
-          onClick={onGuestSearch}
-        >
-          <span>
-            <ServiceGlyph type={tab.icon} color={tone.color} />
-          </span>
-          <em>{tab.label}</em>
-        </button>
-      );
-    }
-    const active = tabActive(tab.href, route, service);
-    return (
-      <a
-        key={tab.href}
-        href={tab.href}
-        className={active ? "active" : undefined}
-        aria-current={active ? "page" : undefined}
-        data-icon={tab.icon}
-        style={{ "--icon-color": tone.color, "--icon-bg": tone.bg }}
-      >
-        <span>
-          <ServiceGlyph type={tab.icon} color={tone.color} />
-        </span>
-        <em>{tab.label}</em>
-      </a>
-    );
-  };
-
-  return (
-    <nav className="app-bottom-nav" aria-label="App">
-      <div className="app-bottom-pin">{pinned.map(renderTab)}</div>
-      <div className="app-bottom-scroll" ref={navRef}>
-        {scrolling.map(renderTab)}
-      </div>
-    </nav>
-  );
+/** Service shortcuts stay on the account page. The bottom bar no longer lists them. */
+export default function AppBottomNav() {
+  return null;
 }

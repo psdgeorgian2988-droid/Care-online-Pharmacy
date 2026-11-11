@@ -657,17 +657,12 @@ export default function PaymentBlock({
         details={guestDetails}
         open={promptOpen}
         onSkip={() => {
-          setGuestSkipped(true);
-          finishGuestPrompt();
+          setPromptOpen(false);
+          setPendingMethod("");
         }}
         onRegistered={() => {
-          setGuestSkipped(true);
-          finishGuestPrompt();
-        }}
-        onNeedContact={() => {
-          setGuestSkipped(true);
-          setGuestNote("Complete name, mobile and address above first.");
-          finishGuestPrompt();
+          setPromptOpen(false);
+          setPendingMethod("");
         }}
       />
     </>

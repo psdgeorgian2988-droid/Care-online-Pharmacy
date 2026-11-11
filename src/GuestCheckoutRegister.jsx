@@ -1,43 +1,11 @@
 import { useEffect, useState } from "react";
-import PersonFields from "./PersonFields.jsx";
-import {
-  PROFILE_KEY,
-  useLoginSession,
-  writeLoginSession,
-} from "./authSession";
-import { readUserProfile, withFormattedAddress } from "./addressFields";
-import { pickFamilyMembers, pickPerson, pickEmail, validatePerson, validateEmail, accountCreatorMobile } from "./personFields";
-import { normalizeLoginPin, pickLoginPin } from "./loginPin";
-import { publishAccount } from "./accountSync";
-import { noContactEmailProps } from "./noContactAutofill";
-import {
-  GUEST_REGISTER_BENEFITS,
-  GUEST_REGISTER_HEADLINE,
-  guestRegisterPlan,
-} from "./guestOrder";
+import { lookupAccountIdentity } from "./accountSync";
+import { goToHash } from "./hashRoute";
+import { noContactMobileProps } from "./noContactAutofill";
+import { openKnownAccount } from "./otpLogin";
 
-function saveAccount(draft) {
-  const existing = readUserProfile();
-  const sameAccount = existing.mobile === draft.mobile;
-  const creatorMobile = accountCreatorMobile(draft, existing);
-  const profile = {
-    name: draft.name.trim(),
-    mobile: creatorMobile,
-    creatorMobile,
-    email: pickEmail(draft),
-    loginPin: pickLoginPin(draft, existing) || normalizeLoginPin(draft.pinCode),
-    ...pickPerson(draft),
-    familyMembers: sameAccount
-      ? pickFamilyMembers({ ...existing, mobile: creatorMobile, creatorMobile })
-      : [],
-    ...withFormattedAddress({
-      ...draft,
-      addressConfirmed: "yes",
-    }),
-  };
-  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-  writeLoginSession(profile);
-  publishAccount(profile);
+function digits(value) {
+  return String(value || "").replace(/\D/g, "").slice(-10);
 }
 
 export default function GuestCheckoutRegister({
@@ -45,21 +13,16 @@ export default function GuestCheckoutRegister({
   open = false,
   onSkip,
   onRegistered,
-  onNeedContact,
 }) {
-  const user = useLoginSession();
-  const [step, setStep] = useState("prompt");
-  const [form, setForm] = useState(() => guestRegisterPlan(details).draft);
-  const [errors, setErrors] = useState({});
-  const [status, setStatus] = useState("");
+  const [mobile, setMobile] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState({ type: "", text: "" });
 
   useEffect(() => {
     if (!open) return undefined;
-    const plan = guestRegisterPlan(details);
-    setStep("prompt");
-    setForm(plan.draft);
-    setErrors({});
-    setStatus("");
+    setMobile(digits(details.mobile || details.mobileNumber));
+    setBusy(false);
+    setStatus({ type: "", text: "" });
     const onKey = (event) => {
       if (event.key === "Escape") onSkip?.();
     };
@@ -70,49 +33,38 @@ export default function GuestCheckoutRegister({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = previous;
     };
-  }, [open]);
+  }, [open, details.mobile, details.mobileNumber]);
 
-  if (user || !open) return null;
+  if (!open) return null;
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: "" }));
-    setStatus("");
-  };
-
-  const startRegister = () => {
-    const plan = guestRegisterPlan({ ...details, ...form });
-    setForm(plan.draft);
-    setErrors({});
-    if (plan.needsOrderContact) {
-      onNeedContact?.();
-      return;
-    }
-    if (plan.canSaveNow) {
-      saveAccount(plan.draft);
-      onRegistered?.();
-      return;
-    }
-    setStatus("");
-    setStep("register");
-  };
-
-  const handleCreate = (event) => {
+  const logIn = async (event) => {
     event.preventDefault();
-    const plan = guestRegisterPlan(details);
-    const merged = { ...plan.draft, ...form };
-    if (plan.needsOrderContact) {
-      onNeedContact?.();
+    if (!/^[6-9]\d{9}$/.test(mobile)) {
+      setStatus({ type: "error", text: "Enter a valid 10-digit mobile number." });
       return;
     }
-    const nextErrors = {
-      ...validatePerson(merged),
-      ...validateEmail(merged),
-    };
-    setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
-    saveAccount(merged);
+    setBusy(true);
+    const result = await lookupAccountIdentity({ mobile });
+    setBusy(false);
+    if (!result.ok) {
+      setStatus({ type: "error", text: result.error || "Could not check this account." });
+      return;
+    }
+    if (result.state === "register" || !result.account) {
+      try {
+        sessionStorage.setItem("mediHomeRegisterDraft", JSON.stringify({ mobile }));
+      } catch {
+        /* the register form can still be filled by hand */
+      }
+      onSkip?.();
+      goToHash("#register");
+      return;
+    }
+    openKnownAccount({
+      account: result.account,
+      mobile: result.account.mobile || mobile,
+      delivery: { ...details, mobile: result.account.mobile || mobile },
+    });
     onRegistered?.();
   };
 
@@ -127,80 +79,41 @@ export default function GuestCheckoutRegister({
           aria-labelledby="guest-pay-title"
           onClick={(event) => event.stopPropagation()}
         >
-          {step === "prompt" ? (
-            <>
-              <p id="guest-pay-title" className="guest-pay-headline">
-                {GUEST_REGISTER_HEADLINE}
-              </p>
-              <div className="guest-pay-actions">
-                <button type="button" className="guest-pay-btn" onClick={() => setStep("benefits")}>
-                  Know More
-                </button>
-                <button type="button" className="guest-pay-btn is-ghost" onClick={onSkip}>
-                  Not Now
-                </button>
-              </div>
-            </>
-          ) : null}
-
-          {step === "benefits" ? (
-            <>
-              <p className="guest-pay-kicker">MediHome Members</p>
-              <h2 id="guest-pay-title">Member Benefits</h2>
-              <ul className="guest-pay-benefits">
-                {GUEST_REGISTER_BENEFITS.map((row) => (
-                  <li key={row}>{row}</li>
-                ))}
-              </ul>
-              <div className="guest-pay-actions">
-                <button type="button" className="guest-pay-btn" onClick={startRegister}>
-                  Register
-                </button>
-                <button type="button" className="guest-pay-btn is-ghost" onClick={onSkip}>
-                  Not Now
-                </button>
-              </div>
-            </>
-          ) : null}
-
-          {step === "register" ? (
-            <div className="guest-pay-form">
-              <p className="guest-pay-kicker">MediHome Members</p>
-              <h2 id="guest-pay-title">Create Account</h2>
-              <p className="guest-pay-reuse">
-                Name, mobile and address from this order will be saved to your
-                account. Add your mail ID to finish.
-              </p>
-              <label className="guest-pay-mail">
-                Mail ID
-                <input
-                  name="email"
-                  placeholder="name@email.com"
-                  value={form.email || ""}
-                  onChange={handleChange}
-                  {...noContactEmailProps}
-                />
-                {errors.email ? (
-                  <small className="guest-pay-error">{errors.email}</small>
-                ) : null}
-              </label>
-              <PersonFields
-                idPrefix="guest-order"
-                values={form}
-                errors={errors}
-                onChange={handleChange}
+          <form className="guest-pay-form" onSubmit={logIn}>
+            <p className="guest-pay-kicker">MediHome</p>
+            <h2 id="guest-pay-title">Log in</h2>
+            <p className="guest-pay-reuse">
+              Enter the mobile number for this order. The delivery address is saved on the account.
+            </p>
+            <label className="guest-pay-mail">
+              Mobile number
+              <input
+                name="mobile"
+                inputMode="numeric"
+                maxLength="10"
+                placeholder="10-digit mobile"
+                value={mobile}
+                onChange={(event) => {
+                  setMobile(digits(event.target.value));
+                  setStatus({ type: "", text: "" });
+                }}
+                {...noContactMobileProps}
               />
-              {status ? <small className="guest-pay-error">{status}</small> : null}
-              <div className="guest-pay-actions">
-                <button type="button" className="guest-pay-btn" onClick={handleCreate}>
-                  Create Account
-                </button>
-                <button type="button" className="guest-pay-btn is-ghost" onClick={onSkip}>
-                  Not Now
-                </button>
-              </div>
+            </label>
+            {status.text ? (
+              <small className={status.type === "error" ? "guest-pay-error" : "guest-pay-ok"}>
+                {status.text}
+              </small>
+            ) : null}
+            <div className="guest-pay-actions">
+              <button type="submit" className="guest-pay-btn" disabled={busy}>
+                {busy ? "Please wait…" : "Login"}
+              </button>
+              <button type="button" className="guest-pay-btn is-ghost" onClick={onSkip}>
+                Close
+              </button>
             </div>
-          ) : null}
+          </form>
         </div>
       </div>
     </>
@@ -210,10 +123,8 @@ export default function GuestCheckoutRegister({
 const styles = `
 .guest-pay-overlay{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(20,50,70,.5)}
 .guest-pay-dialog{width:min(440px,100%);padding:22px 20px 18px;border-radius:14px;background:#fff;border:1px solid #e4ecef;box-shadow:0 18px 48px rgba(20,50,70,.28);color:#143246}
-.guest-pay-headline{margin:0 0 16px;font-size:20px;font-weight:800;line-height:1.35;color:#0f5c45;text-align:center}
 .guest-pay-kicker{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#1a6b7a}
 .guest-pay-dialog h2{margin:0 0 10px;font-size:20px;font-weight:800;color:#143246}
-.guest-pay-benefits{margin:0 0 16px;padding:0 0 0 18px;display:grid;gap:8px;color:#143246;font-size:14px;font-weight:700;line-height:1.4}
 .guest-pay-reuse{margin:0 0 12px;font-size:13px;font-weight:700;color:#34546b;line-height:1.4}
 .guest-pay-mail{display:grid;gap:4px;font-size:12px;font-weight:700;color:#1a6b7a}
 .guest-pay-mail input{height:38px;min-height:38px;padding:8px 11px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px;font-weight:500;color:#143246}
@@ -221,5 +132,6 @@ const styles = `
 .guest-pay-actions{display:flex;flex-wrap:wrap;gap:8px}
 .guest-pay-btn{flex:1;min-height:42px;border:none;border-radius:8px;background:#1e8a73;color:#fff;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
 .guest-pay-btn.is-ghost{background:#fff;color:#1a6b7a;border:1px solid #d7e2e9}
-.guest-pay-error{color:#b64b4b;font-size:12px}
+.guest-pay-error{color:#9b2c2c;font-size:12px;font-weight:700}
+.guest-pay-ok{color:#1c9b61;font-size:12px;font-weight:700}
 `;

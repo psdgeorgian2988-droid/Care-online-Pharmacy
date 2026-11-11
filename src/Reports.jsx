@@ -514,7 +514,7 @@ function Reports({ initialTab = "" } = {}) {
             <div>
               <span className="service-kicker">MediHome Medical Record</span>
               <h1>Medical Record</h1>
-              <p>Log in to keep reports and prescriptions on this account. A guest can open Search report in the bottom tabs and look up a report by mobile number.</p>
+              <p>Log in to keep reports and prescriptions on this account. A guest can open Search report at the bottom of the main page and look up a report by mobile number.</p>
               <a
                 className="service-submit"
                 href="#login"

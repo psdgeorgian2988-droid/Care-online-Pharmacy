@@ -6,6 +6,7 @@ import {
   MEDICAL_RECORD_VIEWER_ACTIONS,
   buildCustomerMedicalRecord,
   collectMedicalRecords,
+  deleteCustomerMedicalRecord,
   downloadMedicalRecordFile,
   inferDiagnosticKind,
   medicalRecordActiveKind,
@@ -17,6 +18,7 @@ import {
   medicalRecordObjectUrl,
   medicalRecordKind,
   medicalRecordListCard,
+  newestMedicalRecordFirst,
   medicalRecordListTitle,
   medicalRecordPatientCard,
   medicalRecordStoredFileName,
@@ -708,4 +710,41 @@ test("vaccination records are patient-wise and open in the local viewer", () => 
     recordsForPatient(vaxRows, "fam-1", people).some((row) => row.testName === "BCG"),
     true
   );
+});
+
+test("reports and prescriptions list the latest first", () => {
+  const rows = [
+    { id: "MH-RPT-1700000000000", date: "2026-01-02", kind: "lab" },
+    { id: "MH-RPT-1700000000001", date: "2026-11-01", kind: "lab" },
+    { id: "MH-RX-1700000000002", date: "2026-06-01", kind: "prescription" },
+  ].sort(newestMedicalRecordFirst);
+  assert.deepEqual(
+    rows.map((row) => row.date),
+    ["2026-11-01", "2026-06-01", "2026-01-02"]
+  );
+});
+
+test("customer can delete one saved prescription and leave the report", () => {
+  const memory = {
+    data: {},
+    getItem(key) {
+      return Object.hasOwn(this.data, key) ? this.data[key] : null;
+    },
+    setItem(key, value) {
+      this.data[key] = String(value);
+    },
+  };
+  memory.setItem(
+    "mediHomeReports",
+    JSON.stringify([
+      { id: "MH-RX-1", kind: "prescription", date: "2026-11-01" },
+      { id: "MH-RPT-2", kind: "lab", date: "2026-10-01", testName: "CBC" },
+    ])
+  );
+  const next = deleteCustomerMedicalRecord({ id: "MH-RX-1", kind: "prescription" }, memory);
+  assert.deepEqual(
+    next.map((row) => row.id),
+    ["MH-RPT-2"]
+  );
+  assert.deepEqual(JSON.parse(memory.getItem("mediHomeDeletedRecords")), ["MH-RX-1"]);
 });

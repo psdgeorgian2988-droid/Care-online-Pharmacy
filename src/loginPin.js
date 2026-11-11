@@ -5,7 +5,7 @@ export function normalizeLoginPin(value) {
 
 export function profileLoginPin(profile = {}) {
   return (
-    normalizeLoginPin(profile.loginPin) || normalizeLoginPin(profile.pinCode)
+    normalizeLoginPin(profile.loginPin) || normalizeLoginPin(profile.password)
   );
 }
 

@@ -9,8 +9,8 @@ import { goToHash } from "./hashRoute.js";
 export function logOutCustomer() {
   const profile = readUserProfile();
   rememberAccount(profile);
-  publishAccount(profile);
   logoutSession();
   clearGuestCheckout();
+  publishAccount(profile);
   goToHash("#home");
 }

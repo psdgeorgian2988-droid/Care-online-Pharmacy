@@ -22,6 +22,7 @@ function sendFile(filePath, res) {
   const ext = path.extname(filePath).toLowerCase();
   res.statusCode = 200;
   res.setHeader("Content-Type", MIME[ext] || "application/octet-stream");
+  if (ext === ".html") res.setHeader("Cache-Control", "no-cache");
   createReadStream(filePath).pipe(res);
   return true;
 }

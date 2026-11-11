@@ -3299,15 +3299,16 @@ function Medicines({ initialSearch = "" }) {
 
   const finishMove = (add) => {
     const target = moveTarget;
-    if (add) addPickedToCart();
-    else {
-      setPickedIds(new Set());
-      setPickedQty({});
-    }
     setMoveTarget("");
+    if (add) {
+      addPickedToCart();
+      closeSection();
+      return;
+    }
+    setPickedIds(new Set());
+    setPickedQty({});
     if (target === "close") closeSection();
     else if (target) openMedicineSection(target);
-    if (add) setCartNote("Added to your cart. Choose another category.");
   };
 
   useEffect(() => {
@@ -3490,6 +3491,7 @@ function Medicines({ initialSearch = "" }) {
     setCartNote("Added to your cart. Choose another category.");
     setShowCheckout(false);
     setConfirmedOrder(null);
+    closeSection();
   };
 
   const applyStripsToAll = (value) => {
@@ -3738,12 +3740,15 @@ function Medicines({ initialSearch = "" }) {
             )}
           </div>
         </div>
-        <div className={`medicine-category-boxes${sectionOpen ? " is-chips" : ""}`}>
-          {sectionOpen ? (
-            <button type="button" className="medicine-category-box" onClick={() => requestLeave("close")}>
-              <span className="medicine-category-name">All</span>
+        {sectionOpen ? (
+          <div className="medicine-open-section">
+            <button type="button" className="medicine-section-back" onClick={() => requestLeave("close")}>
+              Sections
             </button>
-          ) : null}
+            <h2>{sectionName}</h2>
+          </div>
+        ) : (
+        <div className="medicine-category-boxes">
           {["Search", ...categories.filter((item) => item !== "All")].map((item) => (
             <button
               key={item}
@@ -3759,6 +3764,7 @@ function Medicines({ initialSearch = "" }) {
             </button>
           ))}
         </div>
+        )}
         {moveTarget ? (
           <div className="medicine-cart-ask">
             <p>Add the selected medicines to your cart?</p>

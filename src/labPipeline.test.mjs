@@ -192,6 +192,34 @@ test("partner report merges into local reports store", () => {
   assert.equal(saved[0].fileName, "CBC.pdf");
 });
 
+test("a report the customer deleted is not merged back", () => {
+  const memory = {
+    data: {
+      mediHomeDeletedRecords: JSON.stringify(["ord-MH-LAB-9"]),
+      mediHomeReports: "[]",
+    },
+    getItem(key) {
+      return Object.hasOwn(this.data, key) ? this.data[key] : null;
+    },
+    setItem(key, value) {
+      this.data[key] = String(value);
+    },
+  };
+  const row = mergeOrderReportIntoStore(
+    {
+      id: "MH-LAB-9",
+      kind: "lab",
+      patientName: "Riya",
+      reportFileName: "cbc.pdf",
+      reportFileData: "data:application/pdf;base64,aaa",
+      reportTestName: "CBC",
+    },
+    memory
+  );
+  assert.equal(row, null);
+  assert.deepEqual(JSON.parse(memory.getItem("mediHomeReports")), []);
+});
+
 test("report file name is the test name plus the file type extension", () => {
   assert.equal(diagnosticTestName({ tests: [{ name: "CBC" }, { name: "KFT" }] }), "CBC, KFT");
   assert.equal(

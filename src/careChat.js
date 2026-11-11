@@ -86,11 +86,11 @@ export function replyTo(rawText) {
 
   if (/\b(account|profile|password|forgot|otp|reset)\b/.test(q)) {
     return {
-      text: "Manage your name, mobile, and addresses from Profile after login. Use Forgot password on the Login page if you cannot sign in. If OTP or account access still fails, call customer care.",
+      text: "Open Login and enter the mobile number for the account. A new number opens the account form. After login, name, mobile, and addresses are on Profile. If account access still fails, call customer care.",
       needsStaff: false,
       links: [
+        { href: "#login", label: "Login" },
         { href: "#profile", label: "Profile" },
-        { href: "#forgot", label: "Forgot password" },
         { href: `tel:${CARE_PHONE_TEL}`, label: `Call ${CARE_PHONE_DISPLAY}` },
       ],
     };

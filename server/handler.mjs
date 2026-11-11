@@ -5,9 +5,11 @@ import {
   rememberOrderCustomers,
   removeAccount,
   resetAccountPin,
+  lookupCustomerLogin,
   upsertAccount,
   verifyAccountPin,
 } from "./accounts.mjs";
+import { requestCustomerLoginOtp, verifyCustomerLoginOtp } from "./customerOtp.mjs";
 import { readReport, reportsFromOrder, saveReportFromOrder, searchReports } from "./reports.mjs";
 import { applyPartnerMedicineCorrection } from "../src/rxPartnerShare.js";
 import { partnerAppKind } from "../src/partnerApp.js";
@@ -765,9 +767,54 @@ export async function handleApi(req, res) {
       return true;
     }
 
+    if (pathname === "/api/accounts/lookup" && req.method === "POST") {
+      const body = await readJson(req);
+      const result = await lookupCustomerLogin({
+        mobile: body.mobile,
+        email: body.email || body.mailId,
+        deviceId: body.deviceId,
+      });
+      if (!result.ok) {
+        send(res, result.status || 400, { error: result.error || "Enter a mobile number or mail ID." });
+        return true;
+      }
+      send(res, 200, result);
+      return true;
+    }
+
+    if (pathname === "/api/accounts/otp" && req.method === "POST") {
+      const body = await readJson(req);
+      const result = await requestCustomerLoginOtp(
+        { mobile: body.mobile, email: body.email || body.mailId },
+        { host: req.headers.host }
+      );
+      if (!result.ok) {
+        send(res, result.status || 400, { error: result.error || "Could not send the login code." });
+        return true;
+      }
+      send(res, 200, result.body);
+      return true;
+    }
+
+    if (pathname === "/api/accounts/otp/verify" && req.method === "POST") {
+      const body = await readJson(req);
+      const result = await verifyCustomerLoginOtp({
+        mobile: body.mobile,
+        email: body.email || body.mailId,
+        otp: body.otp || body.code,
+        deviceId: body.deviceId,
+      });
+      if (!result.ok) {
+        send(res, result.status || 400, { error: result.error || "That login code does not match." });
+        return true;
+      }
+      send(res, 200, result.body);
+      return true;
+    }
+
     if (pathname === "/api/accounts/login" && req.method === "POST") {
       const body = await readJson(req);
-      const result = await verifyAccountPin(body.mobile, body.pin || body.pinCode || body.loginPin);
+      const result = await verifyAccountPin(body.mobile, body.pin || body.loginPin || body.password);
       if (!result.ok) {
         send(res, result.status || 401, { error: result.error || "Mobile or PIN does not match this account." });
         return true;

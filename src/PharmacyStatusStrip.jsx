@@ -40,7 +40,7 @@ const styles = `
 .pharmacy-status{margin:10px 0 14px}
 .pharmacy-status-now{margin:0 0 8px;font-size:13px;color:#34546b}
 .pharmacy-status-now strong{color:#143246}
-.pharmacy-status-steps{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;list-style:none;margin:0;padding:0}
+.pharmacy-status-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;list-style:none;margin:0;padding:0}
 .pharmacy-status-step{margin:0;padding:8px 4px;border:1px solid #d7e2e9;border-radius:8px;background:#f7fafc;text-align:center}
 .pharmacy-status-step span{display:grid;place-items:center;width:22px;height:22px;margin:0 auto 4px;border-radius:50%;background:#d7e2e9;color:#143246;font-size:11px;font-weight:800}
 .pharmacy-status-step p{margin:0;font-size:11px;font-weight:800;color:#34546b;line-height:1.25}

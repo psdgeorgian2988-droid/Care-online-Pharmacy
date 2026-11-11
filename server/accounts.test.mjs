@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
-import { accountMatchesLogin, accountStoreWithout, isRemovedMobile, loginPinFromInput, mergeAccountStores } from "./accounts.mjs";
+import { accountMatchesLogin, accountStoreFiles, accountStoreWithout, isRemovedMobile, loginPinFromInput, lookupLoginIdentity, mergeAccountStores } from "./accounts.mjs";
 
 test("removing a customer drops the account and keeps that mobile hidden", () => {
   const next = accountStoreWithout(
@@ -58,9 +58,26 @@ test("admin customer remove is a staff route", async () => {
   assert.match(source, /await removeAccount\(body\.mobile\)/);
 });
 
+test("a mobile number opens that account directly, and a new number needs registration", () => {
+  const store = {
+    accounts: [
+      { mobile: "9876500199", name: "Demo Member", registered: true, email: "demo.member@medihome.test" },
+    ],
+    removed: [],
+  };
+  const known = lookupLoginIdentity(store, { mobile: "9876500199" });
+  assert.equal(known.state, "open");
+  assert.equal(known.account.name, "Demo Member");
+  assert.equal(known.account.loginPin, undefined);
+  const fresh = lookupLoginIdentity(store, { mobile: "9000000091" });
+  assert.equal(fresh.state, "register");
+});
+
 test("address PIN is not the login password, and a family mobile can sign in", () => {
   assert.equal(loginPinFromInput({ pinCode: "110001", loginPin: "" }), "");
   assert.equal(loginPinFromInput({ loginPin: "246810" }), "246810");
+  assert.equal(loginPinFromInput({ password: "246810", pinCode: "110001" }), "246810");
+  assert.ok(accountStoreFiles().includes("/public/assets/medihome-accounts.json"));
   const account = {
     mobile: "9876543210",
     loginPin: "246810",

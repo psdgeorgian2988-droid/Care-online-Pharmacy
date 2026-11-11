@@ -3,6 +3,30 @@ import { MEMBER_ROLE } from "./familyAccount.js";
 
 export const HOLDER_REPORT_ID = "self";
 export const OTHER_PATIENT_PREFIX = "other:";
+export const DELETED_MEDICAL_RECORD_KEY = "mediHomeDeletedRecords";
+
+function deletedRecordKeys(storage) {
+  try {
+    const parsed = JSON.parse(storage?.getItem?.(DELETED_MEDICAL_RECORD_KEY) || "[]");
+    return new Set((Array.isArray(parsed) ? parsed : []).map((id) => String(id || "")).filter(Boolean));
+  } catch {
+    return new Set();
+  }
+}
+
+/** A report or prescription this customer removed from Medical Record. */
+export function isCustomerDeletedRecord(record = {}, storage = globalThis.localStorage) {
+  const id = String(record?.id || "");
+  return Boolean(id && deletedRecordKeys(storage).has(id));
+}
+
+export function rememberDeletedMedicalRecord(record = {}, storage = globalThis.localStorage) {
+  const id = String(record?.id || "");
+  if (!id || !storage?.setItem) return;
+  const keys = deletedRecordKeys(storage);
+  keys.add(id);
+  storage.setItem(DELETED_MEDICAL_RECORD_KEY, JSON.stringify([...keys]));
+}
 
 export function normalizePatientName(name = "") {
   return String(name || "")

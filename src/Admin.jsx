@@ -28,6 +28,7 @@ import {
   isDiagnosticKind,
   orderHasReport,
 } from "./labPipeline";
+import { PHARMACY_TRACK_STEPS, pharmacyStatusLabel } from "./pharmacyTrack";
 import {
   FEATURE_CATALOG,
   DEFAULT_FEATURES,
@@ -103,6 +104,9 @@ import {
 } from "./adminAssign";
 
 function statusChoices(kind, step) {
+  if (String(kind || "").toLowerCase() === "medicine") {
+    return PHARMACY_TRACK_STEPS.map((row) => ({ key: row.key, label: row.label }));
+  }
   if (isDiagnosticKind(kind)) {
     return DIAGNOSTIC_TRACK_STEPS.filter(
       (row) => row.key !== "declined" || step === "declined"
@@ -386,11 +390,14 @@ function Admin() {
       return;
     }
     const now = Date.now();
-    const status = isDiagnosticKind(kind)
-      ? trackStatus === "done"
-        ? "Order Complete"
-        : diagnosticStepLabel(trackStatus, kind)
-      : TRACK_STEPS.find((step) => step.key === trackStatus)?.label || order.status;
+    const status =
+      String(kind || "").toLowerCase() === "medicine"
+        ? pharmacyStatusLabel(trackStatus)
+        : isDiagnosticKind(kind)
+          ? trackStatus === "done"
+            ? "Order Complete"
+            : diagnosticStepLabel(trackStatus, kind)
+          : TRACK_STEPS.find((step) => step.key === trackStatus)?.label || order.status;
     const stamp =
       trackStatus === "sample_collected"
         ? { sampleCollectedAt: order.sampleCollectedAt || now }

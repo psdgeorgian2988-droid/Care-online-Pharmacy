@@ -54,12 +54,11 @@ import { peekRxLabCheckout } from "./medicineCartStore";
 import PortalsChooser, { CustomerPortal, StaffPortal } from "./RolePortals";
 import { isPartnerDeskRoute, partnerDeskKindFromRoute } from "./partnerApp";
 import CustomerHome from "./CustomerHome";
-import GuestOrderLookup from "./GuestOrderLookup.jsx";
+import GuestOrderLookup, { MainPageSearchReport } from "./GuestOrderLookup.jsx";
 import HomeServiceCatalog from "./HomeServiceCatalog";
 import LabsHub from "./LabsHub";
 import { HomeWithAboutSlides } from "./HomeAboutSlides";
 import { useIsPhoneLayout } from "./useLayoutMode";
-import AppBottomNav from "./AppBottomNav";
 import BackToHome from "./BackToHome";
 import WebinarNotice from "./WebinarNotice";
 import SlotOfferBanner from "./SlotOfferBanner";
@@ -103,35 +102,8 @@ const ACCOUNT_ACTIVITY_ROUTES = new Set([
   "#track",
 ]);
 
-const RX_SECTION_CART = new Set([
-  "medicine",
-  "lab",
-  "radiology",
-  "stepdown",
-  "vaccination",
-  "labs",
-]);
-
-function cartLivesInSection(route, service, plan) {
-  if (
-    route === "#medicine-search" ||
-    route === "#labs" ||
-    route === "#stepdown" ||
-    route === "#vaccination"
-  ) {
-    return true;
-  }
-  if (route === "#homecare") {
-    return plan === "vaccination" || plan === "vaccination-child";
-  }
-  return route === "#home" && RX_SECTION_CART.has(String(service || "").toLowerCase());
-}
-
-function hideHeaderCart(route, service, plan) {
-  if (route === "#ambulance" || partnerDeskKindFromRoute(route) === "ambulance") return true;
-  if (cartLivesInSection(route, service, plan)) return true;
-  if (hasAccountSession()) return route !== "#profile";
-  return route !== "#home";
+function hideHeaderCart(route) {
+  return !(hasAccountSession() && route === "#profile");
 }
 
 const OPS_LINKS = [
@@ -543,7 +515,11 @@ function App() {
             </a>
             <nav className="ops-nav" aria-label="Operations">
               {partnerEntry ? (
-                <span className="ops-nav-stay">{opsDeskKind === "medicine" ? "Pharmacy Partner" : "Partner Desk"}</span>
+                <>
+                  <span className="ops-nav-stay">{opsDeskKind === "medicine" ? "Pharmacy Partner" : "Partner Desk"}</span>
+                  <a href="#admin">Admin Panel</a>
+                  <a href="#home">Website</a>
+                </>
               ) : (
                 <>
                   {OPS_LINKS.map((link) => (
@@ -597,7 +573,10 @@ function App() {
     route !== "#checkout" &&
     needsCustomerWelcome(user) &&
     sessionTick >= 0;
-  const guestSearchPanel = guestSearchOpen && !welcomeGate && !isAuthRoute && !hasAccountSession(user);
+  const onMainPage = route === "#home" && !hashService;
+  const showSearchReport =
+    onMainPage && !welcomeGate && !isAuthRoute && !hasAccountSession(user);
+  const guestSearchPanel = guestSearchOpen && showSearchReport;
 
   if (customerShell) {
     return (
@@ -631,12 +610,12 @@ function App() {
           {welcomeGate || isAuthRoute ? null : (
             <>
               <GuestOrderLookup open={guestSearchPanel} />
-              <AppBottomNav
-                route={route}
-                service={hashService}
-                guestSearchOpen={guestSearchPanel}
-                onGuestSearch={() => setGuestSearchOpen((open) => !open)}
-              />
+              {showSearchReport ? (
+                <MainPageSearchReport
+                  open={guestSearchPanel}
+                  onToggle={() => setGuestSearchOpen((open) => !open)}
+                />
+              ) : null}
             </>
           )}
         </div>
@@ -692,12 +671,10 @@ function App() {
         )}
       </main>
 
-      {welcomeGate || isAuthRoute ? null : (
-        <AppBottomNav
-          route={route}
-          service={hashService}
-          guestSearchOpen={guestSearchPanel}
-          onGuestSearch={() => setGuestSearchOpen((open) => !open)}
+      {welcomeGate || isAuthRoute || !showSearchReport ? null : (
+        <MainPageSearchReport
+          open={guestSearchPanel}
+          onToggle={() => setGuestSearchOpen((open) => !open)}
         />
       )}
       <SiteFooter showOpsLinks={route !== "#home"} />

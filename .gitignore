@@ -25,6 +25,7 @@ server/data/partner-reset-otps.json
 server/data/reports.json
 server/data/slot-capacity.json
 server/data/accounts.json
+server/data/customer-login-otps.json
 server/data/orders.sqlite
 server/data/orders.sqlite-*
 server/data/medicine-photos/

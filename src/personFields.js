@@ -188,7 +188,7 @@ export function accountCreatorMobile(source = {}, previous = {}, options = {}) {
 }
 
 export function normalizeMobile(value) {
-  return String(value || "").replace(/\D/g, "").slice(0, 10);
+  return String(value || "").replace(/\D/g, "").slice(-10);
 }
 
 /** Show the first two and last three digits only, e.g. 9876543210 → 98*****210 */
@@ -237,7 +237,8 @@ export function pickEmail(source = {}) {
 }
 
 export function validateEmail(source = {}, key = "email") {
-  if (isValidEmail(source.email || source[key])) return {};
+  const email = normalizeEmail(source.email || source[key]);
+  if (!email || isValidEmail(email)) return {};
   return { [key]: "Enter a valid mail ID." };
 }
 

@@ -1,20 +1,9 @@
 import { useEffect, useState } from "react";
-import AddressFields from "./AddressFields.jsx";
-import AutofillTrap from "./AutofillTrap";
-import { commitHash, goToHash } from "./hashRoute";
-import { noContactMobileProps, noContactNameProps } from "./noContactAutofill";
-import {
-  emptyGuestCheckout,
-  validateGuestCheckout,
-  writeGuestCheckout,
-} from "./guestCheckout";
-import LogoMark from "./LogoMark";
+import { commitHash } from "./hashRoute";
 import WelcomeSlideshow from "./WelcomeSlideshow";
 import { APP_PREVIEW_KEY, writeAppRole } from "./appRuntime";
 import {
   clearCustomerEntryChosen,
-  clearWelcomeRequest,
-  markCustomerEntryChosen,
   requestWelcomePage,
 } from "./authSession";
 
@@ -26,38 +15,7 @@ export {
 
 const FLASH_MS = 2200;
 
-/** Leave welcome and open the home catalog with every service section. */
-export function openGuestHome() {
-  clearWelcomeRequest();
-  markCustomerEntryChosen();
-  try {
-    globalThis.localStorage?.removeItem?.(APP_PREVIEW_KEY);
-  } catch {
-    /* ignore */
-  }
-  try {
-    globalThis.dispatchEvent?.(new Event("mediHomeSession"));
-  } catch {
-    /* ignore */
-  }
-
-  const loc = globalThis.location;
-  if (!loc) return;
-  const url = new URL(loc.href);
-  url.searchParams.set("app", "0");
-  url.hash = "#home";
-  const next = `${url.pathname}${url.search}${url.hash}`;
-  const current = `${loc.pathname}${loc.search}${loc.hash}`;
-  if (next !== current) {
-    loc.assign(next);
-    return;
-  }
-  globalThis.document
-    ?.getElementById?.("home-services")
-    ?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-}
-
-/** Open the customer welcome (Login / Order as Guest) from any logo click. */
+/** Open the customer welcome from any logo click. */
 export function openWelcomePage() {
   requestWelcomePage();
   clearCustomerEntryChosen();
@@ -98,43 +56,13 @@ export function openWelcomePage() {
 }
 
 export default function CustomerWelcome({ onDone } = {}) {
-  const [mode, setMode] = useState("flash"); // flash | choose | guest
-  const [form, setForm] = useState(() => emptyGuestCheckout());
-  const [errors, setErrors] = useState({});
+  const [mode, setMode] = useState("flash");
 
   useEffect(() => {
     if (mode !== "flash") return undefined;
     const timer = window.setTimeout(() => setMode("choose"), FLASH_MS);
     return () => window.clearTimeout(timer);
   }, [mode]);
-
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: "" }));
-  };
-
-  const saveGuest = (event) => {
-    event.preventDefault();
-    const nextErrors = validateGuestCheckout(form);
-    setErrors(nextErrors);
-    if (Object.keys(nextErrors).length) return;
-    writeGuestCheckout(form);
-    markCustomerEntryChosen();
-    onDone?.();
-    try {
-      window.dispatchEvent(new Event("mediHomeSession"));
-    } catch {
-      /* ignore */
-    }
-    goToHash("#home");
-  };
-
-  const enterAsGuest = (event) => {
-    event?.preventDefault?.();
-    openGuestHome();
-    onDone?.();
-  };
 
   const openOpsPage = (event, hash) => {
     event.preventDefault();
@@ -154,66 +82,6 @@ export default function CustomerWelcome({ onDone } = {}) {
     );
   }
 
-  if (mode === "guest") {
-    return (
-      <div className="app-first is-guest">
-        <section className="app-first-card" aria-label="Guest delivery details">
-          <div className="app-first-card-logo" aria-hidden="true">
-            <LogoMark size="lg" />
-          </div>
-          <h2>Guest order</h2>
-          <form className="app-first-form" onSubmit={saveGuest}>
-            <AutofillTrap />
-            <label>
-              Name (optional)
-              <input
-                name="name"
-                value={form.name || ""}
-                onChange={handleChange}
-                placeholder="Your name"
-                {...noContactNameProps}
-              />
-            </label>
-            <label>
-              Mobile number
-              <input
-                name="mobile"
-                value={form.mobile || ""}
-                onChange={handleChange}
-                placeholder="10-digit mobile"
-                maxLength={10}
-                {...noContactMobileProps}
-              />
-              {errors.mobile ? <small>{errors.mobile}</small> : null}
-            </label>
-            <AddressFields
-              idPrefix="guest-welcome"
-              values={form}
-              errors={errors}
-              onChange={handleChange}
-              showUseMyLocation
-            />
-            <div className="app-first-actions">
-              <button type="submit" className="app-first-btn">
-                Continue
-              </button>
-              <button
-                type="button"
-                className="app-first-btn is-quiet"
-                onClick={() => {
-                  setMode("choose");
-                  setErrors({});
-                }}
-              >
-                Back
-              </button>
-            </div>
-          </form>
-        </section>
-      </div>
-    );
-  }
-
   return (
     <div className="app-first is-home is-login-screen">
       <div className="app-first-stage" aria-hidden="true">
@@ -221,17 +89,14 @@ export default function CustomerWelcome({ onDone } = {}) {
       </div>
       <div className="app-first-center is-login is-bottom">
         <div className="app-first-actions is-entry" aria-label="Get started">
+          <a className="app-first-btn is-main" href="#login">
+            Login
+          </a>
           <div className="app-first-actions-row">
-            <a className="app-first-btn" href="#login">
-              Login / Register
-            </a>
-            <a className="app-first-btn is-quiet" href="/?app=0#home" onClick={enterAsGuest}>
-              Order as Guest
-            </a>
-            <a className="app-first-btn is-quiet" href="#partner-desk" onClick={(event) => openOpsPage(event, "#partner-desk")}>
+            <a className="app-first-btn is-partner" href="#partner-desk" onClick={(event) => openOpsPage(event, "#partner-desk")}>
               Partner Login
             </a>
-            <a className="app-first-btn is-quiet" href="#admin" onClick={(event) => openOpsPage(event, "#admin")}>
+            <a className="app-first-btn is-admin" href="#admin" onClick={(event) => openOpsPage(event, "#admin")}>
               Admin Panel
             </a>
           </div>

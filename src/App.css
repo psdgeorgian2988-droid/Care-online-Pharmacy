@@ -3584,6 +3584,31 @@ footer .logo {
   font-weight: 700;
 }
 
+.medicines-page .medicine-open-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+.medicines-page .medicine-open-section h2 {
+  margin: 0;
+  font-size: 22px;
+  color: #123b59;
+}
+
+.medicines-page .medicine-section-back {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: #1a6b7a;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .medicines-page .medicine-category-boxes.is-chips {
   display: flex !important;
   flex-wrap: nowrap;
@@ -9577,9 +9602,11 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
   padding: clamp(10px, 2.2dvh, 22px) clamp(12px, 2.5vw, 24px)
     clamp(10px, 1.8dvh, 18px) !important;
   background: linear-gradient(
-    180deg,
-    rgba(12, 50, 59, 0.72) 0%,
-    rgba(12, 50, 59, 0.96) 100%
+    105deg,
+    #0d6b62 0%,
+    #1456a8 46%,
+    #5a3fd4 78%,
+    #c46a12 100%
   ) !important;
 }
 
@@ -10089,9 +10116,11 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
   border: 0;
   border-radius: 0;
   background: linear-gradient(
-    180deg,
-    rgba(12, 50, 59, 0.72) 0%,
-    rgba(12, 50, 59, 0.96) 100%
+    105deg,
+    #0d6b62 0%,
+    #1456a8 46%,
+    #5a3fd4 78%,
+    #c46a12 100%
   ) !important;
   box-shadow: none;
   backdrop-filter: none;
@@ -10112,7 +10141,9 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
   position: relative;
   z-index: 30;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   width: 100%;
   max-width: min(420px, calc(100% - 24px));
   margin: 0 auto;
@@ -10130,9 +10161,41 @@ html[data-layout="laptop"] .home-landing .app-home-catalog.is-desktop-web .app-h
 
 .app-first-actions.is-entry .app-first-btn {
   width: 100%;
-  min-height: 48px;
-  height: 48px;
+  min-height: 46px;
+  height: 46px;
   box-sizing: border-box;
+}
+
+.app-first-actions.is-entry .app-first-btn.is-partner {
+  background: linear-gradient(180deg, #3dd6b5 0%, #0f9f8a 100%);
+  color: #ffffff;
+  border: 0;
+  box-shadow: 0 6px 14px rgba(15, 159, 138, 0.34);
+}
+
+.app-first-actions.is-entry .app-first-btn.is-admin {
+  background: linear-gradient(180deg, #7aa2ff 0%, #6d4aff 100%);
+  color: #ffffff;
+  border: 0;
+  box-shadow: 0 6px 14px rgba(109, 74, 255, 0.32);
+}
+
+.app-first-actions.is-entry .app-first-btn.is-main {
+  width: calc(50% + 5px);
+  min-width: 0;
+  max-width: none;
+  height: 52px;
+  min-height: 52px;
+  align-self: center;
+  padding: 0 16px;
+  font-size: 18px;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #12b886 0%, #228be6 38%, #7950f2 68%, #f59f00 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 16px rgba(121, 80, 242, 0.28);
 }
 
 .app-first-center.is-flash-copy {
@@ -11565,9 +11628,19 @@ html[data-layout="laptop"] .app-first-actions.is-entry {
 }
 
 html[data-layout="laptop"] .app-first-actions.is-entry .app-first-btn {
-  min-height: 52px;
-  height: 52px;
+  min-height: 48px;
+  height: 48px;
   font-size: 16px;
+}
+
+html[data-layout="laptop"] .app-first-actions.is-entry .app-first-btn.is-main {
+  width: calc(50% + 5px);
+  min-width: 0;
+  max-width: none;
+  min-height: 54px;
+  height: 54px;
+  font-size: 18px;
+  border-radius: 16px;
 }
 
 /* Tablet welcome: slightly tighter chrome, keep both CTAs visible */
@@ -11585,9 +11658,19 @@ html[data-layout="tablet"] .app-first-actions.is-entry {
 }
 
 html[data-layout="tablet"] .app-first-actions.is-entry .app-first-btn {
-  min-height: 48px;
-  height: 48px;
+  min-height: 46px;
+  height: 46px;
   font-size: 14px;
+}
+
+html[data-layout="tablet"] .app-first-actions.is-entry .app-first-btn.is-main {
+  width: calc(50% + 5px);
+  min-width: 0;
+  max-width: none;
+  min-height: 50px;
+  height: 50px;
+  font-size: 17px;
+  border-radius: 16px;
 }
 
 html[data-layout="tablet"] .slideshow-review-bubble {
@@ -11611,10 +11694,20 @@ html[data-layout="phone"] .app-first-actions.is-entry {
 }
 
 html[data-layout="phone"] .app-first-actions.is-entry .app-first-btn {
-  min-height: 46px;
-  height: 46px;
+  min-height: 44px;
+  height: 44px;
   font-size: 13px;
   padding: 0 8px;
+}
+
+html[data-layout="phone"] .app-first-actions.is-entry .app-first-btn.is-main {
+  width: calc(50% + 5px);
+  min-width: 0;
+  max-width: none;
+  min-height: 48px;
+  height: 48px;
+  font-size: 16px;
+  border-radius: 16px;
 }
 
 html[data-layout="phone"] .slideshow-review-bubble {
@@ -11646,6 +11739,16 @@ html[data-layout="phone"] .slideshow-review-text {
     font-size: 13px !important;
   }
 
+  .app-first-actions.is-entry .app-first-btn.is-main {
+    width: calc(50% + 5px) !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    font-size: 16px !important;
+    border-radius: 14px !important;
+  }
+
   .app-first.is-home.is-login-screen .slideshow-reviews {
     display: none;
   }
@@ -11655,6 +11758,15 @@ html[data-layout="phone"] .slideshow-review-text {
   .app-first-actions-row {
     grid-template-columns: 1fr 1fr;
     gap: 8px;
+  }
+
+  .app-first-actions.is-entry .app-first-btn.is-main {
+    width: calc(50% + 4px) !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    border-radius: 14px !important;
   }
 
   .app-first.is-home.is-login-screen .app-first-brand-bar {

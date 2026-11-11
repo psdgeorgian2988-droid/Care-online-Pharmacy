@@ -126,7 +126,7 @@ export function checkMedicineAvailability(cart, catalogue = []) {
 export function medicineConfirmedFields(availability) {
   return {
     trackStatus: "confirmed",
-    status: "Confirmed",
+    status: "Order Received",
     partnerConfirmed: true,
     partnerConfirmStatus: "auto",
     availabilityChecked: true,
@@ -138,7 +138,7 @@ export function medicineConfirmedFields(availability) {
 export function medicineAwaitingPharmacyFields(extras = {}) {
   return {
     trackStatus: "requested",
-    status: "Order placed",
+    status: "Order Placed",
     partnerConfirmed: false,
     partnerConfirmStatus: "pending",
     availabilityChecked: Boolean(extras.availabilityChecked),
@@ -203,7 +203,7 @@ export function partnerAcceptFields(now = Date.now(), kind = "") {
   if (String(kind || "").toLowerCase() === "medicine") {
     return {
       trackStatus: "confirmed",
-      status: "Approved by pharmacist",
+      status: "Order Received",
       partnerConfirmed: true,
       partnerConfirmStatus: "accepted",
       partnerConfirmedAt: now,

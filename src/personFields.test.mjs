@@ -25,12 +25,13 @@ import {
   maxDobAgeYears,
 } from "./personFields.js";
 
-test("mail ID is required and stored in lowercase", () => {
+test("mail ID is optional and stored in lowercase", () => {
   assert.equal(isValidEmail(""), false);
   assert.equal(isValidEmail("not-an-email"), false);
   assert.equal(isValidEmail("asha@medihome.in"), true);
   assert.equal(pickEmail({ email: " Asha@MediHome.IN " }), "asha@medihome.in");
-  assert.equal(validateEmail({ email: "" }).email.includes("mail ID"), true);
+  assert.deepEqual(validateEmail({ email: "" }), {});
+  assert.equal(validateEmail({ email: "not-an-email" }).email.includes("mail ID"), true);
   assert.deepEqual(validateEmail({ email: "care@medihome.in" }), {});
 });
 

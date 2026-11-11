@@ -51,6 +51,7 @@ import {
 } from "./appointmentSlot";
 import { customerBackHomeHash, goToHash } from "./hashRoute";
 import { hasAccountSession, useLoginSession } from "./authSession";
+import { saveDeliveryOnProfile } from "./otpLogin";
 import {
   MEDICINE_CART_EVENT,
   TEST_CART_EVENT,
@@ -291,6 +292,7 @@ export default function CartCheckout() {
       const booked = withBookingIdentity(source, profile);
       const gps = await resolvePinLocation(booked.pinCode);
       const addr = applyResolvedPin(booked, gps);
+      saveDeliveryOnProfile({ ...booked, ...addr });
       const pay = paymentFromQuote(payQuote, billTotal);
       const payment = await settleCheckoutPayment({
         method: payMethod,

@@ -31,7 +31,8 @@ test("first scan is partner pickup, second scan is customer delivery", () => {
   const open = { kind: "medicine", trackStatus: "confirmed" };
   assert.equal(nextQrScanAction(open), "pickup");
   const picked = qrScanPatch(open, 1700000000000);
-  assert.equal(picked.patch.trackStatus, "on_the_way");
+  assert.equal(picked.patch.trackStatus, "picked_up");
+  assert.equal(picked.patch.status, "Picked up");
   assert.equal(picked.patch.qrLastScan, "pickup");
 
   const delivered = qrScanPatch({ ...open, ...picked.patch }, 1700000001000);

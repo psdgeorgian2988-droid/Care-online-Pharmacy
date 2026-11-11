@@ -17,18 +17,17 @@ import {
   pharmacyTrackKey,
 } from "./pharmacyTrack.js";
 
-test("pharmacy status reads as placed, approved, packed, picked up, on the way, delivered", () => {
-  assert.equal(pharmacyStatusLabel("requested"), "Order placed");
-  assert.equal(pharmacyStatusLabel("confirmed"), "Approved by pharmacist");
-  assert.equal(pharmacyStatusLabel("packed"), "Packed");
+test("pharmacy status reads as placed, received, packed, picked up, delivered", () => {
+  assert.equal(pharmacyStatusLabel("requested"), "Order Placed");
+  assert.equal(pharmacyStatusLabel("confirmed"), "Order Received");
+  assert.equal(pharmacyStatusLabel("packed"), "Order Packed");
   assert.equal(pharmacyStatusLabel("picked_up"), "Picked up");
-  assert.equal(pharmacyStatusLabel("on_the_way"), "On the way");
+  assert.equal(pharmacyStatusLabel("on_the_way"), "Picked up");
   assert.equal(pharmacyStatusLabel("done"), "Delivered");
   assert.equal(nextPharmacyStep("requested"), "confirmed");
   assert.equal(nextPharmacyStep("confirmed"), "packed");
   assert.equal(nextPharmacyStep("packed"), "picked_up");
-  assert.equal(nextPharmacyStep("picked_up"), "on_the_way");
-  assert.equal(nextPharmacyStep("on_the_way"), "done");
+  assert.equal(nextPharmacyStep("picked_up"), "done");
 });
 
 test("pharmacy track key follows pharmacist approve, pack, pickup, and delivery", () => {
@@ -41,7 +40,7 @@ test("pharmacy track key follows pharmacist approve, pack, pickup, and delivery"
   );
   assert.equal(
     pharmacyTrackKey({ trackStatus: "on_the_way", checkPickupAt: 1 }),
-    "on_the_way"
+    "picked_up"
   );
   assert.equal(
     pharmacyTrackKey({ trackStatus: "done", trackCompleted: true }),

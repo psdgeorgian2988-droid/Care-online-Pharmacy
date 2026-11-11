@@ -27,15 +27,14 @@ import {
 } from "./authSession";
 import { goToHash } from "./hashRoute";
 import AutofillTrap from "./AutofillTrap";
+import WelcomeSlideshow from "./WelcomeSlideshow";
 import { noContactEmailProps, noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import {
   MEMBER_ROLE,
-  findAccountActor,
   holderActor,
 } from "./familyAccount";
-import { normalizeLoginPin, pickLoginPin, profileLoginPin } from "./loginPin";
-import { loginAccountOnServer, publishAccount } from "./accountSync";
-import { findRememberedAccount, rememberAccount } from "./accountBook";
+import { lookupAccountIdentity, publishAccount } from "./accountSync";
+import { openKnownAccount } from "./otpLogin";
 import {
   confirmResetOtp,
   lookupResetAccount,
@@ -59,15 +58,14 @@ function readForgotMobile() {
 }
 
 export default function AuthPage({ mode = "login" }) {
-  if (mode === "forgot") return <ForgotPinPage />;
-  return <LoginRegisterPage mode={mode} />;
+  return <LoginRegisterPage mode={mode === "register" ? "register" : "login"} />;
 }
 
 function LoginRegisterPage({ mode }) {
   const isRegister = mode === "register";
-  const [login, setLogin] = useState({ mobile: "", pinCode: "" });
+  const [login, setLogin] = useState({ mobile: "" });
+  const [loginBusy, setLoginBusy] = useState(false);
   const [register, setRegister] = useState({
-    password: "",
     name: "",
     mobile: "",
     email: "",
@@ -89,7 +87,21 @@ function LoginRegisterPage({ mode }) {
   useEffect(() => {
     if (!isRegister) return;
     const current = readLoginSession();
-    if (!current) return;
+    if (!current) {
+      try {
+        const draft = JSON.parse(sessionStorage.getItem("mediHomeRegisterDraft") || "null");
+        if (draft?.mobile || draft?.email) {
+          setRegister((prev) => ({
+            ...prev,
+            mobile: draft.mobile || prev.mobile,
+            email: draft.email || prev.email,
+          }));
+        }
+      } catch {
+        /* ignore a damaged draft */
+      }
+      return;
+    }
     if (current.accountRole === MEMBER_ROLE) {
       goToHash("#profile");
       return;
@@ -110,109 +122,68 @@ function LoginRegisterPage({ mode }) {
 
   const handleLoginChange = (event) => {
     const { name, value } = event.target;
-    setLogin((prev) => ({ ...prev, [name]: digitsOnly(value) }));
+    const next =
+      name === "mobile"
+        ? digitsOnly(value).slice(-10)
+        : name === "otp"
+          ? digitsOnly(value).slice(0, 6)
+          : value;
+    setLogin((prev) => ({ ...prev, [name]: next }));
     setStatus({ type: "", text: "" });
   };
 
   const handleRegisterChange = (event) => {
     const { name, value } = event.target;
     const nextValue =
-      name === "mobile" || name === "pinCode" || name === "password" ? digitsOnly(value) : value;
+      name === "mobile"
+        ? digitsOnly(value).slice(-10)
+        : name === "pinCode"
+          ? digitsOnly(value).slice(0, 6)
+          : value;
     setRegister((prev) => ({ ...prev, [name]: nextValue }));
     setErrors((prev) => ({ ...prev, [name]: "" }));
     setStatus({ type: "", text: "" });
   };
 
+  const startRegistration = () => {
+    try {
+      sessionStorage.setItem(
+        "mediHomeRegisterDraft",
+        JSON.stringify({ mobile: login.mobile })
+      );
+    } catch {
+      /* the register form can still be filled by hand */
+    }
+    goToHash("#register");
+  };
+
   const handleLogin = async (event) => {
     event.preventDefault();
-    const saved = readUserProfile();
-    if (!/^[6-9]\d{9}$/.test(login.mobile)) {
+    const mobile = login.mobile;
+    if (!/^[6-9]\d{9}$/.test(mobile)) {
       setStatus({ type: "error", text: "Enter a valid 10-digit mobile number." });
       return;
     }
-    if (!/^\d{6}$/.test(login.pinCode)) {
-      setStatus({ type: "error", text: "Enter your 6-digit PIN." });
+    setLoginBusy(true);
+    const result = await lookupAccountIdentity({ mobile });
+    setLoginBusy(false);
+    if (!result.ok) {
+      setStatus({ type: "error", text: result.error });
       return;
     }
-    const actor = saved.mobile ? findAccountActor(saved, login.mobile) : null;
-    const remembered = findRememberedAccount(login.mobile);
-    const known = remembered?.profile || (actor ? saved : null);
-    const knownActor = remembered?.actor || actor;
-    const knownPin = profileLoginPin(known || {});
-    if (known && knownActor && knownPin && knownPin === login.pinCode) {
-      const profile = {
-        ...known,
-        isGuest: false,
-        loginPin: login.pinCode,
-      };
-      rememberAccount(profile);
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-      publishAccount(profile);
-      writeLoginSession(profile, knownActor);
-      goToHash("#profile");
+    if (result.state === "register" || !result.account) {
+      startRegistration();
       return;
     }
-    const remote = await loginAccountOnServer(login.mobile, login.pinCode);
-    if (remote.account) {
-      const profile = {
-        ...(known || saved),
-        ...remote.account,
-        mobile: remote.account.mobile || known?.mobile || saved.mobile,
-        creatorMobile: remote.account.mobile || known?.creatorMobile || saved.creatorMobile,
-        familyMembers: remote.account.familyMembers?.length
-          ? remote.account.familyMembers
-          : known?.familyMembers || saved.familyMembers || [],
-        loginPin: login.pinCode,
-        isGuest: false,
-      };
-      const nextActor = findAccountActor(profile, login.mobile) || knownActor || holderActor(profile);
-      rememberAccount(profile);
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-      writeLoginSession(profile, nextActor);
-      goToHash("#profile");
-      return;
-    }
-    if (known && knownActor && !knownPin && remote.status !== 401) {
-      const profile = {
-        ...known,
-        isGuest: false,
-        loginPin: login.pinCode,
-      };
-      rememberAccount(profile);
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-      publishAccount(profile);
-      writeLoginSession(profile, knownActor);
-      goToHash("#profile");
-      return;
-    }
-    if (known || remote.status === 401) {
-      setStatus({ type: "error", text: "Mobile or PIN does not match this account." });
-      return;
-    }
-    setStatus({
-      type: "error",
-      text: remote.error || "This mobile number is not registered.",
-    });
+    openKnownAccount({ account: result.account, mobile: result.account.mobile || mobile });
   };
 
-  const openForgot = () => {
-    try {
-      if (login.mobile) sessionStorage.setItem("mediHomeForgotMobile", login.mobile);
-    } catch {
-      /* ignore */
-    }
-    goToHash("#forgot");
-  };
-
-  const handleRegister = (event) => {
+  const handleRegister = async (event) => {
     event.preventDefault();
     const nextErrors = {};
     if (!register.name.trim()) nextErrors.name = "Full name is required.";
     if (!/^[6-9]\d{9}$/.test(register.mobile)) {
       nextErrors.mobile = "Enter a valid 10-digit mobile number.";
-    }
-    if (!editingAccount && !/^\d{6}$/.test(register.password)) {
-      nextErrors.password = "Enter a 6-digit password.";
     }
     Object.assign(nextErrors, validateEmail(register));
     Object.assign(nextErrors, validatePerson(register));
@@ -233,16 +204,25 @@ function LoginRegisterPage({ mode }) {
       mobile: creatorMobile,
       creatorMobile,
       email: pickEmail(register),
-      loginPin: pickLoginPin(register, previous) || normalizeLoginPin(register.password),
+      registered: true,
       ...pickPerson(register),
       familyMembers: sameAccount
         ? pickFamilyMembers({ ...previous, mobile: creatorMobile, creatorMobile })
         : [],
       ...withFormattedAddress({ ...register, addressConfirmed: "yes" }),
     };
+    const saved = await publishAccount(profile);
+    if (!saved?.ok) {
+      setStatus({ type: "error", text: saved?.error || "Could not save this account." });
+      return;
+    }
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     writeLoginSession(profile, holderActor(profile));
-    publishAccount(profile);
+    try {
+      sessionStorage.removeItem("mediHomeRegisterDraft");
+    } catch {
+      /* ignore */
+    }
     const next = editingAccount ? "#profile" : consumeReturnHash();
     goToHash(next);
   };
@@ -251,6 +231,11 @@ function LoginRegisterPage({ mode }) {
     <>
       <style>{styles}</style>
       <div className={`auth-page${isRegister ? " is-register" : " is-login"}`}>
+        {isRegister ? null : (
+          <div className="auth-login-stage" aria-hidden="true">
+            <WelcomeSlideshow />
+          </div>
+        )}
         <section className="auth-card">
           <h1>{editingAccount ? "Edit Account" : isRegister ? "Create Account" : "Login"}</h1>
 
@@ -289,9 +274,7 @@ function LoginRegisterPage({ mode }) {
                 ) : null}
               </div>
               <div className="auth-field">
-                <label htmlFor="auth-register-email">
-                  Mail ID <span>*</span>
-                </label>
+                <label htmlFor="auth-register-email">Mail ID</label>
                 <input
                   id="auth-register-email"
                   name="email"
@@ -317,28 +300,8 @@ function LoginRegisterPage({ mode }) {
                 onChange={handleRegisterChange}
               />
               {editingAccount ? null : (
-                <div className="auth-field">
-                  <label htmlFor="auth-register-password">
-                    Password <span>*</span>
-                  </label>
-                  <SeePasswordInput
-                    id="auth-register-password"
-                    name="password"
-                    inputMode="numeric"
-                    maxLength="6"
-                    placeholder="6-digit password"
-                    value={register.password}
-                    onChange={handleRegisterChange}
-                  />
-                  {errors.password ? (
-                    <small className="auth-error">{errors.password}</small>
-                  ) : null}
-                </div>
-              )}
-              {editingAccount ? null : (
                 <p className="auth-hint">
-                  After you create this account and log in, add family members
-                  from Profile.
+                  Fill every detail to create the account. It stays linked to this mobile number.
                 </p>
               )}
               <button type="submit">
@@ -349,42 +312,23 @@ function LoginRegisterPage({ mode }) {
             <form className="auth-form auth-form-login" onSubmit={handleLogin} autoComplete="off">
               <AutofillTrap />
               <div className="auth-field">
-                <label htmlFor="auth-login-mobile">
-                  Login ID <span>*</span>
-                </label>
                 <input
                   id="auth-login-mobile"
                   name="mobile"
+                  inputMode="numeric"
                   maxLength="10"
-                  placeholder="10-digit mobile"
+                  aria-label="Mobile number"
+                  placeholder="10 digits"
                   value={login.mobile}
                   onChange={handleLoginChange}
                   {...noContactMobileProps}
                 />
               </div>
-              <div className="auth-field">
-                <label htmlFor="auth-login-pin">
-                  Password <span>*</span>
-                </label>
-                <SeePasswordInput
-                  id="auth-login-pin"
-                  name="pinCode"
-                  inputMode="numeric"
-                  maxLength="6"
-                  placeholder="6-digit password"
-                  value={login.pinCode}
-                  onChange={handleLoginChange}
-                />
-              </div>
               <div className="auth-login-actions">
-                <button type="submit">Login</button>
-                <a className="auth-register-btn" href="#register">
-                  Register
-                </a>
+                <button type="submit" disabled={loginBusy}>
+                  {loginBusy ? "Please wait…" : "Login"}
+                </button>
               </div>
-              <button type="button" className="auth-forgot-btn" onClick={openForgot}>
-                Forgot PIN?
-              </button>
             </form>
           )}
 
@@ -392,25 +336,19 @@ function LoginRegisterPage({ mode }) {
             <p className={`auth-status ${status.type}`}>{status.text}</p>
           ) : null}
 
-          <p className="auth-switch">
-            {editingAccount && hasAccountSession(session) ? (
-              <>
-                <a
-                  href="#profile"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    goToHash("#profile");
-                  }}
-                >
-                  Back to account
-                </a>
-              </>
-            ) : isRegister ? (
-              <>
-                Already registered? <a href="#login">Login</a>
-              </>
-            ) : null}
-          </p>
+          {editingAccount && hasAccountSession(session) ? (
+            <p className="auth-switch">
+              <a
+                href="#profile"
+                onClick={(event) => {
+                  event.preventDefault();
+                  goToHash("#profile");
+                }}
+              >
+                Back to account
+              </a>
+            </p>
+          ) : null}
         </section>
       </div>
     </>
@@ -690,7 +628,7 @@ function ForgotPinPage() {
 const styles = `
 .auth-page{min-height:auto;padding:22px 4% 36px;background:transparent;color:#17324d;box-sizing:border-box}
 .auth-card{max-width:860px;margin:0 auto;padding:20px 22px 22px;background:#fff;border-radius:16px;box-shadow:0 3px 14px rgba(30,100,140,.07)}
-.auth-page.is-login{min-height:calc(100vh - 160px);display:flex;align-items:center;justify-content:center;padding:12px}
+.auth-page.is-login{position:relative;overflow:hidden;min-height:calc(100vh - 160px);display:flex;align-items:center;justify-content:center;padding:12px}
 .auth-page.is-login .auth-card{width:min(240px,92vw);max-width:240px;margin:0 auto;padding:10px;text-align:center}
 .auth-page.is-login .auth-card h1{font-size:16px;margin:0 0 8px}
 .auth-page.is-login .auth-form{gap:8px}
@@ -735,6 +673,16 @@ const styles = `
 .auth-switch:empty{display:none}
 .auth-card > .auth-hint{margin:-4px 0 14px}
 .auth-page.is-login .auth-form button[type=submit],.auth-page.is-login .auth-form > .auth-register-btn{max-width:none}
+.auth-page.is-login{background:#0c323b}
+.auth-login-stage{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.auth-login-stage .app-first-slideshow{position:absolute;inset:0;width:100%;height:100%;overflow:hidden}
+.auth-login-stage .app-first-hero,.auth-login-stage .app-first-slide{position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;object-position:center center}
+.auth-page.is-login .auth-card{position:relative;z-index:1;border:0;background:rgba(255,255,255,.94);box-shadow:0 18px 40px rgba(12,40,60,.28)}
+.auth-page.is-login .auth-card h1{background:linear-gradient(90deg,#12b886,#228be6 55%,#7950f2);-webkit-background-clip:text;background-clip:text;color:transparent}
+.auth-page.is-login .auth-form input:not([type=radio]):not([type=checkbox]){border:1px solid #c9d7f2;background:#f7fbff}
+.auth-page.is-login .auth-form input:focus{border-color:#228be6;box-shadow:0 0 0 3px rgba(34,139,230,.18)}
+.auth-page.is-login .auth-login-actions{grid-template-columns:1fr}
+.auth-page.is-login .auth-login-actions button[type=submit]{border:0;border-radius:999px;background:linear-gradient(145deg,#12b886 0%,#228be6 58%,#7950f2 100%);color:#fff;box-shadow:0 6px 14px rgba(34,139,230,.28)}
 @media (max-width:800px){
   .auth-page{padding:14px 10px 24px}
   .auth-form{grid-template-columns:1fr}

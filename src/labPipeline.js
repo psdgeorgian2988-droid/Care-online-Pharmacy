@@ -1,4 +1,8 @@
-import { isHiddenMedicalRecordSource, patientIdentityFromSource } from "./reportPeople.js";
+import {
+  isCustomerDeletedRecord,
+  isHiddenMedicalRecordSource,
+  patientIdentityFromSource,
+} from "./reportPeople.js";
 import { settleStepdownCompletion } from "./stepdownDesk.js";
 import { accessionOf, buildSampleTubes } from "./labAccession.js";
 
@@ -468,7 +472,9 @@ export function reportRecordFromOrder(order, people = []) {
 }
 
 export function mergeOrderReportIntoStore(order, storage = globalThis.localStorage, people = []) {
-  const rows = reportRecordsFromOrder(order, people);
+  const rows = reportRecordsFromOrder(order, people).filter(
+    (row) => !isCustomerDeletedRecord(row, storage)
+  );
   if (!rows.length || !storage) return null;
   if (rows.some((row) => isHiddenMedicalRecordSource(order) || isHiddenMedicalRecordSource(row))) return null;
   let list = [];
@@ -482,7 +488,12 @@ export function mergeOrderReportIntoStore(order, storage = globalThis.localStora
   const ids = new Set(rows.map((row) => row.id));
   const next = [
     ...rows,
-    ...list.filter((item) => item.orderId !== orderId && !ids.has(item.id)),
+    ...list.filter(
+      (item) =>
+        item.orderId !== orderId &&
+        !ids.has(item.id) &&
+        !isCustomerDeletedRecord(item, storage)
+    ),
   ];
   storage.setItem("mediHomeReports", JSON.stringify(next));
   if (storage === globalThis.localStorage && typeof globalThis.dispatchEvent === "function") {

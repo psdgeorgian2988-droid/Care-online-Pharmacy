@@ -47,7 +47,7 @@ export function readGuestCheckout(store) {
     if (!parsed || typeof parsed !== "object") return null;
     const mobile = String(parsed.mobile || "")
       .replace(/\D/g, "")
-      .slice(0, 10);
+      .slice(-10);
     if (!/^[6-9]\d{9}$/.test(mobile)) return null;
     return {
       ...emptyGuestCheckout(),
@@ -65,7 +65,7 @@ export function writeGuestCheckout(details, store) {
   const storage = store || globalThis.localStorage;
   const mobile = String(details.mobile || "")
     .replace(/\D/g, "")
-    .slice(0, 10);
+    .slice(-10);
   const profile = withFormattedAddress({
     ...emptyGuestCheckout(),
     ...details,
@@ -112,7 +112,7 @@ export function clearGuestCheckout(store) {
 export function validateGuestCheckout(source = {}) {
   const mobile = String(source.mobile || "")
     .replace(/\D/g, "")
-    .slice(0, 10);
+    .slice(-10);
   const errors = { ...validateAddress({ ...source, addressConfirmed: "yes" }) };
   if (!/^[6-9]\d{9}$/.test(mobile)) {
     errors.mobile = "Enter a valid 10-digit mobile number.";

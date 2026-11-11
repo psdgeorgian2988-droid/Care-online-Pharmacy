@@ -29,6 +29,7 @@
     "@capacitor/status-bar": "^8.0.3",
     "@cursor/sdk": "^1.0.31",
     "@vitejs/plugin-react": "^6.0.4",
+    "mysql2": "^3.24.6",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

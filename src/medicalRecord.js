@@ -6,8 +6,10 @@ import {
 } from "./labPipeline.js";
 import {
   attachPatientIdentity,
+  isCustomerDeletedRecord,
   isHiddenMedicalRecordSource,
   medicalRecordPeople,
+  rememberDeletedMedicalRecord,
   patientIdentityFromSource,
   recordPatientName,
   reportBelongsTo,
@@ -61,11 +63,44 @@ export function loadMedicalRecords(storage = globalThis.localStorage) {
   try {
     const parsed = JSON.parse(storage.getItem(MEDICAL_RECORD_KEY) || "[]");
     return (Array.isArray(parsed) ? parsed : []).filter(
-      (row) => !isHiddenMedicalRecordSource(row)
+      (row) => !isHiddenMedicalRecordSource(row) && !isCustomerDeletedRecord(row, storage)
     );
   } catch {
     return [];
   }
+}
+
+/** Remove one saved report or prescription and keep it from returning. */
+export function deleteCustomerMedicalRecord(record = {}, storage = globalThis.localStorage) {
+  const id = String(record?.id || "");
+  rememberDeletedMedicalRecord(record, storage);
+  let list = [];
+  try {
+    const parsed = JSON.parse(storage?.getItem?.(MEDICAL_RECORD_KEY) || "[]");
+    list = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    list = [];
+  }
+  const next = id ? list.filter((row) => String(row?.id || "") !== id) : list;
+  saveMedicalRecords(next, storage);
+  return loadMedicalRecords(storage);
+}
+
+function medicalRecordRecency(record = {}) {
+  const date = String(record.date || "").trim();
+  const day = /^\d{4}-\d{2}-\d{2}/.test(date) ? Date.parse(`${date.slice(0, 10)}T00:00:00`) : 0;
+  const fromId = Number(String(record.id || "").match(/(\d{10,})$/)?.[1] || 0);
+  const saved = Date.parse(String(record.savedAt || ""));
+  return Math.max(
+    Number.isFinite(day) ? day : 0,
+    Number.isFinite(fromId) ? fromId : 0,
+    Number.isFinite(saved) ? saved : 0
+  );
+}
+
+/** Latest report or prescription first. */
+export function newestMedicalRecordFirst(a, b) {
+  return medicalRecordRecency(b) - medicalRecordRecency(a);
 }
 
 export function saveMedicalRecords(list, storage = globalThis.localStorage) {

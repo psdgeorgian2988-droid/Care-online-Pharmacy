@@ -37,3 +37,21 @@ test("logout keeps the registered mobile so the same person can sign in again", 
   assert.equal(member?.profile?.loginPin, "246810");
   assert.equal(JSON.parse(localStorage.getItem(PROFILE_KEY)).mobile, "9810011100");
 });
+
+test("a mobile saved with the country code still matches the 10 digits typed at login", () => {
+  localStorage.clear();
+  localStorage.setItem(
+    PROFILE_KEY,
+    JSON.stringify({
+      name: "Asha Singh",
+      mobile: "+91 98100 11100",
+      loginPin: "246810",
+      pinCode: "110001",
+    })
+  );
+  logoutSession();
+  const found = findRememberedAccount("9810011100");
+  assert.equal(found?.profile?.name, "Asha Singh");
+  assert.equal(found?.profile?.loginPin, "246810");
+  assert.equal(found?.profile?.mobile, "9810011100");
+});

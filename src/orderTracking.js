@@ -16,6 +16,7 @@ import { diagnosticStepLabel, isDiagnosticKind, orderHasReport } from "./labPipe
 import { collectorHasFix } from "./labAccession.js";
 import { isStepdownDischarged, isStepdownOrder } from "./stepdownDesk.js";
 import { isOngoingTrackOrder } from "./orderStatus.js";
+import { pharmacyStatusLabel } from "./pharmacyTrack.js";
 import { readLoginSession } from "./authSession.js";
 import { accountMobiles, customerMobilesFromOrders, ordersForAccount } from "./orderSync.js";
 
@@ -301,6 +302,8 @@ export function partnerCopy(kind) {
 }
 
 export function stepLabel(kind, key) {
+  const service = String(kind || "").toLowerCase();
+  if (service === "medicine" || service === "cart") return pharmacyStatusLabel(key);
   if (isDiagnosticKind(kind)) return diagnosticStepLabel(key, kind);
   if (key === "requested") return "Awaiting Partner Confirmation";
   if (key === "slot_offered") return "Awaiting Customer Slot Confirmation";

@@ -236,7 +236,7 @@ export function readUserProfile() {
       ...pickPerson(parsed),
       familyMembers: pickFamilyMembers({ ...parsed, mobile, creatorMobile }),
       ...addressFromUnknown(parsed),
-      loginPin: normalizeLoginPin(parsed.loginPin),
+      loginPin: normalizeLoginPin(parsed.loginPin) || normalizeLoginPin(parsed.password),
       photo: String(parsed.photo || "").startsWith("data:image") ? String(parsed.photo) : "",
     };
   } catch {

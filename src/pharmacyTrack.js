@@ -1,19 +1,18 @@
 import { refundStatusLabel, refundTrackKey } from "./refundTrack.js";
 
 export const PHARMACY_TRACK_STEPS = [
-  { key: "requested", label: "Order placed" },
-  { key: "confirmed", label: "Approved by pharmacist" },
-  { key: "packed", label: "Packed" },
+  { key: "requested", label: "Order Placed" },
+  { key: "confirmed", label: "Order Received" },
+  { key: "packed", label: "Order Packed" },
   { key: "picked_up", label: "Picked up" },
-  { key: "on_the_way", label: "On the way" },
   { key: "done", label: "Delivered" },
 ];
 
 export const PHARMACY_DESK_TABS = [
-  { id: "new", label: "New orders", keys: ["requested", "declined"] },
-  { id: "approved", label: "Approved", keys: ["confirmed"] },
-  { id: "packed", label: "Packed", keys: ["packed"] },
-  { id: "picked", label: "Picked", keys: ["picked_up", "on_the_way"] },
+  { id: "new", label: "Order Placed", keys: ["requested", "declined"] },
+  { id: "approved", label: "Order Received", keys: ["confirmed"] },
+  { id: "packed", label: "Order Packed", keys: ["packed"] },
+  { id: "picked", label: "Picked up", keys: ["picked_up", "on_the_way"] },
   { id: "delivered", label: "Delivered", keys: ["done"] },
   { id: "returns", label: "Return medicine", keys: ["return_requested", "return_collected", "returned", "pending", "processing", "refunded", "rejected"] },
 ];
@@ -34,14 +33,14 @@ export function pharmacyReturnKey(order) {
 export function pharmacyStatusLabel(key) {
   const step = String(key || "").toLowerCase();
   if (step === "declined") return "Declined";
-  if (step === "arriving") return "On the way";
+  if (step === "arriving" || step === "on_the_way") return "Picked up";
   if (step === "return_requested") return "Return requested";
   if (step === "return_collected") return "Return collected";
   if (step === "returned") return "Returned";
   if (step === "pending" || step === "processing" || step === "refunded" || step === "rejected") {
     return refundStatusLabel(step);
   }
-  return PHARMACY_TRACK_STEPS.find((row) => row.key === step)?.label || "Order placed";
+  return PHARMACY_TRACK_STEPS.find((row) => row.key === step)?.label || "Order Placed";
 }
 
 export function pharmacyTrackKey(order) {
@@ -54,9 +53,14 @@ export function pharmacyTrackKey(order) {
   if (status === "declined") return "declined";
   if (order.trackCompleted || status === "done") return "done";
   if (order.checkDeliverAt || order.qrReceivedAt) return "done";
-  if (status === "on_the_way" || status === "arriving") return "on_the_way";
-  if (status === "picked_up" || order.checkPickupAt || order.qrPickedAt) {
-    return status === "picked_up" ? "picked_up" : "on_the_way";
+  if (
+    status === "picked_up" ||
+    status === "on_the_way" ||
+    status === "arriving" ||
+    order.checkPickupAt ||
+    order.qrPickedAt
+  ) {
+    return "picked_up";
   }
   if (status === "packed" || order.checkPackAt || order.qrPackedAt) return "packed";
   if (
@@ -100,7 +104,7 @@ export function nextPharmacyStep(key) {
 export function pharmacyPlacedFields(extras = {}) {
   return {
     trackStatus: "requested",
-    status: "Order placed",
+    status: "Order Placed",
     partnerConfirmed: false,
     partnerConfirmStatus: "pending",
     availabilityChecked: Boolean(extras.availabilityChecked),
@@ -114,7 +118,7 @@ export function pharmacyPlacedFields(extras = {}) {
 export function pharmacyApprovedFields(now = Date.now()) {
   return {
     trackStatus: "confirmed",
-    status: "Approved by pharmacist",
+    status: "Order Received",
     partnerConfirmed: true,
     partnerConfirmStatus: "accepted",
     partnerConfirmedAt: now,
@@ -124,7 +128,7 @@ export function pharmacyApprovedFields(now = Date.now()) {
 export function pharmacyPackedFields(now = Date.now()) {
   return {
     trackStatus: "packed",
-    status: "Packed",
+    status: "Order Packed",
     checkPackAt: now,
     qrPackedAt: now,
     qrLastScan: "pack",
@@ -133,8 +137,8 @@ export function pharmacyPackedFields(now = Date.now()) {
 
 export function pharmacyPickedUpFields(now = Date.now()) {
   return {
-    trackStatus: "on_the_way",
-    status: "On the way",
+    trackStatus: "picked_up",
+    status: "Picked up",
     checkPickupAt: now,
     qrPickedAt: now,
     qrLastScan: "pickup",

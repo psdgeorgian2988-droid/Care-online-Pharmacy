@@ -8,7 +8,7 @@ export function guestDraftFromOrder(source = {}) {
   ).trim();
   const mobile = String(source.mobile || source.mobileNumber || "")
     .replace(/\D/g, "")
-    .slice(0, 10);
+    .slice(-10);
   return {
     name,
     mobile,

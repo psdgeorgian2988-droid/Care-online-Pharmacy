@@ -3,10 +3,55 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { orderMobileDigits } from "../src/labCustomerActions.js";
+import { isValidEmail, normalizeEmail } from "../src/personFields.js";
 
 const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "data");
 const dataFile = path.join(dataDir, "accounts.json");
 const homeFile = path.join(os.homedir(), ".medihome", "accounts.json");
+const durableFile = "/public/assets/medihome-accounts.json";
+
+export function accountStoreFiles() {
+  const extra = String(process.env.MEDIHOME_ACCOUNTS_FILE || "").trim();
+  return [...new Set([dataFile, homeFile, durableFile, extra].filter(Boolean))];
+}
+
+function mysqlConfigured() {
+  return Boolean(process.env.DB_HOST && process.env.DB_USER && process.env.DB_NAME);
+}
+
+let poolPromise = null;
+let tableReady = false;
+
+async function mysqlPool() {
+  if (!mysqlConfigured()) return null;
+  if (!poolPromise) {
+    poolPromise = import("mysql2/promise")
+      .then((mysql) =>
+        mysql.createPool({
+          host: process.env.DB_HOST,
+          port: Number(process.env.DB_PORT || 3306),
+          user: process.env.DB_USER,
+          password: process.env.DB_PASSWORD || "",
+          database: process.env.DB_NAME,
+          connectionLimit: 2,
+          enableKeepAlive: true,
+        })
+      )
+      .catch(() => null);
+  }
+  return poolPromise;
+}
+
+async function ensureAccountTable(pool) {
+  if (tableReady) return;
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS medihome_account_store (
+      id TINYINT NOT NULL PRIMARY KEY,
+      body MEDIUMTEXT NOT NULL
+    )`
+  );
+  tableReady = true;
+}
 
 function mobileOf(value) {
   return orderMobileDigits({ mobile: value });
@@ -22,7 +67,78 @@ function text(value) {
 }
 
 function mailOf(value) {
-  return text(value).toLowerCase();
+  return normalizeEmail(value);
+}
+
+export function deviceIdOf(value) {
+  const id = String(value || "").trim();
+  return /^[a-zA-Z0-9_-]{20,80}$/.test(id) ? id : "";
+}
+
+function trustedDeviceIds(account) {
+  return [...new Set((account?.trustedDevices || []).map(deviceIdOf).filter(Boolean))].slice(-12);
+}
+
+export function accountDeviceKnown(account, deviceId) {
+  const id = deviceIdOf(deviceId);
+  return Boolean(id) && trustedDeviceIds(account).includes(id);
+}
+
+export function withTrustedDevice(account, deviceId) {
+  const id = deviceIdOf(deviceId);
+  if (!account || !id) return account;
+  const trustedDevices = [...trustedDeviceIds(account).filter((row) => row !== id), id].slice(-12);
+  return { ...account, trustedDevices };
+}
+
+function isRegisteredAccount(row) {
+  return Boolean(row && (row.registered === true || pinOf(row.loginPin)));
+}
+
+function accountByMobile(accounts, mobile) {
+  return accounts.find(
+    (row) =>
+      row.mobile === mobile ||
+      (row.familyMembers || []).some((member) => mobileOf(member.mobile) === mobile)
+  );
+}
+
+export function registrationEmailBlock(store, mobile, email) {
+  const mail = mailOf(email);
+  const number = mobileOf(mobile);
+  if (!mail) return "";
+  if (!isValidEmail(mail)) return "Enter a valid mail ID.";
+  const owner = (store?.accounts || []).find(
+    (row) => isRegisteredAccount(row) && mailOf(row.email) === mail && row.mobile !== number
+  );
+  return owner ? "This mail ID is already registered." : "";
+}
+
+export function lookupLoginIdentity(store, { mobile = "", email = "", deviceId = "" } = {}) {
+  const number = mobile ? mobileOf(mobile) : "";
+  const mail = mailOf(email);
+  if (String(mobile || "").trim() && !number) {
+    return { ok: false, status: 400, error: "Enter a valid 10-digit mobile number." };
+  }
+  if (String(email || "").trim() && !isValidEmail(mail)) {
+    return { ok: false, status: 400, error: "Enter a valid mail ID." };
+  }
+  if (!number && !mail) {
+    return { ok: false, status: 400, error: "Enter a mobile number or mail ID." };
+  }
+  const accounts = (store?.accounts || []).filter(isRegisteredAccount);
+  const byMobile = number ? accountByMobile(accounts, number) : null;
+  const byEmail = mail ? accounts.find((row) => mailOf(row.email) === mail) : null;
+  if (byMobile && byEmail && byMobile.mobile !== byEmail.mobile) {
+    return {
+      ok: true,
+      state: "conflict",
+      error: "This mobile number and mail ID belong to different accounts.",
+    };
+  }
+  const found = byMobile || byEmail;
+  if (!found) return { ok: true, state: "register" };
+  return { ok: true, state: "open", account: publicAccount(found) };
 }
 
 function addressOf(source = {}) {
@@ -128,7 +244,7 @@ export function accountStoreWithout(store, mobileValue) {
 
 function storeSignature(store) {
   const rows = (store?.accounts || [])
-    .map((row) => `${row.mobile}:${row.loginPin || ""}:${row.updatedAt || ""}`)
+    .map((row) => `${row.mobile}:${row.loginPin || ""}:${row.updatedAt || ""}:${trustedDeviceIds(row).join(",")}`)
     .sort();
   const removed = removedMobiles(store?.removed).slice().sort();
   return `${rows.join("|")}#${removed.join("|")}`;
@@ -192,13 +308,57 @@ async function readAccountFile(file) {
   }
 }
 
+async function readMysqlAccounts() {
+  const pool = await mysqlPool();
+  if (!pool) return null;
+  await ensureAccountTable(pool);
+  const [rows] = await pool.query("SELECT body FROM medihome_account_store WHERE id = 1");
+  if (!rows?.length) return null;
+  const parsed = JSON.parse(String(rows[0].body || ""));
+  return {
+    accounts: Array.isArray(parsed?.accounts) ? parsed.accounts : [],
+    removed: removedMobiles(parsed?.removed),
+  };
+}
+
+async function writeMysqlAccounts(store) {
+  const pool = await mysqlPool();
+  if (!pool) return false;
+  await ensureAccountTable(pool);
+  const body = JSON.stringify({
+    accounts: store.accounts || [],
+    removed: removedMobiles(store.removed),
+  });
+  await pool.query(
+    "INSERT INTO medihome_account_store (id, body) VALUES (1, ?) ON DUPLICATE KEY UPDATE body = VALUES(body)",
+    [body]
+  );
+  return true;
+}
+
 async function readStore() {
-  const primary = await readAccountFile(dataFile);
-  const backup = await readAccountFile(homeFile);
-  const copies = [primary, backup].filter(Boolean);
+  const copies = [];
+  let missingFile = false;
+  for (const file of accountStoreFiles()) {
+    const parsed = await readAccountFile(file);
+    if (parsed) copies.push(parsed);
+    else missingFile = true;
+  }
+  let databaseCopy = false;
+  try {
+    const fromDb = await readMysqlAccounts();
+    if (fromDb) {
+      copies.push(fromDb);
+      databaseCopy = true;
+    }
+  } catch {
+    /* a database that is still starting must not hide the file copies */
+  }
   if (!copies.length) return { accounts: [], removed: [] };
   const merged = mergeAccountStores(copies);
-  if (!primary || storeSignature(primary) !== storeSignature(merged)) {
+  const signature = storeSignature(merged);
+  const filesDiffer = copies.some((copy) => storeSignature(copy) !== signature);
+  if (filesDiffer || missingFile || (mysqlConfigured() && !databaseCopy)) {
     await writeStore(merged);
   }
   return merged;
@@ -206,13 +366,31 @@ async function readStore() {
 
 async function writeStore(store) {
   const body = `${JSON.stringify({ accounts: store.accounts || [], removed: removedMobiles(store.removed) }, null, 2)}\n`;
-  await mkdir(dataDir, { recursive: true });
-  await writeFile(dataFile, body);
+  const signature = storeSignature(store);
+  let saved = false;
+  for (const file of accountStoreFiles()) {
+    try {
+      const current = await readAccountFile(file);
+      if (current && storeSignature(current) === signature) {
+        saved = true;
+        continue;
+      }
+      await mkdir(path.dirname(file), { recursive: true });
+      await writeFile(file, body);
+      saved = true;
+    } catch {
+      /* this copy is not writable here; another copy still holds the accounts */
+    }
+  }
   try {
-    await mkdir(path.dirname(homeFile), { recursive: true });
-    await writeFile(homeFile, body);
+    if (await writeMysqlAccounts(store)) saved = true;
   } catch {
-    /* a read-only home directory still leaves the copy beside the app */
+    /* the file copies remain when the database is not ready */
+  }
+  if (!saved) {
+    const error = new Error("Could not save accounts.");
+    error.status = 500;
+    throw error;
   }
 }
 
@@ -224,7 +402,7 @@ export async function listAccounts() {
 }
 
 export function loginPinFromInput(input) {
-  return pinOf(input?.loginPin);
+  return pinOf(input?.loginPin) || pinOf(input?.password);
 }
 
 export function accountMatchesLogin(account, mobileValue, pinValue) {
@@ -248,10 +426,11 @@ export async function upsertAccount(input) {
   if (existing?.loginPin && pin && existing.loginPin !== pin) {
     return { ok: false, status: 409, error: "Mobile or PIN does not match this account." };
   }
-  if (!existing && !pin) {
-    return { ok: false, status: 400, error: "Enter a 6-digit PIN." };
-  }
-  const next = mergeAccount(existing, input, { pin: pin || existing?.loginPin || "" });
+  const emailBlock = registrationEmailBlock(store, mobile, input?.email || input?.mailId || input?.mail);
+  if (emailBlock) return { ok: false, status: 409, error: emailBlock };
+  let next = mergeAccount(existing, input, { pin: pin || existing?.loginPin || "" });
+  if (input?.registered === true || existing?.registered === true) next.registered = true;
+  next = withTrustedDevice(next, input?.deviceId);
   if (index >= 0) store.accounts[index] = next;
   else store.accounts.push(next);
   await writeStore(store);
@@ -294,6 +473,52 @@ export async function resetAccountPin(mobileValue, pinValue) {
   store.accounts[index] = { ...store.accounts[index], loginPin: pin, updatedAt: new Date().toISOString() };
   await writeStore(store);
   return { ok: true, account: publicAccount(store.accounts[index]) };
+}
+
+export async function lookupCustomerLogin(input = {}) {
+  const store = await readStore();
+  return lookupLoginIdentity(store, input);
+}
+
+export async function rememberAccountDevice(mobileValue, deviceId) {
+  const mobile = mobileOf(mobileValue);
+  const id = deviceIdOf(deviceId);
+  if (!mobile || !id) return { ok: false };
+  const store = await readStore();
+  const index = store.accounts.findIndex(
+    (row) =>
+      isRegisteredAccount(row) &&
+      (row.mobile === mobile ||
+        (row.familyMembers || []).some((member) => mobileOf(member.mobile) === mobile))
+  );
+  if (index < 0) return { ok: false };
+  store.accounts[index] = {
+    ...withTrustedDevice(store.accounts[index], id),
+    updatedAt: new Date().toISOString(),
+  };
+  await writeStore(store);
+  return { ok: true, account: publicAccount(store.accounts[index]) };
+}
+
+export async function findRegisteredAccountByEmail(email) {
+  const mail = mailOf(email);
+  if (!isValidEmail(mail)) return null;
+  const store = await readStore();
+  const row = store.accounts.find((account) => isRegisteredAccount(account) && mailOf(account.email) === mail);
+  return row ? publicAccount(row) : null;
+}
+
+export async function findCustomerAccount(mobileValue) {
+  const mobile = mobileOf(mobileValue);
+  if (!mobile) return null;
+  const store = await readStore();
+  if (isRemovedMobile(store, mobile)) return null;
+  const row = store.accounts.find(
+    (account) =>
+      account.mobile === mobile ||
+      (account.familyMembers || []).some((member) => mobileOf(member.mobile) === mobile)
+  );
+  return row ? publicAccount(row) : null;
 }
 
 export async function listRemovedMobiles() {

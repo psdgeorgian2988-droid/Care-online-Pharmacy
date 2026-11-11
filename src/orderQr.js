@@ -410,6 +410,7 @@ export function qrScanPatch(order, now = Date.now()) {
     return { action, patch: {} };
   }
   if (action === "pickup") {
+    const medicine = kind === "medicine" || kind === "cart";
     return {
       action,
       patch: {
@@ -418,10 +419,10 @@ export function qrScanPatch(order, now = Date.now()) {
         qrPickedAt: now,
         qrLastScan: "pickup",
         lastMismatchStage: "",
-        trackStatus: "on_the_way",
+        trackStatus: medicine ? "picked_up" : "on_the_way",
         trackCompleted: false,
         trackStartedAt: now,
-        status: "On The Way",
+        status: medicine ? "Picked up" : "On The Way",
       },
     };
   }
@@ -495,7 +496,7 @@ export function checkpointsForManualStatus(trackStatus, now = Date.now()) {
       qrLastScan: "deliver",
     };
   }
-  if (trackStatus === "on_the_way" || trackStatus === "arriving") {
+  if (trackStatus === "picked_up" || trackStatus === "on_the_way" || trackStatus === "arriving") {
     return {
       checkPackAt: now,
       checkPickupAt: now,

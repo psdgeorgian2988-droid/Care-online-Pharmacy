@@ -24,10 +24,12 @@ import {
 } from "./webinars";
 import {
   buildCustomerMedicalRecord,
+  deleteCustomerMedicalRecord,
   loadMedicalRecords,
   MEDICAL_RECORD_EVENT,
   medicalRecordForViewer,
   medicalRecordKind,
+  newestMedicalRecordFirst,
   recordsForPatient,
   saveMedicalRecords,
 } from "./medicalRecord";
@@ -209,6 +211,7 @@ export default function ProfileReports() {
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [viewer, setViewer] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState("");
   const [panel, setPanel] = useState("");
   const [recordPick, setRecordPick] = useState("");
   const [reportUpload, setReportUpload] = useState(false);
@@ -323,14 +326,28 @@ export default function ProfileReports() {
       const kind = medicalRecordKind(row);
       return kind === "lab" || kind === "radiology";
     })
-    .sort((a, b) =>
-      String(a.date || a.savedAt || "").localeCompare(String(b.date || b.savedAt || ""))
-    );
+    .sort(newestMedicalRecordFirst);
   const savedPrescriptions = mine
     .filter((row) => medicalRecordKind(row) === "prescription")
-    .sort((a, b) =>
-      String(a.date || a.savedAt || "").localeCompare(String(b.date || b.savedAt || ""))
-    );
+    .sort(newestMedicalRecordFirst);
+
+  const removeSaved = (item) => {
+    if (pendingDelete !== item.id) {
+      setPendingDelete(item.id);
+      return;
+    }
+    const next = deleteCustomerMedicalRecord(item);
+    setRecords(next);
+    setPendingDelete("");
+    setViewer((current) => (current?.id === item.id ? null : current));
+    if (medicalRecordKind(item) === "prescription") {
+      setRxStatus("Prescription deleted.");
+      setRxError("");
+    } else {
+      setStatus("Report deleted.");
+      setError("");
+    }
+  };
 
   const chooseReport = (name) => {
     setTestName(name);
@@ -618,13 +635,22 @@ export default function ProfileReports() {
                         <strong>Prescription</strong>
                         <span>{item.date || "Undated"}</span>
                       </div>
-                      {item.fileData ? (
-                        <button type="button" onClick={() => setViewer(medicalRecordForViewer(item))}>
-                          View
+                      <div className="profile-saved-actions">
+                        {item.fileData ? (
+                          <button type="button" onClick={() => setViewer(medicalRecordForViewer(item))}>
+                            View
+                          </button>
+                        ) : (
+                          <span>Saved</span>
+                        )}
+                        <button
+                          type="button"
+                          className="profile-saved-delete"
+                          onClick={() => removeSaved(item)}
+                        >
+                          {pendingDelete === item.id ? "Confirm delete" : "Delete"}
                         </button>
-                      ) : (
-                        <span>Saved</span>
-                      )}
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -687,13 +713,22 @@ export default function ProfileReports() {
                         <strong>{item.testName || item.name || "Report"}</strong>
                         <span>{item.date || "Undated"}</span>
                       </div>
-                      {item.fileData ? (
-                        <button type="button" onClick={() => setViewer(medicalRecordForViewer(item))}>
-                          View
+                      <div className="profile-saved-actions">
+                        {item.fileData ? (
+                          <button type="button" onClick={() => setViewer(medicalRecordForViewer(item))}>
+                            View
+                          </button>
+                        ) : (
+                          <span>Saved</span>
+                        )}
+                        <button
+                          type="button"
+                          className="profile-saved-delete"
+                          onClick={() => removeSaved(item)}
+                        >
+                          {pendingDelete === item.id ? "Confirm delete" : "Delete"}
                         </button>
-                      ) : (
-                        <span>Saved</span>
-                      )}
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -850,7 +885,9 @@ const reportStyles = `
   .profile-saved-list strong,.profile-saved-list span{display:block}
   .profile-saved-list strong{color:#143246;font-size:14px}
   .profile-saved-list span{color:#5d7180;font-size:12px}
+  .profile-saved-actions{display:flex;align-items:center;gap:12px;flex:none}
   .profile-saved-list button{border:0;background:transparent;color:#1a6b7a;font:inherit;font-weight:800;cursor:pointer}
+  .profile-saved-list .profile-saved-delete{color:#9b2c2c}
   .profile-record-stack>.profile-upload-tab{width:100%}
   .profile-webinar-list{display:grid;gap:8px}
   .profile-webinar-list article{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#f4f6fc}

@@ -13,6 +13,26 @@ function orderNumber(order) {
   return String(order?.id || order?.bookingId || order?.requestId || "");
 }
 
+export function MainPageSearchReport({ open = false, onToggle }) {
+  return (
+    <>
+      <style>{`
+        .main-search-report-tab{position:fixed;z-index:45;left:50%;bottom:calc(var(--app-footer-h, 44px) + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);display:flex;align-items:center;justify-content:center;width:100%;max-width:var(--app-frame, 430px);height:48px;margin:0;padding:0 12px;border:0;border-top:1px solid #c5ddd8;background:#e8f4f2;color:#1a6b7a;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+        .main-search-report-tab.is-on{background:#1a6b7a;color:#fff}
+        .app:not(.app-customer) .main-search-report-tab{left:0;right:0;width:100%;max-width:none;transform:none;bottom:calc(var(--shell-footer-h, 44px) + env(safe-area-inset-bottom, 0px))}
+      `}</style>
+      <button
+        type="button"
+        className={open ? "main-search-report-tab is-on" : "main-search-report-tab"}
+        aria-pressed={open}
+        onClick={onToggle}
+      >
+        Search report
+      </button>
+    </>
+  );
+}
+
 export default function GuestOrderLookup({ open = false }) {
   const session = useLoginSession();
   const [mobile, setMobile] = useState("");
@@ -80,7 +100,7 @@ export default function GuestOrderLookup({ open = false }) {
   return (
     <section className="guest-report-dock" aria-label="Search report">
       <style>{`
-        .guest-report-dock{position:fixed;z-index:46;left:50%;right:auto;bottom:calc(var(--app-footer-h, 44px) + 72px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);width:100%;max-width:var(--app-frame, 430px);box-sizing:border-box;display:grid;gap:8px;padding:8px 72px 8px 10px;border-top:1px solid #c5ddd8;background:rgba(255,255,255,.98);box-shadow:0 -8px 18px rgba(20,50,70,.08)}
+        .guest-report-dock{position:fixed;z-index:46;left:50%;right:auto;bottom:calc(var(--app-footer-h, 44px) + 48px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);width:100%;max-width:var(--app-frame, 430px);box-sizing:border-box;display:grid;gap:8px;padding:8px 10px;border-top:1px solid #c5ddd8;background:rgba(255,255,255,.98);box-shadow:0 -8px 18px rgba(20,50,70,.08)}
         .guest-report-dock form{display:flex;align-items:center;gap:8px}
         .guest-report-dock label{display:grid;gap:2px;flex:1;min-width:0;font-size:11px;font-weight:800;color:#34546b}
         .guest-report-dock input{min-height:36px;width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #d7e2e9;border-radius:8px;font:inherit;font-size:14px}
@@ -96,7 +116,7 @@ export default function GuestOrderLookup({ open = false }) {
         .guest-report-dock article strong{color:#1a6b7a;font-size:13px}
         .guest-report-dock article span{font-size:12px;color:#34546b}
         .guest-report-dock .guest-order-actions{display:flex;gap:8px;flex-wrap:wrap}
-        .app:not(.app-customer) .guest-report-dock{left:0;right:0;width:100%;max-width:none;transform:none;bottom:calc(var(--shell-footer-h, 44px) + 72px + env(safe-area-inset-bottom, 0px))}
+        .app:not(.app-customer) .guest-report-dock{left:0;right:0;width:100%;max-width:none;transform:none;bottom:calc(var(--shell-footer-h, 44px) + 48px + env(safe-area-inset-bottom, 0px))}
         @media (min-width:768px){
           .guest-report-dock{left:0;right:0;width:100%;max-width:none;transform:none}
         }

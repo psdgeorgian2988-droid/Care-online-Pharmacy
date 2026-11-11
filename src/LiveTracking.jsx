@@ -21,6 +21,7 @@ import {
 import PartnerProfileCard from "./PartnerProfileCard.jsx";
 import { visitingPartnerProfile } from "./partnerProfile.js";
 import { DIAGNOSTIC_TRACK_STEPS, isDiagnosticKind } from "./labPipeline";
+import { isPharmacyOrder, PHARMACY_TRACK_STEPS, pharmacyTrackKey } from "./pharmacyTrack";
 import LabBookingChange from "./LabBookingChange.jsx";
 import { orderCurrentStatus, trackKey } from "./orderStatus";
 import { mapsUrlForPin, normalizePin, osmEmbedUrl } from "./pinLocation";
@@ -282,19 +283,29 @@ export function LiveTrackingPanel({
   const liveTrack = isOngoingTrackOrder(live);
   const showMap = isPartnerEnRoute(live);
   const closedKey = liveTrack ? "" : trackKey(live);
+  const medicineTrack = isPharmacyOrder(live);
   const steps = (
-    isDiagnosticKind(live.kind)
-      ? DIAGNOSTIC_TRACK_STEPS.filter(
-          (step) => step.key !== "declined" || live.trackStatus === "declined"
-        )
-      : TRACK_STEPS
+    medicineTrack
+      ? PHARMACY_TRACK_STEPS
+      : isDiagnosticKind(live.kind)
+        ? DIAGNOSTIC_TRACK_STEPS.filter(
+            (step) => step.key !== "declined" || live.trackStatus === "declined"
+          )
+        : TRACK_STEPS
   ).map((step) => ({
     ...step,
-    label: step.key === "done" ? stepLabel(live.kind, "done") : stepLabel(live.kind, step.key),
+    label: medicineTrack
+      ? step.label
+      : step.key === "done"
+        ? stepLabel(live.kind, "done")
+        : stepLabel(live.kind, step.key),
   }));
+  const currentKey = medicineTrack
+    ? pharmacyTrackKey(live)
+    : live.trackStatus || "confirmed";
   const currentIndex = Math.max(
     0,
-    steps.findIndex((step) => step.key === (live.trackStatus || "confirmed"))
+    steps.findIndex((step) => step.key === currentKey)
   );
   const remainingKm = haversineKm(
     { lat: Number(live.partnerLat), lng: Number(live.partnerLng) },

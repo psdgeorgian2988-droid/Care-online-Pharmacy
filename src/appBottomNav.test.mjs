@@ -73,8 +73,8 @@ test("footer icons are Account first, then one home segment each", () => {
   assert.doesNotMatch(source, /href: "#reports"/);
   assert.doesNotMatch(source, /href: "#medicine-search"/);
   assert.doesNotMatch(source, /loggedIn && \(tab\.href === "#home"/);
-  assert.match(source, /className="app-bottom-pin"/);
-  assert.match(source, /className="app-bottom-scroll"/);
+  assert.doesNotMatch(source, /className="app-bottom-nav"/);
+  assert.match(source, /return null/);
   assert.match(source, /icon: "account"/);
   assert.match(source, /icon: "medicine"/);
   assert.match(source, /icon: "lab"/);
@@ -83,10 +83,18 @@ test("footer icons are Account first, then one home segment each", () => {
   assert.doesNotMatch(source, /stroke="currentColor"/);
 });
 
-test("guests hide Account and Medical Record; logged-in customers have no bottom icons", () => {
+test("search report sits at the bottom of the main page", () => {
+  const app = readFileSync(new URL("./App.jsx", import.meta.url), "utf8");
+  assert.match(app, /onMainPage = route === "#home" && !hashService/);
+  assert.match(app, /<MainPageSearchReport/);
+  assert.doesNotMatch(app, /<AppBottomNav/);
+});
+
+test("service icons are not on the bottom bar", () => {
   assert.match(source, /tab\.href === "#profile" && !loggedIn/);
   assert.match(source, /tab\.href === MEDICAL_RECORD_HOME_HASH && !loggedIn/);
-  assert.match(source, /if \(loggedIn\) return null/);
+  assert.match(source, /return null/);
+  assert.doesNotMatch(source, /Search report/);
   assert.doesNotMatch(source, /tab\.href === "#home" \|\| tab\.href === "#medicine-search"/);
 });
 
