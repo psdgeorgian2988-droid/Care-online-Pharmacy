@@ -174,6 +174,48 @@ function Profile({ activity = null } = {}) {
     );
   };
 
+  const saveFamilyMembers = (members) => {
+    const previous = readUserProfile();
+    const creatorMobile = accountCreatorMobile(form, previous);
+    const memberErrors = validateFamilyMembers({
+      familyMembers: members,
+      mobile: creatorMobile,
+      creatorMobile,
+    });
+    if (Object.keys(memberErrors).length) {
+      setErrors(memberErrors);
+      return false;
+    }
+    const profile = {
+      name: form.name.trim(),
+      mobile: creatorMobile,
+      creatorMobile,
+      email: pickEmail(form),
+      loginPin: pickLoginPin(form, previous),
+      ...pickPerson(form),
+      familyMembers: pickFamilyMembers({
+        familyMembers: members,
+        mobile: creatorMobile,
+        creatorMobile,
+      }).filter((member) => member.name),
+      ...withFormattedAddress({ ...form, addressConfirmed: form.addressConfirmed || "yes" }),
+      photo: String(form.photo || "").startsWith("data:image") ? form.photo : "",
+    };
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    writeLoginSession(profile, holderActor(profile));
+    publishAccount(profile);
+    const points = awardFamilyMemberPoints(profile.familyMembers);
+    setForm(profile);
+    setErrors({});
+    setMemberFormTick((tick) => tick + 1);
+    setSaved(
+      points.count
+        ? `Family member saved. +${points.awarded} credit points.`
+        : "Family member saved."
+    );
+    return true;
+  };
+
   const pointsPanel = pointsRedeemPanel(wallet.balance);
   const startRedeem = () => {
     if (!pointsPanel.canRedeem) return;
@@ -487,6 +529,7 @@ function Profile({ activity = null } = {}) {
               savedAs="summary"
               collapseTick={memberFormTick}
               onChange={handleChange}
+              onSave={saveFamilyMembers}
             />
           </section>
 

@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import PersonFields from "./PersonFields.jsx";
 import {
   RELATION_OPTIONS,
   emptyFamilyMember,
-  memberSummary,
   normalizeMobile,
+  validateFamilyMembers,
 } from "./personFields";
 import { noContactEmailProps, noContactMobileProps, noContactNameProps } from "./noContactAutofill";
 import AutofillTrap from "./AutofillTrap";
@@ -146,19 +146,29 @@ export default function FamilyMembersFields({
   savedAs = "summary",
   collapseTick = 0,
   onChange,
+  onSave,
 }) {
   const list = Array.isArray(members) ? members : [];
   const [openIds, setOpenIds] = useState(() => new Set());
   const [draft, setDraft] = useState(emptyFamilyMember);
   const [showDraft, setShowDraft] = useState(false);
+  const [draftErrors, setDraftErrors] = useState({});
   const [seenTick, setSeenTick] = useState(collapseTick);
+  const draftRef = useRef(null);
   const account = normalizeMobile(accountMobile);
 
   if (seenTick !== collapseTick) {
     setSeenTick(collapseTick);
     setOpenIds(new Set());
     setDraft(emptyFamilyMember());
+    setShowDraft(false);
+    setDraftErrors({});
   }
+
+  useEffect(() => {
+    if (!showDraft) return;
+    draftRef.current?.scrollIntoView({ block: "nearest" });
+  }, [showDraft, draft.id]);
 
   const emit = (next) => {
     onChange?.({ target: { name: "familyMembers", value: next } });
@@ -171,22 +181,50 @@ export default function FamilyMembersFields({
   };
 
   const addMember = () => {
-    if (showDraft) return;
-    const next = emptyFamilyMember();
-    setDraft(next);
+    if (showDraft) {
+      draftRef.current?.scrollIntoView({ block: "nearest" });
+      return;
+    }
+    setDraftErrors({});
+    setDraft(emptyFamilyMember());
     setShowDraft(true);
   };
 
   const updateDraft = (patch) => {
     const next = { ...draft, ...patch };
     setDraft(next);
+    setDraftErrors({});
     emitDraft(next);
   };
 
   const cancelDraft = () => {
     setShowDraft(false);
+    setDraftErrors({});
     setDraft(emptyFamilyMember());
     emit(savedList);
+  };
+
+  const saveDraft = () => {
+    const next = [...savedList, draft];
+    const memberErrors = validateFamilyMembers({
+      mobile: account,
+      creatorMobile: account,
+      familyMembers: next,
+    });
+    const index = next.length - 1;
+    const own = {};
+    for (const [key, value] of Object.entries(memberErrors)) {
+      if (key.startsWith(`familyMembers.${index}.`)) own[key] = value;
+    }
+    if (Object.keys(own).length) {
+      setDraftErrors(own);
+      return;
+    }
+    setDraftErrors({});
+    const saved = onSave?.(next);
+    if (saved === false) return;
+    setShowDraft(false);
+    setDraft(emptyFamilyMember());
   };
 
   const updateMember = (index, patch) => {
@@ -309,10 +347,13 @@ export default function FamilyMembersFields({
         })}
 
         {showDraft ? (
-          <article className="family-card">
+          <article className="family-card" ref={draftRef}>
             <div className="family-card-top">
               <strong>New family member</strong>
               <div className="family-card-actions">
+                <button type="button" className="family-save" onClick={saveDraft}>
+                  Save
+                </button>
                 <button type="button" className="family-edit" onClick={cancelDraft}>
                   Cancel
                 </button>
@@ -323,7 +364,7 @@ export default function FamilyMembersFields({
               idPrefix={`${idPrefix}-draft`}
               member={draft}
               index={draftErrorIndex}
-              errors={errors}
+              errors={{ ...errors, ...draftErrors }}
               account={account}
               enforceRequired={false}
               onPatch={updateDraft}
@@ -339,8 +380,8 @@ const styles = `
 .family-fields{display:grid;gap:10px;width:100%;grid-column:1/-1}
 .family-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .family-title{margin:0;font-size:13px;font-weight:800;color:#29455a}
-.family-add,.family-remove,.family-edit{appearance:none;border-radius:8px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
-.family-add{padding:8px 10px;border:1px solid #1a6b7a;background:#1a6b7a;color:#fff;white-space:nowrap}
+.family-add,.family-remove,.family-edit,.family-save{appearance:none;border-radius:8px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.family-add,.family-save{padding:8px 10px;border:1px solid #1a6b7a;background:#1a6b7a;color:#fff;white-space:nowrap}
 .family-remove,.family-edit{padding:6px 8px;border:1px solid #d7e2e9;background:#fff}
 .family-edit{color:#1a6b7a}
 .family-remove{color:#b64b4b}
