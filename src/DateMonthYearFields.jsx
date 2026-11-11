@@ -119,7 +119,7 @@ export default function DateMonthYearFields({
       <style>{styles}</style>
       <div className="dmy-fields">
         {label ? (
-          <label className="dmy-label" htmlFor={`${idPrefix}-year`}>
+          <label className="dmy-label" htmlFor={`${idPrefix}-${order === "ymd" ? "year" : "day"}`}>
             {label}
             {required ? <span> *</span> : null}
           </label>

@@ -129,7 +129,9 @@ function cartLivesInSection(route, service, plan) {
 
 function hideHeaderCart(route, service, plan) {
   if (route === "#ambulance" || partnerDeskKindFromRoute(route) === "ambulance") return true;
-  return (route === "#home" && !service) || cartLivesInSection(route, service, plan);
+  if (cartLivesInSection(route, service, plan)) return true;
+  if (hasAccountSession()) return route !== "#profile";
+  return route !== "#home";
 }
 
 const OPS_LINKS = [
@@ -604,7 +606,7 @@ function App() {
         <SiteTicker />
         <div className="app-frame">
           <AppHeader
-            hideBack={hideAccountBack}
+            hideBack={hideAccountBack || welcomeGate}
             hideCart={hideHeaderCart(route, hashService, hashPlan)}
           />
           <main id="app-scroll">

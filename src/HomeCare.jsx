@@ -18,6 +18,7 @@ import {
   persistUnsettledCheckoutFields,
   showCustomerPayNow,
 } from "./paymentMethods";
+import { hasAccountSession } from "./authSession";
 import { maskMobile } from "./personFields";
 import {
   applyResolvedPin,
@@ -600,8 +601,13 @@ function HomeCare() {
           </div>
         </section>
 
-        {isVaccinationPlan(form.carePlan) ? (
-          <HomePrescriptionUpload idPrefix="vaccination" detect="vaccination" />
+        {isVaccinationPlan(form.carePlan) && !hasAccountSession() ? (
+          <HomePrescriptionUpload
+            idPrefix="vaccination"
+            detect="vaccination"
+            showCart={false}
+            label="Upload prescription"
+          />
         ) : null}
 
         <form className="service-form" onSubmit={handleSubmit}>

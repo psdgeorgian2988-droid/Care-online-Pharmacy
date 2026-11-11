@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 const CLOSE_MS = 280;
+const popupClosers = [];
+const popupLayers = [];
 
 export default function AccountPopup({ title, onClose, children }) {
   const closeRef = useRef(onClose);
@@ -9,6 +11,12 @@ export default function AccountPopup({ title, onClose, children }) {
   const popRef = useRef(null);
   const finished = useRef(false);
   const closingRef = useRef(false);
+  const layerRef = useRef(null);
+  if (layerRef.current == null) {
+    const level = popupLayers.length;
+    layerRef.current = { level };
+    popupLayers.push(layerRef.current);
+  }
   const [shown, setShown] = useState(false);
   const [closing, setClosing] = useState(false);
 
@@ -49,12 +57,21 @@ export default function AccountPopup({ title, onClose, children }) {
 
   useEffect(() => {
     const onKey = (event) => {
-      if (event.key === "Escape") requestClose();
+      if (event.key !== "Escape") return;
+      if (popupClosers[popupClosers.length - 1] !== requestClose) return;
+      requestClose();
     };
+    popupClosers.push(requestClose);
     document.addEventListener("keydown", onKey);
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const layer = layerRef.current;
+    if (layer && !popupLayers.includes(layer)) popupLayers.push(layer);
     return () => {
+      const layerIndex = popupLayers.indexOf(layer);
+      if (layerIndex >= 0) popupLayers.splice(layerIndex, 1);
+      const index = popupClosers.lastIndexOf(requestClose);
+      if (index >= 0) popupClosers.splice(index, 1);
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = previous;
       const node = popRef.current;
@@ -73,12 +90,13 @@ export default function AccountPopup({ title, onClose, children }) {
     <div
       ref={popRef}
       className={`profile-service-pop${shown ? " is-shown" : ""}${closing ? " is-closing" : ""}`}
+      style={{ zIndex: 1200 + layerRef.current.level * 20 }}
       role="presentation"
       onClick={requestClose}
     >
       <style>{`
-        .profile-service-pop{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:20px 16px;background:rgba(20,50,70,0);box-sizing:border-box;transition:background .28s ease}
-        .profile-service-pop.is-shown{background:rgba(20,50,70,.5)}
+        .profile-service-pop{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:20px 16px;background:rgba(20,50,70,0);box-sizing:border-box;pointer-events:none;transition:background .28s ease}
+        .profile-service-pop.is-shown{background:rgba(20,50,70,.5);pointer-events:auto}
         .profile-service-pop.is-closing{background:rgba(20,50,70,0)}
         .profile-service-sheet{display:flex;flex-direction:column;width:min(980px,100%);max-height:min(860px,calc(100dvh - 40px));overflow:hidden;border-radius:16px;background:#f7fbfe;box-shadow:0 18px 48px rgba(20,50,70,.28);opacity:0;transform:translateY(28px) scale(.96);transition:opacity .28s ease, transform .32s cubic-bezier(.2,.8,.2,1)}
         .profile-service-pop.is-shown .profile-service-sheet{opacity:1;transform:translateY(0) scale(1)}

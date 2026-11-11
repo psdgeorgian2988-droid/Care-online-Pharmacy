@@ -79,6 +79,7 @@ function PlaceYourOrder() {
 
 function servicePopupTitle() {
   const { route, service } = parseAppHash(typeof window !== "undefined" ? window.location.hash : "");
+  if (route === "#checkout") return "Your order";
   const tab = orderServiceTabs().find((item) => tabActive(item.href, route, service));
   return tab?.label || "Medihome Service";
 }
@@ -506,9 +507,9 @@ const styles = `
   .profile-page.is-activity{max-width:none;padding:0 0 24px}
   .profile-page.is-activity .profile-hero,
   .profile-page.is-activity .profile-dashboard,
-  .profile-page.is-activity .profile-place-order{max-width:720px;margin-left:auto;margin-right:auto}
+  .profile-page.is-activity .profile-place-order{max-width:none;margin-left:auto;margin-right:auto}
   .profile-dashboard,
-  .profile-place-order{display:grid !important;grid-template-columns:minmax(0,1fr) !important;width:min(720px,100%) !important;max-width:720px !important;margin-left:auto !important;margin-right:auto !important;justify-self:center}
+  .profile-place-order{display:grid !important;grid-template-columns:minmax(0,1fr) !important;width:calc(100% - 20px) !important;max-width:none !important;margin-left:auto !important;margin-right:auto !important;justify-self:center}
   .profile-card.profile-dashboard > h2,
   .profile-card.profile-place-order > h2{display:inline-block;justify-self:center;grid-column:1 / -1;width:max-content;max-width:100%;margin:0 auto;padding:7px 18px;border-radius:999px;color:#fff;-webkit-text-fill-color:#fff;font-size:16px;font-weight:800;letter-spacing:.02em;line-height:1.2;text-align:center;text-transform:none}
   .profile-card.profile-dashboard > h2{background:linear-gradient(115deg,#0d9488 0%,#22c55e 46%,#0ea5e9 100%);box-shadow:0 8px 18px rgba(13,148,136,.28)}

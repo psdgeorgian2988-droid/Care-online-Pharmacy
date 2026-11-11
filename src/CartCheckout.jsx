@@ -30,12 +30,13 @@ import DateMonthYearFields from "./DateMonthYearFields";
 import {
   applyResolvedPin,
   emptyAddress,
+  formatAddress,
   pickAddress,
   readUserProfile,
 } from "./addressFields";
 import {
+  accountOwnerBooking,
   bookingForPatch,
-  initialBookingFor,
   validateBookingDetails,
   withBookingIdentity,
 } from "./bookingFor";
@@ -115,6 +116,14 @@ function checkoutTestsOnly(raw = "") {
   }
 }
 
+function checkoutAddress(source = {}) {
+  const line = formatAddress(source);
+  const pin = String(source.pinCode || "").trim();
+  if (!pin) return line;
+  const trimmed = line.replace(new RegExp(`, ${pin}$`), "");
+  return trimmed.includes(pin) ? trimmed : line;
+}
+
 export default function CartCheckout() {
   const user = useLoginSession();
   const isRegisteredMember = hasAccountSession(user);
@@ -124,7 +133,7 @@ export default function CartCheckout() {
   );
   const [tests, setTests] = useState(() => readTestCart());
   const profile = useMemo(() => readUserProfile() || {}, []);
-  const [whoFor, setWhoFor] = useState(() => initialBookingFor(profile));
+  const [whoFor, setWhoFor] = useState(() => accountOwnerBooking(profile));
   const [fullName, setFullName] = useState(profile.name || "");
   const [mobileNumber, setMobileNumber] = useState(profile.mobile || "");
   const [delivery, setDelivery] = useState(() => ({
@@ -139,7 +148,9 @@ export default function CartCheckout() {
   const [errors, setErrors] = useState({});
   const [rxDraft, setRxDraft] = useState(() => readPrescriptionDraft());
   const [prescriptionFile, setPrescriptionFile] = useState(null);
-  const [payMethod, setPayMethod] = useState("");
+  const [payMethod, setPayMethod] = useState("cod");
+  const [changeAddress, setChangeAddress] = useState(false);
+  const [changePay, setChangePay] = useState(false);
   const [payQuote, setPayQuote] = useState(null);
   const [payReady, setPayReady] = useState(false);
   const [confirmPayOpen, setConfirmPayOpen] = useState(false);
@@ -171,7 +182,10 @@ export default function CartCheckout() {
   }, [testsOnlyCheckout]);
 
   const testGroups = useMemo(() => groupTests(tests), [tests]);
-  const testTotal = tests.reduce((sum, item) => sum + Number(item.price || 0), 0);
+  const testTotal = tests.reduce(
+    (sum, item) => sum + Number(item.price || 0) * (item.quantity || 1),
+    0
+  );
   const medicineTotal = medicines.reduce(
     (sum, item) => sum + Number(item.price || 0) * (item.quantity || 1),
     0
@@ -195,6 +209,21 @@ export default function CartCheckout() {
   );
   const kind = paymentKindFor(medicines, tests);
   const empty = !medicines.length && !tests.length;
+  const savedSource = {
+    ...whoFor,
+    patientName: fullName,
+    mobile: mobileNumber,
+    ...delivery,
+  };
+  const savedLine = checkoutAddress(savedSource);
+  const savedAddressReady =
+    isRegisteredMember &&
+    Boolean(savedLine) &&
+    !Object.keys(validateBookingDetails(savedSource, profile)).length;
+  const addressOpen = !isRegisteredMember || changeAddress || !savedAddressReady;
+  const payOpen = !isRegisteredMember || changePay;
+  const cashLabel =
+    medicines.length && !tests.length ? "Cash on delivery" : "Cash on delivery / visit";
 
   const patchForm = (name, value) => {
     setForm((prev) => {
@@ -343,7 +372,7 @@ export default function CartCheckout() {
           findDiagnosticParty(group.kind, { id: group.partnerId, name: group.partnerName }) ||
           {};
         const groupTotal = group.items.reduce(
-          (sum, item) => sum + Number(item.price || 0),
+          (sum, item) => sum + Number(item.price || 0) * (item.quantity || 1),
           0
         );
         const groupPoints = servicePoints[index] || {
@@ -392,7 +421,7 @@ export default function CartCheckout() {
       writeMedicineCart([]);
       writeTestCart([]);
       setForm({ visitType: "home", date: "", timeSlot: "" });
-      setWhoFor(initialBookingFor(profile));
+      setWhoFor(accountOwnerBooking(profile));
       setErrors({});
       setPayMethod("");
       setConfirmPayOpen(false);
@@ -581,12 +610,12 @@ export default function CartCheckout() {
             {firstId ? (
               <button
                 type="button"
-                className="cart-btn cart-btn-secondary"
+                className="cart-btn cart-btn-primary"
                 onClick={() => {
                   window.location.hash = trackHref(firstId);
                 }}
               >
-                Track live
+                Track order
               </button>
             ) : null}
             <button
@@ -619,14 +648,6 @@ export default function CartCheckout() {
         <h1>Checkout</h1>
       </header>
 
-      {!empty && !isRegisteredMember ? (
-        <CheckoutPrescriptionUpload
-          idPrefix="guest-checkout"
-          compact
-          required={needsRx}
-        />
-      ) : null}
-
       {empty ? (
         <div className="checkout-panel">
           <p>Your cart is empty.</p>
@@ -650,7 +671,7 @@ export default function CartCheckout() {
       ) : (
         <div className="checkout-panel">
           <section className="cart-bill" aria-label="Bill">
-            <h2>Bill</h2>
+            <h2>Your order</h2>
             {tests.length ? (
               <div className="cart-bill-block">
                 <h3>Tests</h3>
@@ -663,8 +684,11 @@ export default function CartCheckout() {
                     <ul>
                       {group.items.map((test) => (
                         <li key={`${group.key}:${test.id}`}>
-                          <span>{test.name}</span>
-                          <strong>{money(test.price)}</strong>
+                          <span>
+                            {test.name}
+                            {(test.quantity || 1) > 1 ? ` × ${test.quantity}` : ""}
+                          </span>
+                          <strong>{money(Number(test.price || 0) * (test.quantity || 1))}</strong>
                         </li>
                       ))}
                     </ul>
@@ -700,10 +724,30 @@ export default function CartCheckout() {
             <p className="cart-bill-total">Payable {money(payableTotal)}</p>
           </section>
 
+          {needsRx && hasRx ? (
+            <div className="checkout-rx is-ready">
+              <p>Prescription: {rxName}</p>
+            </div>
+          ) : needsRx ? (
+            <CheckoutPrescriptionUpload
+              idPrefix="cart-rx"
+              compact
+              required
+            />
+          ) : null}
+
+          {addressOpen ? (
+          <>
+          {isRegisteredMember && savedAddressReady ? (
+            <button type="button" className="checkout-saved-back" onClick={() => setChangeAddress(false)}>
+              Use saved address
+            </button>
+          ) : null}
           <BookingFlow
             idPrefix="cart"
             layout="checkout"
             profile={profile}
+            alwaysAskDetails={changeAddress || !savedAddressReady}
             values={{
               ...whoFor,
               patientName: fullName,
@@ -751,8 +795,23 @@ export default function CartCheckout() {
               setErrors((prev) => ({ ...prev, [name]: "" }));
             }}
             pinHint="Select the Village / Sector / Mohalla attached to this PIN."
-          >
-            {tests.length ? (
+          />
+          </>
+          ) : (
+            <div className="checkout-saved">
+              <div>
+                <p>Deliver to</p>
+                <strong>{fullName}</strong>
+                <span>{checkoutAddress(savedSource)}</span>
+                {mobileNumber ? <span>{mobileNumber}</span> : null}
+              </div>
+              <button type="button" onClick={() => setChangeAddress(true)}>
+                Change
+              </button>
+            </div>
+          )}
+
+          {tests.length ? (
               <div className="cart-checkout-slot" id="checkout-book">
                 <DateMonthYearFields
                   idPrefix="cart-date"
@@ -805,22 +864,7 @@ export default function CartCheckout() {
               </div>
             ) : null}
 
-            {needsRx && isRegisteredMember && !hasRx ? (
-              <div className="checkout-rx">
-                <label htmlFor="cartRx">Prescription</label>
-                <input
-                  id="cartRx"
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={(event) => setPrescriptionFile(event.target.files[0])}
-                />
-              </div>
-            ) : needsRx && isRegisteredMember ? (
-              <div className="checkout-rx is-ready">
-                <p>Using uploaded prescription: {rxName}</p>
-              </div>
-            ) : null}
-
+            {payOpen ? (
             <div id="checkout-pay">
               <PaymentBlock
                 kind={kind}
@@ -832,11 +876,7 @@ export default function CartCheckout() {
                 onMethodChange={setPayMethod}
                 onQuoteChange={setPayQuote}
                 onReadyChange={setPayReady}
-                cashLabel={
-                  medicines.length && !tests.length
-                    ? "Cash On Delivery"
-                    : "Cash On Visit / Collection"
-                }
+                cashLabel={cashLabel}
                 guestDetails={{
                   name: fullName,
                   mobile: mobileNumber,
@@ -847,13 +887,24 @@ export default function CartCheckout() {
                 }}
               />
             </div>
+            ) : (
+              <div className="checkout-saved">
+                <div>
+                  <p>Payment</p>
+                  <strong>{paymentMethodSummary(payMethod, cashLabel)}</strong>
+                </div>
+                <button type="button" onClick={() => setChangePay(true)}>
+                  Change
+                </button>
+              </div>
+            )}
 
             <div className="cart-actions">
               <button
                 type="button"
                 className="cart-btn cart-btn-primary"
                 onClick={placeOrder}
-                disabled={placing || !payMethod || (checkoutUsesPayCta(payMethod) && !payReady)}
+                disabled={placing || (checkoutUsesPayCta(payMethod) && !payReady)}
               >
                 {placing
                   ? "Placing order…"
@@ -869,7 +920,6 @@ export default function CartCheckout() {
                 Continue shopping
               </button>
             </div>
-          </BookingFlow>
         </div>
       )}
     </section>

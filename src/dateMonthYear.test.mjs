@@ -15,7 +15,7 @@ test("appointment dates cannot pick months or days before the minimum", () => {
   );
   assert.deepEqual(daysInRange(min, max, "", "8"), [28, 29, 30, 31]);
   assert.deepEqual(daysInRange(min, max, "2026", "8"), [28, 29, 30, 31]);
-  assert.deepEqual(daysInRange(min, max, "2026", ""), []);
+  assert.deepEqual(daysInRange(min, max, "2026", ""), Array.from({ length: 31 }, (_, index) => index + 1));
   assert.equal(clampIsoDate("2026-09-01", min, max), "2026-09-01");
   assert.deepEqual(
     constrainDateParts({ day: "15", month: "8", year: "2026" }, min, max),

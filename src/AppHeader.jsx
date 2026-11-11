@@ -1,7 +1,7 @@
 import MediHomeLogoLink from "./MediHomeLogoLink";
 import HeaderCart from "./HeaderCart";
 import CustomerLogOut from "./CustomerLogOut.jsx";
-import { hasAccountSession } from "./authSession";
+import { hasAccountSession, needsCustomerWelcome } from "./authSession";
 import { goBackHash, parseAppHash } from "./hashRoute";
 import { useEffect, useState } from "react";
 
@@ -62,7 +62,7 @@ export default function AppHeader({ hideCart = false, hideBack = false } = {}) {
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
   }, []);
-  const hideAccountBack = hideBack || accountHidesBack(hash);
+  const hideAccountBack = hideBack || accountHidesBack(hash) || needsCustomerWelcome();
 
   return (
     <header className={`app-chrome-header${hideAccountBack ? " is-no-back" : ""}`}>

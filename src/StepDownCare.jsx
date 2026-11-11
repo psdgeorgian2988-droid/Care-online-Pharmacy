@@ -8,6 +8,7 @@ import {
 } from "./pinLocation";
 import { persistOrder, refreshOrderFromServer, trackHref, withTracking } from "./orderTracking";
 import { parseAppHash } from "./hashRoute";
+import { hasAccountSession } from "./authSession";
 import { awaitingPartnerMessage, initialOrderStatus } from "./orderConfirm";
 import { orderCurrentStatus } from "./orderStatus";
 import {
@@ -959,7 +960,14 @@ function StepDownCare() {
           </div>
         </header>
 
-        <HomePrescriptionUpload idPrefix="stepdown-centre" detect="stepdown" />
+        {hasAccountSession() ? null : (
+          <HomePrescriptionUpload
+            idPrefix="stepdown-centre"
+            detect="stepdown"
+            showCart={false}
+            label="Upload prescription"
+          />
+        )}
 
         {tab === "find" ? (
           <div className="lab-shell sd-find">

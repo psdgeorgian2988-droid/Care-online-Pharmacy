@@ -33,7 +33,6 @@ export function monthsInRange(minIso, maxIso, year) {
 
 export function daysInRange(minIso, maxIso, year, month) {
   const m = Number(month);
-  if (!m) return [];
   const min = splitIsoDate(minIso);
   const max = splitIsoDate(maxIso);
   const y =

@@ -36,6 +36,7 @@ import {
   showCustomerPayNow,
 } from "./paymentMethods";
 import { maskMobile } from "./personFields";
+import { hasAccountSession } from "./authSession";
 import BookingFlow from "./BookingFlow";
 import {
   addressFromUnknown,
@@ -58,6 +59,7 @@ import {
   openAppointmentSlots,
 } from "./appointmentSlot";
 import { goToHash, LABS_HOME_HASH, labBookingHash } from "./hashRoute";
+import OrderQty, { clampOrderQty } from "./OrderQty";
 import { apiFetch } from "./apiBase";
 import {
   addTestToCart,
@@ -274,7 +276,11 @@ function LabTests() {
   );
   const [selectedTestId, setSelectedTestId] = useState(rxBoot?.tests?.[0]?.id || "");
   const [pendingLabIds, setPendingLabIds] = useState(() => new Set());
+  const [pendingLabQty, setPendingLabQty] = useState({});
+  const [allLabQty, setAllLabQty] = useState(1);
   const [pendingImagingIds, setPendingImagingIds] = useState(() => new Set());
+  const [pendingImagingQty, setPendingImagingQty] = useState({});
+  const [allImagingQty, setAllImagingQty] = useState(1);
   const [selectedTests, setSelectedTests] = useState(
     rxBoot?.serviceType === "radiology" ? [] : rxBoot?.tests || []
   );
@@ -363,9 +369,18 @@ function LabTests() {
   }, [selectedRadiologyPartner, imagingQuery]);
   const activeTests = serviceType === "lab" ? selectedTests : selectedImagingTests;
   const activePartner = serviceType === "lab" ? selectedLab : selectedRadiologyPartner;
-  const labTotal = selectedTests.reduce((sum, test) => sum + test.price, 0);
-  const radTotal = selectedImagingTests.reduce((sum, test) => sum + test.price, 0);
-  const total = activeTests.reduce((sum, test) => sum + test.price, 0);
+  const labTotal = selectedTests.reduce(
+    (sum, test) => sum + Number(test.price || 0) * (test.quantity || 1),
+    0
+  );
+  const radTotal = selectedImagingTests.reduce(
+    (sum, test) => sum + Number(test.price || 0) * (test.quantity || 1),
+    0
+  );
+  const total = activeTests.reduce(
+    (sum, test) => sum + Number(test.price || 0) * (test.quantity || 1),
+    0
+  );
   const today = isoDateToday();
   const maxVisit = labBookingMaxDate();
   const openSlots = useMemo(
@@ -619,6 +634,7 @@ function LabTests() {
       else next.add(test.id);
       return next;
     });
+    setPendingImagingQty((prev) => ({ ...prev, [test.id]: prev[test.id] || allImagingQty }));
     setSelectedImagingId(test.id);
     setErrors((prev) => ({ ...prev, imaging: "", radiologyPartner: "" }));
     if (!pendingImagingIds.has(test.id)) {
@@ -648,10 +664,11 @@ function LabTests() {
           partnerName: selectedRadiologyPartner?.name || "",
         },
         undefined,
-        { open: false }
+        { open: false, quantity: pendingImagingQty[test.id] || allImagingQty }
       );
     });
     setPendingImagingIds(new Set());
+    setPendingImagingQty({});
     setImagingQuery("");
     window.requestAnimationFrame(() => {
       document.getElementById("imagingSearch")?.focus();
@@ -713,6 +730,7 @@ function LabTests() {
       else next.add(test.id);
       return next;
     });
+    setPendingLabQty((prev) => ({ ...prev, [test.id]: prev[test.id] || allLabQty }));
     setSelectedTestId(test.id);
     setErrors((prev) => ({ ...prev, test: "", lab: "" }));
     if (!pendingLabIds.has(test.id)) {
@@ -728,10 +746,26 @@ function LabTests() {
     }
   };
 
-  const selectAllShownLabs = () => {
-    setPendingLabIds((prev) => {
-      const next = new Set(prev);
-      selectableLabTests.forEach((test) => next.add(test.id));
+  const applyAllLabQty = (value) => {
+    const qty = clampOrderQty(value);
+    setAllLabQty(qty);
+    setPendingLabQty((prev) => {
+      const next = { ...prev };
+      pendingLabIds.forEach((id) => {
+        next[id] = qty;
+      });
+      return next;
+    });
+  };
+
+  const applyAllImagingQty = (value) => {
+    const qty = clampOrderQty(value);
+    setAllImagingQty(qty);
+    setPendingImagingQty((prev) => {
+      const next = { ...prev };
+      pendingImagingIds.forEach((id) => {
+        next[id] = qty;
+      });
       return next;
     });
   };
@@ -754,10 +788,11 @@ function LabTests() {
           partnerName: selectedLab?.name || "",
         },
         undefined,
-        { open: false }
+        { open: false, quantity: pendingLabQty[raw.id] || allLabQty }
       );
     });
     setPendingLabIds(new Set());
+    setPendingLabQty({});
     setLabTestQuery("");
     window.requestAnimationFrame(() => {
       document.getElementById("labTestSearch")?.focus();
@@ -1244,12 +1279,6 @@ function LabTests() {
   const radiologyLocked = Boolean(
     boot.labId && !isLab && selectedRadiologyPartnerId === boot.labId
   );
-  const selectableLabTests = labTestOptions.filter(
-    (test) =>
-      Number(test.price) > 0 &&
-      !test.unavailable &&
-      !selectedTests.some((item) => item.id === test.id)
-  );
 
   return (
     <>
@@ -1310,12 +1339,14 @@ function LabTests() {
           )}
         </header>
 
-        <HomePrescriptionUpload
-          idPrefix="lab-diagnostics"
-          detect={isLab ? "lab" : "radiology"}
-          showCart
-          cartTestsOnly
-        />
+        {hasAccountSession() ? null : (
+          <HomePrescriptionUpload
+            idPrefix="lab-diagnostics"
+            detect={isLab ? "lab" : "radiology"}
+            showCart={false}
+            label="Upload prescription"
+          />
+        )}
 
         <form className="lab-shell" onSubmit={handleBooking}>
           {hideCatalog ? null : (
@@ -1436,10 +1467,18 @@ function LabTests() {
                     ) : null}
                     {labTestQuery.trim() && labTestOptions.length > 0 || pendingLabIds.size > 0 ? (
                       <div className="lab-after-pick">
-                        {labTestQuery.trim() && labTestOptions.length > 0 ? (
-                        <button type="button" className="ghost-button" onClick={selectAllShownLabs}>
-                          Select all shown
-                        </button>
+                        <OrderQty label="Quantity for all" value={allLabQty} onChange={applyAllLabQty} />
+                        {pendingLabIds.size ? (
+                          <button
+                            type="button"
+                            className="ghost-button"
+                            onClick={() => {
+                              setPendingLabIds(new Set());
+                              setPendingLabQty({});
+                            }}
+                          >
+                            Unselect all
+                          </button>
                         ) : null}
                         <button
                           type="button"
@@ -1447,10 +1486,35 @@ function LabTests() {
                           disabled={!pendingLabIds.size}
                           onClick={addPendingLabsToCart}
                         >
-                          {pendingLabIds.size
-                            ? `Add ${pendingLabIds.size} to cart`
-                            : "Add to cart"}
+                          Add all to cart
                         </button>
+                        {(selectedLab?.tests || [])
+                          .filter((test) => pendingLabIds.has(test.id))
+                          .map((test) => (
+                            <span className="order-qty-line" key={test.id}>
+                              <span>{test.name}</span>
+                              <OrderQty
+                                label="Quantity"
+                                value={pendingLabQty[test.id] || allLabQty}
+                                onChange={(qty) =>
+                                  setPendingLabQty((prev) => ({ ...prev, [test.id]: qty }))
+                                }
+                              />
+                              <button
+                                type="button"
+                                className="ghost-button"
+                                onClick={() =>
+                                  setPendingLabIds((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(test.id);
+                                    return next;
+                                  })
+                                }
+                              >
+                                Unselect
+                              </button>
+                            </span>
+                          ))}
                       </div>
                     ) : null}
                   </>
@@ -1547,24 +1611,18 @@ function LabTests() {
                     </div>
                     {imagingQuery.trim() && imagingSearchResults.length > 0 || pendingImagingIds.size > 0 ? (
                       <div className="lab-after-pick">
-                        {imagingQuery.trim() && imagingSearchResults.length > 0 ? (
-                        <button
-                          type="button"
-                          className="ghost-button"
-                          onClick={() =>
-                            setPendingImagingIds((prev) => {
-                              const next = new Set(prev);
-                              imagingSearchResults.forEach((test) => {
-                                if (!selectedImagingTests.some((item) => item.id === test.id)) {
-                                  next.add(test.id);
-                                }
-                              });
-                              return next;
-                            })
-                          }
-                        >
-                          Select all shown
-                        </button>
+                        <OrderQty label="Quantity for all" value={allImagingQty} onChange={applyAllImagingQty} />
+                        {pendingImagingIds.size ? (
+                          <button
+                            type="button"
+                            className="ghost-button"
+                            onClick={() => {
+                              setPendingImagingIds(new Set());
+                              setPendingImagingQty({});
+                            }}
+                          >
+                            Unselect all
+                          </button>
                         ) : null}
                         <button
                           type="button"
@@ -1572,10 +1630,35 @@ function LabTests() {
                           disabled={!pendingImagingIds.size}
                           onClick={addPendingImagingToCart}
                         >
-                          {pendingImagingIds.size
-                            ? `Add ${pendingImagingIds.size} to cart`
-                            : "Add to cart"}
+                          Add all to cart
                         </button>
+                        {(selectedRadiologyPartner?.tests || [])
+                          .filter((test) => pendingImagingIds.has(test.id))
+                          .map((test) => (
+                            <span className="order-qty-line" key={test.id}>
+                              <span>{test.name}</span>
+                              <OrderQty
+                                label="Quantity"
+                                value={pendingImagingQty[test.id] || allImagingQty}
+                                onChange={(qty) =>
+                                  setPendingImagingQty((prev) => ({ ...prev, [test.id]: qty }))
+                                }
+                              />
+                              <button
+                                type="button"
+                                className="ghost-button"
+                                onClick={() =>
+                                  setPendingImagingIds((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(test.id);
+                                    return next;
+                                  })
+                                }
+                              >
+                                Unselect
+                              </button>
+                            </span>
+                          ))}
                       </div>
                     ) : null}
                   </>

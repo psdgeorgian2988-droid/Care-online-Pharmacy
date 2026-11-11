@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
-import { accountMatchesLogin, accountStoreWithout, isRemovedMobile, loginPinFromInput } from "./accounts.mjs";
+import { accountMatchesLogin, accountStoreWithout, isRemovedMobile, loginPinFromInput, mergeAccountStores } from "./accounts.mjs";
 
 test("removing a customer drops the account and keeps that mobile hidden", () => {
   const next = accountStoreWithout(
@@ -34,6 +34,22 @@ test("removing the same customer again does not duplicate the hidden mobile", ()
 test("a short mobile cannot remove a customer", () => {
   const next = accountStoreWithout({ accounts: [], removed: [] }, "123");
   assert.equal(next.ok, false);
+});
+
+test("a wiped account file does not forget a saved registration", () => {
+  const saved = mergeAccountStores([
+    { accounts: [], removed: [] },
+    {
+      accounts: [{ mobile: "9876543210", name: "A", loginPin: "246810", updatedAt: "2026-11-11T00:00:00.000Z" }],
+      removed: [],
+    },
+  ]);
+  assert.deepEqual(
+    saved.accounts.map((row) => row.mobile),
+    ["9876543210"]
+  );
+  assert.equal(saved.accounts[0].loginPin, "246810");
+  assert.deepEqual(saved.removed, []);
 });
 
 test("admin customer remove is a staff route", async () => {

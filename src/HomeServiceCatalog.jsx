@@ -117,11 +117,13 @@ export default function HomeServiceCatalog({ className = "", sectionKeys } = {})
               {pausedServiceMessage(section.label)}
             </p>
           ) : null}
-          {sectionPage && RX_DETECT[section.key] ? (
+          {sectionPage && !hasAccountSession(user) && RX_DETECT[section.key] ? (
             <HomePrescriptionUpload
               idPrefix={`catalog-${section.key}`}
               detect={RX_DETECT[section.key]}
+              showCart={false}
               disabled={!section.on}
+              label="Upload prescription"
             />
           ) : null}
           <h2 className="app-home-heading">

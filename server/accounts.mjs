@@ -1,10 +1,12 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { orderMobileDigits } from "../src/labCustomerActions.js";
 
 const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "data");
 const dataFile = path.join(dataDir, "accounts.json");
+const homeFile = path.join(os.homedir(), ".medihome", "accounts.json");
 
 function mobileOf(value) {
   return orderMobileDigits({ mobile: value });
@@ -124,21 +126,94 @@ export function accountStoreWithout(store, mobileValue) {
   return { ok: true, store: { accounts, removed } };
 }
 
-async function readStore() {
+function storeSignature(store) {
+  const rows = (store?.accounts || [])
+    .map((row) => `${row.mobile}:${row.loginPin || ""}:${row.updatedAt || ""}`)
+    .sort();
+  const removed = removedMobiles(store?.removed).slice().sort();
+  return `${rows.join("|")}#${removed.join("|")}`;
+}
+
+function combineAccount(previous, next) {
+  if (!previous) return next;
+  const nextIsNewer = String(next.updatedAt || "") >= String(previous.updatedAt || "");
+  const base = nextIsNewer ? { ...previous, ...next } : { ...next, ...previous };
+  if (!base.loginPin) base.loginPin = next.loginPin || previous.loginPin || "";
+  if (!Array.isArray(base.familyMembers) || !base.familyMembers.length) {
+    base.familyMembers = next.familyMembers?.length ? next.familyMembers : previous.familyMembers || [];
+  }
+  return base;
+}
+
+/** Join every saved copy. A wiped file must not erase accounts that another copy still has. */
+export function mergeAccountStores(stores) {
+  const accounts = new Map();
+  const mentioned = new Map();
+  for (const store of stores) {
+    if (!store) continue;
+    const hidden = new Set(removedMobiles(store.removed));
+    for (const row of Array.isArray(store.accounts) ? store.accounts : []) {
+      const mobile = mobileOf(row?.mobile);
+      if (!mobile) continue;
+      mentioned.set(mobile, (mentioned.get(mobile) || 0) + 1);
+      if (hidden.has(mobile)) continue;
+      accounts.set(mobile, combineAccount(accounts.get(mobile), { ...row, mobile }));
+    }
+    for (const mobile of hidden) {
+      if ((store.accounts || []).some((row) => mobileOf(row?.mobile) === mobile)) continue;
+      if (!accounts.has(mobile)) mentioned.set(mobile, (mentioned.get(mobile) || 0) + 1);
+      const keptElsewhere = stores.some(
+        (copy) =>
+          copy &&
+          copy !== store &&
+          (copy.accounts || []).some((row) => mobileOf(row?.mobile) === mobile) &&
+          !removedMobiles(copy.removed).includes(mobile)
+      );
+      if (!keptElsewhere) accounts.delete(mobile);
+    }
+  }
+  return {
+    accounts: [...accounts.values()],
+    removed: removedMobiles(
+      [...mentioned.keys()].filter((mobile) => !accounts.has(mobile) && stores.some((store) => removedMobiles(store?.removed).includes(mobile)))
+    ),
+  };
+}
+
+async function readAccountFile(file) {
   try {
-    const parsed = JSON.parse(await readFile(dataFile, "utf8"));
+    const parsed = JSON.parse(await readFile(file, "utf8"));
     return {
       accounts: Array.isArray(parsed?.accounts) ? parsed.accounts : [],
       removed: removedMobiles(parsed?.removed),
     };
   } catch {
-    return { accounts: [], removed: [] };
+    return null;
   }
 }
 
+async function readStore() {
+  const primary = await readAccountFile(dataFile);
+  const backup = await readAccountFile(homeFile);
+  const copies = [primary, backup].filter(Boolean);
+  if (!copies.length) return { accounts: [], removed: [] };
+  const merged = mergeAccountStores(copies);
+  if (!primary || storeSignature(primary) !== storeSignature(merged)) {
+    await writeStore(merged);
+  }
+  return merged;
+}
+
 async function writeStore(store) {
+  const body = `${JSON.stringify({ accounts: store.accounts || [], removed: removedMobiles(store.removed) }, null, 2)}\n`;
   await mkdir(dataDir, { recursive: true });
-  await writeFile(dataFile, `${JSON.stringify(store, null, 2)}\n`);
+  await writeFile(dataFile, body);
+  try {
+    await mkdir(path.dirname(homeFile), { recursive: true });
+    await writeFile(homeFile, body);
+  } catch {
+    /* a read-only home directory still leaves the copy beside the app */
+  }
 }
 
 export async function listAccounts() {

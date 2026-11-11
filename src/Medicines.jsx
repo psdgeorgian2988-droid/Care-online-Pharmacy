@@ -37,7 +37,6 @@ import { monthlySavingForCart, monthlySavingForItem, resolveCartAdd } from "./me
 import {
   MEDICINE_CART_EVENT,
   MEDICINE_CHECKOUT_OPEN_EVENT,
-  openShopCart,
   peekRxLabCheckout,
   readMedicineCart,
   takeRxMedicineCheckout,
@@ -51,6 +50,8 @@ import {
   readPrescriptionDraft,
 } from "./prescriptionDraft";
 import { goToHash, parseAppHash } from "./hashRoute";
+import { hasAccountSession } from "./authSession";
+import OrderQty, { clampOrderQty } from "./OrderQty";
 import MedicineSearchTools from "./MedicineSearchTools";
 import HomePrescriptionUpload from "./HomePrescriptionUpload.jsx";
 import { matchExactMediHomeFromPhoto } from "./medicineStripSearch";
@@ -2900,7 +2901,64 @@ function MedicinePhoto({ medicine, className = "medicine-photo" }) {
   );
 }
 
-function MedicineCard({ medicine, onAdd, selected = false, onSelect }) {
+function SelectedMedicineTray({
+  medicines,
+  allStrips,
+  onAllStrips,
+  qtyOf,
+  onQty,
+  onUnselect,
+  onUnselectAll,
+  onAdd,
+}) {
+  if (!medicines.length) return null;
+  const categories = [...new Set(medicines.map((medicine) => medicine.category).filter(Boolean))];
+  return (
+    <aside className="medicine-tray" aria-label="Medicines to add">
+      <div className="medicine-tray-head">
+        <div>
+          <strong>{medicines.length} ready</strong>
+          <span>{categories.join(" · ")}</span>
+        </div>
+        {medicines.length > 1 ? (
+          <OrderQty label="Each" value={allStrips} onChange={onAllStrips} />
+        ) : null}
+        <button type="button" className="medicine-tray-clear" onClick={onUnselectAll}>
+          Clear
+        </button>
+        <button type="button" className="medicine-tray-add" onClick={onAdd}>
+          Add to cart
+        </button>
+      </div>
+      <ul className="medicine-tray-list">
+        {medicines.map((medicine) => (
+          <li key={medicine.id}>
+            <OrderQty
+              label="Strips"
+              value={qtyOf(medicine.id)}
+              onChange={(qty) => onQty(medicine.id, qty)}
+            />
+            <span className="medicine-tray-name">
+              <strong>{medicine.brand || medicine.name}</strong>
+              <span>{medicine.strength}</span>
+              {medicine.category ? <em>{medicine.category}</em> : null}
+            </span>
+            <button
+              type="button"
+              className="medicine-tray-remove"
+              aria-label={`Unselect ${medicine.brand || medicine.name}`}
+              onClick={() => onUnselect(medicine)}
+            >
+              ×
+            </button>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
+}
+
+function MedicineCard({ medicine, onAdd, selected = false, onSelect, qty = 1, onQtyChange }) {
   return (
     <div
       className={`medicine-row${selected ? " is-selected" : ""}`}
@@ -2918,9 +2976,11 @@ function MedicineCard({ medicine, onAdd, selected = false, onSelect }) {
           else onAdd(medicine);
         }}
       >
-        {selected ? "Selected" : onSelect ? "Select" : "Add to cart"}
+        {selected ? "Unselect" : onSelect ? "Select" : "Add to cart"}
       </button>
-      <span className="medicine-row-brand">{medicine.brand || "MediHome"}</span>
+      <span className="medicine-row-brand">
+        <span className="medicine-row-brand-name">{medicine.brand || "MediHome"}</span>
+      </span>
       <span className="medicine-row-comp">{medicine.salt || medicine.composition}</span>
       <span className="medicine-row-str">{medicine.strength}</span>
       <span className="medicine-row-mrp">₹{medicine.mrp}</span>
@@ -3045,16 +3105,15 @@ function BrandSearchStrip({
   );
 }
 
-function categoryFromHash() {
+function sectionFromHash() {
   const { service } = parseAppHash(
     typeof window !== "undefined" ? window.location.hash : ""
   );
-  if (!service || service === "Search") return "";
-  return service;
+  return String(service || "").trim();
 }
 
-function readHomeMedicineCategory() {
-  const fromHash = categoryFromHash();
+function readMedicineSection() {
+  const fromHash = sectionFromHash();
   if (fromHash) return fromHash;
   try {
     return (sessionStorage.getItem("mediHomeMedicineCategory") || "").trim();
@@ -3063,19 +3122,86 @@ function readHomeMedicineCategory() {
   }
 }
 
+function sameCombinationBrands(list, anchor, query) {
+  if (!anchor) return [];
+  const salt = saltKey(anchor);
+  if (!salt) return [];
+  const brand = normalizeSearchText(anchor.brand || "");
+  const strengthLocked = queryHasStrength(query);
+  return list
+    .filter((medicine) => {
+      if (medicine.id === anchor.id) return false;
+      if (saltKey(medicine) !== salt) return false;
+      if (strengthLocked && compositionKey(medicine) !== compositionKey(anchor)) return false;
+      return normalizeSearchText(medicine.brand || "") !== brand;
+    })
+    .slice(0, 8);
+}
+
+function SearchCombinationResults({ anchor, suggestions, emptyHint, onAdd }) {
+  if (!anchor) {
+    return emptyHint ? <p className="medicines-empty-hint">{emptyHint}</p> : null;
+  }
+  return (
+    <div className="brand-search-panel">
+      <p className="brand-search-kicker">Matching medicine</p>
+      <article className="brand-result-card">
+        <MedicinePhoto medicine={anchor} className="brand-search-photo" />
+        <div className="brand-result-body">
+          <h3>{anchor.name}</h3>
+          <p className="brand-result-brand">{anchor.brand || "MediHome"}</p>
+          <p className="brand-result-comp">{anchor.composition || anchor.salt}</p>
+          <p className="brand-result-mrp">
+            MRP <strong>₹{anchor.mrp}</strong>
+            <span> · {anchor.strength}</span>
+          </p>
+          <button type="button" onClick={() => onAdd(anchor)}>
+            Add to cart
+          </button>
+        </div>
+      </article>
+      {suggestions.length ? (
+        <>
+          <p className="brand-search-kicker">Other brands with the same combination</p>
+          {suggestions.map((medicine) => (
+            <article key={medicine.id} className="brand-result-card">
+              <MedicinePhoto medicine={medicine} className="brand-search-photo" />
+              <div className="brand-result-body">
+                <h3>{medicine.name}</h3>
+                <p className="brand-result-brand">{medicine.brand || "MediHome"}</p>
+                <p className="brand-result-comp">{medicine.composition || medicine.salt}</p>
+                <p className="brand-result-price">
+                  <strong>₹{medicine.price}</strong>
+                  <span> · {medicine.strength}</span>
+                </p>
+                <button type="button" onClick={() => onAdd(medicine)}>
+                  Add to cart
+                </button>
+              </div>
+            </article>
+          ))}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 function Medicines({ initialSearch = "" }) {
   const rxMedBoot = useMemo(() => takeRxMedicineCheckout(), []);
   const [search, setSearch] = useState(
     () => (initialSearch || "").trim() || readHomeMedicineSearch()
   );
-  const [category, setCategory] = useState(() => {
-    const fromHome = readHomeMedicineCategory();
-    if (fromHome === "Search") return "All";
-    return fromHome || "All";
+  const [sectionName, setSectionName] = useState(() => {
+    const section = readMedicineSection();
+    if (section) return section;
+    if ((initialSearch || "").trim() || readHomeMedicineSearch()) return "Search";
+    return "";
   });
   const searchInputRef = useRef(null);
   const [cart, setCartState] = useState(() => readMedicineCart());
   const [pickedIds, setPickedIds] = useState(() => new Set());
+  const [pickedQty, setPickedQty] = useState({});
+  const [allStrips, setAllStrips] = useState(1);
   const setCart = (updater) => {
     setCartState((current) => {
       const next = typeof updater === "function" ? updater(current) : updater;
@@ -3084,6 +3210,8 @@ function Medicines({ initialSearch = "" }) {
     });
   };
   const [showCheckout, setShowCheckout] = useState(false);
+  const [cartNote, setCartNote] = useState("");
+  const [moveTarget, setMoveTarget] = useState("");
   const [prescriptionFile, setPrescriptionFile] = useState(() =>
     hasPrescriptionDraft() || rxMedBoot?.attachRx
       ? fileFromPrescriptionDraft(readPrescriptionDraft())
@@ -3128,42 +3256,89 @@ function Medicines({ initialSearch = "" }) {
     if (readMedicineCart().length) goToHash("#checkout");
   }, [rxMedBoot]);
 
+  const sectionOpen = Boolean(sectionName);
+  const isSearchSection = sectionName === "Search";
+  const category =
+    !sectionName || isSearchSection || sectionName === "All" ? "All" : sectionName;
+
+  const closeSection = () => {
+    setSectionName("");
+    setSearch("");
+    setPhotoSearch(null);
+    setOpenSaltKey("");
+    setShowCheckout(false);
+    setConfirmedOrder(null);
+    try {
+      sessionStorage.removeItem("mediHomeMedicineCategory");
+      sessionStorage.removeItem("mediHomeMedicineSearch");
+    } catch {
+      /* ignore */
+    }
+    goToHash("#medicine-search");
+  };
+
+  const openMedicineSection = (item) => {
+    setSearch("");
+    setPhotoSearch(null);
+    setOpenSaltKey("");
+    setShowCheckout(false);
+    setConfirmedOrder(null);
+    setCartNote("");
+    setSectionName(item);
+    goToHash(`#medicine-search?service=${encodeURIComponent(item)}`);
+  };
+
+  const requestLeave = (target) => {
+    if (pickedIds.size) {
+      setMoveTarget(target);
+      return;
+    }
+    if (target === "close") closeSection();
+    else openMedicineSection(target);
+  };
+
+  const finishMove = (add) => {
+    const target = moveTarget;
+    if (add) addPickedToCart();
+    else {
+      setPickedIds(new Set());
+      setPickedQty({});
+    }
+    setMoveTarget("");
+    if (target === "close") closeSection();
+    else if (target) openMedicineSection(target);
+    if (add) setCartNote("Added to your cart. Choose another category.");
+  };
+
   useEffect(() => {
-    const applyCategory = () => {
-      const next = (initialSearch || "").trim();
-      if (next) {
-        setSearch(next);
-        setCategory("All");
-        try {
-          sessionStorage.removeItem("mediHomeMedicineCategory");
-        } catch {
-          /* ignore */
-        }
+    const applySection = () => {
+      const typed = (initialSearch || "").trim();
+      if (typed) {
+        setSearch(typed);
+        setSectionName("Search");
         return;
       }
-      const fromHome = readHomeMedicineCategory();
-      if (fromHome) {
-        setCategory(fromHome === "Search" ? "All" : fromHome);
-        if (fromHome === "Search") {
-          /* keep typed search */
-        } else {
-          setSearch("");
-        }
-        try {
-          sessionStorage.removeItem("mediHomeMedicineCategory");
-        } catch {
-          /* ignore */
-        }
+      const section = readMedicineSection() || (readHomeMedicineSearch() ? "Search" : "");
+      if (!section) {
+        setSectionName("");
+        return;
+      }
+      setSectionName(section);
+      if (section !== "Search") setSearch("");
+      try {
+        sessionStorage.removeItem("mediHomeMedicineCategory");
+      } catch {
+        /* ignore */
       }
     };
-    applyCategory();
-    window.addEventListener("hashchange", applyCategory);
-    return () => window.removeEventListener("hashchange", applyCategory);
+    applySection();
+    window.addEventListener("hashchange", applySection);
+    return () => window.removeEventListener("hashchange", applySection);
   }, [initialSearch]);
 
   useEffect(() => {
-    searchInputRef.current?.focus();
-  }, [category]);
+    if (sectionName === "Search") searchInputRef.current?.focus();
+  }, [sectionName]);
 
   const categories = [
     "All",
@@ -3221,18 +3396,30 @@ function Medicines({ initialSearch = "" }) {
   }, [search, searchResult.brandMatch?.id]);
 
   useEffect(() => {
-    if (photoSearch) return;
+    if (photoSearch || isSearchSection) return;
     const compact = normalizeSearchText(search);
     if (compact.length < 3) return;
     const exact = saltFamilies.find(
       (family) => familyKeyFromName(family.name) === compact
     );
     if (exact) setOpenSaltKey(exact.key);
-  }, [search, photoSearch, saltFamilies]);
+  }, [search, photoSearch, saltFamilies, isSearchSection]);
 
   const openSaltFamily =
     saltFamilies.find((family) => family.key === openSaltKey) || null;
   const hasSearch = search.trim().length >= 2;
+  const [searchDismissed, setSearchDismissed] = useState(false);
+  const marketBrands = (list) => {
+    const brands = list.filter((medicine) => !medicine.isMediHome);
+    return brands.length ? brands : list;
+  };
+  const brandPageMedicines = sortMedicineRows(
+    isSearchSection
+      ? hasSearch
+        ? marketBrands(catalogue).filter((medicine) => bestFieldScore(search, medicine) >= 0.5)
+        : marketBrands(catalogue)
+      : marketBrands(categoryCatalogue)
+  );
   const searchingBrand = Boolean(
     !photoMatch && hasSearch && searchResult.prescribedSearch && selectedBrand
   );
@@ -3246,11 +3433,17 @@ function Medicines({ initialSearch = "" }) {
         : openSaltFamily.items
       : hasSearch
         ? searchResult.items
-        : [];
-  const filteredMedicines = sortMedicineRows(
-    listed.filter((medicine) => medicine.isMediHome)
-  );
+        : sectionOpen && !isSearchSection
+          ? categoryCatalogue
+          : [];
+  const filteredMedicines = brandPageMedicines;
   const showBrandStrip = searchingBrand;
+  const searchAnchor = isSearchSection
+    ? selectedBrand || selectedMediHome || searchResult.items?.[0] || null
+    : null;
+  const combinationSuggestions = isSearchSection
+    ? sameCombinationBrands(catalogue, searchAnchor, search)
+    : [];
   const monthlySave = monthlySavingForCart(cart);
 
   const cartTotal = cart.reduce(
@@ -3294,9 +3487,21 @@ function Medicines({ initialSearch = "" }) {
 
       return [...currentCart, withPickedBatch({ ...selling, quantity: 1 })];
     });
-    openShopCart();
+    setCartNote("Added to your cart. Choose another category.");
     setShowCheckout(false);
     setConfirmedOrder(null);
+  };
+
+  const applyStripsToAll = (value) => {
+    const qty = clampOrderQty(value);
+    setAllStrips(qty);
+    setPickedQty((prev) => {
+      const next = { ...prev };
+      pickedIds.forEach((id) => {
+        next[id] = qty;
+      });
+      return next;
+    });
   };
 
   const togglePicked = (medicine) => {
@@ -3306,10 +3511,14 @@ function Medicines({ initialSearch = "" }) {
       else next.add(medicine.id);
       return next;
     });
+    setPickedQty((prev) => ({
+      ...prev,
+      [medicine.id]: prev[medicine.id] || allStrips,
+    }));
   };
 
   const addPickedToCart = () => {
-    const chosen = filteredMedicines.filter((medicine) => pickedIds.has(medicine.id));
+    const chosen = catalogue.filter((medicine) => pickedIds.has(medicine.id));
     if (!chosen.length) return;
     let next = readMedicineCart();
     for (const medicine of chosen) {
@@ -3321,25 +3530,27 @@ function Medicines({ initialSearch = "" }) {
         ...added.selling,
         prescribedBrand: added.compare || null,
       };
+      const qty = clampOrderQty(pickedQty[medicine.id] || allStrips);
       const existingItem = next.find((item) => item.id === selling.id);
       next = existingItem
         ? next.map((item) =>
             item.id === selling.id
               ? {
                   ...item,
-                  quantity: (item.quantity || 1) + 1,
+                  quantity: (item.quantity || 0) + qty,
                   prescribedBrand: selling.prescribedBrand || item.prescribedBrand,
                 }
               : item
           )
-        : [...next, withPickedBatch({ ...selling, quantity: 1 })];
+        : [...next, withPickedBatch({ ...selling, quantity: qty })];
     }
     writeMedicineCart(next);
     setCartState(next);
     setPickedIds(new Set());
+    setPickedQty({});
     setShowCheckout(false);
     setConfirmedOrder(null);
-    goToHash("#checkout");
+    setCartNote("Added to your cart. Choose another category.");
   };
 
   const resetCheckoutForm = () => {
@@ -3349,6 +3560,40 @@ function Medicines({ initialSearch = "" }) {
     setDeliveryErrors({});
     setPrescriptionFile(null);
   };
+
+  const unselectAllPicked = () => {
+    setPickedIds(new Set());
+    setPickedQty({});
+  };
+
+  const selectedMedicines = useMemo(
+    () =>
+      catalogue
+        .filter((medicine) => pickedIds.has(medicine.id))
+        .sort(
+          (a, b) =>
+            String(a.category || "").localeCompare(String(b.category || "")) ||
+            String(a.brand || a.name || "").localeCompare(String(b.brand || b.name || "")) ||
+            String(a.strength || "").localeCompare(String(b.strength || ""))
+        ),
+    [pickedIds]
+  );
+
+  const selectedBox = (
+    <SelectedMedicineTray
+      medicines={selectedMedicines}
+      allStrips={allStrips}
+      onAllStrips={applyStripsToAll}
+      qtyOf={(id) => pickedQty[id] || allStrips}
+      onQty={(id, qty) => setPickedQty((prev) => ({ ...prev, [id]: qty }))}
+      onUnselect={togglePicked}
+      onUnselectAll={unselectAllPicked}
+      onAdd={() => {
+        addPickedToCart();
+        closeSection();
+      }}
+    />
+  );
 
   const placeOrder = async () => {
     if (cart.length === 0) {
@@ -3479,91 +3724,77 @@ function Medicines({ initialSearch = "" }) {
   };
 
   return (
-    <section id="medicines" className="medicines-page">
+    <section id="medicines" className={`medicines-page${selectedMedicines.length ? " has-tray" : ""}`}>
       {busyWait ? <BusyWait kind="medicine" traffic={busyWait} /> : null}
       <div className="medicines-header">
         <div className="medicines-title-row">
           <div>
             <h1>Order Medicines</h1>
+            {sectionOpen ? null : (
             <p>
               You are ordering genuine medicines from GMP certified Manufacturer
               at affordable price.
             </p>
+            )}
           </div>
         </div>
-        <HomePrescriptionUpload idPrefix="medicine-purchase" detect="medicine" />
-        <div className="medicine-category-boxes">
-          {categories.map((item) => (
+        <div className={`medicine-category-boxes${sectionOpen ? " is-chips" : ""}`}>
+          {sectionOpen ? (
+            <button type="button" className="medicine-category-box" onClick={() => requestLeave("close")}>
+              <span className="medicine-category-name">All</span>
+            </button>
+          ) : null}
+          {["Search", ...categories.filter((item) => item !== "All")].map((item) => (
             <button
               key={item}
               type="button"
-              className={`medicine-category-box ${
-                category === item ? "active" : ""
-              }`}
+              className={`medicine-category-box ${sectionName === item ? "active" : ""}`}
               aria-label={item}
               onClick={() => {
-                setCategory(item);
-                setSearch("");
-                setPhotoSearch(null);
-                setOpenSaltKey("");
-                setShowCheckout(false);
-                setConfirmedOrder(null);
-                window.requestAnimationFrame(() => searchInputRef.current?.focus());
+                if (item === sectionName) return;
+                requestLeave(item);
               }}
             >
-              <span className="medicine-category-name">
-                {item === "All" ? "All" : item}
-              </span>
+              <span className="medicine-category-name">{item}</span>
             </button>
           ))}
         </div>
-        {showSaltTabs ? (
-          <div className="medicine-salt-row">
-            <p className="medicine-salt-kicker">{category} medicines</p>
-            {visibleSaltFamilies.length ? (
-              <div
-                className="medicine-category-boxes medicine-salt-boxes"
-                role="tablist"
-                aria-label={`${category} medicines`}
-              >
-                {visibleSaltFamilies.map((family) => (
-                  <button
-                    key={family.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={openSaltKey === family.key}
-                    className={`medicine-category-box ${
-                      openSaltKey === family.key ? "active" : ""
-                    }`}
-                    onClick={() => {
-                      setOpenSaltKey(family.key);
-                      setPhotoSearch(null);
-                      setShowCheckout(false);
-                      setConfirmedOrder(null);
-                    }}
-                  >
-                    <span className="medicine-category-name">{family.name}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="medicines-empty-hint">No medicines in {category}.</p>
-            )}
+        {moveTarget ? (
+          <div className="medicine-cart-ask">
+            <p>Add the selected medicines to your cart?</p>
+            <button type="button" onClick={() => finishMove(true)}>
+              Add to cart
+            </button>
+            <button type="button" onClick={() => finishMove(false)}>
+              Continue
+            </button>
           </div>
+        ) : cartNote ? (
+          <p className="medicine-cart-note">{cartNote}</p>
         ) : null}
+        {selectedBox}
+      </div>
+      {sectionOpen ? (
+        <>
+        {sectionOpen && !hasAccountSession() ? (
+          <HomePrescriptionUpload
+            idPrefix="medicine-purchase"
+            detect="medicine"
+            showCart={false}
+            label="Upload prescription"
+          />
+        ) : null}
+        {isSearchSection ? (
         <div className="medicine-search-box is-large">
           <input
             ref={searchInputRef}
             type="search"
-            placeholder={
-              category === "All" || category === "Search"
-                ? "Search by brand name or salt name"
-                : `Search ${category} by brand name or salt name`
-            }
+            placeholder="Search by brand name or salt name"
             value={search}
             onChange={(e) => {
               setPhotoSearch(null);
               setSearch(e.target.value);
+              setSearchDismissed(false);
             }}
             aria-label="Search medicines by brand or salt"
             autoFocus
@@ -3581,14 +3812,7 @@ function Medicines({ initialSearch = "" }) {
             </button>
           ) : null}
         </div>
-        <MedicineSearchTools
-          onQuery={(value) => {
-            setSearch(String(value || "").trim());
-            searchInputRef.current?.focus();
-          }}
-          onPhoto={(payload) => setPhotoSearch(payload)}
-        />
-      </div>
+        ) : null}
 
       {showCheckout && (
         <div className="checkout-panel">
@@ -3819,7 +4043,7 @@ function Medicines({ initialSearch = "" }) {
         </div>
       )}
 
-      {!showCheckout && !confirmedOrder && (
+      {!showCheckout && !confirmedOrder ? (
         <>
           {photoSearch ? (
             <aside className="photo-match-panel">
@@ -3866,7 +4090,7 @@ function Medicines({ initialSearch = "" }) {
                       ? searchResult.emptyHint || "No medicines match your search in this category."
                       : category === "All"
                         ? "Choose a category to see its medicine tabs."
-                        : `Choose a ${category} salt tab to see all strengths and combinations.`)}
+                        : `No brand medicines are listed for ${category}.`)}
                 </p>
               )
             ) : (
@@ -3879,41 +4103,15 @@ function Medicines({ initialSearch = "" }) {
                   <span>MRP</span>
                   <span>Selling Price</span>
                 </div>
-                {pickedIds.size > 0 ? (
-                  <div className="medicine-pick-bar">
-                    <span>{pickedIds.size} selected</span>
-                    <button type="button" onClick={addPickedToCart}>
-                      Add {pickedIds.size} to cart
-                    </button>
-                    <button
-                      type="button"
-                      className="is-ghost"
-                      onClick={() =>
-                        setPickedIds(new Set(filteredMedicines.map((medicine) => medicine.id)))
-                      }
-                    >
-                      Select all shown
-                    </button>
-                  </div>
-                ) : filteredMedicines.length > 1 ? (
-                  <div className="medicine-pick-bar">
-                    <span>Select every medicine you need, then add them together.</span>
-                    <button
-                      type="button"
-                      className="is-ghost"
-                      onClick={() =>
-                        setPickedIds(new Set(filteredMedicines.map((medicine) => medicine.id)))
-                      }
-                    >
-                      Select all shown
-                    </button>
-                  </div>
-                ) : null}
                 {filteredMedicines.map((medicine) => (
                   <MedicineCard
                     key={medicine.id}
                     medicine={medicine}
                     selected={pickedIds.has(medicine.id)}
+                    qty={pickedQty[medicine.id] || allStrips}
+                    onQtyChange={(qty) =>
+                      setPickedQty((prev) => ({ ...prev, [medicine.id]: qty }))
+                    }
                     onSelect={togglePicked}
                     onAdd={addToCart}
                   />
@@ -3922,7 +4120,9 @@ function Medicines({ initialSearch = "" }) {
             )}
           </div>
         </>
-      )}
+      ) : null}
+        </>
+      ) : null}
     </section>
   );
 }

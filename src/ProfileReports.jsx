@@ -418,7 +418,15 @@ export default function ProfileReports() {
       {panel ? (
         <AccountPopup
           title={
-            panel === "record" ? "Medical Record" : panel === "orders" ? "Orders" : "Education"
+            panel === "record"
+              ? recordPick === "prescription"
+                ? "Prescription"
+                : recordPick === "report"
+                  ? "Report"
+                  : "Medical Record"
+              : panel === "orders"
+                ? "Orders"
+                : "Education"
           }
           onClose={() => {
             setRecordPick("");
@@ -466,7 +474,7 @@ export default function ProfileReports() {
           ) : null}
           {panel === "education" && eduPick === "webinar" ? <ProfileWebinars /> : null}
           {panel === "education" && eduPick === "learn" ? <HealthEducation embedded /> : null}
-          {panel === "record" ? (
+          {panel === "record" && !recordPick ? (
             <div className="profile-record-picks">
               <button
                 type="button"
@@ -485,6 +493,11 @@ export default function ProfileReports() {
                 Report
               </button>
             </div>
+          ) : null}
+          {panel === "record" && recordPick ? (
+            <button type="button" className="profile-record-back" onClick={() => setRecordPick("")}>
+              Back
+            </button>
           ) : null}
           {panel === "record" && recordPick === "prescription" ? (
             <HomePrescriptionUpload showCart={false} idPrefix="profile" formOnly />
@@ -597,9 +610,9 @@ export default function ProfileReports() {
           {busy ? "Saving report…" : "Save report"}
         </button>
       </form>
-      {groups.length ? (
+      {testName && groups.some((group) => group.name === testName) ? (
         <div className="profile-report-list">
-          {groups.map((group) => {
+          {groups.filter((group) => group.name === testName).map((group) => {
             const [current, previous] = group.reports;
             const compared = group.kind === "radiology" ? [] : compareReportPair(current, previous);
             return (
@@ -660,6 +673,7 @@ const reportStyles = `
   .profile-edu-alert span{font-size:14px;font-weight:700}
   .profile-edu-alert button{justify-self:start;margin-top:6px;border:0;border-radius:8px;background:#fff;color:#0639b8;font:inherit;font-size:12px;font-weight:800;padding:6px 10px;cursor:pointer}
   .profile-record-picks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .profile-record-back{justify-self:start;margin:0 0 12px;border:1px solid #c9d6ee;border-radius:999px;background:#fff;color:#34598a;font:inherit;font-size:13px;font-weight:800;min-height:34px;padding:0 14px;cursor:pointer}
   .profile-webinar-list{display:grid;gap:8px}
   .profile-webinar-list article{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#f4f6fc}
   .profile-webinar-list strong{display:block;color:#143246;font-size:14px}

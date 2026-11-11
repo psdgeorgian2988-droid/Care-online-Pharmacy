@@ -109,21 +109,20 @@ export default function HeaderCart({ className = "", disabled = false, testsOnly
 
   const testGroups = useMemo(() => groupTests(tests), [tests]);
   const shownMedicines = testsOnly ? [] : medicines;
-  const testTotal = tests.reduce((sum, item) => sum + Number(item.price || 0), 0);
+  const testTotal = tests.reduce(
+    (sum, item) => sum + Number(item.price || 0) * (item.quantity || 1),
+    0
+  );
   const medicineTotal = shownMedicines.reduce(
     (sum, item) => sum + Number(item.price || 0) * (item.quantity || 1),
     0
   );
 
   const close = () => setOpen(false);
-  const checkout = (focusId = "") => {
+  const checkout = () => {
     if (!shownMedicines.length && !tests.length) return;
     close();
-    goToHash(testsOnly ? "#checkout?tests=1" : "#checkout");
-    if (!focusId) return;
-    window.setTimeout(() => {
-      document.getElementById(focusId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 60);
+    goToHash("#checkout");
   };
 
   const drawer =
@@ -182,7 +181,12 @@ export default function HeaderCart({ className = "", disabled = false, testsOnly
                           <div className="shop-cart-row" key={testCartLine(test)}>
                             <div>
                               <strong>{test.name}</strong>
-                              <span>{money(test.price)}</span>
+                              <span>
+                                {money(test.price)}
+                                {(test.quantity || 1) > 1
+                                  ? ` × ${test.quantity} = ${money(Number(test.price || 0) * test.quantity)}`
+                                  : ""}
+                              </span>
                             </div>
                             <button
                               type="button"
@@ -281,22 +285,13 @@ export default function HeaderCart({ className = "", disabled = false, testsOnly
                     : ""}
                 </p>
                 <div className="shop-cart-actions">
-                  {tests.length ? (
-                    <button
-                      type="button"
-                      className="cart-btn cart-btn-secondary"
-                      onClick={() => checkout("checkout-book")}
-                    >
-                      Book test
-                    </button>
-                  ) : null}
                   <button
                     type="button"
                     className="cart-btn cart-btn-primary"
                     disabled={!shownMedicines.length && !tests.length}
-                    onClick={() => checkout(tests.length ? "checkout-pay" : "")}
+                    onClick={() => checkout()}
                   >
-                    {tests.length ? "Payment" : "Checkout"}
+                    Review order
                   </button>
                 </div>
               </footer>

@@ -218,6 +218,12 @@ function labCartSplitFields(test, kind) {
   return fields;
 }
 
+function cartQty(value) {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(99, n);
+}
+
 function normalizeTestCartItem(test, meta = {}) {
   const id = test?.id || test?.testId;
   const partnerId = meta.partnerId || test?.partnerId;
@@ -227,6 +233,7 @@ function normalizeTestCartItem(test, meta = {}) {
     id,
     name: test.name || test.testName || id,
     price: Number(test.price || 0),
+    quantity: cartQty(test.quantity),
     code: test.code || test.testId || id,
     prepType: test.prepType || "none",
     instruction: test.instruction || "",
@@ -240,13 +247,17 @@ function normalizeTestCartItem(test, meta = {}) {
 export function addTestToCart(test, meta = {}, store, options = {}) {
   const item = normalizeTestCartItem(test, meta);
   if (!item) return readTestCart(store);
+  const qty = cartQty(options.quantity || test?.quantity);
   const cart = readTestCart(store);
   const key = testCartKey(item);
-  if (cart.some((row) => testCartKey(row) === key)) {
-    if (options.open !== false) openShopCart();
-    return cart;
-  }
-  const next = [...cart, item];
+  const existing = cart.find((row) => testCartKey(row) === key);
+  const next = existing
+    ? cart.map((row) =>
+        testCartKey(row) === key
+          ? { ...row, quantity: cartQty((row.quantity || 0) + qty) }
+          : row
+      )
+    : [...cart, { ...item, quantity: qty }];
   writeTestCart(next, store);
   if (options.open !== false) openShopCart();
   return next;

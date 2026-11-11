@@ -51,6 +51,7 @@ export default function PersonFields({
             value={values.dob || ""}
             max={isoDateToday()}
             min={DOB_MIN_ISO}
+            order="dmy"
             required={required}
             error={errors.dob || ""}
             onChange={onChange}
